@@ -181,7 +181,7 @@ UI의 **Axis range** 섹션 또는 API 요청의 `x_min`, `x_max`, `y_min`, `y_m
 | `velocity` | PSD [dB rel. (m/s)²/Hz] | -220 ~ -40 |
 | `velocity_nm` | PSD [dB rel. (nm/s)²/Hz] | -40 ~ 140 |
 | `acceleration` | PSD [dB rel. (m/s²)²/Hz] | -210 ~ -30 |
-| `pressure` | PSD [dB rel. Pa²/Hz] | -20 ~ 100 |
+| `pressure` | PSD [dB rel. Pa²/Hz] | -100 ~ 40 |
 
 UI에서 Y축 단위를 바꾸면 위 기본 범위로 Y축 min/max가 자동 갱신됩니다.
 
@@ -228,7 +228,8 @@ PPSD_SDS_DIR=./sds
 | NLNM / NHNM 오버레이 | O (`show_noise_models`, 음압은 IDC 인프라사운드 모델) |
 | Period ↔ Frequency X축 전환 | O (`xaxis`) |
 | Mode / Mean 곡선 | O (`show_mode`, `show_mean`) |
-| Colormap 선택 | O (`cmap`) |
+| Colormap 선택 | O (`cmap`, 포함: `viridis`/`magma`/`plasma`/`inferno`/`cividis`/`turbo`/`hot`/`jet`/`pqlx`) |
+| Probability [%] 컬러 스케일 범위 | O (설정 메뉴, 기본 0–30) |
 | 인터랙티브 렌더링 | O (프론트 D3.js + WebGL) |
 | 결과 PNG 다운로드 | O (브라우저 캔버스 export) |
 | 결과 캐싱 (동일 파라미터 재계산 스킵) | O (SeisComP SDS 일 단위 `PPSD.save_npz`) |
@@ -272,16 +273,18 @@ python -m pip install "setuptools>=68,<81" setuptools-scm
 
 ## 프론트엔드 설정 (기본값)
 
-상단 바의 **⚙ 설정** 버튼으로 기본값을 지정할 수 있습니다. 값은 브라우저
-`localStorage`에 저장되어 새로고침/재접속 후에도 유지되며, 각 탭을 열 때 초기값으로
+상단 바의 **⚙ 설정** 버튼으로 기본값을 지정할 수 있습니다. 모달에서 값을 바꾼 뒤
+**완료**를 눌러야 `localStorage`에 저장·반영됩니다(✕ 또는 바깥 클릭 시 변경 취소).
+저장된 값은 새로고침/재접속 후에도 유지되며, 각 탭을 열 때 초기값으로
 적용됩니다(탭 안에서 개별적으로 다시 변경 가능).
 
 지정 가능한 기본값:
 
 - Percentiles Low / High (Single·Multi)
 - X 축 (Period / Frequency)
-- Colormap
-- Probability [%] 컬러바 범위 (기본 0–30)
+- Colormap (`viridis`, `magma`, `plasma`, `inferno`, `cividis`, `turbo`, `hot`,
+  `jet`, **`pqlx`** — ObsPy/PQLX PPSD 기본 스타일)
+- Probability [%] 컬러바 범위 (기본 **0–30**, ObsPy `ppsd.plot`과 동일)
 - 오버레이/토글: Overlay percentile curves, Clip histogram to percentile range,
   Show Peterson NLNM/NHNM, Show mode curve, Show mean curve
 - Compare 탭 기본 percentile 목록(예: `10, 50, 90`)
@@ -289,6 +292,32 @@ python -m pip install "setuptools>=68,<81" setuptools-scm
 ## 변경 이력 (Changelog)
 
 형식은 [Keep a Changelog](https://keepachangelog.com/), 버전은 [Semantic Versioning](https://semver.org/lang/ko/)을 따릅니다.
+
+### [1.4.0] - 2026-07-10
+
+**Added**
+
+- 설정(⚙)에서 **Probability [%] 컬러바 범위** 지정 (기본 `0`–`30`). 히트맵·컬러바가
+  데이터 최댓값 대신 이 고정 스케일을 사용합니다.
+- Colormap에 ObsPy/PQLX PPSD 스타일 **`pqlx`** 추가
+  (`frontend/src/charts/colormap.ts`, ObsPy `obspy.imaging.cm.pqlx` 샘플 기반).
+- PPSD / Compare 차트에 **X축 세로 눈금선(그리드)** 추가 (기존 Y축 가로 그리드와
+  동일 스타일).
+
+**Changed**
+
+- 설정 모달: 입력 즉시 반영 → **완료** 버튼을 눌렀을 때만 저장·반영.
+  ✕/바깥 클릭 시 draft 변경은 버려집니다. 「기본값으로 초기화」는 draft만
+  초기화하며, 완료 시 적용됩니다.
+- 차트 제목 시각 표기에서 타임존 접미사(`+00:00`) 제거
+  (예: `2026-06-20T00:00:00  to  2026-06-28T03:00:00`).
+- 음압(`pressure`) Y축 기본 범위를 IDC 모델에 맞춰 **-100 ~ 40 dB**로 문서화
+  (코드와 일치).
+
+**Note**
+
+- PPSD 계산은 ObsPy 기본 파라미터(`ppsd_length=3600`, `overlap=0.5` 등)를 사용합니다.
+  UI/API에서 계산 파라미터를 노출하던 실험적 변경은 롤백되었습니다.
 
 ### [1.3.0] - 2026-07-10
 
