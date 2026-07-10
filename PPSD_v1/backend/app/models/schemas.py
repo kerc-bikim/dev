@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -169,7 +169,7 @@ class PPSDStats(BaseModel):
 
 class PPSDResponse(BaseModel):
     job_id: str
-    image_url: str
+    data: Dict[str, Any]
     stats: PPSDStats
 
 
@@ -221,7 +221,7 @@ class BatchPPSDItem(BaseModel):
     target: ChannelTarget
     status: Literal["ok", "error"]
     job_id: Optional[str] = None
-    image_url: Optional[str] = None
+    data: Optional[Dict[str, Any]] = None
     stats: Optional[PPSDStats] = None
     error: Optional[str] = None
 
@@ -360,6 +360,6 @@ class CompareTimeRequest(BaseModel):
 
 
 class CompareResponse(BaseModel):
-    image_url: str
+    data: Dict[str, Any]
     items: List[BatchPPSDItem]
     elapsed_seconds: float

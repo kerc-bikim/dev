@@ -3,6 +3,8 @@ uvicorn[standard]==0.32.1
 pydantic==2.10.4
 pydantic-settings==2.7.0
 obspy==1.4.1
+# matplotlib is no longer used directly (rendering moved to the frontend D3/WebGL),
+# but obspy requires it as a mandatory dependency, so it must stay installed.
 matplotlib==3.9.3
 numpy==1.26.4
 httpx==0.28.1

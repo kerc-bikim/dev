@@ -1,4 +1,7 @@
-import { api, PPSDResponse } from "../api/client";
+import { useRef } from "react";
+import { PPSDResponse } from "../api/client";
+import { PPSDChart } from "./PPSDChart";
+import { exportChartPng } from "../charts/exportPng";
 
 interface Props {
   loading: boolean;
@@ -7,27 +10,29 @@ interface Props {
 }
 
 export function PPSDResult({ loading, error, result }: Props) {
+  const chartWrapRef = useRef<HTMLDivElement>(null);
+
+  const download = () => {
+    if (!chartWrapRef.current || !result) return;
+    const name = `ppsd_${result.stats.channel_id.replace(/\./g, "_")}.png`;
+    exportChartPng(chartWrapRef.current, name);
+  };
+
   return (
     <div className="result">
       <div className="result-header">
         <div className="result-title">PPSD Plot</div>
         {result && (
-          <a
-            className="download"
-            href={api.imageUrl(result.image_url)}
-            download={`ppsd_${result.stats.channel_id.replace(/\./g, "_")}.png`}
-          >
+          <button type="button" className="download" onClick={download}>
             Download PNG
-          </a>
+          </button>
         )}
       </div>
 
       {result && (
         <div className="stats">
           <span className="badge">{result.stats.channel_id}</span>
-          <span className="badge">
-            {result.stats.segments_used} segments
-          </span>
+          <span className="badge">{result.stats.segments_used} segments</span>
           {result.stats.sampling_rate && (
             <span className="badge">{result.stats.sampling_rate} Hz</span>
           )}
@@ -49,7 +54,9 @@ export function PPSDResult({ loading, error, result }: Props) {
             windows)
           </div>
         ) : result ? (
-          <img src={api.imageUrl(result.image_url)} alt="PPSD" />
+          <div ref={chartWrapRef} style={{ width: "100%" }}>
+            <PPSDChart data={result.data} />
+          </div>
         ) : (
           <div className="placeholder">
             Configure the station, time window and options in the sidebar and

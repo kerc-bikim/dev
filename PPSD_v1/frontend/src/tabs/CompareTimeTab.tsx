@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   TargetListEditor,
   StationRow,
@@ -11,21 +11,34 @@ import {
   createDefaultTimeWindows,
 } from "../components/TimeWindowListEditor";
 import { AxisRangePanel, EMPTY_AXIS_RANGE, AxisRangeValue } from "../components/AxisRangePanel";
-import { api, BatchPPSDItem, YAxisType } from "../api/client";
+import { api, BatchPPSDItem, CompareData, YAxisType } from "../api/client";
+import { CompareChart } from "../components/CompareChart";
+import { exportChartPng } from "../charts/exportPng";
 import { mergePlotDefaults, usePlotDefaults } from "../hooks/usePlotDefaults";
-import { yLimitsForType, YAXIS_OPTIONS, yaxisSelectLabel } from "../utils/yaxisDefaults";
+import {
+  yLimitsForType,
+  YAXIS_OPTIONS,
+  yaxisSelectLabel,
+  yaxisTypeForChannel,
+} from "../utils/yaxisDefaults";
 import { toIsoUtc } from "../utils/time";
+import { useSettings } from "../settings/SettingsContext";
 
 export function CompareTimeTab() {
   const plotDefaults = usePlotDefaults();
+  const { settings } = useSettings();
   const [rows, setRows] = useState<StationRow[]>([createDefaultRow()]);
   const [timeWindows, setTimeWindows] = useState<TimeWindowRow[]>(
     createDefaultTimeWindows()
   );
-  const [percentilesText, setPercentilesText] = useState("10, 50, 90");
-  const [xaxis, setXaxis] = useState<"period" | "frequency">("period");
+  const [percentilesText, setPercentilesText] = useState(
+    settings.compare_percentiles
+  );
+  const [xaxis, setXaxis] = useState<"period" | "frequency">(settings.xaxis);
   const [yaxisType, setYaxisType] = useState<YAxisType>("acceleration");
-  const [showNoiseModels, setShowNoiseModels] = useState(true);
+  const [showNoiseModels, setShowNoiseModels] = useState(
+    settings.show_noise_models
+  );
   const [axisRange, setAxisRange] = useState<AxisRangeValue>({
     ...EMPTY_AXIS_RANGE,
     ...yLimitsForType("acceleration"),
@@ -33,9 +46,10 @@ export function CompareTimeTab() {
   const [manualMode, setManualMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [chartData, setChartData] = useState<CompareData | null>(null);
   const [items, setItems] = useState<BatchPPSDItem[] | null>(null);
   const [elapsed, setElapsed] = useState<number | undefined>();
+  const chartWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (plotDefaults) {
@@ -48,6 +62,20 @@ export function CompareTimeTab() {
 
   const targets = expandRowsToTargets(rows, false);
   const target = targets[0];
+
+  // Auto-select Y-axis unit from the selected channel (still overridable).
+  const autoYRef = useRef<string>("");
+  useEffect(() => {
+    const t = yaxisTypeForChannel(target?.channel);
+    if (t && t !== autoYRef.current) {
+      autoYRef.current = t;
+      const lim = yLimitsForType(t);
+      setYaxisType(t);
+      setAxisRange((a) => ({ ...a, y_min: lim.y_min, y_max: lim.y_max }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
+
   const percentiles = percentilesText
     .split(/[,\s]+/)
     .map((s) => s.trim())
@@ -65,7 +93,7 @@ export function CompareTimeTab() {
     if (!target) return;
     setLoading(true);
     setError(null);
-    setImageUrl(null);
+    setChartData(null);
     setItems(null);
     try {
       const res = await api.ppsdCompareTime({
@@ -85,7 +113,7 @@ export function CompareTimeTab() {
         y_min: axisRange.y_min,
         y_max: axisRange.y_max,
       });
-      setImageUrl(res.image_url);
+      setChartData(res.data);
       setItems(res.items);
       setElapsed(res.elapsed_seconds);
     } catch (e: any) {
@@ -213,14 +241,17 @@ export function CompareTimeTab() {
         <div className="result">
           <div className="result-header">
             <div className="result-title">PPSD Compare Time</div>
-            {imageUrl && (
-              <a
+            {chartData && (
+              <button
+                type="button"
                 className="download"
-                href={api.imageUrl(imageUrl)}
-                download="ppsd_compare_time.png"
+                onClick={() =>
+                  chartWrapRef.current &&
+                  exportChartPng(chartWrapRef.current, "ppsd_compare_time.png")
+                }
               >
                 Download PNG
-              </a>
+              </button>
             )}
             {elapsed != null && <span className="badge">{elapsed.toFixed(2)}s</span>}
           </div>
@@ -252,8 +283,10 @@ export function CompareTimeTab() {
                 <div className="spinner" />
                 Computing and comparing PPSDs…
               </div>
-            ) : imageUrl ? (
-              <img src={api.imageUrl(imageUrl)} alt="PPSD Compare Time" />
+            ) : chartData ? (
+              <div ref={chartWrapRef} style={{ width: "100%" }}>
+                <CompareChart data={chartData} />
+              </div>
             ) : (
               <div className="placeholder">
                 Select one station/channel and multiple time windows, then click{" "}

@@ -1,5 +1,6 @@
 import { StationPicker, StationSelection } from "./StationPicker";
 import { PlotOptionsPanel, PlotOptionsValue } from "./PlotOptionsPanel";
+import { yaxisTypeForChannel, yLimitsForType } from "../utils/yaxisDefaults";
 
 export interface PPSDFormValue {
   station: StationSelection;
@@ -17,8 +18,20 @@ interface Props {
 }
 
 export function PPSDForm({ value, onChange, onSubmit, loading }: Props) {
-  const setStation = (station: StationSelection) =>
-    onChange({ ...value, station });
+  const setStation = (station: StationSelection) => {
+    const patch: Partial<PPSDFormState> = { station };
+    // Auto-select the Y-axis unit from the channel type (still overridable).
+    if (station.channel && station.channel !== value.station.channel) {
+      const t = yaxisTypeForChannel(station.channel);
+      if (t) {
+        const lim = yLimitsForType(t);
+        patch.yaxis_type = t;
+        patch.y_min = lim.y_min;
+        patch.y_max = lim.y_max;
+      }
+    }
+    onChange({ ...value, ...patch });
+  };
   const setPlot = (plot: PlotOptionsValue) => onChange({ ...value, ...plot });
 
   const canSubmit =
@@ -49,6 +62,7 @@ export function PPSDForm({ value, onChange, onSubmit, loading }: Props) {
             <label>Start</label>
             <input
               type="datetime-local"
+              lang="sv-SE"
               step={1}
               value={value.starttime}
               onChange={(e) => setTime("starttime", e.target.value)}
@@ -58,6 +72,7 @@ export function PPSDForm({ value, onChange, onSubmit, loading }: Props) {
             <label>End</label>
             <input
               type="datetime-local"
+              lang="sv-SE"
               step={1}
               value={value.endtime}
               onChange={(e) => setTime("endtime", e.target.value)}

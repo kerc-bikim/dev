@@ -99,6 +99,8 @@ body {
   background: var(--panel);
   padding: 20px;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 .content {
@@ -129,6 +131,7 @@ body {
   flex-direction: column;
   gap: 4px;
   margin-bottom: 12px;
+  min-width: 0;
 }
 .field label {
   font-size: 0.78rem;
@@ -139,7 +142,7 @@ body {
 
 .row-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
 
@@ -154,6 +157,9 @@ select {
   padding: 6px 8px;
   font-size: 0.9rem;
   font-family: inherit;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 input:focus, select:focus {
   outline: none;
@@ -207,7 +213,7 @@ input:focus, select:focus {
 
 .range-row {
   display: grid;
-  grid-template-columns: 60px 1fr 40px;
+  grid-template-columns: 60px minmax(0, 1fr) 40px;
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
@@ -312,15 +318,53 @@ button.primary:hover:not(:disabled) {
   gap: 6px;
 }
 
-a.download {
+.download {
   color: var(--accent);
   text-decoration: none;
   font-size: 0.85rem;
   border: 1px solid var(--border);
   padding: 4px 10px;
   border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
 }
-a.download:hover { text-decoration: underline; }
+.download:hover { text-decoration: underline; border-color: var(--accent); }
+
+/* ---- D3 / WebGL charts ---- */
+.chart-container {
+  background: var(--panel);
+  border-radius: 4px;
+}
+.chart-container .axis path,
+.chart-container .axis line {
+  stroke: var(--border);
+}
+.chart-container .axis text {
+  fill: var(--muted);
+  font-size: 0.72rem;
+}
+.chart-container .grid line {
+  stroke: var(--border);
+  stroke-opacity: 0.35;
+  shape-rendering: crispEdges;
+}
+.chart-container .grid path {
+  stroke: none;
+}
+.chart-container .axis-label {
+  fill: var(--fg);
+  font-size: 0.8rem;
+}
+.chart-container .chart-title {
+  fill: var(--fg);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.chart-container .legend-text {
+  fill: var(--fg);
+  font-size: 0.72rem;
+}
 
 .grid {
   display: grid;
@@ -451,4 +495,68 @@ a.download:hover { text-decoration: underline; }
   font-size: 0.78rem;
   color: var(--muted);
   line-height: 1.4;
+}
+
+/* ---- Settings modal ---- */
+.settings-tab {
+  margin-left: 8px;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.modal-body {
+  padding: 8px 18px 4px;
+  overflow-y: auto;
+}
+.modal-body .section:first-of-type {
+  margin-top: 8px;
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+}
+.modal-footer button {
+  width: auto;
+  margin-top: 0;
+}
+.modal-done {
+  min-width: 96px;
 }

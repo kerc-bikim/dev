@@ -87,9 +87,66 @@ export interface PPSDStats {
   from_cache: boolean;
 }
 
+export interface CurveData {
+  x: number[];
+  db: number[];
+  label?: string;
+  perc?: number;
+}
+
+export interface NoiseModels {
+  low: CurveData & { label: string };
+  high: CurveData & { label: string };
+}
+
+export interface AxisLimits {
+  x_min: number;
+  x_max: number;
+  y_min: number;
+  y_max: number;
+}
+
+export interface HeatmapData {
+  kind: "heatmap";
+  xaxis: "period" | "frequency";
+  xlabel: string;
+  ylabel: string;
+  cmap: string;
+  x_edges: number[];
+  db_edges: number[];
+  histogram: (number | null)[][];
+  vmax: number;
+  overlays: {
+    percentile_low?: CurveData & { perc: number };
+    percentile_high?: CurveData & { perc: number };
+    mode?: CurveData;
+    mean?: CurveData;
+  };
+  noise_models: NoiseModels | null;
+  axis: AxisLimits;
+  title: string;
+}
+
+export interface CompareSeries {
+  label: string;
+  color: string;
+  curves: (CurveData & { perc: number; label: string })[];
+}
+
+export interface CompareData {
+  kind: "compare";
+  xaxis: "period" | "frequency";
+  xlabel: string;
+  ylabel: string;
+  series: CompareSeries[];
+  noise_models: NoiseModels | null;
+  axis: AxisLimits;
+  title: string;
+}
+
 export interface PPSDResponse {
   job_id: string;
-  image_url: string;
+  data: HeatmapData;
   stats: PPSDStats;
 }
 
@@ -97,7 +154,7 @@ export interface BatchPPSDItem {
   target: ChannelTarget;
   status: "ok" | "error";
   job_id?: string | null;
-  image_url?: string | null;
+  data?: HeatmapData | null;
   stats?: PPSDStats | null;
   error?: string | null;
 }
@@ -149,7 +206,7 @@ export interface CompareTimeRequestBody {
 }
 
 export interface CompareResponse {
-  image_url: string;
+  data: CompareData;
   items: BatchPPSDItem[];
   elapsed_seconds: number;
 }
@@ -225,5 +282,4 @@ export const api = {
     }).then((r) => jsonOrThrow<CompareResponse>(r)),
   plotDefaults: () =>
     fetch(`${BASE}/api/plot-defaults`).then((r) => jsonOrThrow<PlotDefaults>(r)),
-  imageUrl: (path: string) => `${BASE}${path}`,
 };

@@ -1,6 +1,7 @@
 import { AxisRangePanel, AxisRangeValue } from "./AxisRangePanel";
 import type { YAxisType } from "../api/client";
 import { yLimitsForType, YAXIS_OPTIONS, yaxisSelectLabel } from "../utils/yaxisDefaults";
+import { CMAP_OPTIONS } from "../settings/appSettings";
 
 export type { YAxisType };
 
@@ -33,10 +34,6 @@ export const DEFAULT_PLOT_OPTIONS: PlotOptionsValue = {
   y_min: -210,
   y_max: -30,
 };
-
-const CMAP_OPTIONS = [
-  "viridis", "magma", "plasma", "inferno", "cividis", "turbo", "hot", "jet",
-];
 
 interface Props {
   value: PlotOptionsValue;

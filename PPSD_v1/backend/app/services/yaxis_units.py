@@ -28,8 +28,22 @@ YAXIS_DEFAULT_LIMITS: dict[str, tuple[float, float]] = {
     "velocity_nm": (-40.0, 140.0),  # velocity range + 180 dB (nm/s scale)
     "acceleration": (-210.0, -30.0),
     "displacement": (-120.0, 40.0),
-    "pressure": (-20.0, 100.0),
+    # Infrasound pressure PSD (dB rel. Pa^2/Hz). Chosen to cover the IDC global
+    # infrasound low/high noise models (~-100 .. +40 dB, Brown et al. 2012).
+    "pressure": (-100.0, 40.0),
 }
+
+
+def is_infrasound_channel(channel: str | None) -> bool:
+    """True for infrasound / pressure channels (SEED instrument code 'D').
+
+    Channels such as ``BDF``, ``HDF``, ``LDF`` use instrument code ``D``
+    (pressure / infrasound microphone) as the 2nd character of the SEED
+    channel code. These must be processed as pressure (no differentiation to
+    acceleration), unlike seismometer channels.
+    """
+    ch = (channel or "").upper()
+    return len(ch) >= 2 and ch[1] == "D"
 
 # (nm/s)²/Hz vs (m/s)²/Hz: 1 nm/s = 1e-9 m/s → power PSD differs by 10*log10(1e18) = 180 dB
 NM_PER_M = 1e9

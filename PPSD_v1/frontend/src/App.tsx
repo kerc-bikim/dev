@@ -3,6 +3,7 @@ import { SingleTab } from "./tabs/SingleTab";
 import { MultiTab } from "./tabs/MultiTab";
 import { CompareStationTab } from "./tabs/CompareStationTab";
 import { CompareTimeTab } from "./tabs/CompareTimeTab";
+import { SettingsModal } from "./components/SettingsModal";
 
 type TabId = "single" | "multi" | "compare_station" | "compare_time";
 
@@ -15,6 +16,7 @@ const TABS: { id: TabId; label: string }[] = [
 
 export default function App() {
   const [tab, setTab] = useState<TabId>("single");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div className="app-shell">
@@ -34,6 +36,14 @@ export default function App() {
               {t.label}
             </button>
           ))}
+          <button
+            type="button"
+            className="tab settings-tab"
+            onClick={() => setSettingsOpen(true)}
+            title="설정"
+          >
+            ⚙ 설정
+          </button>
         </nav>
       </header>
       <div className="app">
@@ -42,6 +52,7 @@ export default function App() {
         {tab === "compare_station" && <CompareStationTab />}
         {tab === "compare_time" && <CompareTimeTab />}
       </div>
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }

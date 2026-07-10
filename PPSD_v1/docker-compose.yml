@@ -6,6 +6,7 @@ services:
       LOG_LEVEL: INFO
     volumes:
       - ppsd-cache:/app/cache
+      - ppsd-sds:/app/sds
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -20,3 +21,4 @@ services:
 
 volumes:
   ppsd-cache:
+  ppsd-sds:

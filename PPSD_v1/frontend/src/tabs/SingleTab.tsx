@@ -5,20 +5,24 @@ import { DEFAULT_PLOT_OPTIONS } from "../components/PlotOptionsPanel";
 import { api, PPSDRequestBody, PPSDResponse } from "../api/client";
 import { mergePlotDefaults, usePlotDefaults } from "../hooks/usePlotDefaults";
 import { defaultTimeWindow, toIsoUtc } from "../utils/time";
+import { useSettings } from "../settings/SettingsContext";
+import { AppSettings, settingsToPlotDefaults } from "../settings/appSettings";
 
-const initialForm = (): PPSDFormState => {
+const initialForm = (settings: AppSettings): PPSDFormState => {
   const { start, end } = defaultTimeWindow();
   return {
     station: { network: "", station: "", location: "", channel: "" },
     starttime: start,
     endtime: end,
     ...DEFAULT_PLOT_OPTIONS,
+    ...settingsToPlotDefaults(settings),
   };
 };
 
 export function SingleTab() {
   const plotDefaults = usePlotDefaults();
-  const [form, setForm] = useState<PPSDFormState>(initialForm());
+  const { settings } = useSettings();
+  const [form, setForm] = useState<PPSDFormState>(() => initialForm(settings));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PPSDResponse | null>(null);

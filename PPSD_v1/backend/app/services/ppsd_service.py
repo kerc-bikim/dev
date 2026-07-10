@@ -1,4 +1,10 @@
-"""PPSD computation and cache layer."""
+"""PPSD computation with SeisComP SDS-style daily npz storage.
+
+A request is split into UTC day chunks. Each day is computed once and stored as
+an SDS-style npz file (see :mod:`sds_store`); subsequent requests reuse or
+accumulate those day files. Days covered by a request are merged into a single
+in-memory PPSD via ``PPSD.load_npz`` + ``PPSD.add_npz``.
+"""
 
 from __future__ import annotations
 
@@ -6,17 +12,28 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
+import numpy as np
 from obspy import UTCDateTime
 from obspy.signal import PPSD
 
-from ..config import settings
 from ..models.schemas import PPSDRequest, PPSDStats
 from .fdsn_client import FDSNError, get_waveforms_with_response
+from .sds_store import iter_utc_days, sds_npz_path
+from .yaxis_units import is_infrasound_channel
 
 logger = logging.getLogger(__name__)
+
+# dB binning for infrasound pressure PSD (dB rel. Pa^2/Hz). Wide enough to cover
+# the IDC global infrasound noise models (~-100 .. +40 dB) plus margin so real
+# values are never folded into the edge bins.
+INFRASOUND_DB_BINS = (-120.0, 80.0, 1.0)
+
+
+def _expected_handling(channel: str | None) -> str:
+    """Special-handling tag expected for a channel ('infrasound' or '')."""
+    return "infrasound" if is_infrasound_channel(channel) else ""
 
 
 @dataclass
@@ -26,87 +43,133 @@ class PPSDResult:
     job_id: str
 
 
-def _cache_key(req: PPSDRequest) -> str:
-    """Deterministic cache key using only data-identifying parameters.
-
-    Plotting-only options (percentiles, overlay, xaxis, colormap) are excluded
-    so different plots reuse the same underlying PPSD computation.
-    """
+def _job_id(req: PPSDRequest, days: List[UTCDateTime]) -> str:
+    """Stable identifier for a request based on channel + covered UTC days."""
     payload = {
         "n": req.network,
         "s": req.station,
         "l": req.location,
         "c": req.channel,
-        "t1": UTCDateTime(req.starttime).isoformat(),
-        "t2": UTCDateTime(req.endtime).isoformat(),
+        "days": [d.strftime("%Y-%m-%d") for d in days],
     }
     blob = json.dumps(payload, sort_keys=True).encode("utf-8")
     return hashlib.sha1(blob).hexdigest()[:16]
 
 
-def _cache_path(job_id: str) -> Path:
-    return settings.CACHE_DIR / f"{job_id}.npz"
-
-
-def _load_cached(job_id: str) -> Optional[PPSD]:
-    path = _cache_path(job_id)
-    if not path.exists():
-        return None
+def _compute_day(req: PPSDRequest, day: UTCDateTime) -> Optional[PPSD]:
+    """Compute a full-UTC-day PPSD for the channel, or None if no data."""
+    t1 = day
+    t2 = day + 86400
     try:
-        return PPSD.load_npz(str(path))
+        st, inv = get_waveforms_with_response(
+            network=req.network,
+            station=req.station,
+            location=req.location,
+            channel=req.channel,
+            starttime=t1,
+            endtime=t2,
+        )
+    except FDSNError as exc:
+        logger.info("No data for %s.%s %s: %s", req.network, req.station, day.date, exc)
+        return None
+
+    st.merge(method=1, fill_value=0)
+    if len(st) == 0:
+        return None
+
+    tr = st[0]
+    if is_infrasound_channel(req.channel):
+        # Pressure/infrasound: remove response but do NOT differentiate to
+        # acceleration, and use a pressure-appropriate dB range.
+        ppsd = PPSD(
+            tr.stats,
+            metadata=inv,
+            special_handling="infrasound",
+            db_bins=INFRASOUND_DB_BINS,
+        )
+    else:
+        ppsd = PPSD(tr.stats, metadata=inv)
+    ppsd.add(st)
+    if len(ppsd.times_processed) == 0:
+        return None
+    return ppsd
+
+
+def _npz_special_handling(path) -> Optional[str]:
+    """Read the stored ``special_handling`` tag from a PPSD npz ('' for None).
+
+    Returns None when the file cannot be read/parsed.
+    """
+    try:
+        with np.load(str(path), allow_pickle=True) as data:
+            if "special_handling" not in data.files:
+                return ""
+            value = data["special_handling"]
+            value = value.item() if hasattr(value, "item") else value
+            return "" if value is None else str(value)
     except Exception as exc:  # pragma: no cover
-        logger.warning("Failed to load cached PPSD %s: %s", path, exc)
-        try:
-            path.unlink()
-        except OSError:
-            pass
+        logger.warning("Could not read special_handling from %s: %s", path, exc)
         return None
 
 
-def _save_cached(job_id: str, ppsd: PPSD) -> None:
-    path = _cache_path(job_id)
+def _get_or_build_day(req: PPSDRequest, day: UTCDateTime) -> Tuple[Optional[str], bool]:
+    """Return (npz_path, from_cache) for a day, computing+saving if needed.
+
+    npz_path is None when there is no data for that day. An existing file whose
+    ``special_handling`` does not match the channel (e.g. a seismometer-style
+    cache for an infrasound channel) is recomputed and overwritten.
+    """
+    path = sds_npz_path(req.network, req.station, req.location, req.channel, day)
+    if path.exists():
+        stored = _npz_special_handling(path)
+        expected = _expected_handling(req.channel)
+        if stored is not None and stored == expected:
+            return str(path), True
+
+    ppsd = _compute_day(req, day)
+    if ppsd is None:
+        return None, False
+
+    path.parent.mkdir(parents=True, exist_ok=True)
     try:
         ppsd.save_npz(str(path))
     except Exception as exc:  # pragma: no cover
-        logger.warning("Failed to persist PPSD cache %s: %s", path, exc)
+        logger.warning("Failed to persist SDS PPSD %s: %s", path, exc)
+    return str(path), False
 
 
-def _compute(req: PPSDRequest) -> Tuple[PPSD, int]:
-    t1 = UTCDateTime(req.starttime)
-    t2 = UTCDateTime(req.endtime)
-
-    st, inv = get_waveforms_with_response(
-        network=req.network,
-        station=req.station,
-        location=req.location,
-        channel=req.channel,
-        starttime=t1,
-        endtime=t2,
-    )
-    st.merge(method=1, fill_value=0)
-
-    tr = st[0]
-    ppsd = PPSD(tr.stats, metadata=inv)
-    ok = ppsd.add(st)
-    if not ok and len(ppsd.times_processed) == 0:
-        raise FDSNError(
-            "PPSD could not process any segment. "
-            "The requested window may be too short or the data is gapped."
-        )
-    return ppsd, len(ppsd.times_processed)
+def _merge_days(paths: List[str]) -> PPSD:
+    """Load the first day npz and accumulate the rest into one PPSD."""
+    ppsd = PPSD.load_npz(paths[0])
+    for extra in paths[1:]:
+        try:
+            ppsd.add_npz(extra)
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Failed to merge SDS PPSD %s: %s", extra, exc)
+    return ppsd
 
 
 def compute_or_load(req: PPSDRequest) -> PPSDResult:
-    job_id = _cache_key(req)
-    cached = _load_cached(job_id)
-    from_cache = cached is not None
-    if cached is not None:
-        ppsd = cached
-        segments = len(ppsd.times_processed)
-    else:
-        ppsd, segments = _compute(req)
-        _save_cached(job_id, ppsd)
+    days = list(iter_utc_days(UTCDateTime(req.starttime), UTCDateTime(req.endtime)))
+    if not days:
+        raise FDSNError("Requested time window is empty.")
 
+    paths: List[str] = []
+    all_cached = True
+    for day in days:
+        path, from_cache = _get_or_build_day(req, day)
+        if path is not None:
+            paths.append(path)
+            all_cached = all_cached and from_cache
+
+    if not paths:
+        raise FDSNError(
+            "PPSD could not process any segment. No data was available for the "
+            "requested day(s), or the window is too short/gappy."
+        )
+
+    ppsd = _merge_days(paths)
+    segments = len(ppsd.times_processed)
     if segments == 0:
         raise FDSNError(
             "PPSD has no processed segments (data window too short or gappy)."
@@ -121,6 +184,6 @@ def compute_or_load(req: PPSDRequest) -> PPSDResult:
         endtime=UTCDateTime(max(ppsd.times_processed)).datetime,
         channel_id=channel_id,
         sampling_rate=float(ppsd.sampling_rate) if ppsd.sampling_rate else None,
-        from_cache=from_cache,
+        from_cache=all_cached,
     )
-    return PPSDResult(ppsd=ppsd, stats=stats, job_id=job_id)
+    return PPSDResult(ppsd=ppsd, stats=stats, job_id=_job_id(req, days))

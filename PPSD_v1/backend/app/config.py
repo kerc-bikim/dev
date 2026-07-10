@@ -11,6 +11,8 @@ class Settings(BaseSettings):
 
     FDSNWS_URL: str = "http://172.31.100.100"
     CACHE_DIR: Path = Path(__file__).resolve().parent.parent / "cache"
+    # SeisComP SDS-style root for persisted daily PPSD npz results
+    PPSD_SDS_DIR: Path = Path(__file__).resolve().parent.parent / "sds"
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
@@ -39,3 +41,4 @@ class Settings(BaseSettings):
 
 settings = Settings()
 settings.CACHE_DIR.mkdir(parents=True, exist_ok=True)
+settings.PPSD_SDS_DIR.mkdir(parents=True, exist_ok=True)

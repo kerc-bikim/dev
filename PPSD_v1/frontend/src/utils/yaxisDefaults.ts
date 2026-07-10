@@ -9,7 +9,7 @@ export const YAXIS_DEFAULT_LIMITS: Record<
   velocity: { y_min: -220, y_max: -40 },
   velocity_nm: { y_min: -40, y_max: 140 },
   acceleration: { y_min: -210, y_max: -30 },
-  pressure: { y_min: -20, y_max: 100 },
+  pressure: { y_min: -100, y_max: 40 },
 };
 
 export const YAXIS_OPTIONS: {
@@ -50,4 +50,46 @@ export function yaxisSelectLabel(o: (typeof YAXIS_OPTIONS)[number]) {
 
 export function yLimitsForType(t: YAxisType) {
   return YAXIS_DEFAULT_LIMITS[t];
+}
+
+/**
+ * Infer the Y-axis data type from a SEED channel code (2nd char = instrument):
+ *   D -> pressure (infrasound/pressure, e.g. BDF/HDF)
+ *   N -> acceleration (accelerometer, e.g. BNZ/HNZ)
+ *   H/L -> velocity (high/low-gain seismometer, e.g. BHZ/HHZ)
+ * Returns null for unknown instrument codes (no auto-selection).
+ */
+export function yaxisTypeForChannel(
+  channel: string | null | undefined
+): YAxisType | null {
+  const ch = (channel || "").toUpperCase();
+  if (ch.length < 2) return null;
+  switch (ch[1]) {
+    case "D":
+      return "pressure";
+    case "N":
+      return "acceleration";
+    case "H":
+    case "L":
+      return "velocity";
+    default:
+      return null;
+  }
+}
+
+/**
+ * Infer a single Y-axis type from multiple channels. Returns the common type
+ * only when all recognized channels agree; null if they conflict or none map.
+ */
+export function yaxisTypeForChannels(
+  channels: (string | null | undefined)[]
+): YAxisType | null {
+  let found: YAxisType | null = null;
+  for (const c of channels) {
+    const t = yaxisTypeForChannel(c);
+    if (t == null) continue;
+    if (found == null) found = t;
+    else if (found !== t) return null;
+  }
+  return found;
 }

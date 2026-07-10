@@ -466,6 +466,11 @@ def pack_qscd20_bin_record(pmyqscd: bytes, recv_diff_sec: float) -> bytes:
     return pmyqscd + struct.pack(DIFF_PACK_FMT, float(recv_diff_sec))
 
 
+def compute_recv_time_diff(recv_wall: float, myqscd: Tuple[Any, ...]) -> float:
+    """UDP 수신 시각 − data time. recv_wall 은 recvfrom 직후 캡처 값."""
+    return float(recv_wall) - float(myqscd[6])
+
+
 def write_qscd20_bin_header(fp: Any) -> None:
     fp.write(BIN_FILE_MAGIC)
 
@@ -531,11 +536,20 @@ def filter_records_by_station(
 
 
 def log_qscd_packet_summary(
-    logger: logging.Logger, myqscd: Tuple[Any, ...], station: str
+    logger: logging.Logger,
+    myqscd: Tuple[Any, ...],
+    station: str,
+    *,
+    recv_wall: Optional[float] = None,
+    recv_diff: Optional[float] = None,
 ) -> None:
     """Live 수신용 1줄 요약(파일·화면 부하 감소)."""
-    rtime = datetime.datetime.utcnow()
-    diff = rtime.timestamp() - float(myqscd[6])
+    if recv_diff is not None:
+        diff = float(recv_diff)
+    elif recv_wall is not None:
+        diff = compute_recv_time_diff(recv_wall, myqscd)
+    else:
+        diff = time.time() - float(myqscd[6])
     extra = {"station": station}
     logger.info(
         "[{}] Q={} st={} loc={} | data={} diff={:.3f}s | Zmax={:.6g} Hpga={:.6g}".format(
@@ -552,14 +566,32 @@ def log_qscd_packet_summary(
     )
 
 
-def log_qscd_packet(logger: logging.Logger, pmyqscd: bytes, myqscd: Tuple[Any, ...], station: str) -> None:
+def log_qscd_packet(
+    logger: logging.Logger,
+    pmyqscd: bytes,
+    myqscd: Tuple[Any, ...],
+    station: str,
+    *,
+    recv_wall: Optional[float] = None,
+    recv_diff: Optional[float] = None,
+) -> None:
     if not LIVE_LOG_VERBOSE:
-        log_qscd_packet_summary(logger, myqscd, station)
+        log_qscd_packet_summary(
+            logger, myqscd, station, recv_wall=recv_wall, recv_diff=recv_diff
+        )
         return
 
-    rtime = datetime.datetime.utcnow()
+    if recv_wall is not None:
+        rtime = datetime.datetime.utcfromtimestamp(recv_wall)
+    else:
+        rtime = datetime.datetime.utcnow()
     dtime = datetime.datetime.utcfromtimestamp(myqscd[6])
-    diff = rtime.timestamp() - float(myqscd[6])
+    if recv_diff is not None:
+        diff = float(recv_diff)
+    elif recv_wall is not None:
+        diff = compute_recv_time_diff(recv_wall, myqscd)
+    else:
+        diff = rtime.timestamp() - float(myqscd[6])
     extra = {"station": station}
 
     logger.info("#########################################################################", extra=extra)
@@ -661,7 +693,7 @@ class QtLogHandler(QtCore.QObject, logging.Handler):
 # UDP thread
 # ---------------------------------------------------------------------------
 class UdpReceiver(QtCore.QThread):
-    packet_received = QtCore.pyqtSignal(bytes, tuple)
+    packet_received = QtCore.pyqtSignal(bytes, tuple, float, float)
     timeout_warning = QtCore.pyqtSignal(str)
     error_occurred = QtCore.pyqtSignal(str)
     recv_issue = QtCore.pyqtSignal(str)
@@ -702,6 +734,8 @@ class UdpReceiver(QtCore.QThread):
         while not self._stop:
             try:
                 pmyqscd, _addr = sock.recvfrom(QSCD_LEN)
+                # GUI 부하와 무관하게 recvfrom 직후 TimeDiff 기준 시각 확정
+                recv_wall = time.time()
                 timeout_cnt = 0
                 if len(pmyqscd) != QSCD_LEN:
                     continue
@@ -710,7 +744,8 @@ class UdpReceiver(QtCore.QThread):
                 except struct.error as e:
                     self.recv_issue.emit(f"struct unpack 오류: {e}")
                     continue
-                self.packet_received.emit(pmyqscd, myqscd)
+                recv_diff = compute_recv_time_diff(recv_wall, myqscd)
+                self.packet_received.emit(pmyqscd, myqscd, recv_wall, recv_diff)
             except socket.timeout:
                 if self._stop:
                     break
@@ -1551,7 +1586,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._chart_window_sec: int = DEFAULT_TIME_WINDOW_SEC
         self._file_records: List[Tuple[Any, ...]] = []
         self._file_recv_diffs: Optional[List[float]] = None
-        self._packet_queue: Deque[Tuple[bytes, Tuple[Any, ...], float]] = deque()
+        self._packet_queue: Deque[Tuple[bytes, Tuple[Any, ...], float, float]] = deque()
         self._bin_flush_pending = 0
         self._live_chart_dirty = False
 
@@ -2063,7 +2098,7 @@ class MainWindow(QtWidgets.QMainWindow):
         n = 0
         last_selected: Optional[Tuple[Any, ...]] = None
         while self._packet_queue and n < PACKET_DRAIN_MAX:
-            pmyqscd, myqscd, recv_wall = self._packet_queue.popleft()
+            pmyqscd, myqscd, recv_wall, recv_diff = self._packet_queue.popleft()
             n += 1
             st = station_code_str(myqscd)
 
@@ -2071,16 +2106,23 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._station_bufs[st] = StationBuffer(window_sec=self._chart_window_sec)
                 self._combo_station.addItem(st)
 
+            # TimeDiff·바이너리 기록을 차트/로그보다 먼저 처리
             self._station_bufs[st].append(myqscd, recv_wall)
 
             if self._data_fp is not None:
                 try:
-                    recv_diff = recv_wall - float(myqscd[6])
                     self._data_fp.write(pack_qscd20_bin_record(pmyqscd, recv_diff))
                 except OSError as e:
                     self._logger.error(f"바이너리 쓰기 오류: {e}", extra={"station": st})
 
-            log_qscd_packet(self._logger, pmyqscd, myqscd, st)
+            log_qscd_packet(
+                self._logger,
+                pmyqscd,
+                myqscd,
+                st,
+                recv_wall=recv_wall,
+                recv_diff=recv_diff,
+            )
 
             if self._selected_station == st:
                 last_selected = myqscd
@@ -2248,9 +2290,15 @@ class MainWindow(QtWidgets.QMainWindow):
             self._close_session_outputs()
             self._reset_receive_ui()
 
-    def _on_packet(self, pmyqscd: bytes, myqscd: Tuple[Any, ...]) -> None:
-        """UDP 스레드 → 큐 적재만(가벼움). 처리·차트는 타이머에서 배치."""
-        self._packet_queue.append((pmyqscd, myqscd, time.time()))
+    def _on_packet(
+        self,
+        pmyqscd: bytes,
+        myqscd: Tuple[Any, ...],
+        recv_wall: float,
+        recv_diff: float,
+    ) -> None:
+        """UDP 스레드 → 큐 적재만(가벼움). TimeDiff는 수신 스레드에서 이미 확정."""
+        self._packet_queue.append((pmyqscd, myqscd, recv_wall, recv_diff))
 
     def _on_timeout_warning(self, msg: str) -> None:
         self._logger.warning(msg, extra={"station": ""})

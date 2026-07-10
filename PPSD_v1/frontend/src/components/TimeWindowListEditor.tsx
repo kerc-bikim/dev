@@ -94,6 +94,7 @@ export function TimeWindowListEditor({ rows, onChange }: Props) {
               <label>Start</label>
               <input
                 type="datetime-local"
+                lang="sv-SE"
                 step={1}
                 value={row.starttime}
                 onChange={(e) =>
@@ -105,6 +106,7 @@ export function TimeWindowListEditor({ rows, onChange }: Props) {
               <label>End</label>
               <input
                 type="datetime-local"
+                lang="sv-SE"
                 step={1}
                 value={row.endtime}
                 onChange={(e) => updateRow(row.id, { endtime: e.target.value })}

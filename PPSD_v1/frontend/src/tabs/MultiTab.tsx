@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   PlotOptionsPanel,
   PlotOptionsValue,
@@ -14,14 +14,21 @@ import { BatchResultGrid } from "../components/BatchResultGrid";
 import { api, BatchPPSDItem } from "../api/client";
 import { mergePlotDefaults, usePlotDefaults } from "../hooks/usePlotDefaults";
 import { defaultTimeWindow, toIsoUtc } from "../utils/time";
+import { yaxisTypeForChannels, yLimitsForType } from "../utils/yaxisDefaults";
+import { useSettings } from "../settings/SettingsContext";
+import { settingsToPlotDefaults } from "../settings/appSettings";
 
 export function MultiTab() {
   const plotDefaults = usePlotDefaults();
+  const { settings } = useSettings();
   const { start, end } = defaultTimeWindow();
   const [rows, setRows] = useState<StationRow[]>([createDefaultRow()]);
   const [starttime, setStarttime] = useState(start);
   const [endtime, setEndtime] = useState(end);
-  const [options, setOptions] = useState<PlotOptionsValue>(DEFAULT_PLOT_OPTIONS);
+  const [options, setOptions] = useState<PlotOptionsValue>(() => ({
+    ...DEFAULT_PLOT_OPTIONS,
+    ...settingsToPlotDefaults(settings),
+  }));
   const [manualMode, setManualMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +42,18 @@ export function MultiTab() {
   }, [plotDefaults]);
 
   const targets = expandRowsToTargets(rows, false);
+
+  // Auto-select Y-axis unit from the selected channels (still overridable).
+  const autoYRef = useRef<string>("");
+  useEffect(() => {
+    const t = yaxisTypeForChannels(targets.map((tg) => tg.channel));
+    if (t && t !== autoYRef.current) {
+      autoYRef.current = t;
+      const lim = yLimitsForType(t);
+      setOptions((o) => ({ ...o, yaxis_type: t, y_min: lim.y_min, y_max: lim.y_max }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
   const canSubmit =
     targets.length > 0 && !!starttime && !!endtime && !loading;
 
@@ -92,6 +111,7 @@ export function MultiTab() {
               <label>Start</label>
               <input
                 type="datetime-local"
+                lang="sv-SE"
                 step={1}
                 value={starttime}
                 onChange={(e) => setStarttime(e.target.value)}
@@ -101,6 +121,7 @@ export function MultiTab() {
               <label>End</label>
               <input
                 type="datetime-local"
+                lang="sv-SE"
                 step={1}
                 value={endtime}
                 onChange={(e) => setEndtime(e.target.value)}
