@@ -1,0 +1,235 @@
+# QSCD20 UDP 수신 GUI — 구현 계획 (plan)
+
+`recvQSCD20.py` 콘솔 수신기를 **PyQt5 + pyqtgraph** GUI로 확장한 프로젝트의 계획·구현 이력입니다.
+
+**현재 기준 버전: v3.3** ([recvQSCD20_gui.py](recvQSCD20_gui.py), [VERSION](VERSION))
+
+HTML 문서: [README.html](README.html) · [plan.html](plan.html)
+
+---
+
+## 1. 목표 (최종)
+
+| 항목 | 내용 |
+|------|------|
+| UDP 포트 | GUI 입력, 기본 **9908** |
+| 로그 디렉터리 / prefix | `{prefix}.QSCD.log`, `{prefix}.QSCD20.bin` |
+| 헤더 표시 | Quality Flag 매핑, Station Code(5B) |
+| 시간 비교 (Diff) | `recv 시각 − data time` 로그·전용 차트 |
+| x축 | 패킷 **data time** epoch → **KST** `HH:MM:SS` |
+| y축 | Diff: **시간(초)**, 계열: **gal(cm/sec2)** |
+| 차트 격자 | **1초 단위**, 해당 초 데이터 없으면 **공백(NaN)** |
+| 관측소 필터 | 콤보박스 — 선택 관측소만 **화면 로그·차트** |
+| 최종 수신 시각 | 관측소 선택 옆 **KST** |
+| 차트 구성 | **패널별** Diff / Max / PGA / WMMA / TMM, 체크박스 on/off |
+| 시간 창 | **60 / 120 / 600 / 1200 / 1800** 초 콤보 |
+| 호버 | 마우스 위치 시각·계열 값 팝업, **Leave 시 숨김** |
+| 줌 | 왼쪽 드래그 RectMode 줌인, 더블클릭 줌아웃 |
+| 바이너리 | **QCDX** 헤더 + 패킷 + **TimeDiff float64** 저장 |
+| File Viewer | 저장된 TimeDiff로 Diff 차트 재현 |
+| 레이아웃 | 차트 상단, **로그 창 하단** (수직 Splitter) |
+| 성능 | 패킷 큐·배치 처리, 200ms 차트 타이머, 활성 패널만 격자 캐시 |
+
+---
+
+## 2. 파일 구성
+
+| 파일 | 역할 |
+|------|------|
+| [recvQSCD20.py](recvQSCD20.py) | 콘솔 UDP 수신 (120B 연속 bin, 유지) |
+| [recvQSCD20_gui.py](recvQSCD20_gui.py) | GUI **v3.2** |
+| [recvQSCD20_gui.py.bak](recvQSCD20_gui.py.bak) | 수정 전 백업 |
+| [requirements.txt](requirements.txt) | PyQt5, pyqtgraph, numpy |
+| [README.md](README.md) | 설치·실행·기능 안내 |
+| [plan.md](plan.md) | 본 문서 |
+
+---
+
+## 3. 의존성
+
+```
+PyQt5>=5.15.0
+pyqtgraph>=0.13.0
+numpy>=1.20.0
+```
+
+```bash
+pip install -r requirements.txt
+python recvQSCD20_gui.py
+```
+
+---
+
+## 4. QSCD20 패킷 (요약)
+
+- 길이: **120** 바이트 (`QSCD_LEN`)
+- `QSCD20_FMT = ">Lccc2s3sI" + body…`
+- Quality Flag (`myqscd[1]`): `0x00` Good / `0x01` GPS Unlock / `0x02` REBOOT / `0x03~FF` Reserved
+- Station Code: `myqscd[4]`(2s) + `myqscd[5]`(3s) = 5바이트
+- Data Time: `myqscd[6]` Unix epoch (초) — **차트 x축·1초 버킷 키**
+
+### 4.1 GUI 바이너리 확장 (`QCDX`)
+
+| 구간 | 내용 |
+|------|------|
+| `BIN_FILE_MAGIC` | `QCDX\x01` (6B), 세션 시작 시 1회 기록 |
+| 레코드 | `QSCD_LEN`(120B) + `DIFF_PACK_FMT` `">d"` TimeDiff 8B |
+| TimeDiff | Live와 동일: `recv_wall − float(myqscd[6])` |
+
+- 읽기: `read_qscd20_bin()` → `QscdBinLoadResult(records, recv_diffs, has_stored_diff)`
+- 쓰기: `write_qscd20_bin_header()` + `pack_qscd20_bin_record()`
+- 구형 120B-only 파일: 헤더 없음 → File Viewer는 Diff 근사 (`records_to_buckets` fallback)
+
+---
+
+## 5. GUI 레이아웃 (v3.2)
+
+### 5.1 상단
+
+- UDP Port, 로그 디렉터리, prefix, Start/Stop, 상태
+
+### 5.2 Live 탭
+
+1. **시간 선택** 콤보 (60~1800초)  
+2. **관측소** + **최종 수신 (KST)** + Quality / Station 라벨  
+3. **표시 차트** 체크박스 (`PANEL_DEFS`)  
+4. **수직 Splitter**: 위 차트 / 아래 로그  
+
+### 5.3 File Viewer 탭
+
+- `.bin` 로드, 메타정보(TimeDiff 저장 여부 표시)
+- Live와 동일 패널·시간 창·체크박스
+
+### 5.4 차트 패널
+
+| panel_id | 기본 ON (`DEFAULT_PANELS`) | y축 |
+|----------|----------------------------|-----|
+| diff | ✓ | 시간(초) |
+| max | ✓ | gal(cm/sec2) |
+| pga | ✓ | gal(cm/sec2) |
+| wmma_ud / ns / ew | ☐ | gal(cm/sec2) |
+| tmm_ud / ns / ew | ☐ | gal(cm/sec2) |
+
+- Correlate 패널: **삭제** (v3 이후)
+
+---
+
+## 6. 데이터·로깅
+
+### 6.1 `StationBuffer`
+
+- `buckets[epoch_sec] → {diff, max_Z, …}` — 동일 초는 **마지막 패킷**
+- `diff` = `recv_wall − data time` (Live)
+- `build_second_grid()` → 1초 배열 + **NaN**, `connect='finite'`
+- 윈도우: `window_sec` + 여유 prune (`window_sec + 30` 버킷 상한)
+- `version` 증가 시 격자 캐시 무효화
+
+### 6.2 로그
+
+- **파일** (`FileHandler`): 모든 관측소 (`extra.station`)
+- **화면** (`QtLogHandler` + `StationGuiLogFilter`): 선택 관측소 패킷만, Start/Stop 등 `station=""` 은 항상
+- `LIVE_LOG_VERBOSE=False`: Live 패킷 **1줄 요약** (`log_qscd_packet_summary`)
+- `LIVE_LOG_VERBOSE=True`: 패킷당 상세 다중 줄 (`log_qscd_packet`)
+
+### 6.3 UDP
+
+- `UdpReceiver` (`QThread`) → `packet_received`
+- `sock.settimeout(0.5)` — Stop 응답성; 무수신 경고는 약 **60초** 후 (`SockTimeOutCount=120`)
+
+### 6.4 성능 (v3.2)
+
+| 항목 | 설명 |
+|------|------|
+| `_packet_queue` | `_on_packet`은 큐 적재만 |
+| `_drain_packet_queue` | 타이머·차트 갱신 시 최대 `PACKET_DRAIN_MAX`(800)건 처리 |
+| `CHART_REFRESH_MS` | 200ms — 차트 1회 갱신, `_live_chart_dirty` |
+| `BIN_FLUSH_EVERY` | 32패킷마다 bin flush |
+| `_grid_cache` | **활성 패널** 필드만 `build_second_grid` |
+| pyqtgraph | `antialias=False`, `setClipToView`, downsampling |
+
+### 6.5 호버 (`ChartHoverTooltip`)
+
+- `sigMouseMoved` + plot `sceneBoundingRect` 검사
+- `GraphicsLayoutWidget` / viewport **Leave·HoverLeave** → 툴팁 숨김
+
+### 6.6 File Viewer Diff
+
+- `records_to_buckets(records, recv_diffs=…)` — 저장된 diff 우선
+- `set_static_from_records(records, recv_diffs=…)`
+
+---
+
+## 7. 데이터 흐름
+
+```mermaid
+flowchart TB
+    UDP[UDP Thread recvfrom] --> Emit[packet_received]
+    Emit --> Queue[_packet_queue append]
+    Timer[QTimer 200ms] --> Drain[_drain_packet_queue]
+    Drain --> Bin["QCDX bin (120+8B)"]
+    Drain --> FileLog[FileHandler all stations]
+    Drain --> Buf[StationBuffer per station]
+    Timer --> Charts[pyqtgraph if dirty]
+    Buf --> Charts
+    Drain --> Logger[logger + station extra]
+    Logger --> Filter[StationGuiLogFilter]
+    Filter --> LogView[Bottom QPlainTextEdit]
+    Combo[Station ComboBox] --> Filter
+    Combo --> Charts
+    BinFile[read_qscd20_bin] --> FileCharts[File Viewer charts]
+```
+
+---
+
+## 8. 버전 이력
+
+| 버전 | 주요 내용 |
+|------|-----------|
+| v1 | 초기 GUI: 포트/디렉터리/prefix, Live·File 탭, 기본 차트 |
+| v2 | Diff 차트, KST x축, 관측소 콤보, 체크박스, 로그 하단, Quality/Station |
+| v3 | Correlate 삭제, y축 단위, 1초 NaN 격자, 관측소별 화면 로그, 최종 수신, 성능 최적화 |
+| v3.1 | 격자 캐시 `version` 수정, SpinBox 타임 윈도우, 드래그/더블클릭 줌, Live X 스크롤 |
+| v4 (일시) | 통합 PGA(ZPGA~TPGA), 시간 콤보, 호버·이미지형 범례 — **이후 v3.2에서 패널 방식으로 복원** |
+| **v3.2** | 다패널 차트 복원, **QCDX+TimeDiff** bin, Live 배치 처리·장시간 수신 안정화, 호버 Leave 수정, File Viewer 저장 Diff 재현 |
+| **v3.3** | **수신 설정·로그 뷰어**를 메뉴 팝업으로 분리, 메인 창은 차트 전용, `GUI_VERSION` / `VERSION` |
+
+### v3.2 상세
+
+- **차트**: `PANEL_DEFS` — diff / max / pga / wmma_* / tmm_* 개별 패널, `DEFAULT_PANELS = {diff, max, pga}`
+- **바이너리**: `QCDX\x01` + 128B/레코드; File Viewer는 `recv_diffs`로 Diff 동일 표시
+- **성능**: 패킷 큐·배치 drain, 활성 패널만 격자 캐시, Live 로그 1줄 요약, bin 주기 flush
+- **호버**: `ChartHoverTooltip` — `eventFilter`로 차트 이탈 시 숨김
+- **UDP**: 짧은 timeout 폴링, 무수신 경고 60초 (UI 병목과 실제 단절 구분 완화)
+
+### v3.1 상세
+
+- `StationBuffer.version` 격자 캐시 무효화 (dict id 고착 버그)
+- `ChartViewBox`: RectMode 줌, 더블클릭 autoRange; Live 줌 중 X 자동 스크롤 중지
+
+### v4 상세 (참고, 현재 미적용)
+
+- 단일 PGA 차트에 ZPGA~TPGA 통합, `DEFAULT_PGA_SERIES`, 상단 값 범례 등 — **v3.2에서 제거**
+
+---
+
+## 9. 구현 상태
+
+**v3.2** [recvQSCD20_gui.py](recvQSCD20_gui.py) 기준 **완료**.
+
+- 콘솔 [recvQSCD20.py](recvQSCD20.py): 120B bin 유지 (QCDX 미사용)
+- 백업: `recvQSCD20_gui_YYYYMMDD_HHMMSS.py`, `recvQSCD20_gui.py.bak`
+
+---
+
+## 10. 스크립트 상수 (참고)
+
+```python
+DEFAULT_PANELS = frozenset({"diff", "max", "pga"})
+DEFAULT_TIME_WINDOW_SEC = 600
+TIME_WINDOW_CHOICES = (60, 120, 600, 1200, 1800)
+BIN_FILE_MAGIC = b"QCDX\x01"
+CHART_REFRESH_MS = 200
+PACKET_DRAIN_MAX = 800
+BIN_FLUSH_EVERY = 32
+LIVE_LOG_VERBOSE = False
+```

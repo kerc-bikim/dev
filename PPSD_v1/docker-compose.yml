@@ -1,0 +1,22 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      FDSNWS_URL: ${FDSNWS_URL:-http://172.31.100.100}
+      LOG_LEVEL: INFO
+    volumes:
+      - ppsd-cache:/app/cache
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  ppsd-cache:

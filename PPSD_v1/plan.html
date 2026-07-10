@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PPSD Web Viewer - 구축 계획</title>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+  </script>
+  <style>
+    :root {
+      --fg: #1f2328;
+      --muted: #57606a;
+      --bg: #ffffff;
+      --panel: #f6f8fa;
+      --border: #d0d7de;
+      --accent: #0969da;
+      --code-bg: #f6f8fa;
+      --code-fg: #24292f;
+      --pill-bg: #ddf4ff;
+      --pill-fg: #0550ae;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fg: #e6edf3;
+        --muted: #8b949e;
+        --bg: #0d1117;
+        --panel: #161b22;
+        --border: #30363d;
+        --accent: #58a6ff;
+        --code-bg: #161b22;
+        --code-fg: #e6edf3;
+        --pill-bg: #1f3a5f;
+        --pill-fg: #cae8ff;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR",
+        "Malgun Gothic", Roboto, sans-serif;
+      line-height: 1.65;
+    }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+    header .eyebrow {
+      color: var(--muted);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    header h1 {
+      margin: 6px 0 8px;
+      font-size: 2rem;
+    }
+    header .overview {
+      color: var(--muted);
+      font-size: 1rem;
+    }
+    h2 {
+      margin-top: 36px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+      font-size: 1.4rem;
+    }
+    h3 { margin-top: 24px; font-size: 1.1rem; }
+    p, li { font-size: 0.98rem; }
+    code {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 14px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      overflow-x: auto;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+    pre code { background: transparent; padding: 0; }
+    .mermaid {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      margin: 16px 0;
+      text-align: center;
+    }
+    ul { padding-left: 22px; }
+    ul li { margin: 4px 0; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .todo-list {
+      list-style: none;
+      padding: 0;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .todo-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .todo-id {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.78rem;
+      background: var(--pill-bg);
+      color: var(--pill-fg);
+      padding: 3px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .status {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-left: auto;
+      white-space: nowrap;
+    }
+    footer {
+      margin-top: 48px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="eyebrow">Plan</div>
+      <h1>PPSD Web Viewer 구축 계획</h1>
+      <p class="overview">
+        FDSNWS(172.31.100.100)로부터 파형/응답을 받아 ObsPy로 PPSD를 계산하고,
+        IRIS MUSTANG 스타일 히트맵과 사용자 선택 percentile 오버레이/클리핑을
+        웹에서 조회할 수 있는 FastAPI + React 애플리케이션을 구축합니다.
+      </p>
+    </header>
+
+    <h2>1. 전체 구조</h2>
+    <p>
+      FastAPI(Python) 백엔드가 ObsPy로 PPSD 를 계산해 PNG 를 생성하고, React(Vite) 프론트엔드가
+      이를 조회/표시합니다. FDSNWS 서버(<code>http://172.31.100.100</code>)는 백엔드에서만 접근합니다
+      (프론트 CORS 문제 회피).
+    </p>
+
+    <div class="mermaid">
+flowchart LR
+    User[User Browser]
+    FE[React + Vite frontend]
+    BE[FastAPI backend]
+    Cache[(PPSD cache pickle + PNG)]
+    FDSN[FDSNWS 172.31.100.100]
+
+    User -->|UI| FE
+    FE -->|"/api/stations, /api/ppsd"| BE
+    BE -->|"get_stations, get_waveforms"| FDSN
+    BE <-->|read/write| Cache
+    BE -->|PNG image| FE
+    </div>
+
+    <h3>디렉터리 레이아웃</h3>
+<pre><code>PPSD_v1/
+  backend/
+    app/
+      main.py
+      config.py
+      api/
+        stations.py
+        ppsd.py
+      services/
+        fdsn_client.py
+        ppsd_service.py
+        plotting.py
+      models/schemas.py
+    requirements.txt
+    Dockerfile
+  frontend/
+    src/
+      App.tsx
+      api/client.ts
+      components/
+        StationPicker.tsx
+        PPSDForm.tsx
+        PPSDResult.tsx
+    package.json
+    vite.config.ts
+    index.html
+  docker-compose.yml
+  README.md</code></pre>
+
+    <h2>2. 백엔드 (FastAPI + ObsPy)</h2>
+
+    <h3>의존성 (<code>backend/requirements.txt</code>)</h3>
+    <ul>
+      <li><code>fastapi</code>, <code>uvicorn[standard]</code>, <code>pydantic</code></li>
+      <li><code>obspy</code> (PPSD, FDSN Client 포함)</li>
+      <li><code>matplotlib</code> (Agg 백엔드), <code>numpy</code></li>
+      <li><code>python-multipart</code>, <code>httpx</code></li>
+    </ul>
+
+    <h3>FDSN 클라이언트 래퍼 <code>backend/app/services/fdsn_client.py</code></h3>
+    <ul>
+      <li><code>obspy.clients.fdsn.Client(base_url=settings.FDSNWS_URL)</code> 를 싱글턴으로 생성.</li>
+      <li><code>list_networks/stations/channels</code> 은 <code>client.get_stations(level=...)</code> 로 조회 후 pydantic 모델로 반환.</li>
+      <li><code>get_waveforms_with_response(net, sta, loc, cha, t1, t2)</code> 는 파형과 <code>level="response"</code> inventory 를 함께 반환.</li>
+    </ul>
+
+    <h3>PPSD 서비스 <code>backend/app/services/ppsd_service.py</code></h3>
+    <p>핵심 계산:</p>
+<pre><code class="language-python">from obspy.signal import PPSD
+ppsd = PPSD(tr.stats, metadata=inv)
+ppsd.add(st)</code></pre>
+    <ul>
+      <li>결과 캐시: 입력 파라미터(net/sta/loc/cha/t1/t2/PPSD 파라미터) 해시를 키로
+        <code>cache/&lt;hash&gt;.npz</code> 에 <code>PPSD.save_npz</code> 로 저장/재사용 &rarr; 동일 요청 재계산 방지.</li>
+      <li>플로팅 <code>backend/app/services/plotting.py</code>:
+        <ul>
+          <li><code>matplotlib.use("Agg")</code> 후 <code>ppsd.plot(...)</code> 사용.</li>
+          <li><code>show_percentiles=True, percentiles=[low, high]</code> 로 오버레이.</li>
+          <li>클리핑 모드는 <code>ppsd.get_percentile(percentile=low/high)</code> 로 곡선을 얻은 뒤
+            <code>ppsd.current_histogram</code> 을 마스킹하여 자체 <code>pcolormesh</code> 로 렌더
+            (범위 밖 값은 <code>NaN</code>). 이렇게 오버레이/클리핑 두 모드를 모두 지원.</li>
+          <li>옵션: <code>xaxis_frequency</code>(주기 vs 주파수), Peterson NLNM/NHNM 오버레이 on/off.</li>
+          <li><code>savefig(png_path, dpi=120, bbox_inches="tight")</code> &rarr; PNG 스트리밍 응답.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>API 엔드포인트 <code>backend/app/api/</code></h3>
+    <ul>
+      <li><code>GET /api/health</code></li>
+      <li><code>GET /api/networks</code> &rarr; <code>[{code, description}]</code></li>
+      <li><code>GET /api/stations?network=</code> &rarr; <code>[{code, name, lat, lon, ...}]</code></li>
+      <li><code>GET /api/channels?network=&amp;station=</code> &rarr; <code>[{location, channel, start, end, sample_rate}]</code></li>
+      <li><code>POST /api/ppsd</code> (body: <code>PPSDRequest</code>) &rarr; <code>{job_id, image_url, stats}</code> 또는 동기 처리 시 곧바로 PNG.</li>
+      <li><code>GET /api/ppsd/{job_id}.png</code> &rarr; 렌더된 PNG.</li>
+    </ul>
+
+    <h3>pydantic 스키마 <code>models/schemas.py</code></h3>
+<pre><code class="language-python">class PPSDRequest(BaseModel):
+    network: str
+    station: str
+    location: str = ""
+    channel: str
+    starttime: datetime
+    endtime: datetime
+    percentile_low: float = 10.0
+    percentile_high: float = 90.0
+    show_overlay: bool = True
+    clip_to_percentile: bool = False
+    xaxis: Literal["period", "frequency"] = "period"
+    show_noise_models: bool = True</code></pre>
+
+    <h3>설정 <code>config.py</code></h3>
+    <ul>
+      <li><code>FDSNWS_URL=http://172.31.100.100</code> (환경변수로 오버라이드), <code>CACHE_DIR</code>, <code>CORS_ORIGINS</code>.</li>
+    </ul>
+
+    <h3>비동기/오래 걸리는 계산</h3>
+    <ul>
+      <li>초기 구현은 동기 처리 + 요청당 timeout(예: 120s).</li>
+      <li>확장 여지: <code>BackgroundTasks</code> 또는 Celery/RQ 로 job 큐 전환 지점만 남겨두기
+        (<code>/api/ppsd</code> 응답 스키마에 <code>job_id</code> 이미 포함).</li>
+    </ul>
+
+    <h2>3. 프론트엔드 (React + Vite + TypeScript)</h2>
+    <h3>주요 컴포넌트</h3>
+    <ul>
+      <li><code>StationPicker.tsx</code>: 사용자가 선택한 입력 모드(드롭다운 vs 수동)에 따라
+        network &rarr; station &rarr; channel 을 순차 드롭다운으로 로드(각 단계에서
+        <code>/api/networks</code>, <code>/api/stations</code>, <code>/api/channels</code> 호출).
+        "수동 입력" 토글 시 텍스트 인풋으로 전환하여 fallback 제공.</li>
+      <li><code>PPSDForm.tsx</code>:
+        <ul>
+          <li>시작/종료 시각(<code>&lt;input type="datetime-local"&gt;</code> + UTC 토글).</li>
+          <li>percentile 슬라이더 두 개(하위 0–50, 상위 50–100) 또는 dual-range 슬라이더.</li>
+          <li>옵션 체크박스: <code>Overlay percentile curves</code>, <code>Clip histogram to percentile range</code>,
+            <code>X-axis: period/frequency</code>, <code>Show Peterson NLNM/NHNM</code>.</li>
+        </ul>
+      </li>
+      <li><code>PPSDResult.tsx</code>:
+        <ul>
+          <li><code>POST /api/ppsd</code> 요청 후 반환된 <code>image_url</code> 을 <code>&lt;img&gt;</code> 로 표시.</li>
+          <li>로딩 스피너, 에러 표시, 다운로드 버튼(PNG 저장).</li>
+          <li>계산 통계(사용된 세그먼트 수, 실제 시작/종료 시각) 요약 표기.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <p>
+      API 클라이언트 <code>src/api/client.ts</code> 는 <code>fetch</code> 기반 얇은 래퍼,
+      <code>VITE_API_BASE_URL</code> 환경 변수 사용. dev 환경은 Vite proxy 로
+      <code>/api</code> &rarr; <code>http://localhost:8000</code> 프록시.
+    </p>
+    <p>
+      UI 참고: IRIS MUSTANG PDF plot 페이지 레이아웃과 유사하게 좌측 컨트롤 패널 + 우측 결과 이미지.
+    </p>
+
+    <h2>4. 배포/실행</h2>
+    <ul>
+      <li>로컬 개발: <code>uvicorn app.main:app --reload</code> (백엔드 8000),
+        <code>npm run dev</code> (프론트 5173, <code>/api</code> 프록시).</li>
+      <li><code>docker-compose.yml</code> 로 <code>backend</code>(python:3.11-slim + obspy) 와
+        <code>frontend</code>(node build &rarr; nginx) 두 서비스 구성.
+        FDSNWS 는 컨테이너에서 <code>172.31.100.100</code> 에 접근 가능해야 하므로 host 네트워크 또는 라우팅 확인 필요.</li>
+      <li>README 에 로컬 실행, Docker 실행, 환경변수, IRIS MUSTANG 대비 지원 옵션 표를 문서화.</li>
+    </ul>
+
+    <h2>5. 검증 포인트</h2>
+    <ul>
+      <li>짧은 구간(예: 1시간)으로 계산 성공 및 이미지 생성 확인.</li>
+      <li>percentile overlay/clip 모두 시각적으로 확인.</li>
+      <li>station 이 없는 채널/응답 정보 누락 시 사용자 친화적 오류 메시지.</li>
+      <li>캐시 재사용 여부 로그 확인.</li>
+    </ul>
+
+    <h2>To-Do 목록</h2>
+    <ul class="todo-list">
+      <li class="todo-item">
+        <span class="todo-id">scaffold</span>
+        <span>리포/디렉토리 스캐폴드와 requirements.txt, package.json, vite.config, docker-compose 구성</span>
+        <span class="status">pending</span>
+      </li>
+      <li class="todo-item">
+        <span class="todo-id">backend_core</span>
+        <span>FastAPI 앱 기본과 config 로드, CORS, FDSN 클라이언트 싱글턴 구현</span>
+        <span class="status">pending</span>
+      </li>
+      <li class="todo-item">
+        <span class="todo-id">station_api</span>
+        <span>/api/networks, /api/stations, /api/channels 엔드포인트 (FDSNWS get_stations 활용)</span>
+        <span class="status">pending</span>
+      </li>
+      <li class="todo-item">
+        <span class="todo-id">ppsd_service</span>
+        <span>PPSD 계산 및 캐싱 서비스(save_npz 기반), 파라미터 해시 키</span>
+        <span class="status">pending</span>
+      </li>
+      <li class="todo-item">
+        <span class="todo-id">plotting</span>
+        <span>matplotlib Agg 플롯: overlay/clip 옵션, Peterson NLNM/NHNM, period vs frequency</span>
+        <span class="status">pending</span>
+      </li>
+      <li class="todo-item">
+        <span class="todo-id">ppsd_api</span>
+        <span>POST /api/ppsd + GET /api/ppsd/{id}.png 엔드포인트, pydantic 스키마 정의</span>
+        <span class="status">pending</span>
+      </li>
+      <li class="todo-item">
+        <span class="todo-id">fe_station</span>
+        <span>React StationPicker: 드롭다운 계층 로딩 + 수동 입력 fallback 토글</span>
+        <span class="status">pending</span>
+      </li>
+      <li class="todo-item">
+        <span class="todo-id">fe_form</span>
+        <span>PPSDForm: 시간, dual-range percentile 슬라이더, 옵션 체크박스</span>
+        <span class="status">pending</span>
+      </li>
+      <li class="todo-item">
+        <span class="todo-id">fe_result</span>
+        <span>PPSDResult: 이미지 표시, 로딩/에러, PNG 다운로드, 통계 요약</span>
+        <span class="status">pending</span>
+      </li>
+      <li class="todo-item">
+        <span class="todo-id">docs</span>
+        <span>README 작성: 설치/실행/도커 사용법, MUSTANG 대비 지원 기능</span>
+        <span class="status">pending</span>
+      </li>
+    </ul>
+
+    <footer>
+      Generated for PPSD Web Viewer &middot; Backend: FastAPI + ObsPy &middot; Frontend: React + Vite
+    </footer>
+  </div>
+</body>
+</html>

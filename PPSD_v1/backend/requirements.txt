@@ -1,0 +1,12 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.4
+pydantic-settings==2.7.0
+obspy==1.4.1
+matplotlib==3.9.3
+numpy==1.26.4
+httpx==0.28.1
+python-multipart==0.0.20
+setuptools>=68,<81
+setuptools-scm>=8.0
+
