@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RingWave v1.0 — ringserver 실시간 WebGL 파형 뷰어</title>
+  <style>
+:root {
+  --bg: #f6f4ef;
+  --surface: #fffdf8;
+  --ink: #1c2430;
+  --muted: #5a6570;
+  --line: #d7d2c8;
+  --accent: #0b6e4f;
+  --accent-soft: #d8eee4;
+  --code-bg: #eef2f4;
+  --table-head: #e8f3ee;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #e7f3ec 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #efe8dc 0%, transparent 50%),
+    var(--bg);
+  line-height: 1.65;
+}
+.wrap {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+header.doc-header {
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 1.25rem;
+  margin-bottom: 2rem;
+}
+header.doc-header .eyebrow {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 0.4rem;
+}
+h1 {
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  line-height: 1.25;
+  margin: 0 0 0.75rem;
+}
+.meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+article h2 {
+  margin-top: 2.4rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--line);
+  font-size: 1.35rem;
+  color: var(--accent);
+}
+article h3 {
+  margin-top: 1.6rem;
+  font-size: 1.1rem;
+}
+article h4 { margin-top: 1.2rem; }
+p, li { font-size: 0.98rem; }
+a { color: var(--accent); }
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 2rem 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+  margin: 1rem 0 1.4rem;
+  font-size: 0.92rem;
+}
+th, td {
+  border: 1px solid var(--line);
+  padding: 0.55rem 0.7rem;
+  vertical-align: top;
+  text-align: left;
+}
+th { background: var(--table-head); }
+code, pre {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 0.86rem;
+}
+code {
+  background: var(--code-bg);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  background: #1c2430;
+  color: #e8eef2;
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.mermaid, pre.mermaid {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+blockquote {
+  margin: 1rem 0;
+  padding: 0.6rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+}
+footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+@media (max-width: 640px) {
+  .wrap { padding: 1.5rem 0.9rem 3rem; }
+  table { display: block; overflow-x: auto; }
+}
+</style>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "neutral" });
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <header class="doc-header">
+      <p class="eyebrow">RingWave · As-Built Plan</p>
+      <h1>ringserver 실시간 WebGL 파형 뷰어</h1>
+      <p class="meta">앱 / 문서 버전 <strong>1.1.0</strong> · 최종 갱신 2026-08-04 · Conda <code>ringserver_seedlink_websocket</code> (Python 3.12)</p>
+    </header>
+    <article>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>앱 / 문서 버전</td>
+<td><strong>1.1.0</strong></td>
+</tr>
+<tr>
+<td>작성일</td>
+<td>2026-07-31</td>
+</tr>
+<tr>
+<td>최종 갱신</td>
+<td>2026-08-04</td>
+</tr>
+<tr>
+<td>프로젝트 경로</td>
+<td><code>C:\Users\bikim\Dev\ringserver_seedlink_websocket</code></td>
+</tr>
+<tr>
+<td>개발 Conda 환경</td>
+<td><code>ringserver_seedlink_websocket</code> (Python 3.12)</td>
+</tr>
+<tr>
+<td>참고</td>
+<td><a href="https://github.com/EarthScope/ringserver">EarthScope/ringserver</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>1. 목표</h2>
+<p>특정 서버에서 동작 중인 <strong>ringserver</strong>의 WebSocket(<strong>DataLink</strong>)으로 실시간 miniSEED를 수신하고, 웹 브라우저에서 <strong>고성능 WebGL 파형</strong>으로 표출하는 모니터링 애플리케이션(<strong>RingWave</strong>)을 구축한다.</p>
+<p>핵심 요구 (v1.0 충족):</p>
+<ol>
+<li>Network → Station → Channel 트리에서 다중 선택 후 Plot</li>
+<li>사용자 지정 레이아웃 목록으로 즉시 표출</li>
+<li>레이아웃 생성 / 수정 / 삭제</li>
+<li>웨이브폼 길이(duration) 지정 및 타임윈도우 줌 스텝</li>
+<li>웨이브폼 갱신 인터벌 설정</li>
+<li>파형 패널 삭제 및 위치 이동(DnD)</li>
+<li>웨이브폼 일시정지(화면 freeze) + 일시정지 중 마우스 줌</li>
+<li>선택 채널 현재 구간의 FFT (패널 내 Log–Log)</li>
+<li>데이터 공백(갭) 배지 표시</li>
+<li>설정 모달에서 ringserver/FDSNWS URL, X축 앵커, 색상, 패널 상한 등 제어</li>
+<li>WebSocket 끊김 시 자동 재연결 (상태바에 상태 표시)</li>
+<li>모바일 반응형 열람</li>
+</ol>
+<hr />
+<h2>2. 확정 결정 사항 (v1.0 as-built)</h2>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>결정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>접속</td>
+<td>백엔드 <strong>동적 프록시</strong> (<code>/ringserver</code>, <code>/fdsnws</code>, <code>/api</code>). ringserver·FDSNWS URL은 <code>.env</code> 시드 + <strong>설정 모달</strong></td>
+</tr>
+<tr>
+<td>프로토콜</td>
+<td><strong>DataLink 전용</strong> (SeedLink UI/클라이언트 미포함)</td>
+</tr>
+<tr>
+<td>UI 배치</td>
+<td>탑바: 브랜드 · 레이아웃 · 설정 아이콘 / 상태바: 연결·타임윈도우·줌·일시정지·Raw/Physical / 좌측: Stream 트리 (모바일 드로어)</td>
+</tr>
+<tr>
+<td>레이아웃·설정 저장</td>
+<td>Fastify + <strong>JSON</strong> (<code>backend/data/app.json</code>). 레거시 SQLite는 1회 마이그레이션만</td>
+</tr>
+<tr>
+<td>차트</td>
+<td><strong>webgl-plot</strong> (공유 WebGL 캔버스 1개)</td>
+</tr>
+<tr>
+<td>진폭</td>
+<td>기본 <strong>Raw counts</strong> / 토글 <strong>Physical</strong> (FDSNWS StationXML 감도)</td>
+</tr>
+<tr>
+<td>X축 오른쪽 기준</td>
+<td><code>now</code> | <code>lastData</code> (기본 <code>lastData</code>, 설정 모달)</td>
+</tr>
+<tr>
+<td>일시정지</td>
+<td>화면만 freeze, 버퍼·수신 유지 → 재개 시 최신 윈도우로 점프</td>
+</tr>
+<tr>
+<td>일시정지 줌</td>
+<td>좌클릭 드래그=줌인, 좌클릭 더블클릭=줌아웃(스택), 재개 시 원복</td>
+</tr>
+<tr>
+<td>연결 직후</td>
+<td>ringserver ring의 최근 구간부터 채운 뒤 live</td>
+</tr>
+<tr>
+<td>FFT</td>
+<td>우클릭으로 패널 전환, Hann 창, <strong>Log F × Log Power(dB)</strong></td>
+</tr>
+<tr>
+<td>갭 알림</td>
+<td>패널 헤더 <code>GAP N</code> 배지</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>1차 미구현 (확장 자리만)</td>
+</tr>
+<tr>
+<td>기본 duration / interval</td>
+<td><strong>300초 / 0.5초 (500ms)</strong></td>
+</tr>
+<tr>
+<td>duration UI 스텝</td>
+<td>15 … <strong>7200초</strong> (백엔드 상한 86400 유지)</td>
+</tr>
+<tr>
+<td>최대 패널</td>
+<td>설정 변경 가능, <strong>하드 상한 50</strong> (초기 기본 16)</td>
+</tr>
+<tr>
+<td>FDSNWS 기본 URL</td>
+<td><code>http://172.31.100.100/fdsnws</code></td>
+</tr>
+<tr>
+<td>개발 환경</td>
+<td>Conda <code>ringserver_seedlink_websocket</code>, Python 3.12 (문서·보조 스크립트). 앱 런타임은 Node.js</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>3. 시스템 아키텍처</h2>
+<pre class="mermaid">
+flowchart LR
+  subgraph browser [Browser_Desktop_or_Mobile]
+    UI[Topbar_StatusBar_StreamTree]
+    Proto[DataLinkClient]
+    RingBuf[RingBuffers]
+    WGL[WebGL_Panels]
+    FFT[PanelFFT]
+  end
+  subgraph appServer [AppServer]
+    API[Fastify_API]
+    Store[(app.json)]
+    FdsnProxy[FDSNWS_ProxyCache]
+  end
+  RS[(ringserver)]
+  FDSN[(FDSNWS_station)]
+  UI -->|/ringserver| RS
+  Proto -->|WS_datalink| RS
+  RS --> Proto --> RingBuf --> WGL
+  RingBuf --> FFT
+  UI -->|/api/layouts| API --> Store
+  UI -->|physical mode| FdsnProxy
+  FdsnProxy -->|station query| FDSN
+</pre>
+
+<h3>3.1 구성 요소</h3>
+<table>
+<thead>
+<tr>
+<th>계층</th>
+<th>기술</th>
+<th>역할</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Frontend</td>
+<td>React 18, Vite, TypeScript, webgl-plot, seisplotjs(miniseed)</td>
+<td>UI, DataLink WS, WebGL 렌더, FFT</td>
+</tr>
+<tr>
+<td>Backend</td>
+<td>Node.js, Fastify, JSON 저장소 (<code>backend/data/app.json</code>)</td>
+<td>레이아웃/설정 API, ringserver·FDSNWS 동적 프록시(HTTP/WS), 메타 캐시</td>
+</tr>
+<tr>
+<td>외부</td>
+<td>ringserver</td>
+<td><code>/streams/json</code>, <code>/datalink</code></td>
+</tr>
+<tr>
+<td>외부</td>
+<td>FDSNWS</td>
+<td><code>station/1/query</code> (InstrumentSensitivity)</td>
+</tr>
+<tr>
+<td>도구</td>
+<td>Conda env <code>ringserver_seedlink_websocket</code> (Python 3.12)</td>
+<td>계획서 HTML 생성, 추후 유틸/검증 스크립트</td>
+</tr>
+</tbody>
+</table>
+<p>브라우저는 ringserver·fdsnws에 직접 연결하지 않는다. Fastify가 <code>settings</code>에 저장된 URL로 <strong>HTTP·WebSocket을 동적 프록시</strong>한다.</p>
+<hr />
+<h2>4. 기능 상세</h2>
+<h3>4.1 Stream 트리 · Plot</h3>
+<ul>
+<li><code>GET /ringserver/streams/json</code>으로 스트림 목록 수집</li>
+<li>Network → Station → Channel 그룹 트리, 다중 선택</li>
+<li>Plot으로 메인 영역에 패널 추가 및 구독</li>
+<li>패널 수 ≥ <code>maxPanels</code>(최대 50)이면 Plot 차단 + 안내</li>
+<li>데이터 없을 때 패널에 <code>데이터 없음</code> 표시, 평탄선 숨김</li>
+</ul>
+<h3>4.2 사용자 레이아웃 (CRUD)</h3>
+<ul>
+<li><code>app.json</code>의 <code>layouts</code> 배열에 저장 (이름, payload JSON, 생성/수정 시각)</li>
+<li>payload: 채널 순서, duration, interval, amplitudeMode, xAxisRightAnchor, 색상 등</li>
+<li>탑바 <strong>레이아웃</strong> 드롭다운: 생성 · 수정 · 삭제 · 목록 선택 · 불러오기</li>
+<li>목록 더블클릭 또는 불러오기로 파형 일괄 로드</li>
+</ul>
+<h3>4.3 설정 모달</h3>
+<p>탑바 <strong>설정 아이콘(톱니)</strong> 으로 연다. 배경 클릭으로 닫히지 않으며 ✕ / 저장 / 닫기만 가능.</p>
+<table>
+<thead>
+<tr>
+<th>설정</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ringserver URL</td>
+<td><code>.env</code> 시드, 모달 수정 → 저장소 반영 → 프록시 즉시 반영, WS 재연결</td>
+</tr>
+<tr>
+<td>FDSNWS URL</td>
+<td>동일 패턴</td>
+</tr>
+<tr>
+<td>durationSec</td>
+<td>기본 300, UI 스텝 상한 7200, 백엔드 clamp 86400</td>
+</tr>
+<tr>
+<td>refreshIntervalMs</td>
+<td>기본 500</td>
+</tr>
+<tr>
+<td>maxPanels</td>
+<td>1–50</td>
+</tr>
+<tr>
+<td>xAxisRightAnchor</td>
+<td><code>now</code> / <code>lastData</code></td>
+</tr>
+<tr>
+<td>waveformColors</td>
+<td>팔레트 · 갭색 · 선택 하이라이트</td>
+</tr>
+<tr>
+<td>연결 테스트</td>
+<td><code>/streams/json</code> 헬스체크</td>
+</tr>
+</tbody>
+</table>
+<p>대용량 duration×채널 조합 시 예상 메모리 표시 및 임계값 초과 경고.</p>
+<blockquote>
+<p>Raw / Physical은 설정 모달이 아니라 <strong>상태바 우측 토글</strong>로 전환한다 (기본 Raw).</p>
+</blockquote>
+<h3>4.4 상태바 · 타임윈도우 · 일시정지</h3>
+<table>
+<thead>
+<tr>
+<th>컨트롤</th>
+<th>동작</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>연결 pill</td>
+<td>connecting / connected / reconnecting / disconnected / error</td>
+</tr>
+<tr>
+<td>⏱ 타임윈도우</td>
+<td>모달에서 직접 지정</td>
+</tr>
+<tr>
+<td>줌인 / 줌아웃</td>
+<td><code>TIME_WINDOW_STEPS</code>(15…7200초) 스텝</td>
+</tr>
+<tr>
+<td>일시정지 / 재개</td>
+<td>화면 freeze / 최신 윈도우 점프</td>
+</tr>
+<tr>
+<td>Raw ↔ Physical</td>
+<td>진폭 모드 토글 (기본 Raw)</td>
+</tr>
+</tbody>
+</table>
+<h3>4.5 일시정지 중 마우스 줌</h3>
+<ul>
+<li><strong>좌클릭 드래그</strong>: 선택 구간으로 줌인 (스택 push). 해당 시각의 파형이 버퍼에서 정확히 잘려 표출됨</li>
+<li><strong>좌클릭 더블클릭</strong>: 줌아웃 (스택 pop)</li>
+<li><strong>우클릭 드래그</strong>: FFT용 구간 선택(기존) — 줌과 분리</li>
+<li>재개(재생) 시 줌 스택 클리어 후 라이브 윈도우로 복귀</li>
+</ul>
+<h3>4.6 FFT</h3>
+<ul>
+<li>패널 우클릭으로 해당 패널 FFT 토글</li>
+<li>현재 표시 윈도우 구간, Hann window</li>
+<li><strong>Log 주파수 × Log Power(dB)</strong> 축·눈금</li>
+<li>샘플 부족 / 무데이터 시 안내 문구</li>
+</ul>
+<h3>4.7 데이터 공백(갭)</h3>
+<ul>
+<li>연속 패킷 <code>end → start</code> 간격 &gt; <code>1.5 / sampleRate</code> 이면 갭</li>
+<li>패널 헤더 <code>GAP N</code> 배지 (파형 위 빨간 구간 오버레이는 v1.0 미포함)</li>
+</ul>
+<h3>4.8 WebSocket 끊김 · 재연결</h3>
+<table>
+<thead>
+<tr>
+<th>상태</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>connecting</td>
+<td>연결 시도 중</td>
+</tr>
+<tr>
+<td>connected</td>
+<td>정상</td>
+</tr>
+<tr>
+<td>reconnecting</td>
+<td>자동 재연결 중</td>
+</tr>
+<tr>
+<td>disconnected</td>
+<td>연결 끊김</td>
+</tr>
+<tr>
+<td>error</td>
+<td>오류</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>자동 재연결</strong>: 지수 백오프 (1s → 2s → 4s … 상한 30s)</li>
+<li>성공 시 이전 구독 SCNL 복원 + 가능 범위 과거 채움 후 live</li>
+<li>상태바에 상태·상세 문구 표시 (재접속 모달 / 수동 재접속 버튼은 v1.0에서 제거)</li>
+<li><code>online</code> 이벤트 시 재연결 시도</li>
+<li>사용자 의도적 disconnect는 자동 재연결하지 않음 (Pause와 구분)</li>
+</ul>
+<h3>4.9 웨이브폼 색상 · 시간축</h3>
+<ul>
+<li>팔레트 모드: N색 순환, 설정에서 편집 가능</li>
+<li>갭색 · FFT 선택 하이라이트색</li>
+<li>X축: 차트 하단 라벨 한 줄 + 중간 tick + 세로 보조선</li>
+<li>패널 오버레이 높이는 WebGL 균등 분할(<code>flex: 1</code>)과 일치</li>
+</ul>
+<h3>4.10 모바일</h3>
+<ul>
+<li>좁은 화면: 햄버거 + 풀스크린 드로어(Stream 트리)</li>
+<li>레이아웃 드롭다운은 viewport 기준 fixed로 잘림 방지</li>
+<li>파형 세로 스크롤, 터치 타깃 확보</li>
+<li>WebGL <code>devicePixelRatio</code> 보정(상한 2), 회전 시 리레이아웃</li>
+</ul>
+<hr />
+<h2>5. 프로토콜 계층</h2>
+<p>공통 인터페이스 <code>RealtimeClient</code> (구현체: <strong>DataLink only</strong>):</p>
+<ul>
+<li><code>connect()</code> / <code>disconnect()</code></li>
+<li><code>subscribe(channels: SCNL[])</code> / <code>unsubscribe</code></li>
+<li><code>onPacket(scnl, samples, startTime, sampleRate)</code></li>
+<li>연결 직후 ring <strong>과거 채움</strong> 후 live (DataLink MATCH/위치)</li>
+</ul>
+<p>seisplotjs <code>miniseed</code> 디코드와 DataLink WebSocket을 활용한다.</p>
+<hr />
+<h2>6. 데이터 · 렌더 파이프라인</h2>
+<ol>
+<li><code>/ringserver/streams/json</code> → 트리</li>
+<li>Plot / 레이아웃 로드 → 구독 + 과거 채움 (ringserver ring 한도 내)</li>
+<li>채널별 ring buffer + 갭 메타</li>
+<li><code>refreshIntervalMs</code>(기본 500ms)마다 표시용 버퍼 → WebGL 업로드</li>
+<li>Pause / Resume / 줌 뷰, raw/physical, FFT, 갭 배지</li>
+</ol>
+<p><code>copyAlignedWindow(windowEndMs, durationSec)</code>는 줌으로 과거 구간을 볼 때도 <code>windowStart</code>까지 lookback하여 해당 시각 샘플을 추출한다.</p>
+<h3>6.1 성능 · 메모리 (100 sps × 50 ch × 긴 윈도우)</h3>
+<table>
+<thead>
+<tr>
+<th>시나리오</th>
+<th>샘플 수</th>
+<th>원본 Float32 (대략)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>16ch × 100sps × 300s</td>
+<td>4.8e5</td>
+<td>≈ 2 MB</td>
+</tr>
+<tr>
+<td>50ch × 100sps × 600s</td>
+<td>3.0e6</td>
+<td>≈ 12 MB</td>
+</tr>
+<tr>
+<td>50ch × 100sps × 86400s</td>
+<td>4.32e8</td>
+<td>≈ <strong>1.7 GB</strong> (경고 대상)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>확정 전략</strong></p>
+<ol>
+<li><strong>공유 WebGL 캔버스 1개</strong> — 패널당 WebGL 컨텍스트 금지</li>
+<li><strong>픽셀 다운샘플</strong>만 GPU 업로드 (duration과 무관하게 ~채널당 수천 점)</li>
+<li>ring capacity는 <strong>현재 duration×sampleRate</strong> 기준 할당</li>
+<li>샘플을 React state에 넣지 않음; TypedArray 재사용; 단일 타이머/rAF — <strong>메모리 누수 방지</strong></li>
+</ol>
+<hr />
+<h2>7. 백엔드 · 저장소</h2>
+<h3>7.1 저장 구조 (<code>backend/data/app.json</code>)</h3>
+<ul>
+<li><code>settings</code> — ringserverUrl, fdsnwsUrl, duration, interval, maxPanels, amplitudeMode, xAxisRightAnchor, colors 등</li>
+<li><code>layouts[]</code> — id, name, created_at, updated_at, payload_json</li>
+<li><code>meta_cache</code> — SCNL별 sensitivity / input_units 캐시</li>
+</ul>
+<p>레거시 <code>app.db</code>(SQLite)가 있으면 최초 기동 시 JSON으로 마이그레이션할 수 있다.</p>
+<h3>7.2 API</h3>
+<ul>
+<li><code>GET/POST /api/layouts</code>, <code>GET/PUT/DELETE /api/layouts/:id</code></li>
+<li><code>GET/PUT /api/settings</code></li>
+<li><code>POST /api/settings/test-ringserver</code></li>
+<li><code>GET /api/settings/limits</code></li>
+<li><code>GET /api/meta/sensitivity?net&amp;sta&amp;loc&amp;cha</code></li>
+<li>프록시: <code>/ringserver/*</code> → <code>settings.ringserverUrl</code>, <code>/fdsnws/*</code> → <code>settings.fdsnwsUrl</code> (WS 포함)</li>
+</ul>
+<h3>7.3 물리량</h3>
+<pre><code>physical = counts / sensitivity
+</code></pre>
+<p>StationXML InstrumentSensitivity 기준. 메타 실패 시 패널 경고 + raw fallback. FDSNWS URL 변경 시 캐시 무효화.</p>
+<hr />
+<h2>8. 디렉터리 구조 (요약)</h2>
+<pre><code>ringserver_seedlink_websocket/
+  plan.md / plan.html / README.md
+  .env.example
+  frontend/src/
+    api/client.ts
+    realtime/{datalinkClient,reconnectController,timeWindow,miniseed}.ts
+    buffer/ringBuffer.ts
+    render/{sharedWebglPlot,downsample,fft}.ts
+    store/appStore.ts
+    components/
+      layout/{AppShell,LayoutMenu}.tsx
+      connection/StatusBar.tsx
+      Sidebar/{StreamTree,SettingsPanel}.tsx
+      Waveform/{WaveformStack,PanelFftCanvas}.tsx
+  backend/src/
+    index.ts, db.ts, defaults.ts
+    routes/{layouts,meta,settings}.ts
+    proxy*.ts
+  backend/data/app.json
+  scripts/build_plan_html.py
+</code></pre>
+<hr />
+<h2>9. 환경 변수 · 런타임 기본값</h2>
+<pre><code class="language-env">RINGSERVER_URL=http://localhost:18000
+FDSNWS_URL=http://172.31.100.100/fdsnws
+DATABASE_PATH=backend/data/app.json
+PORT=8787
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>키</th>
+<th>기본값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ringserverUrl</td>
+<td>env <code>RINGSERVER_URL</code> 시드</td>
+</tr>
+<tr>
+<td>fdsnwsUrl</td>
+<td>env <code>FDSNWS_URL</code> 시드</td>
+</tr>
+<tr>
+<td>durationSec</td>
+<td>300 (백엔드 상한 86400)</td>
+</tr>
+<tr>
+<td>refreshIntervalMs</td>
+<td>500</td>
+</tr>
+<tr>
+<td>maxPanels</td>
+<td>16 (상한 50)</td>
+</tr>
+<tr>
+<td>amplitudeMode</td>
+<td><strong>raw</strong></td>
+</tr>
+<tr>
+<td>protocol</td>
+<td>datalink (고정)</td>
+</tr>
+<tr>
+<td>xAxisRightAnchor</td>
+<td>lastData</td>
+</tr>
+<tr>
+<td>waveformColors</td>
+<td>팔레트 + gapColor + selectionColor</td>
+</tr>
+</tbody>
+</table>
+<h3>Conda 환경</h3>
+<pre><code class="language-bash">conda activate ringserver_seedlink_websocket
+python --version   # Python 3.12.x
+</code></pre>
+<p>앱 서버/프론트 실행에는 Node.js를 사용한다. Conda는 계획서 빌드·보조 Python 스크립트용이다.</p>
+<hr />
+<h2>10. 제외 · 이후 확장</h2>
+<ul>
+<li>SeedLink 프로토콜 UI/클라이언트</li>
+<li>ringserver Auth UI</li>
+<li>FDSNWS 전체 response stage 체인 정밀 보정 (1차는 InstrumentSensitivity 스케일)</li>
+<li>갭 빨간 구간 파형 오버레이</li>
+<li>재접속 경고 모달 / 수동 재접속 버튼 UI</li>
+<li>채널별 색상 피커 UI</li>
+<li>Docker 배포 패키징 (요청 시)</li>
+</ul>
+<hr />
+<h2>11. 성공 기준 (v1.0)</h2>
+<ul>
+<li>DataLink로 실시간 파형이 버벅임 없이 스크롤됨</li>
+<li>16채널·100–200Hz·300s·0.5s 갱신에서 안정 동작; 50채널·긴 duration에서도 다운샘플·공유 WebGL로 표출 가능</li>
+<li>레이아웃 CRUD 및 설정 모달 URL/색상/패널상한/X앵커 변경 반영</li>
+<li>WS 끊김 시 자동 재연결 및 상태바 표시</li>
+<li>일시정지 중 구간 줌 시 해당 시각 파형 표출</li>
+<li>데스크톱·모바일에서 주요 기능 사용 가능</li>
+<li>레이아웃/패널 반복 토글 후 명확한 메모리 누수 없음</li>
+</ul>
+<hr />
+<h2>12. 히스토리</h2>
+<h3>v1.1.0 — 2026-08-04</h3>
+<p>상태바·모바일 제스처·Y축 스케일 UX 보강.</p>
+<ul>
+<li>모바일 일시정지: 핀치 아웃/인 줌, 더블탭 초기화, 줌 후 한손가락 좌우 팬</li>
+<li>Y축 Scale 아이콘: Auto(기본) / Uniform(최대 진폭 패널 기준)</li>
+<li>Raw/Physical → Calibration 아이콘으로 변경, 상태바 좌측 배치</li>
+<li>전체 스트림 닫기(✕✕), 확인 후 <code>clearAllPanels</code></li>
+<li>모바일 설정 모달 safe-area·글꼴 밀도 조정으로 하단 버튼 잘림 완화</li>
+<li><code>copyAlignedWindow</code> lookback으로 줌 구간 파형 표출 보정</li>
+</ul>
+<h3>v1.0.0 — 2026-08-04</h3>
+<p>첫 정식 릴리스. 계획 대비 프로토콜·저장소·UI를 as-built로 정리하고 문서·버전을 동기화했다.</p>
+<p><strong>핵심</strong></p>
+<ul>
+<li>DataLink 실시간 수신 + 공유 WebGL 파형 스택</li>
+<li>Stream 트리 Plot, 레이아웃 CRUD (<code>app.json</code>)</li>
+<li>설정 모달(톱니 아이콘), 상태바 타임윈도우/줌/일시정지/Raw·Physical</li>
+<li>X축 앵커(<code>now</code>/<code>lastData</code>), 시간축 눈금·보조선</li>
+<li>일시정지 중 마우스 줌(해당 시각 파형 표출), 패널 FFT(Log–Log dB)</li>
+<li>갭 배지, 자동 재연결, 모바일 드로어</li>
+</ul>
+<p><strong>계획 대비 변경 요약</strong></p>
+<table>
+<thead>
+<tr>
+<th>당초 계획</th>
+<th>v1.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DataLink + SeedLink</td>
+<td>DataLink 전용</td>
+</tr>
+<tr>
+<td>SQLite</td>
+<td>JSON (<code>app.json</code>)</td>
+</tr>
+<tr>
+<td>사이드바 설정/레이아웃</td>
+<td>탑바 레이아웃 + 설정 모달</td>
+</tr>
+<tr>
+<td>재접속 모달·수동 재접속 UI</td>
+<td>자동 재연결 + 상태바만</td>
+</tr>
+<tr>
+<td>FFT 별도 패널</td>
+<td>패널 내 우클릭 FFT</td>
+</tr>
+<tr>
+<td>갭 빨간 오버레이</td>
+<td>배지만</td>
+</tr>
+<tr>
+<td>amplitudeMode 설정창</td>
+<td>상태바 토글 (기본 Raw)</td>
+</tr>
+</tbody>
+</table>
+<h3>개발 타임라인 (요약)</h3>
+<table>
+<thead>
+<tr>
+<th>시기</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-07-31</td>
+<td>최종 계획서 작성, monorepo·Fastify 프록시·DataLink·WebGL 스캐폴드</td>
+</tr>
+<tr>
+<td>2026-08-01~02</td>
+<td>Stream 트리, ring buffer, 다중 패널, duration/interval, 레이아웃 CRUD, 색상</td>
+</tr>
+<tr>
+<td>2026-08-02~03</td>
+<td>FDSNWS 물리량, FFT, 갭 배지, X축 앵커, 상태바 UX, JSON 저장 확정</td>
+</tr>
+<tr>
+<td>2026-08-03~04</td>
+<td>타임윈도우 스텝, Raw/Physical 토글, 설정 아이콘, 일시정지 마우스 줌, 줌 구간 파형 보정, 문서 v1.0</td>
+</tr>
+</tbody>
+</table>
+<h3>변경 상세 (기능 단위)</h3>
+<ol>
+<li><strong>저장소</strong>: SQLite → <code>backend/data/app.json</code> (네이티브 빌드 도구 불필요)</li>
+<li><strong>프로토콜</strong>: SeedLink 제거, DataLink 고정</li>
+<li><strong>레이아웃 API</strong>: 빈 body DELETE, JSON create 등 오류 수정</li>
+<li><strong>X축</strong>: <code>xAxisRightAnchor</code> (<code>now</code> / <code>lastData</code>), 하단 라벨·tick·그리드</li>
+<li><strong>설정 UI</strong>: 사이드바 → 모달, 배경 클릭 닫기 방지, 탑바 톱니 아이콘</li>
+<li><strong>상태바</strong>: 타임윈도우 모달, 줌인/아웃 스텝(15…7200s), 전역 일시정지, Raw/Physical 토글</li>
+<li><strong>진폭 기본값</strong>: <code>amplitudeMode = raw</code></li>
+<li><strong>FFT</strong>: Log F × Log Power(dB), 패널 우클릭 토글</li>
+<li><strong>빈 데이터</strong>: <code>데이터 없음</code> + 평탄선 숨김</li>
+<li><strong>일시정지 줌</strong>: 드래그 줌인 / 더블클릭 줌아웃 / 재개 시 원복</li>
+<li><strong>줌 데이터</strong>: <code>copyAlignedWindow</code> lookback으로 과거 구간 샘플 정확히 추출</li>
+<li><strong>재접속 UI</strong>: 모달·수동 버튼 제거, 자동 재연결 유지</li>
+<li><strong>모바일</strong>: 드로어, 레이아웃 드롭다운 fixed 위치 보정</li>
+<li><strong>패널</strong>: HTML5 DnD 순서 변경, 오버레이·WebGL 높이 정렬</li>
+</ol>
+    </article>
+    <footer>
+      Generated from <code>plan.md</code> via conda env <code>ringserver_seedlink_websocket</code>.
+    </footer>
+  </div>
+</body>
+</html>
