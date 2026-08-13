@@ -1,7 +1,7 @@
 import "./env.js";
 import fs from "node:fs";
 import path from "node:path";
-import { DEFAULT_SETTINGS, type AppSettings } from "./defaults.js";
+import { DEFAULT_SETTINGS, mergeBandPassPresets, type AppSettings } from "./defaults.js";
 
 type MetaRow = {
   scnl: string;
@@ -125,7 +125,7 @@ export async function initDb(databasePath: string): Promise<void> {
 }
 
 export function getSettings(): AppSettings {
-  return {
+  const merged = {
     ...DEFAULT_SETTINGS,
     ...state.settings,
     waveformColors: {
@@ -141,15 +141,32 @@ export function getSettings(): AppSettings {
       ],
     },
   };
+  merged.bandPassPresets = mergeBandPassPresets(state.settings.bandPassPresets);
+  if (merged.bandPassEnabled == null) merged.bandPassEnabled = false;
+  if (merged.bandPassPresetId === undefined) merged.bandPassPresetId = null;
+  if (
+    merged.bandPassEnabled &&
+    merged.bandPassPresetId &&
+    !merged.bandPassPresets.some((p) => p.id === merged.bandPassPresetId)
+  ) {
+    merged.bandPassEnabled = false;
+    merged.bandPassPresetId = null;
+  }
+  return merged;
 }
 
 export function saveSettings(partial: Partial<AppSettings>): AppSettings {
+  const nextPresets =
+    partial.bandPassPresets !== undefined
+      ? mergeBandPassPresets(partial.bandPassPresets)
+      : state.settings.bandPassPresets;
   state.settings = {
     ...state.settings,
     ...partial,
     waveformColors: partial.waveformColors
       ? { ...state.settings.waveformColors, ...partial.waveformColors }
       : state.settings.waveformColors,
+    bandPassPresets: nextPresets,
   };
   persist();
   return getSettings();

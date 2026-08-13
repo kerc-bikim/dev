@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "../../store/appStore";
 import {
   TIME_WINDOW_STEPS,
@@ -6,6 +6,14 @@ import {
   formatTimeWindowLabel,
   stepTimeWindow,
 } from "../../realtime/timeWindow";
+import {
+  BUILTIN_BANDPASS_PRESETS,
+  clampBandPassToNyquist,
+  mergeBandPassPresets,
+  type BandPassPreset,
+} from "../../realtime/bandPassPresets";
+import { bufferStore } from "../../buffer/ringBuffer";
+import { scnlKey } from "../../types";
 
 const labels: Record<string, string> = {
   connecting: "연결 중",
@@ -14,6 +22,10 @@ const labels: Record<string, string> = {
   disconnected: "끊김",
   error: "오류",
 };
+
+function fmtBand(p: BandPassPreset): string {
+  return `${p.fminHz}–${p.fmaxHz} Hz`;
+}
 
 export function StatusBar() {
   const status = useAppStore((s) => s.connectionStatus);
@@ -26,16 +38,44 @@ export function StatusBar() {
   const clearAllPanels = useAppStore((s) => s.clearAllPanels);
   const [windowModalOpen, setWindowModalOpen] = useState(false);
   const [draftWindow, setDraftWindow] = useState(300);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [addingCustom, setAddingCustom] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customFmin, setCustomFmin] = useState("0.5");
+  const [customFmax, setCustomFmax] = useState("5");
+  const [filterMsg, setFilterMsg] = useState("");
+  const filterRootRef = useRef<HTMLDivElement>(null);
 
   const durationSec = settings?.durationSec ?? 300;
   const amplitudeMode = settings?.amplitudeMode || "raw";
   const isPhysical = amplitudeMode === "physical";
   const yScaleMode = settings?.yScaleMode || "auto";
   const isUniformScale = yScaleMode === "uniform";
+  const bandPassEnabled = !!settings?.bandPassEnabled;
+  const bandPassPresetId = settings?.bandPassPresetId ?? null;
+  const presets = mergeBandPassPresets(
+    settings?.bandPassPresets || BUILTIN_BANDPASS_PRESETS,
+  );
+  const activePreset = bandPassEnabled
+    ? presets.find((p) => p.id === bandPassPresetId)
+    : null;
 
   useEffect(() => {
     if (windowModalOpen) setDraftWindow(durationSec);
   }, [windowModalOpen, durationSec]);
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!filterRootRef.current?.contains(e.target as Node)) {
+        setFilterOpen(false);
+        setAddingCustom(false);
+        setFilterMsg("");
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [filterOpen]);
 
   const setDuration = (sec: number) => {
     void saveSettings({ durationSec: sec });
@@ -59,6 +99,85 @@ export function StatusBar() {
     clearAllPanels();
   };
 
+  const selectFilterOff = () => {
+    void saveSettings({ bandPassEnabled: false, bandPassPresetId: null });
+    setFilterOpen(false);
+    setAddingCustom(false);
+  };
+
+  const selectPreset = (id: string) => {
+    void saveSettings({ bandPassEnabled: true, bandPassPresetId: id });
+    setFilterOpen(false);
+    setAddingCustom(false);
+  };
+
+  const addCustomPreset = () => {
+    const name = customName.trim() || "Custom BP";
+    const fmin = Number(customFmin);
+    const fmax = Number(customFmax);
+    if (!(fmin > 0)) {
+      setFilterMsg("Min Frequency는 0보다 커야 합니다.");
+      return;
+    }
+    if (!(fmax > fmin)) {
+      setFilterMsg("Max Frequency는 Min보다 커야 합니다.");
+      return;
+    }
+    if (minSampleRate > 0) {
+      const nyq = minSampleRate / 2;
+      const clamped = clampBandPassToNyquist(fmin, fmax, minSampleRate);
+      if (!clamped) {
+        setFilterMsg(
+          `밴드가 현재 채널 Nyquist(${nyq.toFixed(2)} Hz)를 벗어나 적용할 수 없습니다.`,
+        );
+        return;
+      }
+      if (clamped.clamped) {
+        setFilterMsg(
+          `Nyquist(${nyq.toFixed(2)} Hz) 안으로 잘라 ${clamped.fminHz.toPrecision(3)}–${clamped.fmaxHz.toPrecision(3)} Hz로 적용합니다.`,
+        );
+      }
+    }
+    const id = `custom-${Date.now().toString(36)}`;
+    const next: BandPassPreset = {
+      id,
+      name: name.slice(0, 64),
+      fminHz: fmin,
+      fmaxHz: fmax,
+      group: "custom",
+      builtin: false,
+    };
+    const merged = mergeBandPassPresets([...presets, next]);
+    void saveSettings({
+      bandPassPresets: merged,
+      bandPassEnabled: true,
+      bandPassPresetId: id,
+    });
+    setCustomName("");
+    setCustomFmin("0.5");
+    setCustomFmax("5");
+    setAddingCustom(false);
+    setFilterMsg("");
+    setFilterOpen(false);
+  };
+
+  const deleteCustomPreset = (id: string) => {
+    const target = presets.find((p) => p.id === id);
+    if (!target || target.builtin || target.group !== "custom") return;
+    if (!confirm(`커스텀 필터 「${target.name}」을(를) 삭제할까요?`)) return;
+    const next = presets.filter((p) => p.id !== id);
+    const patch: {
+      bandPassPresets: BandPassPreset[];
+      bandPassEnabled?: boolean;
+      bandPassPresetId?: string | null;
+    } = { bandPassPresets: mergeBandPassPresets(next) };
+    if (bandPassPresetId === id) {
+      patch.bandPassEnabled = false;
+      patch.bandPassPresetId = null;
+    }
+    void saveSettings(patch);
+  };
+
   const applyWindowModal = () => {
     setDuration(draftWindow);
     setWindowModalOpen(false);
@@ -66,6 +185,26 @@ export function StatusBar() {
 
   const atMin = durationSec <= TIME_WINDOW_STEPS[0]!;
   const atMax = durationSec >= TIME_WINDOW_STEPS[TIME_WINDOW_STEPS.length - 1]!;
+
+  const minSampleRate = panels.reduce((minSr, p) => {
+    const sr = bufferStore.get(scnlKey(p.scnl))?.sampleRate || 0;
+    if (!(sr > 0)) return minSr;
+    return minSr === 0 ? sr : Math.min(minSr, sr);
+  }, 0);
+  const activeNyquist =
+    activePreset && minSampleRate > 0
+      ? clampBandPassToNyquist(activePreset.fminHz, activePreset.fmaxHz, minSampleRate)
+      : null;
+  const nyquistWarn =
+    activePreset && minSampleRate > 0 && activeNyquist === null
+      ? `현재 채널 Nyquist(${(minSampleRate / 2).toFixed(2)} Hz)보다 밴드가 높아 필터를 적용할 수 없습니다.`
+      : activePreset && activeNyquist?.clamped
+        ? `Nyquist(${(minSampleRate / 2).toFixed(2)} Hz)에 맞춰 ${activeNyquist.fminHz.toPrecision(3)}–${activeNyquist.fmaxHz.toPrecision(3)} Hz로 적용합니다.`
+        : "";
+
+  const seismic = presets.filter((p) => p.group === "seismic");
+  const infrasound = presets.filter((p) => p.group === "infrasound");
+  const custom = presets.filter((p) => p.group === "custom");
 
   return (
     <>
@@ -185,6 +324,165 @@ export function StatusBar() {
                 />
               </svg>
             </button>
+
+            <div className="filter-menu" ref={filterRootRef}>
+              <button
+                type="button"
+                className={`tb-icon-btn filter-icon-btn ${bandPassEnabled ? "active" : ""}`}
+                onClick={() => {
+                  setFilterOpen((v) => !v);
+                  setFilterMsg("");
+                }}
+                title={
+                  activePreset
+                    ? `밴드패스 ${activePreset.name} (${fmtBand(activePreset)})`
+                    : "밴드패스 필터 (Off)"
+                }
+                aria-label="밴드패스 필터"
+                aria-pressed={bandPassEnabled}
+                aria-expanded={filterOpen}
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"
+                  />
+                </svg>
+              </button>
+              {filterOpen && (
+                <div className="filter-dropdown" role="menu">
+                  <div className="filter-dropdown-head">Band-pass Filter</div>
+                  {nyquistWarn && <p className="filter-msg">{nyquistWarn}</p>}
+                  <button
+                    type="button"
+                    className={`filter-item ${!bandPassEnabled ? "selected" : ""}`}
+                    onClick={selectFilterOff}
+                  >
+                    <span className="filter-item-name">Off</span>
+                    <span className="filter-item-band">필터 없음</span>
+                  </button>
+
+                  <div className="filter-group-label">지진</div>
+                  {seismic.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`filter-item ${
+                        bandPassEnabled && bandPassPresetId === p.id ? "selected" : ""
+                      }`}
+                      onClick={() => selectPreset(p.id)}
+                    >
+                      <span className="filter-item-name">{p.name}</span>
+                      <span className="filter-item-band">{fmtBand(p)}</span>
+                    </button>
+                  ))}
+
+                  <div className="filter-group-label">공중음파</div>
+                  {infrasound.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`filter-item ${
+                        bandPassEnabled && bandPassPresetId === p.id ? "selected" : ""
+                      }`}
+                      onClick={() => selectPreset(p.id)}
+                    >
+                      <span className="filter-item-name">{p.name}</span>
+                      <span className="filter-item-band">{fmtBand(p)}</span>
+                    </button>
+                  ))}
+
+                  <div className="filter-group-label">커스텀</div>
+                  {custom.length === 0 && !addingCustom && (
+                    <p className="filter-empty muted">저장된 커스텀 필터 없음</p>
+                  )}
+                  {custom.map((p) => (
+                    <div key={p.id} className="filter-custom-row">
+                      <button
+                        type="button"
+                        className={`filter-item ${
+                          bandPassEnabled && bandPassPresetId === p.id ? "selected" : ""
+                        }`}
+                        onClick={() => selectPreset(p.id)}
+                      >
+                        <span className="filter-item-name">{p.name}</span>
+                        <span className="filter-item-band">{fmtBand(p)}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="filter-del"
+                        title="삭제"
+                        aria-label={`${p.name} 삭제`}
+                        onClick={() => deleteCustomPreset(p.id)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+
+                  {!addingCustom ? (
+                    <button
+                      type="button"
+                      className="filter-add-btn"
+                      onClick={() => {
+                        setAddingCustom(true);
+                        setFilterMsg("");
+                      }}
+                    >
+                      + 커스텀 추가
+                    </button>
+                  ) : (
+                    <div className="filter-add-form">
+                      <label>
+                        이름
+                        <input
+                          value={customName}
+                          onChange={(e) => setCustomName(e.target.value)}
+                          placeholder="예: BP 2–8 Hz"
+                        />
+                      </label>
+                      <div className="filter-add-freq">
+                        <label>
+                          Min Hz
+                          <input
+                            type="number"
+                            step="any"
+                            min="0"
+                            value={customFmin}
+                            onChange={(e) => setCustomFmin(e.target.value)}
+                          />
+                        </label>
+                        <label>
+                          Max Hz
+                          <input
+                            type="number"
+                            step="any"
+                            min="0"
+                            value={customFmax}
+                            onChange={(e) => setCustomFmax(e.target.value)}
+                          />
+                        </label>
+                      </div>
+                      {filterMsg && <p className="filter-msg">{filterMsg}</p>}
+                      <div className="filter-add-actions">
+                        <button type="button" className="primary" onClick={addCustomPreset}>
+                          저장·적용
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddingCustom(false);
+                            setFilterMsg("");
+                          }}
+                        >
+                          취소
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="status-bar-right">

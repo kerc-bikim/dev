@@ -1,3 +1,9 @@
+import {
+  BUILTIN_BANDPASS_PRESETS,
+  mergeBandPassPresets,
+  type BandPassPreset,
+} from "./bandPassPresets.js";
+
 export type WaveformColors = {
   palette: string[];
   channelColorMap: Record<string, string>;
@@ -19,6 +25,9 @@ export type AppSettings = {
   yScaleMode: YScaleMode;
   xAxisRightAnchor: XAxisRightAnchor;
   waveformColors: WaveformColors;
+  bandPassEnabled: boolean;
+  bandPassPresetId: string | null;
+  bandPassPresets: BandPassPreset[];
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -46,7 +55,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
     gapColor: "#ff4d4f",
     selectionColor: "#ffd166",
   },
+  bandPassEnabled: false,
+  bandPassPresetId: null,
+  bandPassPresets: [...BUILTIN_BANDPASS_PRESETS],
 };
+
+export { BUILTIN_BANDPASS_PRESETS, mergeBandPassPresets };
+export type { BandPassPreset };
 
 export const DURATION_MAX = 86400;
 export const MAX_PANELS_HARD = 50;

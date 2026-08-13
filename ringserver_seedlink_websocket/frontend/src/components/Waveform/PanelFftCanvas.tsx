@@ -2,9 +2,13 @@ import { useEffect, useRef } from "react";
 import { useAppStore } from "../../store/appStore";
 import { bufferStore } from "../../buffer/ringBuffer";
 import { computeFftDb } from "../../render/fft";
+import { applyBandPassCached } from "../../render/bandpass";
+import { resolveBandPass } from "../../realtime/bandPassPresets";
 
 type Props = {
   panelKey: string;
+  windowEndMs: number;
+  durationSec: number;
 };
 
 function log10(v: number): number {
@@ -34,7 +38,7 @@ function fmtFreq(f: number): string {
 }
 
 /** 패널 행 위에 그리는 FFT — Log Frequency × Log Power (dB) */
-export function PanelFftCanvas({ panelKey }: Props) {
+export function PanelFftCanvas({ panelKey, windowEndMs, durationSec }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const settings = useAppStore((s) => s.settings);
   const globalPaused = useAppStore((s) => s.globalPaused);
@@ -68,11 +72,26 @@ export function PanelFftCanvas({ panelKey }: Props) {
         return;
       }
 
-      const anchor = settings.xAxisRightAnchor || "lastData";
-      const windowEndMs =
-        anchor === "now" ? Date.now() : buf.endMs || Date.now();
-      const { samples } = buf.copyAlignedWindow(windowEndMs, settings.durationSec);
-      const { freqs, db } = computeFftDb(samples, buf.sampleRate);
+      const win = buf.copyAlignedWindow(windowEndMs, durationSec);
+      let samples = win.samples;
+      const bp = resolveBandPass(
+        settings.bandPassEnabled,
+        settings.bandPassPresetId,
+        settings.bandPassPresets,
+      );
+      if (bp) {
+        samples = applyBandPassCached(
+          panelKey,
+          samples,
+          win.sampleRate || buf.sampleRate,
+          win.windowStartMs,
+          win.windowEndMs,
+          bp.fminHz,
+          bp.fmaxHz,
+        );
+      }
+      const sr = win.sampleRate || buf.sampleRate;
+      const { freqs, db } = computeFftDb(samples, sr);
       if (!freqs.length) {
         ctx.fillStyle = "#9aa7b5";
         ctx.font = "12px sans-serif";
@@ -178,7 +197,7 @@ export function PanelFftCanvas({ panelKey }: Props) {
     if (globalPaused) return;
     const id = window.setInterval(paint, Math.max(200, settings.refreshIntervalMs));
     return () => window.clearInterval(id);
-  }, [panelKey, settings, globalPaused]);
+  }, [panelKey, settings, globalPaused, windowEndMs, durationSec]);
 
   return <canvas ref={canvasRef} className="panel-fft-canvas" />;
 }

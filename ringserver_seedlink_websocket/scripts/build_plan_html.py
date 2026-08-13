@@ -152,7 +152,7 @@ TEMPLATE = """<!DOCTYPE html>
     <header class="doc-header">
       <p class="eyebrow">RingWave · As-Built Plan</p>
       <h1>ringserver 실시간 WebGL 파형 뷰어</h1>
-      <p class="meta">앱 / 문서 버전 <strong>1.1.0</strong> · 최종 갱신 2026-08-04 · Conda <code>ringserver_seedlink_websocket</code> (Python 3.12)</p>
+      <p class="meta">앱 / 문서 버전 <strong>1.2.0</strong> · 최종 갱신 2026-08-07 · Conda <code>ringserver_seedlink_websocket</code> (Python 3.12)</p>
     </header>
     <article>
 {body}

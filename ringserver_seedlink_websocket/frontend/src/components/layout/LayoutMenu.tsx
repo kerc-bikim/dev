@@ -41,6 +41,9 @@ export function LayoutMenu() {
       yScaleMode: settings.yScaleMode,
       xAxisRightAnchor: settings.xAxisRightAnchor,
       waveformColors: settings.waveformColors,
+      bandPassEnabled: settings.bandPassEnabled,
+      bandPassPresetId: settings.bandPassPresetId,
+      bandPassPresets: settings.bandPassPresets,
     };
   };
 

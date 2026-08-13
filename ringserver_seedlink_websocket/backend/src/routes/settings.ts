@@ -1,6 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { getSettings, saveSettings } from "../db.js";
-import { DURATION_MAX, MAX_PANELS_HARD, type AppSettings } from "../defaults.js";
+import {
+  DURATION_MAX,
+  MAX_PANELS_HARD,
+  type AppSettings,
+} from "../defaults.js";
+import { sanitizeBandPassPresets } from "../bandPassPresets.js";
 
 function clampSettings(partial: Partial<AppSettings>): Partial<AppSettings> {
   const next = { ...partial };
@@ -27,6 +32,17 @@ function clampSettings(partial: Partial<AppSettings>): Partial<AppSettings> {
     next.xAxisRightAnchor !== "lastData"
   ) {
     delete next.xAxisRightAnchor;
+  }
+  if (typeof next.bandPassEnabled !== "boolean") {
+    delete next.bandPassEnabled;
+  }
+  if (next.bandPassPresetId !== null && typeof next.bandPassPresetId !== "string") {
+    delete next.bandPassPresetId;
+  }
+  if (next.bandPassPresets !== undefined) {
+    const sanitized = sanitizeBandPassPresets(next.bandPassPresets);
+    if (sanitized) next.bandPassPresets = sanitized;
+    else delete next.bandPassPresets;
   }
   return next;
 }

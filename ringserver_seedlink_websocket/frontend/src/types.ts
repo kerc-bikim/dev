@@ -25,6 +25,12 @@ export type WaveformColors = {
   selectionColor: string;
 };
 
+export type {
+  BandPassGroup,
+  BandPassPreset,
+} from "./realtime/bandPassPresets";
+import type { BandPassPreset } from "./realtime/bandPassPresets";
+
 export type AppSettings = {
   ringserverUrl: string;
   fdsnwsUrl: string;
@@ -38,6 +44,10 @@ export type AppSettings = {
   /** X축 오른쪽 끝 기준 */
   xAxisRightAnchor: XAxisRightAnchor;
   waveformColors: WaveformColors;
+  /** 밴드패스 필터 적용 여부 (기본 Off) */
+  bandPassEnabled: boolean;
+  bandPassPresetId: string | null;
+  bandPassPresets: BandPassPreset[];
 };
 
 export type LayoutPayload = {
@@ -48,6 +58,9 @@ export type LayoutPayload = {
   yScaleMode?: YScaleMode;
   xAxisRightAnchor?: XAxisRightAnchor;
   waveformColors?: WaveformColors;
+  bandPassEnabled?: boolean;
+  bandPassPresetId?: string | null;
+  bandPassPresets?: BandPassPreset[];
 };
 
 export type LayoutItem = {

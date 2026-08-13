@@ -1,10 +1,10 @@
-# RingWave — ringserver 실시간 WebGL 파형 뷰어 (v1.0)
+# RingWave — ringserver 실시간 WebGL 파형 뷰어 (v1.2)
 
 | 항목 | 내용 |
 |------|------|
-| 앱 / 문서 버전 | **1.1.0** |
+| 앱 / 문서 버전 | **1.2.0** |
 | 작성일 | 2026-07-31 |
-| 최종 갱신 | 2026-08-04 |
+| 최종 갱신 | 2026-08-07 |
 | 프로젝트 경로 | `C:\Users\bikim\Dev\ringserver_seedlink_websocket` |
 | 개발 Conda 환경 | `ringserver_seedlink_websocket` (Python 3.12) |
 | 참고 | [EarthScope/ringserver](https://github.com/EarthScope/ringserver) |
@@ -348,6 +348,14 @@ python --version   # Python 3.12.x
 ---
 
 ## 12. 히스토리
+
+### v1.2.0 — 2026-08-07
+
+밴드패스 필터 UI·DSP.
+
+- 상태바 필터 아이콘, 기본 Off
+- 지진 3 + 공중음파 3 builtin 프리셋, 커스텀 추가/삭제 (`app.json`)
+- Butterworth 4차 zero-phase(filtfilt)를 draw-time에 적용 — 파형·FFT 공통
 
 ### v1.1.0 — 2026-08-04
 

@@ -6,6 +6,10 @@ import type {
   SCNL,
 } from "../types";
 import { scnlKey } from "../types";
+import {
+  mergeBandPassPresets,
+  BUILTIN_BANDPASS_PRESETS,
+} from "../realtime/bandPassPresets";
 import { api } from "../api/client";
 import { bufferStore } from "../buffer/ringBuffer";
 import { ReconnectController } from "../realtime/reconnectController";
@@ -77,6 +81,23 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     if (settings.yScaleMode !== "auto" && settings.yScaleMode !== "uniform") {
       settings.yScaleMode = "auto";
+    }
+    settings.bandPassPresets = mergeBandPassPresets(
+      settings.bandPassPresets || BUILTIN_BANDPASS_PRESETS,
+    );
+    if (typeof settings.bandPassEnabled !== "boolean") {
+      settings.bandPassEnabled = false;
+    }
+    if (settings.bandPassPresetId === undefined) {
+      settings.bandPassPresetId = null;
+    }
+    if (
+      settings.bandPassEnabled &&
+      settings.bandPassPresetId &&
+      !settings.bandPassPresets.some((p) => p.id === settings.bandPassPresetId)
+    ) {
+      settings.bandPassEnabled = false;
+      settings.bandPassPresetId = null;
     }
     const limits = await api.getLimits();
     const layouts = await api.listLayouts();
@@ -220,6 +241,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (layout.payload.yScaleMode) patch.yScaleMode = layout.payload.yScaleMode;
     if (layout.payload.xAxisRightAnchor) patch.xAxisRightAnchor = layout.payload.xAxisRightAnchor;
     if (layout.payload.waveformColors) patch.waveformColors = layout.payload.waveformColors;
+    if (layout.payload.bandPassPresets) {
+      patch.bandPassPresets = mergeBandPassPresets(layout.payload.bandPassPresets);
+    }
+    if (typeof layout.payload.bandPassEnabled === "boolean") {
+      patch.bandPassEnabled = layout.payload.bandPassEnabled;
+    }
+    if (layout.payload.bandPassPresetId !== undefined) {
+      patch.bandPassPresetId = layout.payload.bandPassPresetId;
+    }
     patch.protocol = "datalink";
     if (Object.keys(patch).length) await get().saveSettings(patch, { applyLive: false });
 

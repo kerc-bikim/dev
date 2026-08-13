@@ -1,6 +1,6 @@
 # RingWave — ringserver 실시간 WebGL 파형 뷰어
 
-**버전 1.1.0** (2026-08-04)
+**버전 1.2.0** (2026-08-07)
 
 EarthScope [ringserver](https://github.com/EarthScope/ringserver) WebSocket(**DataLink**)으로 실시간 miniSEED를 수신하고, WebGL(`webgl-plot`)로 파형을 표출합니다.
 
@@ -41,7 +41,7 @@ PORT=8787
 
 설정 모달에서도 ringserver / FDSNWS URL을 바꿀 수 있습니다.
 
-## 주요 기능 (v1.1)
+## 주요 기능 (v1.2)
 
 - Network → Station → Channel 트리 다중 선택 Plot
 - 탑바 레이아웃 CRUD (`app.json`)
@@ -50,6 +50,7 @@ PORT=8787
 - 패널 최대 50, HTML5 DnD 순서 변경
 - Calibration 아이콘: Raw / Physical 토글 (기본 Raw)
 - Scale 아이콘: Auto / Uniform Y축 스케일
+- Band-pass 필터(지진 3·공중음파 3·커스텀, 기본 Off) — 파형+FFT
 - X축 오른쪽 기준: `now` / `lastData`
 - 시간축 눈금·보조선, 갭 배지
 - 전역 일시정지 + 마우스/터치 줌·팬
@@ -59,6 +60,12 @@ PORT=8787
 - 모바일 드로어 UI
 
 ## 히스토리
+
+### 1.2.0 — 2026-08-07
+
+- 상태바 Band-pass 필터 아이콘(기본 Off)
+- 지진 3·공중음파 3 프리셋 + 커스텀 추가/삭제(`app.json` 저장)
+- Butterworth 4차 zero-phase를 표시 윈도우에 적용(파형·FFT)
 
 ### 1.1.0 — 2026-08-04
 

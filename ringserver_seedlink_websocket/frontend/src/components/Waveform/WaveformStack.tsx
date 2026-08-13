@@ -7,6 +7,8 @@ import type { SCNL, XAxisRightAnchor } from "../../types";
 import { scnlKey } from "../../types";
 import { bufferStore, resolveWindowEndMs } from "../../buffer/ringBuffer";
 import { buildTimeAxisTicks, type TimeAxisTick } from "../../realtime/timeWindow";
+import { resolveBandPass } from "../../realtime/bandPassPresets";
+import { applyBandPassCached } from "../../render/bandpass";
 
 type PanelOverlay = {
   key: string;
@@ -121,6 +123,7 @@ function buildOverlays(
   view: ViewWindow,
   amplitudeMode: "raw" | "physical",
   stats?: { key: string; min: number | null; max: number | null }[],
+  bandPass?: { fminHz: number; fmaxHz: number } | null,
 ): { overlays: PanelOverlay[]; timeAxis: TimeAxisLabels } {
   const durationSec = viewDurationSec(view);
   const ticks = buildTimeAxisTicks(view.startMs, view.endMs, durationSec);
@@ -143,11 +146,23 @@ function buildOverlays(
     let max = statsMap.get(key)?.max ?? null;
     if ((min == null || max == null) && buf) {
       const win = buf.copyAlignedWindow(view.endMs, durationSec);
-      if (win.samples.length) {
+      let samples = win.samples;
+      if (bandPass && samples.length) {
+        samples = applyBandPassCached(
+          key,
+          samples,
+          win.sampleRate,
+          win.windowStartMs,
+          win.windowEndMs,
+          bandPass.fminHz,
+          bandPass.fmaxHz,
+        );
+      }
+      if (samples.length) {
         min = Infinity;
         max = -Infinity;
-        for (let i = 0; i < win.samples.length; i++) {
-          let v = win.samples[i]!;
+        for (let i = 0; i < samples.length; i++) {
+          let v = samples[i]!;
           if (canPhysical) v = v / buf.sensitivity!;
           if (v < min) min = v;
           if (v > max) max = v;
@@ -205,6 +220,7 @@ export function WaveformStack() {
   const [fftKeys, setFftKeys] = useState<Set<string>>(() => new Set());
   /** 일시정지 중 줌/팬 뷰 스택 (마지막이 현재 뷰) */
   const [zoomStack, setZoomStack] = useState<ViewWindow[]>([]);
+  const [displayView, setDisplayView] = useState<ViewWindow | null>(null);
   const [dragSel, setDragSel] = useState<{ left: number; width: number } | null>(null);
 
   const dragIndex = useRef<number | null>(null);
@@ -243,15 +259,18 @@ export function WaveformStack() {
     p: typeof panels,
     view: ViewWindow,
     amplitudeMode: "raw" | "physical",
+    bandPass?: { fminHz: number; fmaxHz: number } | null,
   ) => {
     const built = buildOverlays(
       p,
       view,
       amplitudeMode,
       rendererRef.current?.getLastStats(),
+      bandPass,
     );
     setOverlays(built.overlays);
     setTimeAxis(built.timeAxis);
+    setDisplayView(view);
   };
 
   const drawFrame = (
@@ -267,6 +286,11 @@ export function WaveformStack() {
       scnl: x.scnl,
       hideWave: fft.has(scnlKey(x.scnl)),
     }));
+    const bp = resolveBandPass(
+      s.bandPassEnabled,
+      s.bandPassPresetId,
+      s.bandPassPresets,
+    );
     if (p.length) {
       rendererRef.current?.draw(
         specs,
@@ -275,9 +299,10 @@ export function WaveformStack() {
         view.endMs,
         s.xAxisRightAnchor || "lastData",
         s.yScaleMode || "auto",
+        bp,
       );
     }
-    refreshOverlays(p, view, s.amplitudeMode);
+    refreshOverlays(p, view, s.amplitudeMode, bp);
   };
 
   const toggleFft = (key: string) => {
@@ -387,7 +412,16 @@ export function WaveformStack() {
           true,
           zoomStackRef.current,
         );
-        refreshOverlays(panels, view, settings.amplitudeMode);
+        refreshOverlays(
+          panels,
+          view,
+          settings.amplitudeMode,
+          resolveBandPass(
+            settings.bandPassEnabled,
+            settings.bandPassPresetId,
+            settings.bandPassPresets,
+          ),
+        );
         return;
       }
       drawFrame(panels, settings, fftKeys);
@@ -658,7 +692,7 @@ export function WaveformStack() {
         lastTapRef.current = null;
         return;
       }
-    } else if (!g || g.kind === "pinch") {
+    } else if (!g) {
       gestureRef.current = null;
       setDragSel(null);
     }
@@ -767,7 +801,13 @@ export function WaveformStack() {
                       toggleFft(o.key);
                     }}
                   >
-                    {isFft && <PanelFftCanvas panelKey={o.key} />}
+                    {isFft && displayView && (
+                      <PanelFftCanvas
+                        panelKey={o.key}
+                        windowEndMs={displayView.endMs}
+                        durationSec={viewDurationSec(displayView)}
+                      />
+                    )}
                     <div className="wave-scnl-badge" title={scnlKey(o.scnl)}>
                       <div className="wave-scnl-name">
                         {scnlBadge(o.scnl)}

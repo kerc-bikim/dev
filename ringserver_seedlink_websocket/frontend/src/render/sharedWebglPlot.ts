@@ -1,5 +1,6 @@
 import { WebglPlot, type WebglLinePlot, updateViewport } from "webgl-plot";
 import { hexToRgba, minMaxDownsampleTimed } from "./downsample";
+import { applyBandPassCached } from "./bandpass";
 import { bufferStore } from "../buffer/ringBuffer";
 import type { SCNL, WaveformColors, XAxisRightAnchor, YScaleMode } from "../types";
 import { scnlKey } from "../types";
@@ -141,6 +142,7 @@ export class SharedWaveformRenderer {
     windowEndMs: number,
     _anchor?: XAxisRightAnchor,
     yScaleMode: YScaleMode = "auto",
+    bandPass?: { fminHz: number; fmaxHz: number } | null,
   ) {
     if (!this.plot || !this.linePlot) return;
     const n = Math.max(1, panels.length);
@@ -195,6 +197,17 @@ export class SharedWaveformRenderer {
 
       const win = buf.copyAlignedWindow(windowEndMs, durationSec);
       let samples = win.samples;
+      if (bandPass) {
+        samples = applyBandPassCached(
+          key,
+          samples,
+          win.sampleRate,
+          win.windowStartMs,
+          win.windowEndMs,
+          bandPass.fminHz,
+          bandPass.fmaxHz,
+        );
+      }
       if (amplitudeMode === "physical" && buf.sensitivity && buf.sensitivity !== 0) {
         const scaled = new Float32Array(samples.length);
         for (let i = 0; i < samples.length; i++) scaled[i] = samples[i]! / buf.sensitivity!;
