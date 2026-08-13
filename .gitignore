@@ -1,0 +1,12 @@
+# Shared Python virtualenv created by .cursor/install.sh.
+# Ignored so Cloud Agent branch checkouts preserve it (like node_modules) and
+# it is never accidentally committed.
+.venv/
+
+# Python bytecode caches
+__pycache__/
+*.pyc
+
+# PPSD backend runtime output (recreated at runtime)
+PPSD_v1/backend/cache/
+PPSD_v1/backend/sds/
