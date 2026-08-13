@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StationXML 메타데이터 관리 — 문서</title>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    import { marked } from "https://cdn.jsdelivr.net/npm/marked@15/lib/marked.esm.js";
+
+    const FILES = [
+      { id: "readme", path: "README.md", label: "사용법", title: "README" },
+      { id: "plan", path: "PLAN.md", label: "계획", title: "PLAN" },
+    ];
+
+    /* EMBEDDED_DOCS_BEGIN */
+    const EMBEDDED_DOCS = {
+  "README.md": "# StationXML 메타데이터 관리\n\n엑셀 또는 StationXML을 올려 네트워크·관측소·채널 메타데이터를 고치고, 다시 StationXML·엑셀로 내보내는 로컬 웹 도구입니다. 센서와 기록계는 장비 카탈로그 ID만 고를 수 있습니다.\n\n가독성 있는 HTML 문서는 [`docs.html`](docs.html)에서 이 파일과 [`PLAN.md`](PLAN.md)를 불러와 봅니다.\n\n- 상태: v1 구현 완료 (코드 리뷰 반영 포함)\n- 스택: FastAPI + ObsPy + SQLite (`app/`), React + Vite + TypeScript (`frontend/`)\n- UI: 한국어\n\n---\n\n## 구성\n\n```\nstationxml_manager/\n├── app/                      FastAPI · ObsPy · SQLite\n│   ├── main.py               HTTP API, 접근 제어, 업로드 제한\n│   ├── cli.py                템플릿·가져오기·내보내기 CLI\n│   ├── models.py             Network / Station / Channel / Catalog / Audit\n│   ├── crud.py               upsert, NRL, 응답(Response) 보존\n│   ├── excel_io.py           엑셀 읽기/쓰기, 빈 템플릿\n│   ├── xml_io.py             StationXML → 계층 구조\n│   ├── inventory.py          DB → ObsPy Inventory\n│   ├── catalog.py            시드 YAML, 제조사·모델 매칭\n│   ├── columns.py            엑셀 열 이름·수준(네트워크/관측소/채널)\n│   ├── validation.py         위경도·시간·sps 검사, 시간 정규화\n│   ├── audit.py              변경이력 JSON\n│   ├── db.py                 SQLite 세션\n│   └── errors.py             ValidationError / AppError\n├── frontend/                 React + Vite (한글 UI)\n├── tests/                    pytest (코어 + API)\n├── equipment_catalog.yaml    최초 장비 목록(이후는 DB가 원본)\n├── data/stationxml.db        SQLite (실행 후 생성)\n├── scripts/build_docs_html.py  README/PLAN을 docs.html에 내장\n├── README.md · PLAN.md       사용법 · 계획\n└── docs.html                 마크다운 HTML 로더\n```\n\nSQLite 파일은 `data/stationxml.db`에 저장됩니다.\n\n---\n\n## 데이터 모델\n\n엑셀 한 행은 한 채널입니다. DB는 계층 구조입니다.\n\n```mermaid\nflowchart TB\n  NET[Network\u003cbr/>code, description, operator, restricted]\n  STA[Station\u003cbr/>code, lat/lon/elev, site, vault]\n  CHA[Channel\u003cbr/>NSLC + start_time, sps, equipment IDs]\n  CAT[EquipmentCatalog\u003cbr/>sensor / datalogger]\n  AUD[AuditLog]\n  NET --> STA --> CHA\n  CAT -.->|sensor_id / datalogger_id| CHA\n  CHA -.-> AUD\n```\n\n| 수준 | 저장 위치 | 엑셀에서 |\n|------|-----------|----------|\n| 네트워크 | `networks` | 같은 네트워크 코드의 행은 설명이 일치해야 함 |\n| 관측소 | `stations` | 사이트명·좌표 등이 행마다 다르면 가져오기 실패 |\n| 채널 | `channels` | 한 행 = 한 채널. 고유키는 관측소 + 위치코드 + 채널 + 시작시간 |\n| 장비 | `equipment_catalog` | `catalog_sensors` / `catalog_dataloggers` 시트 또는 웹 카탈로그 탭 |\n| 이력 | `audit_log` | 웹 변경이력 탭 (복원 기능 없음) |\n\n채널의 계측기 응답은 `response_xml` blob으로 보관합니다. 출처는 `response_source` (`none` / `imported` / `nrl`)입니다.\n\n---\n\n## 웹으로 실행\n\n```bash\ncd stationxml_manager\npython -m venv .venv\nsource .venv/bin/activate   # Windows: .venv\\Scripts\\activate\npip install -r requirements.txt\n\n# 백엔드\nuvicorn app.main:app --reload --host 127.0.0.1 --port 8000\n\n# 프론트엔드 (다른 터미널)\ncd frontend\nnpm install\nnpm run dev\n```\n\n브라우저에서 `http://localhost:5173`을 엽니다. Vite가 `/api`를 `8000`으로 프록시합니다. API 문서: `http://localhost:8000/docs`.\n\n프론트를 빌드해 백엔드와 같이 쓰려면:\n\n```bash\ncd frontend && npm install && npm run build\ncd ..\nuvicorn app.main:app --host 127.0.0.1 --port 8000\n```\n\n### 문서 HTML 로더\n\n`docs.html`은 `README.md`와 `PLAN.md`를 읽어 목차·표·Mermaid 다이어그램으로 보여 줍니다.\n\n```bash\ncd stationxml_manager\npython -m http.server 8080\n# http://localhost:8080/docs.html\n```\n\n마크다운을 고친 뒤 내장 사본을 갱신하려면:\n\n```bash\npython scripts/build_docs_html.py\n```\n\n`file://`로 바로 열면 최신 `.md`를 fetch하지 못할 수 있습니다. 그때는 내장 사본을 쓰거나, 로더의 **파일 열기**로 로컬 마크다운을 고릅니다.\n\n---\n\n## 접근 제어\n\n기본 API는 **로컬 요청만** 허용합니다 (`127.0.0.1`, `::1`).\n\n다른 컴퓨터에서 접속하려면 API 키와 허용 Origin을 설정하고, 웹 화면 상단에도 같은 API 키를 입력합니다. API 키를 설정하면 **로컬 접속도 키가 필요**합니다.\n\n리버스 프록시를 사용하는 경우에도 반드시 API 키를 설정해야 합니다. `X-Forwarded-For` / `Forwarded`가 붙은 요청은 키가 없으면 차단됩니다. CORS 미들웨어는 인증보다 바깥에 있어 401/403에도 브라우저가 오류 본문을 읽습니다.\n\n```bash\nexport STATIONXML_API_KEY=\"충분히-긴-임의의-값\"\nexport STATIONXML_CORS_ORIGINS=\"http://192.168.0.10:5173\"\nuvicorn app.main:app --host 0.0.0.0 --port 8000\n```\n\n| 환경 변수 | 기본 | 설명 |\n|-----------|------|------|\n| `STATIONXML_API_KEY` | (없음) | 있으면 모든 `/api`에 `X-API-Key` 필요 |\n| `STATIONXML_CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | 허용 Origin 목록 |\n| `STATIONXML_MAX_UPLOAD_MB` | `20` | 가져오기 파일 크기. 잘못된 값은 기본값으로 되돌림 |\n\n프론트 상단 **API 키** 칸은 입력 즉시 `localStorage`에 저장되고, 내보내기 다운로드에도 같은 헤더를 붙입니다.\n\n---\n\n## CLI\n\n```bash\n# 드롭다운이 있는 엑셀 템플릿 (채널 행 없음, 카탈로그 시트만)\npython -m app.cli --write-template stations.xlsx\n\n# 엑셀 또는 StationXML → DB 적재 후 StationXML 저장\npython -m app.cli stations.xlsx -o inventory.xml\npython -m app.cli inventory.xml -o inventory.xml --replace-all\n\n# 카탈로그 NRL 키로 응답을 붙인 뒤 저장\npython -m app.cli inventory.xml -o inventory.xml --apply-nrl\n```\n\nNRL 응답은 내보내기 때 자동으로 붙지 않습니다. 웹의 **NRL** 버튼 또는 `--apply-nrl`일 때만 적용합니다.\n\n`--replace-all`은 네트워크·관측소·채널을 지운 뒤 다시 넣습니다. 같은 NSLC+시작시간에 있던 `response_xml`은 새 파일에 응답이 없어도 유지합니다. 채널이 하나도 없는 파일은 거절하며 기존 자료는 바꾸지 않습니다.\n\n---\n\n## 웹 UI\n\n| 탭 | 역할 |\n|----|------|\n| 채널 | 필터, 추가/수정/삭제, 센서·기록계 드롭다운, NRL 적용 |\n| 관측소 | 좌표·사이트 정보. 네트워크 이동 가능(중복 코드 검사) |\n| 네트워크 | 설명·운영기관·공개제한 |\n| 장비 카탈로그 | 센서/기록계 CRUD. 사용 중인 ID는 삭제 불가 |\n| 가져오기/내보내기 | xlsx·xml 업로드, StationXML/엑셀/템플릿 다운로드 |\n| 변경이력 | 감사 로그 조회. 복원 없음 |\n\n작업자 이름은 이력에만 남습니다. 로그인 계정은 없습니다.\n\n전체 교체 가져오기는 확인 대화상자와 `confirm_replace` 폼 값이 있어야 실행됩니다.\n\n---\n\n## 엑셀 사용\n\n한 행 = 한 채널입니다. 같은 관측소의 사이트명·좌표 등이 행마다 다르면 가져오기가 실패합니다.\n\n**필수 열:** 네트워크, 관측소, 채널, 위도, 경도, 시작시간, 샘플링레이트\n\n센서ID·기록계ID는 `catalog_sensors` / `catalog_dataloggers` 시트 값만 쓸 수 있습니다. 알 수 없는 열 이름은 거절됩니다. `extra` 키-값 열은 없습니다.\n\n### 시트\n\n| 시트 | 내용 |\n|------|------|\n| `channels` | 채널 행 (한글 헤더 또는 영문 별칭) |\n| `catalog_sensors` | 센서 카탈로그 |\n| `catalog_dataloggers` | 기록계 카탈로그 (sps 포함) |\n\n웹 **템플릿 받기**와 CLI `--write-template`는 카탈로그 시트와 헤더만 넣고 **채널 행은 비웁니다**. 현재 DB 인벤토리를 엑셀로 받으려면 **엑셀 내보내기**를 씁니다.\n\n### 열 이름 (한글 헤더 / 영문)\n\n네트워크: 네트워크, 네트워크설명, 운영기관, 공개제한\n\n관측소: 관측소, 위도, 경도, 고도, 관측소명, 위치설명, 시군구, 지역, 국가, 설치환경, 지질, 관측소설명, 설치일, 철거일\n\n채널: 채널, 시작시간, 샘플링레이트, 위치코드, 심도, 끝시간, 방위각, 경사, 채널설명, 비고, 채널유형, 시각오차, 채널위도, 채널경도, 채널고도, 센서ID, 센서일련번호, 센서유형, 센서설치일, 센서철거일, 기록계ID, 기록계일련번호, 기록계유형, 기록계설치일, 기록계철거일\n\n방위각·경사를 비우면 채널 코드 마지막 글자(`Z`/`N`/`E`/`1`/`2`)로 추정합니다. 심도 `0`은 유효한 값입니다.\n\n### 엑셀 왕복 한계\n\n계측기 응답(Response)은 StationXML에만 있습니다. 엑셀은 표 메타데이터용입니다.\n\n- StationXML을 올린 뒤 엑셀을 다시 가져와도, 같은 NSLC+시작시간의 기존 응답은 유지됩니다.\n- 전체 교체(`replace_all`)도 매칭되는 채널의 응답 blob을 보존합니다.\n- 엑셀만으로 NRL 응답을 실을 수는 없습니다. 웹 **NRL** 또는 CLI `--apply-nrl`을 씁니다.\n\n---\n\n## 가져오기 · 내보내기 · NRL\n\n```mermaid\nflowchart LR\n  XLSX[엑셀] --> IMP[import_hierarchy]\n  XML[StationXML] --> IMP\n  IMP --> DB[(SQLite)]\n  DB --> OUTXML[StationXML 내보내기]\n  DB --> OUTXLS[엑셀 내보내기]\n  CAT[카탈로그 nrl_keys] -.->|명시적 NRL만| DB\n```\n\n- **upsert:** 같은 네트워크/관측소/NSLC+시작시간이 있으면 수정, 없으면 추가.\n- **시간 정규화:** `canonical_time()`으로 UTC 문자열을 맞춰, `...00`과 `...000000Z`가 다른 행으로 들어가지 않습니다.\n- **응답:** 들어오는 파일에 Response가 있으면 덮어쓰고, 없으면 기존 blob을 유지합니다.\n- **빈 가져오기:** 채널 0건이면 400으로 거절하고 DB를 비우지 않습니다.\n- **NRL:** 채널마다 카탈로그 `nrl_keys`로 ObsPy NRL을 붙입니다. 키가 없거나 매칭 실패면 오류입니다. 내보내기 때 자동 적용하지 않습니다.\n\n---\n\n## 값 검사\n\n- 위도 -90~90, 경도 -180~180\n- 시작시간 \u003c 끝시간\n- 고도 0이면 경고(저장은 허용)\n- 기록계 카탈로그 sps와 채널 샘플링레이트 일치 (제조사·모델만 같고 sps가 다르면 매칭 실패)\n- 채널이 쓰는 장비 ID는 카탈로그에서 삭제 불가\n- 사용 중인 기록계의 샘플링레이트를 비울 수 없음\n- 카탈로그 upsert 때 `nrl_keys` / `sample_rate`는 값이 있을 때만 덮어씀\n- 파싱 오류는 400 한글 메시지, 고유키 충돌은 409\n\n---\n\n## HTTP API\n\n인증: 로컬이거나 `X-API-Key`. 업로드는 `STATIONXML_MAX_UPLOAD_MB` 제한.\n\n| 방법 | 경로 | 설명 |\n|------|------|------|\n| GET | `/api/health` | 상태 |\n| GET/PUT | `/api/networks`, `/api/networks/{id}` | 네트워크 |\n| GET/POST/PUT/DELETE | `/api/stations`, `/api/stations/{id}` | 관측소. PUT으로 `network_id` 이동 가능 |\n| GET/POST/PUT/DELETE | `/api/channels`, `/api/channels/{id}` | 채널 |\n| POST | `/api/channels/{id}/apply-nrl` | NRL 응답 적용 |\n| GET/POST/PUT/DELETE | `/api/catalog`, `/api/catalog/{id}` | 장비 카탈로그 |\n| POST | `/api/import` | `file` + `replace_all` + `confirm_replace` + `actor` |\n| GET | `/api/export/stationxml` | StationXML 다운로드 |\n| GET | `/api/export/xlsx` | 엑셀 다운로드 (채널 포함) |\n| GET | `/api/template.xlsx` | 빈 템플릿 (카탈로그만) |\n| GET | `/api/history` | 변경이력 (`limit`, `nslc`) |\n\n---\n\n## 테스트\n\n```bash\ncd stationxml_manager\nPYTHONPATH=. pytest -q\n```\n\nObsPy 1.4.1은 SQLAlchemy 1.4가 필요합니다 (`requirements.txt`의 `sqlalchemy==1.4.54`).\n\n---\n\n## 계획과 범위\n\n확정 결정, 구현 체크리스트, 코드 리뷰 반영은 [`PLAN.md`](PLAN.md)를 봅니다.\n",
+  "PLAN.md": "# StationXML 메타데이터 관리 — 계획과 구현\n\n엑셀·StationXML을 읽고 고친 뒤 다시 내보내는 로컬 웹 관리기의 **확정 계획**과 **구현 결과**입니다.\n\n- 상태 표기: [x] 구현 완료\n- 스택: FastAPI + ObsPy + SQLite (`app/`), React + Vite + TypeScript (`frontend/`)\n- 사용법·API·엑셀 열: [`README.md`](README.md)\n- HTML 보기: [`docs.html`](docs.html)\n\n실제 백엔드 경로는 `backend/`이 아니라 `app/`입니다. CLI는 `python -m app.cli`입니다.\n\n---\n\n## 목표\n\n1. 엑셀(한 행 = 한 채널)과 StationXML을 같은 DB 계층(Network → Station → Channel)으로 가져온다.\n2. 웹에서 네트워크·관측소·채널·장비 카탈로그를 CRUD한다.\n3. StationXML / 엑셀로 내보낸다. 계측기 Response는 StationXML blob으로 보존한다.\n4. 센서·기록계는 자유 입력이 아니라 카탈로그 ID만 허용한다.\n5. 변경이력을 남긴다. 복원·로그인 계정은 v1 밖이다.\n\n---\n\n## 확정 결정\n\n| # | 결정 | 이유 |\n|---|------|------|\n| 1 | 가져온 StationXML Response는 `response_xml` blob으로 보관. NRL은 선택 | 엑셀에 응답이 없어도 StationXML 왕복이 깨지지 않게 |\n| 2 | 네트워크·관측소 필드는 부모 수준에 저장·편집 | 엑셀 행마다 좌표가 갈리면 거절 |\n| 3 | 카탈로그는 웹 + 엑셀 카탈로그 시트로 편집 | YAML은 최초 시드만. 이후 원본은 DB |\n| 4 | `extra` 키-값 없음. 알 수 없는 엑셀 열은 거절 | 스키마를 고정해 왕복을 예측 가능하게 |\n| 5 | 내보내기 때 NRL 자동 부착 없음 | 명시적 **NRL** / `--apply-nrl`만 |\n\n나중에 고정한 동작:\n\n- 엑셀 재가져오기가 기존 응답을 지우지 않음 (전체 교체 포함, NSLC+시작시간 매칭)\n- 사용 중인 카탈로그 항목은 삭제 불가\n- 엑셀 왕복 한계를 UI·문서에 명시\n- UI는 한국어\n- 위경도·시간 순서·기록계 sps 검사\n\n---\n\n## 아키텍처\n\n```mermaid\nflowchart LR\n  User[브라우저]\n  FE[\"React + Vite (한글 UI)\"]\n  BE[FastAPI app/]\n  DB[(\"SQLite data/stationxml.db\")]\n  NRL[ObsPy NRL]\n  User -->|탭 CRUD / 가져오기| FE\n  FE -->|\"/api/* + X-API-Key\"| BE\n  BE --> DB\n  BE -.->|apply-nrl 명시 시에만| NRL\n  BE -->|StationXML / xlsx| User\n```\n\n```mermaid\nflowchart TB\n  subgraph ingest [가져오기]\n    XLSX[xlsx] --> excel_io\n    XML[StationXML] --> xml_io\n    excel_io --> hier[hierarchy dict]\n    xml_io --> hier\n    hier --> import_h[import_hierarchy]\n  end\n  subgraph store [저장]\n    import_h --> NET[networks]\n    import_h --> STA[stations]\n    import_h --> CHA[channels + response_xml]\n    import_h --> CAT[equipment_catalog]\n    import_h --> AUD[audit_log]\n  end\n  subgraph out [내보내기]\n    CHA --> inventory[ObsPy Inventory]\n    inventory --> OUTXML[inventory.xml]\n    NET --> OUTXLS[inventory.xlsx]\n    STA --> OUTXLS\n    CHA --> OUTXLS\n    CAT --> OUTXLS\n  end\n```\n\n---\n\n## 구현 범위\n\n### 백엔드 (`app/`)\n\n- [x] SQLite + SQLAlchemy 1.4 classic `declarative_base` (ObsPy 1.4.1 호환)\n- [x] Network / Station / Channel / EquipmentCatalog / AuditLog\n- [x] 엑셀 읽기: 한글·영문 별칭, 필수 열, 알 수 없는 열 거절\n- [x] 엑셀 쓰기: 채널 + 카탈로그 시트, 드롭다운 템플릿\n- [x] 빈 템플릿: `write_excel(..., include_channels=False)` — 현재 인벤토리를 넣지 않음\n- [x] StationXML 읽기: Response → `response_xml`, 장비는 카탈로그 ID로 매칭\n- [x] StationXML 쓰기: blob을 Channel.response에 복원\n- [x] upsert + `canonical_time()`으로 시작시간 중복 방지\n- [x] `replace_all` 시 매칭 채널의 응답 보존, 빈 파일 거절\n- [x] 카탈로그 시드 YAML, 웹 CRUD, 사용 중 삭제 차단\n- [x] 제조사·모델 매칭 시 sps가 다르면 다른 기록계로 보지 않음\n- [x] NRL은 채널 단위 명시 적용만\n- [x] 위경도, 시간 순서, sps, 심도 0 허용\n- [x] 로컬 전용 API, `STATIONXML_API_KEY`, 프록시 차단, CORS, 업로드 용량\n- [x] 파싱 오류 400 한글, IntegrityError 409\n- [x] CLI `python -m app.cli`\n\n### 프론트엔드 (`frontend/`)\n\n- [x] 채널 / 관측소 / 네트워크 / 카탈로그 / 가져오기·내보내기 / 변경이력 탭\n- [x] 센서·기록계 드롭다운 (카탈로그 ID만)\n- [x] API 키 입력, `localStorage` 즉시 동기화, 다운로드에도 헤더\n- [x] 전체 교체 확인, 삭제·필터 오류 처리, 이력 JSON 파싱 보호\n- [x] 관측소 `network_id` 변경 UI\n\n### 테스트 (`tests/`)\n\n- [x] 코어: 엑셀 왕복, 응답 보존, 시간 정규화, 카탈로그, 검증\n- [x] API: 접근 제어, 업로드 제한, `confirm_replace`, 템플릿, 관측소 이동\n\n---\n\n## 코드 리뷰 반영\n\n리뷰에서 나온 동작 오류·보안·UX를 반영한 내용입니다.\n\n| 이슈 | 반영 |\n|------|------|\n| `depth=0` PUT이 `0 or None`으로 NOT NULL 500 | 0을 유지하는 갱신 |\n| `replace_all`이 `response_xml`을 지움 | NSLC+시작시간으로 blob 보존. 빈 import 거절. UI 확인 + `confirm_replace` |\n| 시작시간 문자열 불일치로 중복 행 | `canonical_time()` 후 비교·저장 |\n| 카탈로그 제조사·모델이 다른 sps로 떨어짐 | sps가 다르면 매칭 실패 |\n| 카탈로그 upsert가 `nrl_keys`/`sample_rate`를 None으로 지움 | 값이 있을 때만 덮어씀. 사용 중 기록계 sps 비우기 금지 |\n| `/api/template.xlsx`가 전체 인벤토리를 넣음 | 채널 없는 템플릿 |\n| 관측소 `network_id` 변경이 무시됨 | 중복 검사 후 갱신 |\n| 인증 없는 API + CORS `*` | 로컬만 허용. 키 설정 시 전체 요구. CORS Origin 제한. 프록시 키 필수 |\n| CORS가 인증보다 안쪽 | 401/403에도 CORS 헤더 |\n| 업로드 크기 제한 없음 | `STATIONXML_MAX_UPLOAD_MB` (기본 20, 잘못된 env는 기본값) |\n| 파싱 예외가 500 | 400 한글. 고유키 409 |\n| 프론트 다운로드·삭제·필터 레이스 | fetch+헤더, 오류 표시, request-id로 필터 레이스 방지 |\n\n---\n\n## v1에 넣지 않은 것\n\n- `extra` 키-값, 알 수 없는 엑셀 열을 extra로 흡수\n- 내보내기 시 NRL 자동 부착\n- 변경이력에서 복원\n- 로그인 계정·권한 모델\n- 다중 사용자 동시 편집 잠금\n- FDSN 원격 조회\n\n---\n\n## 파일 역할\n\n| 경로 | 역할 |\n|------|------|\n| `app/main.py` | FastAPI, 접근 제어, import/export 엔드포인트 |\n| `app/crud.py` | 계층 upsert, 응답 보존, NRL, 카탈로그 가드 |\n| `app/excel_io.py` | 엑셀 I/O, 템플릿 |\n| `app/xml_io.py` | StationXML → hierarchy |\n| `app/inventory.py` | DB → ObsPy Inventory / Response blob |\n| `app/catalog.py` | YAML 시드, 제조사·모델·sps 매칭 |\n| `app/columns.py` | 열 별칭과 네트워크/관측소/채널 수준 |\n| `app/validation.py` | 위경도·시간·sps, `canonical_time` |\n| `app/cli.py` | 템플릿·변환·`--apply-nrl` |\n| `frontend/src/App.tsx` | 한글 탭 UI |\n| `frontend/src/api.ts` | API 키 헤더, 업로드/다운로드 |\n| `equipment_catalog.yaml` | 빈 DB일 때만 시드 |\n| `docs.html` | README/PLAN HTML 로더 |\n| `scripts/build_docs_html.py` | 마크다운을 docs.html에 내장 |\n"
+};
+    /* EMBEDDED_DOCS_END */
+
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+    const savedTheme = localStorage.getItem("sxm-docs-theme");
+    let theme = savedTheme || (prefersDark.matches ? "dark" : "light");
+
+    function applyTheme() {
+      document.documentElement.dataset.theme = theme;
+      localStorage.setItem("sxm-docs-theme", theme);
+    }
+    applyTheme();
+
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "loose",
+      theme: theme === "dark" ? "dark" : "neutral",
+    });
+
+    marked.setOptions({ gfm: true, breaks: false });
+
+    const slugCounts = new Map();
+    function slugify(text) {
+      const base = String(text)
+        .toLowerCase()
+        .replace(/[`*_]/g, "")
+        .replace(/[^\p{L}\p{N}]+/gu, "-")
+        .replace(/^-+|-+$/g, "") || "section";
+      const n = (slugCounts.get(base) || 0) + 1;
+      slugCounts.set(base, n);
+      return n === 1 ? base : `${base}-${n}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    const renderer = new marked.Renderer();
+    renderer.code = ({ text, lang }) => {
+      const language = (lang || "").trim().toLowerCase();
+      if (language === "mermaid") {
+        return `<pre class="mermaid">${escapeHtml(text)}</pre>`;
+      }
+      const cls = language ? ` class="language-${escapeHtml(language)}"` : "";
+      return `<pre><code${cls}>${escapeHtml(text)}</code></pre>`;
+    };
+    renderer.heading = ({ text, depth }) => {
+      const id = slugify(text.replace(/<[^>]+>/g, ""));
+      return `<h${depth} id="${id}"><a class="anchor" href="#${id}">#</a>${text}</h${depth}>`;
+    };
+    marked.use({ renderer });
+
+    const state = {
+      current: FILES[0].id,
+      sources: {},
+      status: "loading",
+    };
+
+    async function loadMarkdown(file) {
+      try {
+        const res = await fetch(file.path, { cache: "no-store" });
+        if (!res.ok) throw new Error(`${res.status}`);
+        return { text: await res.text(), origin: "file" };
+      } catch {
+        const embedded = EMBEDDED_DOCS[file.path];
+        if (typeof embedded === "string" && embedded.trim()) {
+          return { text: embedded, origin: "embedded" };
+        }
+        throw new Error("missing");
+      }
+    }
+
+    async function loadAll() {
+      const results = await Promise.all(
+        FILES.map(async (file) => {
+          try {
+            const loaded = await loadMarkdown(file);
+            return { id: file.id, ...loaded, error: null };
+          } catch {
+            return { id: file.id, text: "", origin: "none", error: true };
+          }
+        })
+      );
+      for (const row of results) {
+        state.sources[row.id] = row;
+      }
+      const any = results.some((row) => !row.error);
+      state.status = any ? "ready" : "empty";
+    }
+
+    function buildToc(root) {
+      const headings = [...root.querySelectorAll("h2, h3")];
+      if (!headings.length) return "";
+      return headings
+        .map((el) => {
+          const level = el.tagName === "H2" ? "h2" : "h3";
+          return `<a class="toc-link ${level}" href="#${el.id}">${el.textContent.replace(/^#/, "").trim()}</a>`;
+        })
+        .join("");
+    }
+
+    async function renderCurrent() {
+      slugCounts.clear();
+      const file = FILES.find((f) => f.id === state.current);
+      const source = state.sources[file.id];
+      const article = document.getElementById("article");
+      const toc = document.getElementById("toc");
+      const badge = document.getElementById("source-badge");
+      const empty = document.getElementById("empty-state");
+
+      document.querySelectorAll("[data-doc]").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.doc === file.id);
+      });
+
+      if (!source || source.error || !source.text) {
+        article.innerHTML = "";
+        toc.innerHTML = "";
+        empty.hidden = false;
+        badge.textContent = "파일 없음";
+        badge.dataset.origin = "none";
+        return;
+      }
+
+      empty.hidden = true;
+      article.innerHTML = marked.parse(source.text);
+      toc.innerHTML = `<p class="toc-title">목차</p>${buildToc(article)}`;
+      badge.textContent =
+        source.origin === "file"
+          ? `${file.path} (최신)`
+          : source.origin === "local"
+            ? "로컬 파일"
+            : `${file.path} (내장 사본)`;
+      badge.dataset.origin = source.origin;
+
+      const nodes = article.querySelectorAll("pre.mermaid");
+      if (nodes.length) {
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: "loose",
+          theme: theme === "dark" ? "dark" : "neutral",
+        });
+        await mermaid.run({ nodes });
+      }
+
+      if (location.hash) {
+        const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+        if (target) target.scrollIntoView();
+      }
+    }
+
+    function setDoc(id) {
+      state.current = id;
+      history.replaceState(null, "", `#doc-${id}`);
+      renderCurrent();
+    }
+
+    async function boot() {
+      const hash = location.hash.replace(/^#/, "");
+      if (hash.startsWith("doc-")) {
+        const id = hash.slice(4);
+        if (FILES.some((f) => f.id === id)) state.current = id;
+      }
+      await loadAll();
+      document.getElementById("shell").dataset.status = state.status;
+      await renderCurrent();
+    }
+
+    document.getElementById("theme-toggle").addEventListener("click", async () => {
+      theme = theme === "dark" ? "light" : "dark";
+      applyTheme();
+      await renderCurrent();
+    });
+
+    document.querySelectorAll("[data-doc]").forEach((btn) => {
+      btn.addEventListener("click", () => setDoc(btn.dataset.doc));
+    });
+
+    document.getElementById("open-file").addEventListener("click", () => {
+      document.getElementById("file-input").click();
+    });
+
+    document.getElementById("file-input").addEventListener("change", async (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const target = FILES.find((f) => f.path.toLowerCase() === file.name.toLowerCase()) || FILES.find((f) => f.id === state.current);
+      state.sources[target.id] = { text, origin: "local", error: null };
+      state.status = "ready";
+      document.getElementById("shell").dataset.status = "ready";
+      setDoc(target.id);
+      event.target.value = "";
+    });
+
+    boot();
+  </script>
+  <style>
+    :root {
+      --fg: #1f2328;
+      --muted: #57606a;
+      --bg: #f4f1ea;
+      --panel: #fffdf8;
+      --border: #d7d2c8;
+      --accent: #0b6e4f;
+      --accent-soft: #d8eee4;
+      --code-bg: #eef2f4;
+      --code-fg: #24292f;
+      --pre-bg: #1c2430;
+      --pre-fg: #e8eef2;
+      --shadow: 0 10px 30px rgba(28, 36, 48, 0.08);
+    }
+    [data-theme="dark"] {
+      --fg: #e6edf3;
+      --muted: #8b949e;
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --accent: #3fb950;
+      --accent-soft: #163227;
+      --code-bg: #21262d;
+      --code-fg: #e6edf3;
+      --pre-bg: #0d1117;
+      --pre-fg: #e6edf3;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(1200px 600px at 8% -12%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 55%),
+        var(--bg);
+      color: var(--fg);
+      font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif;
+      line-height: 1.65;
+    }
+    .top {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .top-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0.85rem 1.25rem;
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .brand {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .tabs { display: flex; gap: 0.4rem; }
+    .tabs button, .tool {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--fg);
+      border-radius: 999px;
+      padding: 0.35rem 0.85rem;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tabs button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .tools { margin-left: auto; display: flex; gap: 0.4rem; align-items: center; }
+    .badge {
+      font-size: 0.78rem;
+      color: var(--muted);
+      background: var(--accent-soft);
+      border-radius: 999px;
+      padding: 0.25rem 0.7rem;
+    }
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 1.25rem;
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: 1.25rem;
+    }
+    .toc {
+      position: sticky;
+      top: 76px;
+      align-self: start;
+      max-height: calc(100vh - 96px);
+      overflow: auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0.9rem 0.8rem;
+      box-shadow: var(--shadow);
+    }
+    .toc-title {
+      margin: 0 0 0.5rem;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .toc-link {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.86rem;
+      padding: 0.22rem 0.3rem;
+      border-radius: 6px;
+    }
+    .toc-link.h3 { padding-left: 0.9rem; font-size: 0.8rem; }
+    .toc-link:hover { background: var(--accent-soft); color: var(--fg); }
+    article {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.4rem 1.6rem 2.4rem;
+      box-shadow: var(--shadow);
+      min-height: 60vh;
+    }
+    article h1 { margin-top: 0; font-size: 1.9rem; line-height: 1.25; }
+    article h2 {
+      margin-top: 2.1rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--border);
+      font-size: 1.35rem;
+      color: var(--accent);
+    }
+    article h3 { margin-top: 1.5rem; font-size: 1.08rem; }
+    article a { color: var(--accent); }
+    .anchor {
+      margin-right: 0.4rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 700;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.3rem;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.65rem;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: var(--accent-soft); }
+    code {
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.86rem;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+    }
+    pre {
+      background: var(--pre-bg);
+      color: var(--pre-fg);
+      padding: 1rem 1.05rem;
+      border-radius: 12px;
+      overflow-x: auto;
+    }
+    pre code { background: transparent; color: inherit; padding: 0; }
+    pre.mermaid {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    blockquote {
+      margin: 1rem 0;
+      padding: 0.55rem 0.9rem;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+    }
+    .empty {
+      background: var(--panel);
+      border: 1px dashed var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+    }
+    footer {
+      max-width: 1180px;
+      margin: 0 auto 2rem;
+      padding: 0 1.25rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .toc { position: static; max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <p class="brand">StationXML 문서</p>
+      <nav class="tabs">
+        <button type="button" data-doc="readme" class="active">사용법</button>
+        <button type="button" data-doc="plan">계획</button>
+      </nav>
+      <div class="tools">
+        <span id="source-badge" class="badge">불러오는 중</span>
+        <button type="button" id="open-file" class="tool">파일 열기</button>
+        <input id="file-input" type="file" accept=".md,.markdown,text/markdown" hidden />
+        <button type="button" id="theme-toggle" class="tool">테마</button>
+      </div>
+    </div>
+  </header>
+  <div id="shell" class="layout" data-status="loading">
+    <nav id="toc" class="toc" aria-label="목차"></nav>
+    <main>
+      <article id="article"></article>
+      <div id="empty-state" class="empty" hidden>
+        <h2>마크다운을 찾지 못했습니다</h2>
+        <p>
+          같은 폴더의 <code>README.md</code> / <code>PLAN.md</code>를 읽으려면
+          <code>python -m http.server 8080</code>으로 연 뒤
+          <code>http://localhost:8080/docs.html</code>을 여세요.
+          또는 오른쪽 위 <strong>파일 열기</strong>로 로컬 마크다운을 고르세요.
+        </p>
+      </div>
+    </main>
+  </div>
+  <footer>
+    README.md와 PLAN.md를 읽는 HTML 로더입니다. 마크다운이 바뀌면 페이지를 새로고침하거나
+    <code>python scripts/build_docs_html.py</code>로 내장 사본을 갱신하세요.
+  </footer>
+</body>
+</html>
