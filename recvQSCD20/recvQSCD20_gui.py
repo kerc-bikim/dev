@@ -14,13 +14,13 @@ from __future__ import annotations
 import datetime
 import logging
 import os
+import queue
 import socket
 import struct
 import sys
 import time
 import zlib
-from collections import deque
-from typing import Any, Deque, Dict, List, NamedTuple, Optional, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
 import numpy as np
 import pyqtgraph as pg
@@ -42,24 +42,31 @@ from copy import deepcopy
 
 from gui_settings import (
     GuiSettings,
+    MIN_SOCK_TIMEOUT_SEC,
     SETTING_UI_SPECS,
     default_settings,
     load_settings,
     parse_int_list,
     parse_str_list,
+    path_for_settings_storage,
+    pending_apply_notes,
+    sanitize_file_prefix,
     save_settings,
     settings_file_path,
     validate_settings,
     work_directory,
 )
 
+FALLBACK_VERSION = "3.8"
+
+
 def _load_gui_version() -> str:
     try:
         vpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERSION")
         with open(vpath, encoding="utf-8") as f:
-            return f.read().strip() or "3.6"
+            return f.read().strip() or FALLBACK_VERSION
     except OSError:
-        return "3.6"
+        return FALLBACK_VERSION
 
 
 GUI_VERSION = _load_gui_version()
@@ -82,6 +89,7 @@ DEFAULT_TIME_WINDOW_SEC = 600
 LOG_MAX_LINES = 5000
 CHART_REFRESH_MS = 200
 PACKET_DRAIN_MAX = 800
+PACKET_QUEUE_MAX = 20000
 BIN_FLUSH_EVERY = 32
 LIVE_LOG_VERBOSE = False
 RECV_DELAY_ALERT_SEC = 10
@@ -169,9 +177,6 @@ QPushButton#BtnStop {
     border-radius: 4px;
 }
 """
-
-SockTimeOut = 0.5
-SockTimeOutCount = 120
 
 Y_LABEL_DIFF = "시간(초)"
 Y_LABEL_GAL = "gal(cm/sec2)"
@@ -270,16 +275,22 @@ SERIES_IDX: Dict[str, int] = {
 DEFAULT_PANELS = frozenset({"diff", "max", "pga"})
 
 
-def _apply_gui_settings(s: Optional[GuiSettings] = None) -> GuiSettings:
+def _apply_gui_settings(s: Optional[GuiSettings] = None, *, fallback: bool = False) -> GuiSettings:
     """설정 파일 값을 모듈 전역 및 _runtime_settings에 반영."""
     global _runtime_settings
     global DEFAULT_PORT, DEFAULT_TIME_WINDOW_SEC, TIME_WINDOW_CHOICES
     global DEFAULT_PANELS, DEFAULT_SHOW_LEGEND, LOG_MAX_LINES, CHART_REFRESH_MS
-    global PACKET_DRAIN_MAX, BIN_FLUSH_EVERY, LIVE_LOG_VERBOSE
+    global PACKET_DRAIN_MAX, PACKET_QUEUE_MAX, BIN_FLUSH_EVERY, LIVE_LOG_VERBOSE
     global RECV_DELAY_ALERT_SEC, RECV_ALERT_BLINK_MS, SockTimeOut, SockTimeOutCount
 
     cfg = s if s is not None else load_settings()
-    validate_settings(cfg, list(PANEL_DEFS.keys()))
+    try:
+        validate_settings(cfg, list(PANEL_DEFS.keys()))
+    except (ValueError, TypeError):
+        if not fallback:
+            raise
+        cfg = default_settings()
+        validate_settings(cfg, list(PANEL_DEFS.keys()))
     _runtime_settings = cfg
 
     DEFAULT_PORT = int(cfg.default_port)
@@ -290,6 +301,7 @@ def _apply_gui_settings(s: Optional[GuiSettings] = None) -> GuiSettings:
     LOG_MAX_LINES = int(cfg.log_max_lines)
     CHART_REFRESH_MS = int(cfg.chart_refresh_ms)
     PACKET_DRAIN_MAX = int(cfg.packet_drain_max)
+    PACKET_QUEUE_MAX = int(cfg.packet_queue_max)
     BIN_FLUSH_EVERY = int(cfg.bin_flush_every)
     LIVE_LOG_VERBOSE = bool(cfg.live_log_verbose)
     RECV_DELAY_ALERT_SEC = int(cfg.recv_delay_alert_sec)
@@ -299,7 +311,7 @@ def _apply_gui_settings(s: Optional[GuiSettings] = None) -> GuiSettings:
     return cfg
 
 
-_apply_gui_settings(load_settings())
+_apply_gui_settings(load_settings(), fallback=True)
 
 pg.setConfigOptions(
     antialias=False,
@@ -693,7 +705,6 @@ class QtLogHandler(QtCore.QObject, logging.Handler):
 # UDP thread
 # ---------------------------------------------------------------------------
 class UdpReceiver(QtCore.QThread):
-    packet_received = QtCore.pyqtSignal(bytes, tuple, float, float)
     timeout_warning = QtCore.pyqtSignal(str)
     error_occurred = QtCore.pyqtSignal(str)
     recv_issue = QtCore.pyqtSignal(str)
@@ -704,6 +715,14 @@ class UdpReceiver(QtCore.QThread):
         self._port = int(port)
         self._stop = False
         self._sock: Optional[socket.socket] = None
+        self._packets: queue.Queue = queue.Queue(maxsize=max(200, PACKET_QUEUE_MAX))
+        self._sock_timeout = max(MIN_SOCK_TIMEOUT_SEC, float(SockTimeOut))
+        self._sock_timeout_count = int(SockTimeOutCount)
+        # GUI 스레드가 쓰고 수신 스레드가 읽는다. 소켓 자체는 수신 스레드만 만진다.
+        self._pending_timeout: Optional[float] = None
+        self._drop_count = 0
+        self._error_count = 0
+        self._unpack_error_count = 0
 
     def stop(self) -> None:
         self._stop = True
@@ -713,6 +732,62 @@ class UdpReceiver(QtCore.QThread):
                 s.close()
             except OSError:
                 pass
+
+    def set_sock_params(self, timeout_sec: float, timeout_count: int) -> None:
+        """수신 스레드가 다음 루프에서 적용하도록 예약만 한다."""
+        self._sock_timeout_count = int(timeout_count)
+        self._pending_timeout = max(MIN_SOCK_TIMEOUT_SEC, float(timeout_sec))
+
+    def _report_loop_error(self, msg: str) -> None:
+        """반복되는 수신 오류로 로그가 폭주하지 않도록 제한하고, 바쁜 루프를 막는다."""
+        self._error_count += 1
+        if self._error_count <= 3 or self._error_count % 200 == 0:
+            self.recv_issue.emit(f"{msg} (누적 {self._error_count}건)")
+        QtCore.QThread.msleep(50)
+
+    def _apply_pending_timeout(self, sock: socket.socket) -> None:
+        pending = self._pending_timeout
+        if pending is None or pending == self._sock_timeout:
+            self._pending_timeout = None
+            return
+        self._pending_timeout = None
+        self._sock_timeout = pending
+        try:
+            sock.settimeout(pending)
+        except OSError:
+            pass
+
+    def drain_packets(
+        self, max_n: Optional[int] = None
+    ) -> List[Tuple[bytes, Tuple[Any, ...], float, float]]:
+        out: List[Tuple[bytes, Tuple[Any, ...], float, float]] = []
+        if max_n is None:
+            while True:
+                try:
+                    out.append(self._packets.get_nowait())
+                except queue.Empty:
+                    break
+            return out
+        limit = max(1, int(max_n))
+        for _ in range(limit):
+            try:
+                out.append(self._packets.get_nowait())
+            except queue.Empty:
+                break
+        return out
+
+    def _enqueue(self, item: Tuple[bytes, Tuple[Any, ...], float, float]) -> None:
+        """큐가 가득 차면 이미 받은 기록을 지키기 위해 새 패킷을 버린다."""
+        try:
+            self._packets.put_nowait(item)
+            return
+        except queue.Full:
+            pass
+        self._drop_count += 1
+        if self._drop_count == 1 or self._drop_count % 100 == 0:
+            self.recv_issue.emit(
+                f"수신 큐 포화: 새 패킷 {self._drop_count}개 폐기(먼저 받은 기록 유지)"
+            )
 
     def run(self) -> None:
         self._stop = False
@@ -725,7 +800,7 @@ class UdpReceiver(QtCore.QThread):
             except OSError:
                 pass
             sock.bind((self._host, self._port))
-            sock.settimeout(SockTimeOut)
+            sock.settimeout(self._sock_timeout)
         except OSError as e:
             self.error_occurred.emit(f"UDP bind 실패 ({self._host}:{self._port}): {e}")
             self._sock = None
@@ -733,8 +808,9 @@ class UdpReceiver(QtCore.QThread):
 
         while not self._stop:
             try:
+                if self._pending_timeout is not None:
+                    self._apply_pending_timeout(sock)
                 pmyqscd, _addr = sock.recvfrom(QSCD_LEN)
-                # GUI 부하와 무관하게 recvfrom 직후 TimeDiff 기준 시각 확정
                 recv_wall = time.time()
                 timeout_cnt = 0
                 if len(pmyqscd) != QSCD_LEN:
@@ -742,26 +818,31 @@ class UdpReceiver(QtCore.QThread):
                 try:
                     myqscd = struct.unpack(QSCD20_FMT, pmyqscd)
                 except struct.error as e:
-                    self.recv_issue.emit(f"struct unpack 오류: {e}")
+                    self._unpack_error_count += 1
+                    if self._unpack_error_count <= 3 or self._unpack_error_count % 100 == 0:
+                        self.recv_issue.emit(
+                            f"struct unpack 오류: {e} (누적 {self._unpack_error_count}건)"
+                        )
                     continue
                 recv_diff = compute_recv_time_diff(recv_wall, myqscd)
-                self.packet_received.emit(pmyqscd, myqscd, recv_wall, recv_diff)
+                self._enqueue((pmyqscd, myqscd, recv_wall, recv_diff))
             except socket.timeout:
                 if self._stop:
                     break
                 timeout_cnt += 1
-                if timeout_cnt >= SockTimeOutCount:
+                if timeout_cnt >= self._sock_timeout_count:
                     self.timeout_warning.emit(
                         "Could not receive data for last "
-                        + str(int(SockTimeOut * SockTimeOutCount))
+                        + str(int(self._sock_timeout * self._sock_timeout_count))
                         + " secs."
                     )
                     timeout_cnt = 0
-            except OSError:
+            except OSError as e:
                 if self._stop:
                     break
+                self._report_loop_error(f"UDP 소켓 오류: {e}")
             except Exception as e:
-                self.recv_issue.emit(f"UDP 수신 오류: {e}")
+                self._report_loop_error(f"UDP 수신 오류: {e}")
 
         try:
             sock.close()
@@ -785,11 +866,18 @@ class StationBuffer:
         self.version += 1
         self._prune()
 
-    def append(self, myqscd: Tuple[Any, ...], recv_wall: Optional[float] = None) -> None:
+    def append(
+        self,
+        myqscd: Tuple[Any, ...],
+        recv_wall: Optional[float] = None,
+        recv_diff: Optional[float] = None,
+    ) -> None:
         recv_wall = recv_wall if recv_wall is not None else time.time()
         self.last_recv_wall = recv_wall
         sec = int(float(myqscd[6]))
-        row: Dict[str, float] = {"diff": recv_wall - float(myqscd[6])}
+        if recv_diff is None:
+            recv_diff = compute_recv_time_diff(recv_wall, myqscd)
+        row: Dict[str, float] = {"diff": float(recv_diff)}
         for name, idx in SERIES_IDX.items():
             row[name] = float(myqscd[idx])
         self.buckets[sec] = row
@@ -1481,7 +1569,13 @@ class BasicSettingsDialog(QtWidgets.QDialog):
             elif kind == "str_list":
                 setattr(s, key, parse_str_list(w.text()))  # type: ignore[union-attr]
             elif kind == "path":
-                setattr(s, key, w.text().strip())  # type: ignore[union-attr]
+                raw = w.text().strip()  # type: ignore[union-attr]
+                if raw:
+                    try:
+                        raw = path_for_settings_storage(raw)
+                    except ValueError:
+                        pass
+                setattr(s, key, raw)
         return s
 
     def _browse_path_dir(self, edit: QtWidgets.QLineEdit) -> None:
@@ -1492,7 +1586,10 @@ class BasicSettingsDialog(QtWidgets.QDialog):
             start = work_directory()
         d = QtWidgets.QFileDialog.getExistingDirectory(self, "디렉터리 선택", start)
         if d:
-            edit.setText(d)
+            try:
+                edit.setText(path_for_settings_storage(d))
+            except ValueError:
+                edit.setText(d)
 
     def _load_into_form(self, s: GuiSettings) -> None:
         for key, w in self._editors.items():
@@ -1522,17 +1619,19 @@ class BasicSettingsDialog(QtWidgets.QDialog):
         except ValueError as e:
             QtWidgets.QMessageBox.warning(self, "설정 오류", str(e))
             return
+        notes = pending_apply_notes(_runtime_settings, s)
         try:
             save_settings(s)
         except OSError as e:
             QtWidgets.QMessageBox.critical(self, "저장 오류", str(e))
             return
         self._main.apply_runtime_settings(s)
-        QtWidgets.QMessageBox.information(
-            self,
-            "저장 완료",
-            "설정을 저장했습니다. 일부 항목은 즉시 반영됩니다.",
-        )
+        msg = "설정을 저장했습니다."
+        if notes:
+            msg += "\n\n아래 항목은 지금 바로 반영되지 않습니다.\n· " + "\n· ".join(notes)
+        else:
+            msg += " 변경 내용이 바로 반영되었습니다."
+        QtWidgets.QMessageBox.information(self, "저장 완료", msg)
         self.accept()
 
 
@@ -1586,7 +1685,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._chart_window_sec: int = DEFAULT_TIME_WINDOW_SEC
         self._file_records: List[Tuple[Any, ...]] = []
         self._file_recv_diffs: Optional[List[float]] = None
-        self._packet_queue: Deque[Tuple[bytes, Tuple[Any, ...], float, float]] = deque()
+        self._packet_source: Optional[UdpReceiver] = None
         self._bin_flush_pending = 0
         self._live_chart_dirty = False
 
@@ -1711,16 +1810,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._log_view.setMaximumBlockCount(LOG_MAX_LINES)
         if self._receiver is None:
             self._spin_port.setValue(DEFAULT_PORT)
-        self._chart_window_sec = DEFAULT_TIME_WINDOW_SEC
+        else:
+            self._receiver.set_sock_params(SockTimeOut, SockTimeOutCount)
         self._rebuild_time_window_combos()
-        self._chk_show_legend.setChecked(DEFAULT_SHOW_LEGEND)
-        self._chk_file_show_legend.setChecked(DEFAULT_SHOW_LEGEND)
-        self._live_charts.set_show_legend(DEFAULT_SHOW_LEGEND)
-        self._file_charts.set_show_legend(DEFAULT_SHOW_LEGEND)
-        for pid, chk in self._panel_checks.items():
-            chk.setChecked(pid in DEFAULT_PANELS)
-        for pid, chk in self._file_panel_checks.items():
-            chk.setChecked(pid in DEFAULT_PANELS)
         for buf in self._station_bufs.values():
             buf.set_window_sec(self._chart_window_sec)
         self._live_charts.set_window_sec(self._chart_window_sec)
@@ -2083,10 +2175,11 @@ class MainWindow(QtWidgets.QMainWindow):
             self._live_chart_dirty = False
             self._refresh_live_charts_now()
 
-    def _flush_bin_if_needed(self, force: bool = False) -> None:
+    def _flush_bin_if_needed(self, force: bool = False, n_packets: int = 0) -> None:
         if self._data_fp is None:
             return
-        self._bin_flush_pending += 1
+        if n_packets:
+            self._bin_flush_pending += int(n_packets)
         if force or self._bin_flush_pending >= BIN_FLUSH_EVERY:
             try:
                 self._data_fp.flush()
@@ -2094,20 +2187,24 @@ class MainWindow(QtWidgets.QMainWindow):
                 pass
             self._bin_flush_pending = 0
 
-    def _drain_packet_queue(self) -> None:
-        n = 0
+    def _drain_packet_queue(self, drain_all: bool = False) -> None:
+        # 큐는 수신 스레드가 들고 있다. 스레드를 놓아준 뒤에도 남은 패킷을 기록해야
+        # 하므로 _receiver 가 아니라 별도 참조(_packet_source)를 통해 꺼낸다.
+        source = self._packet_source
+        if source is None:
+            return
+        batch = source.drain_packets(None if drain_all else PACKET_DRAIN_MAX)
+        if not batch:
+            return
         last_selected: Optional[Tuple[Any, ...]] = None
-        while self._packet_queue and n < PACKET_DRAIN_MAX:
-            pmyqscd, myqscd, recv_wall, recv_diff = self._packet_queue.popleft()
-            n += 1
+        for pmyqscd, myqscd, recv_wall, recv_diff in batch:
             st = station_code_str(myqscd)
 
             if st not in self._station_bufs:
                 self._station_bufs[st] = StationBuffer(window_sec=self._chart_window_sec)
                 self._combo_station.addItem(st)
 
-            # TimeDiff·바이너리 기록을 차트/로그보다 먼저 처리
-            self._station_bufs[st].append(myqscd, recv_wall)
+            self._station_bufs[st].append(myqscd, recv_wall, recv_diff)
 
             if self._data_fp is not None:
                 try:
@@ -2128,8 +2225,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 last_selected = myqscd
                 self._live_chart_dirty = True
 
-        if n > 0:
-            self._flush_bin_if_needed()
+        self._flush_bin_if_needed(n_packets=len(batch))
 
         if last_selected is not None:
             self._lbl_live_quality.setText(format_quality_flag_line(last_selected))
@@ -2176,15 +2272,30 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         prefix = self._edit_prefix.text().strip()
-        if not prefix:
-            QtWidgets.QMessageBox.warning(self, "prefix 오류", "로그 파일명(prefix)을 입력하세요.")
+        try:
+            prefix = sanitize_file_prefix(prefix)
+        except ValueError as e:
+            QtWidgets.QMessageBox.warning(self, "prefix 오류", str(e))
             return
 
         log_path = os.path.join(log_dir, f"{prefix}.QSCD.log")
         bin_path = os.path.join(bin_dir, f"{prefix}.QSCD20.bin")
+        existing = [p for p in (log_path, bin_path) if os.path.exists(p)]
+        if existing:
+            ans = QtWidgets.QMessageBox.question(
+                self,
+                "파일 덮어쓰기",
+                "같은 이름의 파일이 이미 있습니다. 내용을 지우고 새로 기록할까요?\n\n"
+                + "\n".join(existing),
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.No,
+            )
+            if ans != QtWidgets.QMessageBox.Yes:
+                return
 
         try:
-            fh = logging.FileHandler(log_path, encoding="utf-8")
+            # 덮어쓰기 확인을 받았으므로 로그도 bin과 같이 새로 쓴다(기본값 append 아님).
+            fh = logging.FileHandler(log_path, mode="w", encoding="utf-8")
             fh.setFormatter(self._formatter)
             self._logger.addHandler(fh)
             self._file_handler = fh
@@ -2196,7 +2307,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self._data_fp = open(bin_path, "wb")
             write_qscd20_bin_header(self._data_fp)
         except OSError as e:
-            if self._file_handler:
+            if self._data_fp is not None:
+                try:
+                    self._data_fp.close()
+                except OSError:
+                    pass
+                self._data_fp = None
+            if self._file_handler is not None:
                 self._logger.removeHandler(self._file_handler)
                 self._file_handler.close()
                 self._file_handler = None
@@ -2204,7 +2321,6 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         self._station_bufs.clear()
-        self._packet_queue.clear()
         self._bin_flush_pending = 0
         self._live_chart_dirty = False
         self._selected_station = ""
@@ -2222,7 +2338,7 @@ class MainWindow(QtWidgets.QMainWindow):
         port = int(self._spin_port.value())
         self._outputs_open = True
         self._receiver = UdpReceiver(HOST, port, self)
-        self._receiver.packet_received.connect(self._on_packet)
+        self._packet_source = self._receiver
         self._receiver.timeout_warning.connect(self._on_timeout_warning)
         self._receiver.error_occurred.connect(self._on_udp_error)
         self._receiver.recv_issue.connect(self._on_recv_issue)
@@ -2248,13 +2364,24 @@ class MainWindow(QtWidgets.QMainWindow):
             self._receiver = None
         self._close_session_outputs()
         self._reset_receive_ui()
-        self._logger.info("수신 중지됨.", extra={"station": ""})
+
+    def _drain_remaining_packets(self) -> None:
+        """세션 종료 시 남은 패킷을 모두 기록한다. 양이 많으면 잠시 멈출 수 있다."""
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        try:
+            self._drain_packet_queue(drain_all=True)
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
 
     def _close_session_outputs(self) -> None:
         if not self._outputs_open:
+            self._packet_source = None
             return
         self._outputs_open = False
-        self._drain_packet_queue()
+        self._drain_remaining_packets()
+        self._packet_source = None
+        # 파일 핸들러를 떼기 전에 남겨야 로그 파일에도 종료 기록이 남는다.
+        self._logger.info("수신 중지됨.", extra={"station": ""})
         if self._data_fp is not None:
             self._flush_bin_if_needed(force=True)
             try:
@@ -2282,23 +2409,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _on_receiver_finished(self) -> None:
         thr = self.sender()
-        if isinstance(thr, UdpReceiver):
-            thr.deleteLater()
         if self._receiver is thr:
             self._receiver = None
         if self._outputs_open:
             self._close_session_outputs()
             self._reset_receive_ui()
-
-    def _on_packet(
-        self,
-        pmyqscd: bytes,
-        myqscd: Tuple[Any, ...],
-        recv_wall: float,
-        recv_diff: float,
-    ) -> None:
-        """UDP 스레드 → 큐 적재만(가벼움). TimeDiff는 수신 스레드에서 이미 확정."""
-        self._packet_queue.append((pmyqscd, myqscd, recv_wall, recv_diff))
+        # 남은 패킷을 모두 꺼낸 뒤에 스레드 객체를 해제한다.
+        if isinstance(thr, UdpReceiver):
+            thr.deleteLater()
 
     def _on_timeout_warning(self, msg: str) -> None:
         self._logger.warning(msg, extra={"station": ""})

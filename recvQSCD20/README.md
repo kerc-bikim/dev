@@ -1,4 +1,4 @@
-# recvQSCD20 (GUI v3.6)
+# recvQSCD20 (GUI v3.8)
 
 KIGAM QSCD20 UDP 패킷(120바이트)을 수신·기록·시각화하는 PyQt5 GUI 프로그램입니다.
 
@@ -22,7 +22,7 @@ pip install -r requirements.txt
 python recvQSCD20_gui.py
 ```
 
-버전: **3.6** (`VERSION` · `GUI_VERSION`)
+버전: **3.8** (`VERSION` · `GUI_VERSION`)
 
 ### 메뉴
 
@@ -45,15 +45,23 @@ python recvQSCD20_gui.py
 | `bin_save_dir` | QCDX 바이너리 저장 폴더 (기본 `bin`) |
 | `default_port` | 우측 패널 기본 UDP 포트 |
 | `default_time_window_sec` / `time_window_choices` | 시간 콤보 기본값·목록 |
-| `default_panels` / `default_show_legend` | 시작 시 차트 패널·범례 |
+| `default_panels` / `default_show_legend` | 시작 시 차트 패널·범례 (**프로그램 재시작 후 반영**) |
 | `log_max_lines` | 로그 뷰어 최대 줄 수 |
-| `chart_refresh_ms` / `packet_drain_max` | Live 갱신·배치 처리 |
-| `bin_flush_every` | 바이너리 flush 주기 |
+| `chart_refresh_ms` / `packet_drain_max` | Live 갱신 주기·1회 배치 처리량 |
+| `packet_queue_max` | 수신 큐 상한 (**다음 Start부터 반영**) |
+| `bin_flush_every` | 바이너리 flush 주기 (**패킷 수** 기준) |
 | `live_log_verbose` | Live 상세 로그 |
 | `recv_delay_alert_sec` / `recv_alert_blink_ms` | 수신 지연 경고 |
-| `sock_timeout_sec` / `sock_timeout_count` | UDP 수신 스레드 |
+| `sock_timeout_sec` / `sock_timeout_count` | UDP 수신 스레드 (timeout 최소 `0.05`초, 수신 중에도 반영) |
+
+설정 저장 시 즉시 반영되지 않는 항목은 저장 완료 창에서 따로 안내합니다.
 
 **변경 불가 (코드 고정):** `BIN_FILE_MAGIC` (`QCDX\x01`) — QCDX 바이너리 포맷 식별자
+
+### 로그 파일명(prefix) 규칙
+
+경로 구분자, `..`, `<>:"|?*`, 제어 문자, 끝의 점·공백, Windows 예약 이름(`CON`, `NUL`, `COM1` 등)은 거부됩니다.
+이미 같은 이름의 파일이 있으면 Start 시 덮어쓰기 여부를 확인하며, 승인하면 로그와 바이너리 모두 새로 기록합니다.
 
 ## 사용 방법
 
@@ -91,8 +99,16 @@ python recvQSCD20_gui.py
 
 | 구간 | 크기 | 설명 |
 |------|------|------|
-| 헤더 | 6B | `QCDX\x01` |
+| 헤더 | 5B | `QCDX\x01` |
 | 레코드 | 128B | 120B 패킷 + TimeDiff float64 |
+
+## TimeDiff 와 수신 부하
+
+TimeDiff(`recv − data time`)는 `recvfrom` 직후 UDP 스레드에서 바로 계산해 패킷과 함께 큐에 넣습니다.
+차트가 많거나 GUI가 밀려도 값이 흔들리지 않습니다.
+
+큐가 `packet_queue_max` 까지 차면 **먼저 받은 기록을 지키기 위해 새로 들어온 패킷을 버리고**, 폐기 건수를 로그에 남깁니다.
+Stop 시에는 큐에 남은 패킷을 모두 기록한 뒤 파일을 닫습니다.
 
 ## 패킷 필드 (요약)
 

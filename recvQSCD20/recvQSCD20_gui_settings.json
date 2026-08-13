@@ -1,36 +1,19 @@
 {
-
   "log_save_dir": "logs",
-
   "bin_save_dir": "bin",
-
   "default_port": 9908,
-
   "default_time_window_sec": 600,
-
   "time_window_choices": [60, 120, 600, 1200, 1800],
-
   "default_panels": ["diff", "max", "pga"],
-
   "default_show_legend": true,
-
   "log_max_lines": 5000,
-
   "chart_refresh_ms": 200,
-
   "packet_drain_max": 800,
-
+  "packet_queue_max": 20000,
   "bin_flush_every": 32,
-
   "live_log_verbose": false,
-
   "recv_delay_alert_sec": 10,
-
   "recv_alert_blink_ms": 500,
-
   "sock_timeout_sec": 0.5,
-
   "sock_timeout_count": 120
-
 }
-
