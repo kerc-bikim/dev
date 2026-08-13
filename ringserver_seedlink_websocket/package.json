@@ -1,7 +1,7 @@
 {
   "name": "ringserver-seedlink-websocket",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.3.0",
   "scripts": {
     "dev": "concurrently -n backend,frontend -c green,cyan \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
     "dev:backend": "npm run dev --prefix backend",

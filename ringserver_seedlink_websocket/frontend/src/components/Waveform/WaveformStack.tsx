@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DateTime } from "luxon";
 import { useAppStore } from "../../store/appStore";
 import { SharedWaveformRenderer, PANEL_ROW_MIN_PX } from "../../render/sharedWebglPlot";
@@ -9,6 +9,9 @@ import { bufferStore, resolveWindowEndMs } from "../../buffer/ringBuffer";
 import { buildTimeAxisTicks, type TimeAxisTick } from "../../realtime/timeWindow";
 import { resolveBandPass } from "../../realtime/bandPassPresets";
 import { applyBandPassCached } from "../../render/bandpass";
+import { Button } from "@/components/ui/button";
+import { useTheme } from "@/theme/ThemeProvider";
+import { getThemeWaveformColors, readPlotBackgroundHex } from "@/theme/theme";
 
 type PanelOverlay = {
   key: string;
@@ -211,6 +214,15 @@ export function WaveformStack() {
   const setSelected = useAppStore((s) => s.setSelectedPanel);
   const removePanel = useAppStore((s) => s.removePanel);
   const reorder = useAppStore((s) => s.reorderPanels);
+  const { previewTheme, previewMode } = useTheme();
+  const plotBg = useMemo(
+    () => readPlotBackgroundHex(previewTheme, previewMode),
+    [previewMode, previewTheme],
+  );
+  const waveformColors = useMemo(
+    () => getThemeWaveformColors(previewTheme, previewMode),
+    [previewMode, previewTheme],
+  );
   const [overlays, setOverlays] = useState<PanelOverlay[]>([]);
   const [timeAxis, setTimeAxis] = useState<TimeAxisLabels>({
     startLabel: "--:--:--",
@@ -357,7 +369,7 @@ export function WaveformStack() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const r = new SharedWaveformRenderer();
-    r.attach(canvas);
+    r.attach(canvas, readPlotBackgroundHex(previewTheme, previewMode));
     rendererRef.current = r;
 
     const redraw = () => {
@@ -396,10 +408,11 @@ export function WaveformStack() {
       scnl: p.scnl,
       hideWave: fftKeys.has(scnlKey(p.scnl)),
     }));
-    rendererRef.current.setPanels(specs, settings.waveformColors);
+    rendererRef.current.setBackground(readPlotBackgroundHex(previewTheme, previewMode));
+    rendererRef.current.setPanels(specs, waveformColors);
     drawFrame(panels, settings, fftKeys);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panels, settings, fftKeys]);
+  }, [panels, settings, fftKeys, previewTheme, previewMode, waveformColors, plotBg]);
 
   useEffect(() => {
     if (!settings) return;
@@ -717,7 +730,12 @@ export function WaveformStack() {
   };
 
   return (
-    <div className="wave-stack">
+    <div
+      className="wave-stack"
+      style={{
+        ["--plot-selection" as string]: waveformColors.selectionColor,
+      }}
+    >
       <div
         className={`wave-canvas-wrap ${globalPaused ? "paused-gestures" : ""}`}
         ref={wrapRef}
@@ -823,15 +841,17 @@ export function WaveformStack() {
                     </div>
                     <div className="wave-panel-actions">
                       {o.gapCount > 0 && <span className="gap-badge">GAP {o.gapCount}</span>}
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           removePanel(o.key);
                         }}
                       >
                         ✕
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 );

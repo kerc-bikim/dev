@@ -2,6 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import type { LayoutItem } from "../../types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 export function LayoutMenu() {
   const layouts = useAppStore((s) => s.layouts);
@@ -14,6 +27,7 @@ export function LayoutMenu() {
   const [nameDraft, setNameDraft] = useState("");
   const [mode, setMode] = useState<"none" | "create" | "edit">("none");
   const [msg, setMsg] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,8 +39,19 @@ export function LayoutMenu() {
         setMsg("");
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        setMode("none");
+        setMsg("");
+      }
+    };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   const selected = layouts.find((l) => l.id === selectedId) || null;
@@ -67,14 +92,11 @@ export function LayoutMenu() {
   };
 
   const deleteLayout = async () => {
-    if (!selected) {
-      setMsg("삭제할 레이아웃을 목록에서 선택하세요.");
-      return;
-    }
-    if (!confirm(`「${selected.name}」을(를) 삭제할까요?`)) return;
+    if (!selected) return;
     await api.deleteLayout(selected.id);
     setSelectedId(null);
     setMode("none");
+    setPendingDelete(false);
     setMsg(`「${selected.name}」을(를) 삭제했습니다.`);
     await refresh();
   };
@@ -113,9 +135,10 @@ export function LayoutMenu() {
 
   return (
     <div className="layout-menu" ref={rootRef}>
-      <button
+      <Button
         type="button"
-        className={open ? "active" : undefined}
+        variant={open ? "secondary" : "outline"}
+        className={cn(open && "active")}
         aria-expanded={open}
         aria-haspopup="true"
         onClick={() => {
@@ -125,13 +148,13 @@ export function LayoutMenu() {
         }}
       >
         레이아웃
-      </button>
+      </Button>
       {open && (
         <div className="layout-dropdown" role="menu">
           <div className="layout-actions">
-            <button
+            <Button
               type="button"
-              className={mode === "create" ? "primary" : undefined}
+              variant={mode === "create" ? "default" : "outline"}
               onClick={() => {
                 setMode("create");
                 setNameDraft("");
@@ -139,17 +162,23 @@ export function LayoutMenu() {
               }}
             >
               생성
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="danger"
-              onClick={() => void deleteLayout()}
+              variant="destructive"
+              onClick={() => {
+                if (!selected) {
+                  setMsg("삭제할 레이아웃을 목록에서 선택하세요.");
+                  return;
+                }
+                setPendingDelete(true);
+              }}
             >
               삭제
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className={mode === "edit" ? "primary" : undefined}
+              variant={mode === "edit" ? "default" : "outline"}
               onClick={() => {
                 if (!selected) {
                   setMsg("수정할 레이아웃을 목록에서 선택하세요.");
@@ -161,12 +190,12 @@ export function LayoutMenu() {
               }}
             >
               수정
-            </button>
+            </Button>
           </div>
 
           {mode === "create" && (
             <div className="layout-form">
-              <input
+              <Input
                 value={nameDraft}
                 onChange={(e) => setNameDraft(e.target.value)}
                 placeholder="새 레이아웃 이름"
@@ -175,15 +204,15 @@ export function LayoutMenu() {
                   if (e.key === "Enter") void createLayout();
                 }}
               />
-              <button type="button" className="primary" onClick={() => void createLayout()}>
+              <Button type="button" onClick={() => void createLayout()}>
                 저장
-              </button>
+              </Button>
             </div>
           )}
 
           {mode === "edit" && selected && (
             <div className="layout-form">
-              <input
+              <Input
                 value={nameDraft}
                 onChange={(e) => setNameDraft(e.target.value)}
                 placeholder="레이아웃 이름"
@@ -192,9 +221,9 @@ export function LayoutMenu() {
                   if (e.key === "Enter") void editLayout();
                 }}
               />
-              <button type="button" className="primary" onClick={() => void editLayout()}>
+              <Button type="button" onClick={() => void editLayout()}>
                 저장
-              </button>
+              </Button>
             </div>
           )}
 
@@ -218,19 +247,38 @@ export function LayoutMenu() {
                     {l.payload.channels?.length || 0} ch
                   </span>
                 </button>
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   className="layout-load-btn"
                   title="불러오기"
                   onClick={() => void onLoad(l)}
                 >
                   불러오기
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
         </div>
       )}
+
+      <AlertDialog open={pendingDelete} onOpenChange={setPendingDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>레이아웃 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selected
+                ? `「${selected.name}」을(를) 삭제할까요?`
+                : "삭제할 레이아웃을 선택하세요."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void deleteLayout()}>삭제</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchStreams, type StreamNode } from "../../api/client";
 import { useAppStore } from "../../store/appStore";
 import { scnlKey } from "../../types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 function TriCheckbox({
   checked,
@@ -162,13 +165,13 @@ export function StreamTree() {
           Streams
           <span className="count-badge">{filtered.length}/{streams.length}</span>
         </h2>
-        <button type="button" className="btn-compact" onClick={() => void load()} disabled={loading}>
+        <Button type="button" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
           {loading ? "…" : "새로고침"}
-        </button>
+        </Button>
       </div>
 
       <div className="stream-toolbar">
-        <input
+        <Input
           className="stream-search"
           type="search"
           placeholder="검색: KG AJD HHZ …"
@@ -177,26 +180,28 @@ export function StreamTree() {
         />
         <div className="preset-row">
           {CHANNEL_PRESETS.map((p) => (
-            <button
+            <Button
               key={p.id}
               type="button"
-              className={`preset-chip ${preset === p.id ? "active" : ""}`}
+              variant={preset === p.id ? "default" : "outline"}
+              size="sm"
+              className={cn("preset-chip", preset === p.id && "active")}
               onClick={() => setPreset(p.id)}
             >
               {p.label}
-            </button>
+            </Button>
           ))}
         </div>
         <div className="stream-tools">
-          <button type="button" className="btn-compact" onClick={expandNetworks}>
+          <Button type="button" variant="outline" size="sm" onClick={expandNetworks}>
             NET 펼치기
-          </button>
-          <button type="button" className="btn-compact" onClick={collapseAll}>
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={collapseAll}>
             접기
-          </button>
-          <button type="button" className="btn-compact" onClick={clearTreeSelection}>
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={clearTreeSelection}>
             선택해제
-          </button>
+          </Button>
           <span className="muted sel-count">선택 {selected.size}</span>
         </div>
       </div>
@@ -319,9 +324,9 @@ export function StreamTree() {
         })}
       </div>
 
-      <button type="button" className="primary wide" onClick={() => void plotSelected()}>
+      <Button type="button" className="w-full mt-3" onClick={() => void plotSelected()}>
         선택한 채널 표출 ({selected.size})
-      </button>
+      </Button>
     </section>
   );
 }

@@ -1,10 +1,38 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-theme="default" data-mode="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RingWave — ringserver WebGL viewer</title>
+    <script>
+      (function () {
+        try {
+          var allowed = ["default", "claude", "candyland"];
+          var theme = localStorage.getItem("ringwave-theme");
+          if (theme === "amethyst-haze") {
+            theme = "claude";
+            localStorage.setItem("ringwave-theme", theme);
+          }
+          if (theme === "supabase") {
+            theme = "candyland";
+            localStorage.setItem("ringwave-theme", theme);
+          }
+          if (allowed.indexOf(theme) === -1) theme = "default";
+          var mode = localStorage.getItem("ringwave-theme-mode");
+          if (mode !== "dark") mode = "light";
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.dataset.mode = mode;
+          document.documentElement.classList.toggle("dark", mode === "dark");
+          document.documentElement.style.colorScheme = mode;
+        } catch (e) {
+          document.documentElement.dataset.theme = "default";
+          document.documentElement.dataset.mode = "light";
+          document.documentElement.classList.remove("dark");
+          document.documentElement.style.colorScheme = "light";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

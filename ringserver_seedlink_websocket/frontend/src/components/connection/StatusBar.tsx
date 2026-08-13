@@ -14,6 +14,34 @@ import {
 } from "../../realtime/bandPassPresets";
 import { bufferStore } from "../../buffer/ringBuffer";
 import { scnlKey } from "../../types";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 const labels: Record<string, string> = {
   connecting: "연결 중",
@@ -44,6 +72,8 @@ export function StatusBar() {
   const [customFmin, setCustomFmin] = useState("0.5");
   const [customFmax, setCustomFmax] = useState("5");
   const [filterMsg, setFilterMsg] = useState("");
+  const [closeAllOpen, setCloseAllOpen] = useState(false);
+  const [deletePresetId, setDeletePresetId] = useState<string | null>(null);
   const filterRootRef = useRef<HTMLDivElement>(null);
 
   const durationSec = settings?.durationSec ?? 300;
@@ -73,8 +103,19 @@ export function StatusBar() {
         setFilterMsg("");
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setFilterOpen(false);
+        setAddingCustom(false);
+        setFilterMsg("");
+      }
+    };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [filterOpen]);
 
   const setDuration = (sec: number) => {
@@ -95,8 +136,7 @@ export function StatusBar() {
 
   const closeAllStreams = () => {
     if (!panels.length) return;
-    if (!confirm(`표출 중인 스트림 ${panels.length}개를 모두 닫을까요?`)) return;
-    clearAllPanels();
+    setCloseAllOpen(true);
   };
 
   const selectFilterOff = () => {
@@ -164,7 +204,6 @@ export function StatusBar() {
   const deleteCustomPreset = (id: string) => {
     const target = presets.find((p) => p.id === id);
     if (!target || target.builtin || target.group !== "custom") return;
-    if (!confirm(`커스텀 필터 「${target.name}」을(를) 삭제할까요?`)) return;
     const next = presets.filter((p) => p.id !== id);
     const patch: {
       bandPassPresets: BandPassPreset[];
@@ -210,7 +249,20 @@ export function StatusBar() {
     <>
       <div className="status-bar">
         <div className="status-bar-side">
-          <span className={`pill status-${status}`}>{labels[status] || status}</span>
+          <Badge
+            variant={
+              status === "connected"
+                ? "success"
+                : status === "error" || status === "disconnected"
+                  ? "destructive"
+                  : status === "connecting" || status === "reconnecting"
+                    ? "warning"
+                    : "secondary"
+            }
+            className={`pill status-${status}`}
+          >
+            {labels[status] || status}
+          </Badge>
           <span className="status-detail" title={detail}>
             {detail}
           </span>
@@ -218,9 +270,11 @@ export function StatusBar() {
 
         <div className="status-bar-main">
           <div className="status-bar-left" aria-label="타임윈도우 및 파형 컨트롤">
-            <button
+            <Button
               type="button"
-              className="tb-icon-btn tb-window-btn"
+              variant="outline"
+              size="icon"
+              className="tb-icon-btn tb-window-btn w-auto px-2"
               onClick={() => setWindowModalOpen(true)}
               title="타임윈도우 설정"
               aria-label="타임윈도우 설정"
@@ -232,10 +286,12 @@ export function StatusBar() {
                 />
               </svg>
               <span className="tb-window-value">{formatTimeWindow(durationSec)}</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="icon"
               className="tb-icon-btn"
               disabled={atMax}
               onClick={() => setDuration(stepTimeWindow(durationSec, "out"))}
@@ -248,10 +304,12 @@ export function StatusBar() {
                   d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM7 9h5v1H7V9z"
                 />
               </svg>
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="icon"
               className="tb-icon-btn"
               disabled={atMin}
               onClick={() => setDuration(stepTimeWindow(durationSec, "in"))}
@@ -264,11 +322,13 @@ export function StatusBar() {
                   d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM10 7H9v2H7v1h2v2h1v-2h2V9h-2V7z"
                 />
               </svg>
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
-              className={`tb-icon-btn pause-icon-btn ${globalPaused ? "paused" : ""}`}
+              variant="outline"
+              size="icon"
+              className={cn("tb-icon-btn pause-icon-btn", globalPaused && "paused")}
               onClick={() => setGlobalPaused(!globalPaused)}
               title={globalPaused ? "재개" : "일시정지"}
               aria-label={globalPaused ? "재개" : "일시정지"}
@@ -283,11 +343,13 @@ export function StatusBar() {
                   <path fill="currentColor" d="M7 5h3v14H7V5zm7 0h3v14h-3V5z" />
                 </svg>
               )}
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
-              className={`tb-icon-btn scale-icon-btn ${isUniformScale ? "uniform" : ""}`}
+              variant="outline"
+              size="icon"
+              className={cn("tb-icon-btn scale-icon-btn", isUniformScale && "uniform")}
               onClick={toggleYScale}
               title={
                 isUniformScale
@@ -303,11 +365,13 @@ export function StatusBar() {
                   d="M3 5h2v14H3V5zm4 4h2v10H7V9zm4-4h2v14h-2V5zm4 6h2v8h-2v-8zm4-2h2v10h-2V9z"
                 />
               </svg>
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
-              className={`tb-icon-btn calib-icon-btn ${isPhysical ? "physical" : ""}`}
+              variant="outline"
+              size="icon"
+              className={cn("tb-icon-btn calib-icon-btn", isPhysical && "physical")}
               onClick={toggleAmplitude}
               title={
                 isPhysical
@@ -323,12 +387,14 @@ export function StatusBar() {
                   d="M22 7H2v10h20V7zm-2 8H4v-6h2v4h2v-4h2v4h2v-4h2v4h2v-4h2v4h2v-4h2v6z"
                 />
               </svg>
-            </button>
+            </Button>
 
             <div className="filter-menu" ref={filterRootRef}>
-              <button
+              <Button
                 type="button"
-                className={`tb-icon-btn filter-icon-btn ${bandPassEnabled ? "active" : ""}`}
+                variant="outline"
+                size="icon"
+                className={cn("tb-icon-btn filter-icon-btn", bandPassEnabled && "active")}
                 onClick={() => {
                   setFilterOpen((v) => !v);
                   setFilterMsg("");
@@ -348,7 +414,7 @@ export function StatusBar() {
                     d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"
                   />
                 </svg>
-              </button>
+              </Button>
               {filterOpen && (
                 <div className="filter-dropdown" role="menu">
                   <div className="filter-dropdown-head">Band-pass Filter</div>
@@ -408,21 +474,24 @@ export function StatusBar() {
                         <span className="filter-item-name">{p.name}</span>
                         <span className="filter-item-band">{fmtBand(p)}</span>
                       </button>
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         className="filter-del"
                         title="삭제"
                         aria-label={`${p.name} 삭제`}
-                        onClick={() => deleteCustomPreset(p.id)}
+                        onClick={() => setDeletePresetId(p.id)}
                       >
                         ✕
-                      </button>
+                      </Button>
                     </div>
                   ))}
 
                   {!addingCustom ? (
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
                       className="filter-add-btn"
                       onClick={() => {
                         setAddingCustom(true);
@@ -430,12 +499,12 @@ export function StatusBar() {
                       }}
                     >
                       + 커스텀 추가
-                    </button>
+                    </Button>
                   ) : (
                     <div className="filter-add-form">
                       <label>
                         이름
-                        <input
+                        <Input
                           value={customName}
                           onChange={(e) => setCustomName(e.target.value)}
                           placeholder="예: BP 2–8 Hz"
@@ -444,7 +513,7 @@ export function StatusBar() {
                       <div className="filter-add-freq">
                         <label>
                           Min Hz
-                          <input
+                          <Input
                             type="number"
                             step="any"
                             min="0"
@@ -454,7 +523,7 @@ export function StatusBar() {
                         </label>
                         <label>
                           Max Hz
-                          <input
+                          <Input
                             type="number"
                             step="any"
                             min="0"
@@ -465,18 +534,19 @@ export function StatusBar() {
                       </div>
                       {filterMsg && <p className="filter-msg">{filterMsg}</p>}
                       <div className="filter-add-actions">
-                        <button type="button" className="primary" onClick={addCustomPreset}>
+                        <Button type="button" onClick={addCustomPreset}>
                           저장·적용
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
+                          variant="outline"
                           onClick={() => {
                             setAddingCustom(false);
                             setFilterMsg("");
                           }}
                         >
                           취소
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -486,8 +556,10 @@ export function StatusBar() {
           </div>
 
           <div className="status-bar-right">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="icon"
               className="tb-icon-btn close-all-btn"
               onClick={closeAllStreams}
               disabled={!panels.length}
@@ -500,66 +572,101 @@ export function StatusBar() {
                   d="M5.3 4.2 4.2 5.3 6.9 8l-2.7 2.7 1.1 1.1L8 9.1l2.7 2.7 1.1-1.1L9.1 8l2.7-2.7-1.1-1.1L8 6.9 5.3 4.2zm7.2 0-1.1 1.1L14.1 8l-2.7 2.7 1.1 1.1L15.2 9.1l2.7 2.7 1.1-1.1L16.3 8l2.7-2.7-1.1-1.1L15.2 6.9l-2.7-2.7z"
                 />
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
-      {windowModalOpen && (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="time-window-title"
-        >
-          <div className="modal time-window-modal">
-            <div className="modal-head">
-              <h3 id="time-window-title">타임윈도우</h3>
-              <button
-                type="button"
-                className="modal-close"
-                aria-label="닫기"
-                onClick={() => setWindowModalOpen(false)}
+      <Dialog open={windowModalOpen} onOpenChange={setWindowModalOpen}>
+        <DialogContent className="time-window-modal max-w-[360px]">
+          <DialogHeader>
+            <DialogTitle>타임윈도우</DialogTitle>
+          </DialogHeader>
+          <div className="time-window-modal-body">
+            <label>
+              표시 구간
+              <Select
+                value={String(draftWindow)}
+                onValueChange={(value) => setDraftWindow(Number(value))}
               >
-                ✕
-              </button>
-            </div>
-            <div className="time-window-modal-body">
-              <label>
-                표시 구간
-                <select
-                  value={String(draftWindow)}
-                  onChange={(e) => setDraftWindow(Number(e.target.value))}
-                >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
                   {!TIME_WINDOW_STEPS.includes(
                     draftWindow as (typeof TIME_WINDOW_STEPS)[number],
                   ) && (
-                    <option value={String(draftWindow)}>
+                    <SelectItem value={String(draftWindow)}>
                       현재 {formatTimeWindowLabel(draftWindow)} ({draftWindow}s)
-                    </option>
+                    </SelectItem>
                   )}
                   {TIME_WINDOW_STEPS.map((sec) => (
-                    <option key={sec} value={String(sec)}>
+                    <SelectItem key={sec} value={String(sec)}>
                       {formatTimeWindowLabel(sec)} ({sec}s)
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
-              </label>
-              <p className="muted">
-                줌인/줌아웃은 위 프리셋 간격으로 이동합니다.
-              </p>
-            </div>
-            <div className="modal-actions">
-              <button type="button" className="primary" onClick={applyWindowModal}>
-                적용
-              </button>
-              <button type="button" onClick={() => setWindowModalOpen(false)}>
-                닫기
-              </button>
-            </div>
+                </SelectContent>
+              </Select>
+            </label>
+            <p className="muted">줌인/줌아웃은 위 프리셋 간격으로 이동합니다.</p>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button type="button" onClick={applyWindowModal}>
+              적용
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setWindowModalOpen(false)}>
+              닫기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={closeAllOpen} onOpenChange={setCloseAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>전체 스트림 닫기</AlertDialogTitle>
+            <AlertDialogDescription>
+              표출 중인 스트림 {panels.length}개를 모두 닫을까요?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                clearAllPanels();
+                setCloseAllOpen(false);
+              }}
+            >
+              닫기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deletePresetId != null}
+        onOpenChange={(open) => !open && setDeletePresetId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>커스텀 필터 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`커스텀 필터 「${presets.find((p) => p.id === deletePresetId)?.name || ""}」을(를) 삭제할까요?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deletePresetId) deleteCustomPreset(deletePresetId);
+                setDeletePresetId(null);
+              }}
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

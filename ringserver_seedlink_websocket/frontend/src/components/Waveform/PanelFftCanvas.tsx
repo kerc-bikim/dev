@@ -1,9 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "../../store/appStore";
 import { bufferStore } from "../../buffer/ringBuffer";
 import { computeFftDb } from "../../render/fft";
 import { applyBandPassCached } from "../../render/bandpass";
 import { resolveBandPass } from "../../realtime/bandPassPresets";
+import { useTheme } from "@/theme/ThemeProvider";
+import { getThemeWaveformColors, readPlotBackgroundHex } from "@/theme/theme";
 
 type Props = {
   panelKey: string;
@@ -38,10 +40,25 @@ function fmtFreq(f: number): string {
 }
 
 /** 패널 행 위에 그리는 FFT — Log Frequency × Log Power (dB) */
+function cssVar(name: string, fallback: string): string {
+  if (typeof document === "undefined") return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
 export function PanelFftCanvas({ panelKey, windowEndMs, durationSec }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const settings = useAppStore((s) => s.settings);
   const globalPaused = useAppStore((s) => s.globalPaused);
+  const { previewTheme, previewMode } = useTheme();
+  const plotBg = useMemo(
+    () => readPlotBackgroundHex(previewTheme, previewMode),
+    [previewMode, previewTheme],
+  );
+  const waveformColors = useMemo(
+    () => getThemeWaveformColors(previewTheme, previewMode),
+    [previewMode, previewTheme],
+  );
 
   useEffect(() => {
     if (!settings) return;
@@ -61,12 +78,14 @@ export function PanelFftCanvas({ panelKey, windowEndMs, durationSec }: Props) {
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = "#0b1016";
+      ctx.fillStyle = plotBg;
       ctx.fillRect(0, 0, w, h);
+      const muted = cssVar("--muted-foreground", "#9aa7b5");
+      const ink = cssVar("--foreground", "#ebf0f6");
 
       const buf = bufferStore.get(panelKey);
       if (!buf) {
-        ctx.fillStyle = "#9aa7b5";
+        ctx.fillStyle = muted;
         ctx.font = "12px sans-serif";
         ctx.fillText("데이터 없음", 10, 20);
         return;
@@ -93,7 +112,7 @@ export function PanelFftCanvas({ panelKey, windowEndMs, durationSec }: Props) {
       const sr = win.sampleRate || buf.sampleRate;
       const { freqs, db } = computeFftDb(samples, sr);
       if (!freqs.length) {
-        ctx.fillStyle = "#9aa7b5";
+        ctx.fillStyle = muted;
         ctx.font = "12px sans-serif";
         ctx.fillText("FFT 샘플 부족", 10, 20);
         return;
@@ -103,7 +122,7 @@ export function PanelFftCanvas({ panelKey, windowEndMs, durationSec }: Props) {
       let i0 = 0;
       while (i0 < freqs.length && freqs[i0]! <= 0) i0++;
       if (i0 >= freqs.length - 1) {
-        ctx.fillStyle = "#9aa7b5";
+        ctx.fillStyle = muted;
         ctx.font = "12px sans-serif";
         ctx.fillText("유효 주파수 없음", 10, 20);
         return;
@@ -145,7 +164,7 @@ export function PanelFftCanvas({ panelKey, windowEndMs, durationSec }: Props) {
         padT + plotH - ((v - minDb) / dbSpan) * plotH;
 
       // 로그 주파수 그리드
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.strokeStyle = cssVar("--border", "rgba(255, 255, 255, 0.12)");
       ctx.lineWidth = 1;
       for (const f of logFreqTicks(fMin, fMax)) {
         const x = xOfF(f);
@@ -156,7 +175,7 @@ export function PanelFftCanvas({ panelKey, windowEndMs, durationSec }: Props) {
       }
 
       // 스펙트럼 (Log F × Log Power dB)
-      ctx.strokeStyle = settings.waveformColors.selectionColor;
+      ctx.strokeStyle = waveformColors.selectionColor;
       ctx.lineWidth = 1.25;
       ctx.beginPath();
       let started = false;
@@ -175,12 +194,12 @@ export function PanelFftCanvas({ panelKey, windowEndMs, durationSec }: Props) {
       ctx.stroke();
 
       // 제목 / 축 라벨
-      ctx.fillStyle = "rgba(235, 240, 246, 0.9)";
+      ctx.fillStyle = ink;
       ctx.font = "11px sans-serif";
       ctx.textAlign = "left";
       ctx.fillText("FFT  Log F · Log Power (dB)", padL, 14);
 
-      ctx.fillStyle = "rgba(154, 167, 181, 0.95)";
+      ctx.fillStyle = muted;
       ctx.font = "10px sans-serif";
       ctx.textAlign = "right";
       ctx.fillText(`${maxDb.toFixed(0)}`, padL - 4, padT + 8);
@@ -197,7 +216,7 @@ export function PanelFftCanvas({ panelKey, windowEndMs, durationSec }: Props) {
     if (globalPaused) return;
     const id = window.setInterval(paint, Math.max(200, settings.refreshIntervalMs));
     return () => window.clearInterval(id);
-  }, [panelKey, settings, globalPaused, windowEndMs, durationSec]);
+  }, [panelKey, settings, globalPaused, windowEndMs, durationSec, plotBg, waveformColors]);
 
   return <canvas ref={canvasRef} className="panel-fft-canvas" />;
 }

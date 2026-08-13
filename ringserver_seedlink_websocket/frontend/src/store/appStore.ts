@@ -13,6 +13,7 @@ import {
 import { api } from "../api/client";
 import { bufferStore } from "../buffer/ringBuffer";
 import { ReconnectController } from "../realtime/reconnectController";
+import { DEFAULT_CANVAS_COLORS } from "../theme/theme";
 
 export type PanelState = {
   scnl: SCNL;
@@ -52,10 +53,10 @@ type AppState = {
 };
 
 const defaultColors = {
-  palette: ["#3dd6c6", "#e9c46a", "#7aa2ff", "#ff8fab", "#9bdeac", "#f4a261", "#c77dff", "#90e0ef"],
+  palette: [...DEFAULT_CANVAS_COLORS.palette],
   channelColorMap: {} as Record<string, string>,
-  gapColor: "#ff4d4f",
-  selectionColor: "#ffd166",
+  gapColor: DEFAULT_CANVAS_COLORS.gapColor,
+  selectionColor: DEFAULT_CANVAS_COLORS.selectionColor,
 };
 
 export const useAppStore = create<AppState>((set, get) => ({

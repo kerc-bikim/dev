@@ -1,0 +1,311 @@
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+:root,
+[data-theme="default"][data-mode="light"] {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  /* 밝은 WebGL 캔버스에서 식별되는 중명도 채널 팔레트 */
+  --chart-1: oklch(0.55 0.2 252);
+  --chart-2: oklch(0.5 0.2 270);
+  --chart-3: oklch(0.55 0.17 165);
+  --chart-4: oklch(0.6 0.18 80);
+  --chart-5: oklch(0.56 0.2 320);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  --plot-bg: var(--card);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --letter-spacing: 0em;
+  --tracking-normal: 0em;
+}
+
+[data-theme="claude"][data-mode="light"] {
+  --background: oklch(0.98 0.01 95.1);
+  --foreground: oklch(0.34 0.03 95.72);
+  --card: oklch(0.98 0.01 95.1);
+  --card-foreground: oklch(0.19 0 106.59);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.27 0.02 98.94);
+  --primary: oklch(0.62 0.14 39.04);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.92 0.01 92.99);
+  --secondary-foreground: oklch(0.43 0.02 98.6);
+  --muted: oklch(0.93 0.02 90.24);
+  --muted-foreground: oklch(0.61 0.01 97.42);
+  --accent: oklch(0.92 0.01 92.99);
+  --accent-foreground: oklch(0.27 0.02 98.94);
+  --destructive: oklch(0.19 0 106.59);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.88 0.01 97.36);
+  --input: oklch(0.76 0.02 98.35);
+  --ring: oklch(0.59 0.17 253.06);
+  /* Claude 온색 계열의 정체성을 유지한 라이트 캔버스 고대비 팔레트 */
+  --chart-1: oklch(0.52 0.16 43);
+  --chart-2: oklch(0.52 0.18 290);
+  --chart-3: oklch(0.48 0.1 170);
+  --chart-4: oklch(0.55 0.13 85);
+  --chart-5: oklch(0.52 0.15 245);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.97 0.01 98.88);
+  --sidebar-foreground: oklch(0.36 0.01 106.65);
+  --sidebar-primary: oklch(0.62 0.14 39.04);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.92 0.01 92.99);
+  --sidebar-accent-foreground: oklch(0.33 0 0);
+  --sidebar-border: oklch(0.94 0 0);
+  --sidebar-ring: oklch(0.77 0 0);
+  --plot-bg: var(--card);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --letter-spacing: 0em;
+  --tracking-normal: 0em;
+}
+
+[data-theme="candyland"][data-mode="light"] {
+  --background: oklch(0.98 0 228.78);
+  --foreground: oklch(0.32 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.32 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.32 0 0);
+  --primary: oklch(0.87 0.07 7.09);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.81 0.08 225.75);
+  --secondary-foreground: oklch(0 0 0);
+  --muted: oklch(0.88 0.03 98.1);
+  --muted-foreground: oklch(0.54 0 0);
+  --accent: oklch(0.97 0.21 109.77);
+  --accent-foreground: oklch(0 0 0);
+  --destructive: oklch(0.64 0.21 25.33);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.87 0 0);
+  --input: oklch(0.87 0 0);
+  --ring: oklch(0.87 0.07 7.09);
+  /* 파스텔 색조는 유지하되 흰 배경에서 선이 사라지지 않도록 명도를 낮춤 */
+  --chart-1: oklch(0.62 0.18 349);
+  --chart-2: oklch(0.58 0.15 225);
+  --chart-3: oklch(0.64 0.18 110);
+  --chart-4: oklch(0.58 0.2 330);
+  --chart-5: oklch(0.52 0.2 143);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.98 0 228.78);
+  --sidebar-foreground: oklch(0.32 0 0);
+  --sidebar-primary: oklch(0.87 0.07 7.09);
+  --sidebar-primary-foreground: oklch(0 0 0);
+  --sidebar-accent: oklch(0.97 0.21 109.77);
+  --sidebar-accent-foreground: oklch(0 0 0);
+  --sidebar-border: oklch(0.87 0 0);
+  --sidebar-ring: oklch(0.87 0.07 7.09);
+  --plot-bg: var(--card);
+  --font-sans: Poppins, "Pretendard", "Noto Sans KR", sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "Roboto Mono", monospace;
+  --letter-spacing: 0em;
+  --tracking-normal: 0em;
+}
+
+[data-theme="default"][data-mode="dark"] {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.269 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.371 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.275 0 0);
+  --input: oklch(0.325 0 0);
+  --ring: oklch(0.556 0 0);
+  /* 어두운 WebGL 캔버스에서 채널별 파형이 묻히지 않는 고명도 팔레트 */
+  --chart-1: oklch(0.78 0.16 210);
+  --chart-2: oklch(0.76 0.17 255);
+  --chart-3: oklch(0.8 0.14 165);
+  --chart-4: oklch(0.84 0.15 85);
+  --chart-5: oklch(0.76 0.16 315);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.275 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+  --plot-bg: var(--card);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --letter-spacing: 0em;
+  --tracking-normal: 0em;
+}
+
+[data-theme="claude"][data-mode="dark"] {
+  --background: oklch(0.27 0 106.64);
+  --foreground: oklch(0.81 0.01 93.01);
+  --card: oklch(0.27 0 106.64);
+  --card-foreground: oklch(0.98 0.01 95.1);
+  --popover: oklch(0.31 0 106.6);
+  --popover-foreground: oklch(0.92 0 106.48);
+  --primary: oklch(0.67 0.13 38.76);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.98 0.01 95.1);
+  --secondary-foreground: oklch(0.31 0 106.6);
+  --muted: oklch(0.22 0 106.71);
+  --muted-foreground: oklch(0.77 0.02 99.07);
+  --accent: oklch(0.21 0.01 95.42);
+  --accent-foreground: oklch(0.97 0.01 98.88);
+  --destructive: oklch(0.64 0.21 25.33);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.36 0.01 106.89);
+  --input: oklch(0.43 0.01 100.22);
+  --ring: oklch(0.59 0.17 253.06);
+  /* Claude의 온색 계열을 유지하면서 다크 캔버스 대비를 확보 */
+  --chart-1: oklch(0.75 0.15 43);
+  --chart-2: oklch(0.78 0.14 290);
+  --chart-3: oklch(0.8 0.11 170);
+  --chart-4: oklch(0.84 0.13 85);
+  --chart-5: oklch(0.76 0.13 245);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.24 0 67.71);
+  --sidebar-foreground: oklch(0.81 0.01 93.01);
+  --sidebar-primary: oklch(0.33 0 0);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.17 0 106.62);
+  --sidebar-accent-foreground: oklch(0.81 0.01 93.01);
+  --sidebar-border: oklch(0.94 0 0);
+  --sidebar-ring: oklch(0.77 0 0);
+  --plot-bg: var(--card);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --letter-spacing: 0em;
+  --tracking-normal: 0em;
+}
+
+[data-theme="candyland"][data-mode="dark"] {
+  --background: oklch(0.23 0.01 264.29);
+  --foreground: oklch(0.92 0 0);
+  --card: oklch(0.32 0.01 223.67);
+  --card-foreground: oklch(0.92 0 0);
+  --popover: oklch(0.32 0.01 223.67);
+  --popover-foreground: oklch(0.92 0 0);
+  --primary: oklch(0.8 0.14 349.23);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.74 0.23 142.85);
+  --secondary-foreground: oklch(0 0 0);
+  --muted: oklch(0.39 0 0);
+  --muted-foreground: oklch(0.72 0 0);
+  --accent: oklch(0.81 0.08 225.75);
+  --accent-foreground: oklch(0 0 0);
+  --destructive: oklch(0.64 0.21 25.33);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.39 0 0);
+  --input: oklch(0.39 0 0);
+  --ring: oklch(0.8 0.14 349.23);
+  --chart-1: oklch(0.8 0.14 349.23);
+  --chart-2: oklch(0.74 0.23 142.85);
+  --chart-3: oklch(0.81 0.08 225.75);
+  --chart-4: oklch(0.97 0.21 109.77);
+  --chart-5: oklch(0.87 0.18 90.38);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.23 0.01 264.29);
+  --sidebar-foreground: oklch(0.92 0 0);
+  --sidebar-primary: oklch(0.8 0.14 349.23);
+  --sidebar-primary-foreground: oklch(0 0 0);
+  --sidebar-accent: oklch(0.81 0.08 225.75);
+  --sidebar-accent-foreground: oklch(0 0 0);
+  --sidebar-border: oklch(0.39 0 0);
+  --sidebar-ring: oklch(0.8 0.14 349.23);
+  --plot-bg: var(--card);
+  --font-sans: Poppins, "Pretendard", "Noto Sans KR", sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: "Roboto Mono", monospace;
+  --letter-spacing: 0em;
+  --tracking-normal: 0em;
+}
+
+:root,
+[data-theme] {
+  --bg: var(--background);
+  --panel: var(--card);
+  /* secondary는 버튼/컨트롤용이다. Claude에서는 거의 흰색이므로 큰 패널 면에 쓰지 않는다. */
+  --panel-2: var(--card);
+  --ink: var(--foreground);
+  --line: var(--border);
+  --accent-2: var(--ring);
+  --danger: var(--destructive);
+  --warn: var(--chart-4);
+}

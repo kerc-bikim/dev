@@ -30,15 +30,25 @@ export class SharedWaveformRenderer {
   private lastPanels: PanelSpec[] = [];
   private lastColors: WaveformColors | null = null;
   private lastStats: PanelStats[] = [];
+  private lastBg = "#ffffff";
 
-  attach(canvas: HTMLCanvasElement) {
+  attach(canvas: HTMLCanvasElement, backgroundHex = "#ffffff") {
     this.canvas = canvas;
+    const bg = hexToRgba(backgroundHex);
+    this.lastBg = backgroundHex;
     this.plot = new WebglPlot(canvas, {
       antialias: false,
       powerPerformance: "high-performance",
-      backgroundColor: [0.07, 0.09, 0.12, 1],
+      backgroundColor: [bg.r, bg.g, bg.b, 1],
     });
     this.resize();
+  }
+
+  setBackground(backgroundHex: string) {
+    if (!this.plot || backgroundHex === this.lastBg) return;
+    this.lastBg = backgroundHex;
+    const bg = hexToRgba(backgroundHex);
+    this.plot.gl.clearColor(bg.r, bg.g, bg.b, 1);
   }
 
   dispose() {
