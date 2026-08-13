@@ -9,7 +9,7 @@ from obspy.core.inventory.response import InstrumentSensitivity, Response
 from obspy.core.inventory.util import Equipment, Site
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.catalog import seed_catalog
+from app.catalog import find_by_manufacturer_model, seed_catalog
 from app.columns import resolve_header
 from app.crud import (
     create_catalog_item,
@@ -17,11 +17,13 @@ from app.crud import (
     export_stationxml_bytes,
     import_hierarchy,
     list_channels,
+    update_catalog_item,
+    update_channel,
     update_station,
 )
 from app.db import Base, make_engine
 from app.errors import ValidationError
-from app.excel_io import read_excel, write_excel
+from app.excel_io import read_excel, write_excel, write_template
 from app.validation import infer_az_dip, validate_lat_lon, validate_sample_rate, validate_time_order
 from app.xml_io import read_stationxml
 
@@ -227,6 +229,204 @@ def test_xml_response_roundtrip(session):
     cha = back[0][0][0]
     assert cha.response is not None
     assert cha.sensor.manufacturer == "Guralp"
+
+
+def test_depth_zero_channel_update(session):
+    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    ch = list_channels(session)[0]
+    updated = update_channel(
+        session,
+        ch.id,
+        {
+            "depth": 0,
+            "comment": "수정",
+            "sample_rate": 100,
+            "sensor_id": ch.sensor_id,
+            "datalogger_id": ch.datalogger_id,
+        },
+        None,
+    )
+    assert updated.depth == 0
+    assert updated.comment == "수정"
+
+
+def test_excel_time_normalization_does_not_duplicate(session):
+    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    excel_hierarchy = read_excel(BytesIO(write_excel(session)))
+    import_hierarchy(
+        session,
+        excel_hierarchy,
+        replace_all=False,
+        source="excel",
+        actor=None,
+    )
+    assert len(list_channels(session)) == 1
+
+
+def test_replace_all_excel_keeps_matching_response(session):
+    inv = _inventory_with_response()
+    buf = BytesIO()
+    inv.write(buf, format="STATIONXML")
+    buf.seek(0)
+    import_hierarchy(
+        session,
+        read_stationxml(buf, session),
+        replace_all=False,
+        source="xml",
+        actor=None,
+    )
+    response_before = list_channels(session)[0].response_xml
+    excel_hierarchy = read_excel(BytesIO(write_excel(session)))
+    import_hierarchy(
+        session,
+        excel_hierarchy,
+        replace_all=True,
+        source="excel",
+        actor=None,
+    )
+    rows = list_channels(session)
+    assert len(rows) == 1
+    assert rows[0].response_xml == response_before
+
+
+def test_replace_all_rejects_empty_inventory(session):
+    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    with pytest.raises(ValidationError, match="가져올 채널이 없습니다"):
+        import_hierarchy(
+            session,
+            {"networks": {}, "catalog": {}, "warnings": []},
+            replace_all=True,
+            source="xml",
+            actor=None,
+        )
+    session.rollback()
+    assert len(list_channels(session)) == 1
+
+
+def test_template_does_not_include_inventory_rows(session):
+    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(BytesIO(write_template(session)))
+    assert workbook["channels"].max_row == 1
+    assert workbook["catalog_sensors"].max_row > 1
+
+
+def test_station_can_move_to_another_network(session):
+    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    from app.models import Network
+
+    target = Network(code="YY")
+    session.add(target)
+    session.commit()
+    station = list_channels(session)[0].station
+    update_station(session, station.id, {"network_id": target.id}, None)
+    assert list_channels(session)[0].station.network.code == "YY"
+
+
+def test_datalogger_rate_mismatch_does_not_fallback(session):
+    match = find_by_manufacturer_model(
+        session,
+        "datalogger",
+        "REF TEK",
+        "RT 130",
+        999,
+    )
+    assert match is None
+
+
+def test_catalog_import_does_not_erase_existing_validation_fields(session):
+    from app.models import EquipmentCatalog
+
+    sensor = session.query(EquipmentCatalog).filter_by(code="Guralp_CMG-3T").one()
+    logger = (
+        session.query(EquipmentCatalog)
+        .filter_by(code="REFTEK_RT130_100sps")
+        .one()
+    )
+    original_sensor_keys = sensor.nrl_keys
+    original_rate = logger.sample_rate
+    hierarchy = _sample_hierarchy()
+    hierarchy["catalog"] = {
+        "sensors": [
+            {
+                "code": sensor.code,
+                "manufacturer": sensor.manufacturer,
+                "model": sensor.model,
+                "nrl_keys": None,
+            }
+        ],
+        "dataloggers": [
+            {
+                "code": logger.code,
+                "manufacturer": logger.manufacturer,
+                "model": logger.model,
+                "sample_rate": None,
+                "nrl_keys": None,
+            }
+        ],
+    }
+    import_hierarchy(
+        session, hierarchy, replace_all=False, source="excel", actor=None
+    )
+    session.refresh(sensor)
+    session.refresh(logger)
+    assert sensor.nrl_keys == original_sensor_keys
+    assert logger.sample_rate == original_rate
+
+
+def test_legacy_start_time_matches_canonical_import(session):
+    hierarchy = _sample_hierarchy()
+    hierarchy["networks"]["XX"]["stations"]["AAA"]["channels"][0][
+        "start_time"
+    ] = "2020-01-01T00:00:00"
+    import_hierarchy(
+        session, hierarchy, replace_all=False, source="ui", actor=None
+    )
+    assert len(list_channels(session)) == 1
+
+    canonical = _sample_hierarchy()
+    import_hierarchy(
+        session, canonical, replace_all=False, source="excel", actor=None
+    )
+    rows = list_channels(session)
+    assert len(rows) == 1
+    assert rows[0].start_time == "2020-01-01T00:00:00.000000Z"
+
+
+def test_catalog_import_rejects_non_positive_sample_rate(session):
+    hierarchy = _sample_hierarchy()
+    hierarchy["catalog"] = {
+        "sensors": [],
+        "dataloggers": [
+            {
+                "code": "NEW_BAD_LOGGER",
+                "manufacturer": "Test",
+                "model": "Bad",
+                "sample_rate": 0,
+                "nrl_keys": None,
+            }
+        ],
+    }
+    with pytest.raises(ValidationError, match="0보다 커야"):
+        import_hierarchy(
+            session, hierarchy, replace_all=False, source="excel", actor=None
+        )
+
+
+def test_used_datalogger_sample_rate_cannot_be_cleared(session):
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
+    from app.models import EquipmentCatalog
+
+    logger = (
+        session.query(EquipmentCatalog)
+        .filter_by(code="REFTEK_RT130_100sps")
+        .one()
+    )
+    with pytest.raises(ValidationError, match="비울 수 없습니다"):
+        update_catalog_item(session, logger.id, {"sample_rate": None}, None)
 
 
 def _inventory_with_response() -> Inventory:

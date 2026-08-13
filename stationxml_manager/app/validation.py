@@ -55,6 +55,12 @@ def parse_time(value: Any, field: str, row: int | None = None) -> UTCDateTime | 
         ) from exc
 
 
+def canonical_time(value: Any, field: str, row: int | None = None) -> str | None:
+    """시간 값을 DB/비교용 UTC 문자열 한 형식으로 정규화한다."""
+    parsed = parse_time(value, field, row)
+    return str(parsed) if parsed is not None else None
+
+
 def infer_az_dip(channel_code: str) -> tuple[float, float]:
     last = channel_code[-1].upper() if channel_code else ""
     if last == "Z":

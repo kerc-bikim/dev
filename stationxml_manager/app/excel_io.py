@@ -34,6 +34,7 @@ from .errors import ValidationError
 from .models import Channel, EquipmentCatalog, Network, Station
 from .validation import (
     as_str,
+    canonical_time,
     infer_az_dip,
     is_blank,
     parse_float,
@@ -241,8 +242,8 @@ def rows_to_hierarchy(rows: list[dict[str, Any]]) -> dict[str, Any]:
             {
                 "location": as_str(raw.get("location")),
                 "channel": channel_code,
-                "start_time": start.isoformat(),
-                "end_time": end.isoformat() if end else None,
+                "start_time": canonical_time(start, "시작시간"),
+                "end_time": canonical_time(end, "끝시간"),
                 "sample_rate": rate,
                 "depth": parse_float(raw.get("depth"), "심도", excel_row) or 0.0,
                 "azimuth": az,
@@ -288,8 +289,7 @@ def _assert_same(store: dict[str, Any], key: str, value: Any, label: str, excel_
 
 
 def _time_str(value: Any, field: str, excel_row: int) -> str | None:
-    parsed = parse_time(value, field, excel_row)
-    return parsed.isoformat() if parsed else None
+    return canonical_time(value, field, excel_row)
 
 
 def read_excel(path_or_buf) -> dict[str, Any]:
@@ -313,7 +313,7 @@ def read_excel(path_or_buf) -> dict[str, Any]:
     return hierarchy
 
 
-def write_excel(session: Session) -> bytes:
+def write_excel(session: Session, *, include_channels: bool = True) -> bytes:
     wb = Workbook()
     ws = wb.active
     ws.title = EXCEL_SHEET_CHANNELS
@@ -326,13 +326,22 @@ def write_excel(session: Session) -> bytes:
         cell.font = header_font
         cell.alignment = Alignment(wrap_text=True)
 
-    q = (
-        session.query(Channel)
-        .join(Station)
-        .join(Network)
-        .order_by(Network.code, Station.code, Channel.location, Channel.channel, Channel.start_time)
-    )
-    for ch in q.all():
+    channels: list[Channel] = []
+    if include_channels:
+        channels = (
+            session.query(Channel)
+            .join(Station)
+            .join(Network)
+            .order_by(
+                Network.code,
+                Station.code,
+                Channel.location,
+                Channel.channel,
+                Channel.start_time,
+            )
+            .all()
+        )
+    for ch in channels:
         sta = ch.station
         net = sta.network
         row = {
@@ -416,7 +425,7 @@ def write_excel(session: Session) -> bytes:
 
 def write_template(session: Session | None = None) -> bytes:
     if session is not None:
-        return write_excel(session)
+        return write_excel(session, include_channels=False)
     # catalog-only template with example row
     wb = Workbook()
     ws = wb.active
@@ -483,7 +492,7 @@ def _add_dropdown(ws, header_name: str, codes: list[str], sheet: str) -> None:
 
 
 def write_template_file(path: Path, session: Session | None = None) -> None:
-    path.write_bytes(write_excel(session) if session is not None else _full_seed_template())
+    path.write_bytes(write_template(session) if session is not None else _full_seed_template())
 
 
 def _full_seed_template() -> bytes:
@@ -518,6 +527,6 @@ def _full_seed_template() -> bytes:
                     )
                 )
             session.commit()
-        return write_excel(session)
+        return write_excel(session, include_channels=False)
     finally:
         session.close()

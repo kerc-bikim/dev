@@ -79,6 +79,7 @@ def find_by_manufacturer_model(
         for row in matches:
             if sample_rates_match(sample_rate, row.sample_rate):
                 return row
+        return None
     return matches[0]
 
 

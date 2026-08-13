@@ -12,6 +12,7 @@ from .errors import AppError, ValidationError
 from .inventory import build_inventory, dump_response_xml, inventory_to_bytes
 from .models import Channel, EquipmentCatalog, Network, Station
 from .validation import (
+    canonical_time,
     infer_az_dip,
     parse_float,
     parse_time,
@@ -94,6 +95,22 @@ def create_station(session: Session, payload: dict[str, Any], actor: str | None)
 def update_station(session: Session, station_id: int, payload: dict[str, Any], actor: str | None, source: str = "ui") -> Station:
     sta = get_station(session, station_id)
     before = to_dict(sta)
+    if "network_id" in payload and payload["network_id"] is not None:
+        target_network = get_network(session, int(payload["network_id"]))
+        duplicate = (
+            session.query(Station)
+            .filter(
+                Station.network_id == target_network.id,
+                Station.code == sta.code,
+                Station.id != sta.id,
+            )
+            .one_or_none()
+        )
+        if duplicate is not None:
+            raise ValidationError(
+                f"{target_network.code} 네트워크에 관측소 {sta.code}가 이미 있습니다"
+            )
+        sta.network_id = target_network.id
     fields = _station_fields(payload, partial=True)
     for key, value in fields.items():
         setattr(sta, key, value)
@@ -118,6 +135,19 @@ def delete_station(session: Session, station_id: int, actor: str | None) -> None
     sta = get_station(session, station_id)
     before = to_dict(sta)
     nslc = f"{sta.network.code}.{sta.code}"
+    for channel in list(sta.channels):
+        write_audit(
+            session,
+            action="delete",
+            entity_type="channel",
+            entity_id=channel.id,
+            source="ui",
+            actor=actor,
+            nslc=nslc_of(channel),
+            before=to_dict(channel),
+            after=None,
+            summary="관측소 삭제에 따른 채널 삭제",
+        )
     session.delete(sta)
     write_audit(
         session,
@@ -237,8 +267,26 @@ def import_hierarchy(
     warnings: list[str] = list(hierarchy.get("warnings") or [])
     _upsert_catalog(session, hierarchy.get("catalog") or {}, actor)
 
+    incoming_count = sum(
+        len(sta_data.get("channels") or [])
+        for net_data in (hierarchy.get("networks") or {}).values()
+        for sta_data in (net_data.get("stations") or {}).values()
+    )
+    if incoming_count == 0:
+        raise ValidationError("가져올 채널이 없습니다. 기존 자료는 변경하지 않았습니다")
+
+    preserved_responses: dict[tuple[str, str, str, str, str], tuple[str, str]] = {}
     if replace_all:
-        for ch in session.query(Channel).all():
+        for ch in list_channels(session):
+            if ch.response_xml:
+                key = (
+                    ch.station.network.code,
+                    ch.station.code,
+                    ch.location or "",
+                    ch.channel,
+                    canonical_time(ch.start_time, "시작시간") or "",
+                )
+                preserved_responses[key] = (ch.response_xml, ch.response_source)
             write_audit(
                 session,
                 action="delete",
@@ -299,6 +347,12 @@ def import_hierarchy(
             session.add(sta)
             session.flush()
             for ch_data in sta_data["channels"]:
+                ch_data["start_time"] = canonical_time(
+                    ch_data["start_time"], "시작시간", ch_data.get("_excel_row")
+                )
+                ch_data["end_time"] = canonical_time(
+                    ch_data.get("end_time"), "끝시간", ch_data.get("_excel_row")
+                )
                 assert_equipment_ids(
                     session,
                     ch_data.get("sensor_id"),
@@ -306,26 +360,53 @@ def import_hierarchy(
                     ch_data["sample_rate"],
                     ch_data.get("_excel_row"),
                 )
-                existing = (
+                candidates = (
                     session.query(Channel)
                     .filter_by(
                         station_id=sta.id,
                         location=ch_data.get("location") or "",
                         channel=ch_data["channel"],
-                        start_time=ch_data["start_time"],
                     )
-                    .one_or_none()
+                    .all()
                 )
+                existing = next(
+                    (
+                        candidate
+                        for candidate in candidates
+                        if candidate.start_time == ch_data["start_time"]
+                    ),
+                    None,
+                ) or next(
+                    (
+                        candidate
+                        for candidate in candidates
+                        if canonical_time(candidate.start_time, "시작시간")
+                        == ch_data["start_time"]
+                    ),
+                    None,
+                )
+                if existing is not None:
+                    existing.start_time = ch_data["start_time"]
                 incoming_response = ch_data.get("response_xml")
                 incoming_source = ch_data.get("response_source") or (
                     "imported" if incoming_response else None
                 )
+                response_key = (
+                    net_data["code"],
+                    sta_data["code"],
+                    ch_data.get("location") or "",
+                    ch_data["channel"],
+                    ch_data["start_time"],
+                )
+                if not incoming_response and response_key in preserved_responses:
+                    incoming_response, incoming_source = preserved_responses[response_key]
                 if existing is None:
                     payload = {k: v for k, v in ch_data.items() if not k.startswith("_")}
                     if not incoming_response:
                         payload["response_xml"] = None
                         payload["response_source"] = "none"
                     else:
+                        payload["response_xml"] = incoming_response
                         payload["response_source"] = incoming_source or "imported"
                     ch = Channel(station_id=sta.id, **payload)
                     session.add(ch)
@@ -450,16 +531,25 @@ def list_catalog(session: Session, kind: str | None = None) -> list[EquipmentCat
 
 
 def create_catalog_item(session: Session, payload: dict[str, Any], actor: str | None) -> EquipmentCatalog:
-    kind = payload["kind"]
-    code = payload["code"].strip()
+    kind = str(payload.get("kind") or "").strip()
+    code = str(payload.get("code") or "").strip()
+    manufacturer = str(payload.get("manufacturer") or "").strip()
+    model = str(payload.get("model") or "").strip()
+    if kind not in {"sensor", "datalogger"}:
+        raise ValidationError("장비 종류는 sensor 또는 datalogger여야 합니다")
+    if not code or not manufacturer or not model:
+        raise ValidationError("장비 ID, 제조사, 모델은 필수입니다")
+    sample_rate = parse_float(payload.get("sample_rate"), "샘플링레이트")
+    if kind == "datalogger" and sample_rate is not None:
+        validate_sample_rate(sample_rate)
     if get_by_code(session, kind, code):
         raise ValidationError(f"이미 있는 장비 ID입니다: {code}")
     row = EquipmentCatalog(
         kind=kind,
         code=code,
-        manufacturer=payload["manufacturer"].strip(),
-        model=payload["model"].strip(),
-        sample_rate=payload.get("sample_rate"),
+        manufacturer=manufacturer,
+        model=model,
+        sample_rate=sample_rate,
         nrl_keys=(payload.get("nrl_keys") or None),
     )
     session.add(row)
@@ -487,6 +577,30 @@ def update_catalog_item(
     if row is None:
         raise AppError("카탈로그 항목을 찾을 수 없습니다", 404)
     before = _catalog_dict(row)
+    if "sample_rate" in payload:
+        new_rate = parse_float(payload.get("sample_rate"), "샘플링레이트")
+        if new_rate is not None:
+            validate_sample_rate(new_rate)
+        if row.kind == "datalogger":
+            used_channels = list(
+                session.query(Channel).filter(Channel.datalogger_id == row.code)
+            )
+            if used_channels and new_rate is None:
+                raise ValidationError(
+                    "사용 중인 기록계의 샘플링레이트는 비울 수 없습니다: "
+                    + ", ".join(nslc_of(ch) for ch in used_channels)
+                )
+            mismatched = [
+                nslc_of(ch)
+                for ch in used_channels
+                if not sample_rates_match(ch.sample_rate, new_rate)
+            ]
+            if mismatched:
+                raise ValidationError(
+                    "새 샘플링레이트와 맞지 않는 사용 중 채널이 있습니다: "
+                    + ", ".join(mismatched)
+                )
+        payload = {**payload, "sample_rate": new_rate}
     for key in ("manufacturer", "model", "sample_rate", "nrl_keys"):
         if key in payload:
             setattr(row, key, payload[key] if payload[key] not in ("",) else None)
@@ -562,9 +676,28 @@ def _upsert_catalog(session: Session, catalog: dict[str, Any], actor: str | None
                 session.add(row)
             row.manufacturer = item.get("manufacturer") or row.manufacturer or ""
             row.model = item.get("model") or row.model or ""
-            if kind == "datalogger":
-                row.sample_rate = item.get("sample_rate")
-            row.nrl_keys = item.get("nrl_keys")
+            if kind == "datalogger" and item.get("sample_rate") is not None:
+                imported_rate = parse_float(
+                    item.get("sample_rate"), "카탈로그 샘플링레이트"
+                )
+                if imported_rate is None:
+                    raise ValidationError("기록계 샘플링레이트 값이 없습니다")
+                validate_sample_rate(imported_rate)
+                mismatched = [
+                    nslc_of(ch)
+                    for ch in session.query(Channel).filter(
+                        Channel.datalogger_id == row.code
+                    )
+                    if not sample_rates_match(ch.sample_rate, imported_rate)
+                ]
+                if mismatched:
+                    raise ValidationError(
+                        f"기록계 '{row.code}'의 새 샘플링레이트와 맞지 않는 "
+                        f"사용 중 채널이 있습니다: {', '.join(mismatched)}"
+                    )
+                row.sample_rate = imported_rate
+            if item.get("nrl_keys") is not None:
+                row.nrl_keys = item.get("nrl_keys")
     session.flush()
 
 
@@ -629,8 +762,8 @@ def _station_fields(payload: dict[str, Any], partial: bool = False) -> dict[str,
         "vault": payload.get("vault"),
         "geology": payload.get("geology"),
         "description": payload.get("description") or payload.get("station_description"),
-        "creation_date": creation.isoformat() if creation else payload.get("creation_date"),
-        "termination_date": termination.isoformat() if termination else payload.get("termination_date"),
+        "creation_date": canonical_time(creation, "설치일"),
+        "termination_date": canonical_time(termination, "철거일"),
     }
     if partial:
         return {k: v for k, v in data.items() if k in payload or (k == "description" and "station_description" in payload) or k in ("latitude", "longitude", "elevation") and payload.get(k) is not None}
@@ -679,22 +812,38 @@ def _channel_fields(
     loc = payload.get("location")
     if loc is None and not partial:
         loc = ""
+    parsed_depth = parse_float(payload.get("depth"), "심도")
     data = {
         "location": loc,
         "channel": channel,
-        "start_time": start.isoformat() if start else None,
-        "end_time": end.isoformat() if end else payload.get("end_time"),
+        "start_time": canonical_time(start, "시작시간"),
+        "end_time": canonical_time(end, "끝시간"),
         "sample_rate": rate,
-        "depth": parse_float(payload.get("depth"), "심도") or (0.0 if not partial else None),
+        "depth": parsed_depth if parsed_depth is not None else (0.0 if not partial else None),
         "azimuth": az,
         "dip": dip,
         "description": payload.get("description") or payload.get("channel_description"),
         "comment": payload.get("comment"),
         "channel_types": payload.get("channel_types"),
         "clock_drift": parse_float(payload.get("clock_drift"), "시각오차"),
-        "latitude": parse_float(payload.get("latitude") or payload.get("channel_latitude"), "채널위도"),
-        "longitude": parse_float(payload.get("longitude") or payload.get("channel_longitude"), "채널경도"),
-        "elevation": parse_float(payload.get("elevation") or payload.get("channel_elevation"), "채널고도"),
+        "latitude": parse_float(
+            payload["latitude"]
+            if "latitude" in payload
+            else payload.get("channel_latitude"),
+            "채널위도",
+        ),
+        "longitude": parse_float(
+            payload["longitude"]
+            if "longitude" in payload
+            else payload.get("channel_longitude"),
+            "채널경도",
+        ),
+        "elevation": parse_float(
+            payload["elevation"]
+            if "elevation" in payload
+            else payload.get("channel_elevation"),
+            "채널고도",
+        ),
         "sensor_id": sensor_id or None,
         "sensor_serial": payload.get("sensor_serial"),
         "sensor_type": payload.get("sensor_type"),
@@ -713,5 +862,4 @@ def _channel_fields(
 
 
 def _iso(value: Any, field: str) -> str | None:
-    parsed = parse_time(value, field)
-    return parsed.isoformat() if parsed else None
+    return canonical_time(value, field)

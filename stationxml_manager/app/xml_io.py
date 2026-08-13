@@ -11,7 +11,13 @@ from obspy.core.inventory.util import Equipment
 from .catalog import find_by_manufacturer_model
 from .errors import ValidationError
 from .inventory import dump_response_xml
-from .validation import infer_az_dip, validate_lat_lon, validate_sample_rate, validate_time_order
+from .validation import (
+    canonical_time,
+    infer_az_dip,
+    validate_lat_lon,
+    validate_sample_rate,
+    validate_time_order,
+)
 from sqlalchemy.orm import Session
 
 
@@ -22,9 +28,7 @@ def _eq_manuf_model(eq: Equipment | None) -> tuple[str | None, str | None]:
 
 
 def _time_iso(value) -> str | None:
-    if value is None:
-        return None
-    return value.isoformat()
+    return canonical_time(value, "시간")
 
 
 def read_stationxml(path_or_buf, session: Session) -> dict[str, Any]:
@@ -120,7 +124,7 @@ def read_stationxml(path_or_buf, session: Session) -> dict[str, Any]:
                     {
                         "location": cha.location_code or "",
                         "channel": cha.code,
-                        "start_time": start.isoformat(),
+                        "start_time": canonical_time(start, "시작시간"),
                         "end_time": _time_iso(cha.end_date),
                         "sample_rate": float(cha.sample_rate),
                         "depth": float(cha.depth) if cha.depth is not None else 0.0,

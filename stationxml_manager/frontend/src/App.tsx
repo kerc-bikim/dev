@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   apiGet,
   apiSend,
+  downloadFile,
   uploadFile,
   type CatalogRow,
   type ChannelRow,
@@ -28,9 +29,21 @@ function useActor() {
   return [actor, setActor] as const;
 }
 
+function useApiKey() {
+  const [apiKey, setApiKey] = useState(
+    () => localStorage.getItem("sxm-api-key") || ""
+  );
+  const updateApiKey = useCallback((value: string) => {
+    localStorage.setItem("sxm-api-key", value);
+    setApiKey(value);
+  }, []);
+  return [apiKey, updateApiKey] as const;
+}
+
 export default function App() {
   const [tab, setTab] = useState<Tab>("channels");
   const [actor, setActor] = useActor();
+  const [apiKey, setApiKey] = useApiKey();
   const [error, setError] = useState<string | null>(null);
 
   return (
@@ -54,6 +67,15 @@ export default function App() {
             value={actor}
             onChange={(e) => setActor(e.target.value)}
             placeholder="이름(선택)"
+          />
+        </label>
+        <label className="actor">
+          API 키
+          <input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="원격 접속 시"
           />
         </label>
       </header>
@@ -82,8 +104,10 @@ function ChannelsTab({
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
   const [filter, setFilter] = useState({ network: "", station: "", channel: "" });
   const [editing, setEditing] = useState<Partial<ChannelRow> | null>(null);
+  const requestId = useRef(0);
 
   const reload = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     try {
       const q = new URLSearchParams();
       if (filter.network) q.set("network", filter.network);
@@ -95,6 +119,7 @@ function ChannelsTab({
         apiGet<StationRow[]>("/api/stations"),
         apiGet<CatalogRow[]>("/api/catalog"),
       ]);
+      if (currentRequest !== requestId.current) return;
       setRows(ch);
       setStations(st);
       setCatalog(cat);
@@ -194,8 +219,12 @@ function ChannelsTab({
                     className="danger"
                     onClick={async () => {
                       if (!confirm("이 채널을 삭제할까요?")) return;
-                      await apiSend("DELETE", `/api/channels/${r.id}`, undefined, actor);
-                      await reload();
+                      try {
+                        await apiSend("DELETE", `/api/channels/${r.id}`, undefined, actor);
+                        await reload();
+                      } catch (e) {
+                        onError(e instanceof Error ? e.message : String(e));
+                      }
                     }}
                   >
                     삭제
@@ -443,8 +472,12 @@ function StationsTab({ actor, onError }: { actor: string; onError: (e: string | 
                     className="danger"
                     onClick={async () => {
                       if (!confirm("관측소와 하위 채널을 삭제할까요?")) return;
-                      await apiSend("DELETE", `/api/stations/${r.id}`, undefined, actor);
-                      await reload();
+                      try {
+                        await apiSend("DELETE", `/api/stations/${r.id}`, undefined, actor);
+                        await reload();
+                      } catch (e) {
+                        onError(e instanceof Error ? e.message : String(e));
+                      }
                     }}
                   >
                     삭제
@@ -627,7 +660,13 @@ function NetworksTab({ actor, onError }: { actor: string; onError: (e: string | 
         </thead>
         <tbody>
           {rows.map((r) => (
-            <NetworkEditRow key={r.id} row={r} actor={actor} onSaved={reload} />
+            <NetworkEditRow
+              key={r.id}
+              row={r}
+              actor={actor}
+              onSaved={reload}
+              onError={onError}
+            />
           ))}
         </tbody>
       </table>
@@ -639,10 +678,12 @@ function NetworkEditRow({
   row,
   actor,
   onSaved,
+  onError,
 }: {
   row: NetworkRow;
   actor: string;
   onSaved: () => Promise<void>;
+  onError: (e: string | null) => void;
 }) {
   const [form, setForm] = useState(row);
   return (
@@ -675,8 +716,12 @@ function NetworkEditRow({
         <button
           className="secondary"
           onClick={async () => {
-            await apiSend("PUT", `/api/networks/${row.id}`, form, actor);
-            await onSaved();
+            try {
+              await apiSend("PUT", `/api/networks/${row.id}`, form, actor);
+              await onSaved();
+            } catch (e) {
+              onError(e instanceof Error ? e.message : String(e));
+            }
           }}
         >
           저장
@@ -837,6 +882,14 @@ function IoTab({ actor, onError }: { actor: string; onError: (e: string | null) 
             const file = e.target.files?.[0];
             e.target.value = "";
             if (!file) return;
+            if (
+              replaceAll &&
+              !confirm(
+                "현재 네트워크·관측소·채널 목록을 모두 교체합니다. 계속할까요?"
+              )
+            ) {
+              return;
+            }
             try {
               const result = await uploadFile(file, replaceAll, actor);
               setMsg(`가져오기 완료: 추가 ${result.created}, 수정 ${result.updated}`);
@@ -855,15 +908,36 @@ function IoTab({ actor, onError }: { actor: string; onError: (e: string | null) 
         </p>
       ))}
       <div className="toolbar">
-        <a className="btn" href="/api/export/stationxml">
+        <button
+          onClick={() =>
+            void downloadFile("/api/export/stationxml", "inventory.xml").catch((e) =>
+              onError(e instanceof Error ? e.message : String(e))
+            )
+          }
+        >
           StationXML 다운로드
-        </a>
-        <a className="btn secondary" href="/api/export/xlsx">
+        </button>
+        <button
+          className="secondary"
+          onClick={() =>
+            void downloadFile("/api/export/xlsx", "inventory.xlsx").catch((e) =>
+              onError(e instanceof Error ? e.message : String(e))
+            )
+          }
+        >
           엑셀 다운로드
-        </a>
-        <a className="btn secondary" href="/api/template.xlsx">
+        </button>
+        <button
+          className="secondary"
+          onClick={() =>
+            void downloadFile(
+              "/api/template.xlsx",
+              "stationxml_template.xlsx"
+            ).catch((e) => onError(e instanceof Error ? e.message : String(e)))
+          }
+        >
           엑셀 템플릿
-        </a>
+        </button>
       </div>
     </>
   );
@@ -887,14 +961,18 @@ function HistoryTab({ onError }: { onError: (e: string | null) => void }) {
   }, [reload]);
   const pretty = useMemo(() => {
     if (!detail) return "";
-    return JSON.stringify(
-      {
-        before: detail.before_json ? JSON.parse(detail.before_json) : null,
-        after: detail.after_json ? JSON.parse(detail.after_json) : null,
-      },
-      null,
-      2
-    );
+    try {
+      return JSON.stringify(
+        {
+          before: detail.before_json ? JSON.parse(detail.before_json) : null,
+          after: detail.after_json ? JSON.parse(detail.after_json) : null,
+        },
+        null,
+        2
+      );
+    } catch {
+      return "이력 상세 JSON을 읽을 수 없습니다.";
+    }
   }, [detail]);
   return (
     <>

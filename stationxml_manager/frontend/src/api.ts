@@ -95,13 +95,18 @@ async function parseError(res: Response): Promise<string> {
   }
 }
 
+function apiKeyHeader(): Record<string, string> {
+  const key = localStorage.getItem("sxm-api-key") || "";
+  return key ? { "X-API-Key": key } : {};
+}
+
 function actorQuery(actor: string): string {
   const name = actor.trim();
   return name ? `?actor=${encodeURIComponent(name)}` : "";
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(path);
+  const res = await fetch(path, { headers: apiKeyHeader() });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
@@ -114,7 +119,10 @@ export async function apiSend<T>(
 ): Promise<T> {
   const res = await fetch(`${path}${actorQuery(actor)}`, {
     method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: {
+      ...apiKeyHeader(),
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) throw new Error(await parseError(res));
@@ -129,8 +137,26 @@ export async function uploadFile(
   const form = new FormData();
   form.append("file", file);
   form.append("replace_all", replaceAll ? "true" : "false");
+  form.append("confirm_replace", replaceAll ? "true" : "false");
   if (actor.trim()) form.append("actor", actor.trim());
-  const res = await fetch("/api/import", { method: "POST", body: form });
+  const res = await fetch("/api/import", {
+    method: "POST",
+    headers: apiKeyHeader(),
+    body: form,
+  });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
+}
+
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const res = await fetch(path, { headers: apiKeyHeader() });
+  if (!res.ok) throw new Error(await parseError(res));
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

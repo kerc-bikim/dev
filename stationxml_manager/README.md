@@ -19,7 +19,7 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # 백엔드
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 # 프론트엔드 (다른 터미널)
 cd frontend
@@ -34,8 +34,21 @@ npm run dev
 ```bash
 cd frontend && npm install && npm run build
 cd ..
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+기본 API는 로컬 요청만 허용합니다. 다른 컴퓨터에서 접속하려면 API 키와
+허용 Origin을 설정하고, 웹 화면 상단에도 같은 API 키를 입력합니다.
+API 키를 설정하면 로컬 접속도 키가 필요합니다. 리버스 프록시를 사용하는
+경우에도 반드시 API 키를 설정해야 하며, 키 없는 프록시 요청은 차단됩니다.
+
+```bash
+export STATIONXML_API_KEY="충분히-긴-임의의-값"
+export STATIONXML_CORS_ORIGINS="http://192.168.0.10:5173"
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+
+업로드 제한은 기본 20MB이며 `STATIONXML_MAX_UPLOAD_MB`로 조정합니다.
 
 ## CLI
 

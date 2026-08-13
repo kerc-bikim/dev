@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hmac
+import os
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -8,6 +10,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import IntegrityError
 
 from .audit import to_dict
 from .catalog import seed_catalog
@@ -32,15 +35,69 @@ from .crud import (
     update_station,
 )
 from .db import get_session, init_db
-from .errors import AppError
-from .excel_io import read_excel, write_excel
+from .errors import AppError, ValidationError
+from .excel_io import read_excel, write_excel, write_template
 from .models import AuditLog
 from .xml_io import read_stationxml
 
 app = FastAPI(title="StationXML 메타데이터 관리", version="0.1.0")
+_cors_origins = [
+    value.strip()
+    for value in os.getenv(
+        "STATIONXML_CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if value.strip()
+]
+
+_api_key = os.getenv("STATIONXML_API_KEY", "")
+_local_clients = {"127.0.0.1", "::1", "testclient"}
+
+
+def _positive_int_env(name: str, default: int) -> int:
+    try:
+        value = int(os.getenv(name, str(default)))
+        return value if value > 0 else default
+    except ValueError:
+        return default
+
+
+_max_upload_bytes = _positive_int_env("STATIONXML_MAX_UPLOAD_MB", 20) * 1024 * 1024
+
+
+@app.middleware("http")
+async def protect_api(request: Request, call_next):
+    if request.url.path.startswith("/api/") and request.method != "OPTIONS":
+        supplied_key = request.headers.get("X-API-Key", "")
+        if _api_key:
+            if not hmac.compare_digest(supplied_key, _api_key):
+                return JSONResponse(
+                    {"detail": "유효한 API 키가 필요합니다"},
+                    status_code=401,
+                )
+        else:
+            client_host = request.client.host if request.client else ""
+            proxied = bool(
+                request.headers.get("Forwarded")
+                or request.headers.get("X-Forwarded-For")
+            )
+            if client_host not in _local_clients or proxied:
+                return JSONResponse(
+                    {
+                        "detail": (
+                            "원격 API 접근이 차단되었습니다. "
+                            "서버에 STATIONXML_API_KEY를 설정하세요"
+                        )
+                    },
+                    status_code=403,
+                )
+    return await call_next(request)
+
+
+# CORS를 인증 미들웨어 바깥에 두어 401/403에도 브라우저가 오류 본문을 읽게 한다.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -60,6 +117,14 @@ def _startup() -> None:
 @app.exception_handler(AppError)
 def _app_error(_request: Request, exc: AppError) -> JSONResponse:
     return JSONResponse({"detail": exc.message}, status_code=exc.status_code)
+
+
+@app.exception_handler(IntegrityError)
+def _integrity_error(_request: Request, _exc: IntegrityError) -> JSONResponse:
+    return JSONResponse(
+        {"detail": "같은 코드 또는 NSLC/시작시간을 가진 항목이 이미 있습니다"},
+        status_code=409,
+    )
 
 
 def _actor(actor: str | None) -> str | None:
@@ -248,20 +313,37 @@ def api_delete_catalog(item_id: int, actor: str | None = None) -> dict[str, str]
 async def api_import(
     file: UploadFile = File(...),
     replace_all: bool = Form(False),
+    confirm_replace: bool = Form(False),
     actor: str | None = Form(None),
 ) -> dict[str, Any]:
-    raw = await file.read()
+    if replace_all and not confirm_replace:
+        raise ValidationError("전체 교체 확인 값이 필요합니다")
+    raw = await file.read(_max_upload_bytes + 1)
+    if len(raw) > _max_upload_bytes:
+        raise ValidationError(
+            f"업로드 파일은 {int(_max_upload_bytes / 1024 / 1024)}MB 이하여야 합니다"
+        )
     name = (file.filename or "").lower()
     session = get_session()
     try:
-        if name.endswith(".xml") or name.endswith(".stationxml"):
-            hierarchy = read_stationxml(BytesIO(raw), session)
-            source = "xml"
-        elif name.endswith(".xlsx") or name.endswith(".xls"):
-            hierarchy = read_excel(BytesIO(raw))
-            source = "excel"
-        else:
-            raise HTTPException(status_code=400, detail="xlsx 또는 StationXML(xml) 파일만 올릴 수 있습니다")
+        try:
+            if name.endswith(".xml") or name.endswith(".stationxml"):
+                hierarchy = read_stationxml(BytesIO(raw), session)
+                source = "xml"
+            elif name.endswith(".xlsx") or name.endswith(".xls"):
+                hierarchy = read_excel(BytesIO(raw))
+                source = "excel"
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail="xlsx 또는 StationXML(xml) 파일만 올릴 수 있습니다",
+                )
+        except (AppError, HTTPException):
+            raise
+        except Exception as exc:
+            raise ValidationError(
+                f"파일을 읽지 못했습니다. 형식과 내용을 확인하세요: {exc}"
+            ) from exc
         result = import_hierarchy(
             session,
             hierarchy,
@@ -306,7 +388,7 @@ def api_export_xlsx() -> Response:
 def api_template() -> Response:
     session = get_session()
     try:
-        data = write_excel(session)
+        data = write_template(session)
         return Response(
             content=data,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
