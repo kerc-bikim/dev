@@ -1,0 +1,48 @@
+sensors:
+  - id: Guralp_CMG-3T
+    manufacturer: Guralp
+    model: CMG-3T
+    nrl_keys: "Guralp|CMG-3T|360s"
+  - id: Guralp_CMG-40T
+    manufacturer: Guralp
+    model: CMG-40T
+    nrl_keys: "Guralp|CMG-40T|30s - 100Hz"
+  - id: Nanometrics_TrilliumCompact120
+    manufacturer: Nanometrics
+    model: Trillium Compact 120
+    nrl_keys: "Nanometrics|Trillium Compact 120 (Vault, Posthole, OBS)|754 V/m/s"
+  - id: Nanometrics_Trillium120QA
+    manufacturer: Nanometrics
+    model: Trillium 120QA
+    nrl_keys: ""
+  - id: Kinemetrics_Episensor
+    manufacturer: Kinemetrics
+    model: Episensor ES-T
+    nrl_keys: ""
+
+dataloggers:
+  - id: REFTEK_RT130_100sps
+    manufacturer: REF TEK
+    model: RT 130
+    sample_rate: 100
+    nrl_keys: "REF TEK|RT 130 & 130-SMA|1|100"
+  - id: REFTEK_RT130_200sps
+    manufacturer: REF TEK
+    model: RT 130
+    sample_rate: 200
+    nrl_keys: "REF TEK|RT 130 & 130-SMA|1|200"
+  - id: Nanometrics_Centaur_100sps
+    manufacturer: Nanometrics
+    model: Centaur
+    sample_rate: 100
+    nrl_keys: ""
+  - id: Nanometrics_Centaur_200sps
+    manufacturer: Nanometrics
+    model: Centaur
+    sample_rate: 200
+    nrl_keys: ""
+  - id: Kinemetrics_Basalt_200sps
+    manufacturer: Kinemetrics
+    model: Basalt
+    sample_rate: 200
+    nrl_keys: ""
