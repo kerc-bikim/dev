@@ -5,6 +5,7 @@ import {
   DEFAULT_APP_SETTINGS,
   type AppSettings,
 } from "../settings/appSettings";
+import { PPSDComputeFields } from "./PPSDComputeFields";
 
 interface Props {
   onClose: () => void;
@@ -200,6 +201,17 @@ export function SettingsModal({ onClose }: Props) {
               Show mean curve
             </label>
           </div>
+
+          <PPSDComputeFields
+            value={{
+              ppsd_length: draft.ppsd_length,
+              overlap: draft.overlap,
+              period_step_octaves: draft.period_step_octaves,
+              period_smoothing_width_octaves:
+                draft.period_smoothing_width_octaves,
+            }}
+            onChange={(compute) => patch(compute)}
+          />
 
           {/* Compare */}
           <div className="section">

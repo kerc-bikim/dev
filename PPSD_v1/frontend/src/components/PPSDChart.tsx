@@ -11,7 +11,7 @@ interface Props {
   compact?: boolean;
 }
 
-export function PPSDChart({ data, height = 460, compact = false }: Props) {
+export function PPSDChart({ data, height = 560, compact = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);

@@ -38,7 +38,10 @@ export function AxisRangePanel({ value, onChange, xaxis }: Props) {
     <div className="section">
       <h3>Axis range</h3>
       <p className="hint">
-        Y축 범위를 비우면 단위별 기본값 또는 서버 .env 설정을 사용합니다.
+        X축을 비우면(auto) 채널 샘플레이트에 맞는 의미 있는 구간만 표시합니다
+        (주기: Nyquist ~ min(세그먼트/8, 179 s), 주파수: 그 역수). 장주기 쪽
+        불안정한 bin(세로 스파이크)을 가리기 위함입니다. Y축을 비우면 단위별
+        기본값 또는 서버 .env 설정을 사용합니다.
       </p>
       <div className="row-2">
         <div className="field">

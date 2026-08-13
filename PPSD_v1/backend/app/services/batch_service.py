@@ -72,6 +72,10 @@ def _to_ppsd_request(
         x_max=options.x_max,
         y_min=options.y_min,
         y_max=options.y_max,
+        ppsd_length=options.ppsd_length,
+        overlap=options.overlap,
+        period_step_octaves=options.period_step_octaves,
+        period_smoothing_width_octaves=options.period_smoothing_width_octaves,
     )
 
 
@@ -246,6 +250,10 @@ def run_compare(req: CompareRequest) -> CompareResponse:
         xaxis=req.xaxis,
         yaxis_type=req.yaxis_type,
         show_noise_models=req.show_noise_models,
+        ppsd_length=req.ppsd_length,
+        overlap=req.overlap,
+        period_step_octaves=req.period_step_octaves,
+        period_smoothing_width_octaves=req.period_smoothing_width_octaves,
     )
     executor = get_executor()
     futures = {
@@ -299,6 +307,10 @@ def run_compare_time(req: CompareTimeRequest) -> CompareResponse:
         x_max=req.x_max,
         y_min=req.y_min,
         y_max=req.y_max,
+        ppsd_length=req.ppsd_length,
+        overlap=req.overlap,
+        period_step_octaves=req.period_step_octaves,
+        period_smoothing_width_octaves=req.period_smoothing_width_octaves,
     )
     executor = get_executor()
     futures = {

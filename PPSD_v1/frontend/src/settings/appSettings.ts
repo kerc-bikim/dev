@@ -19,6 +19,11 @@ export interface AppSettings {
   /** Colorbar / heatmap Probability [%] display range. */
   probability_min: number;
   probability_max: number;
+  // ObsPy PPSD computation defaults
+  ppsd_length: number;
+  overlap: number;
+  period_step_octaves: number;
+  period_smoothing_width_octaves: number;
   // Compare (Compare Station / Compare Time) defaults
   compare_percentiles: string;
 }
@@ -35,6 +40,10 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   cmap: "viridis",
   probability_min: 0,
   probability_max: 30,
+  ppsd_length: 3600,
+  overlap: 0.5,
+  period_step_octaves: 0.0125,
+  period_smoothing_width_octaves: 0.125,
   compare_percentiles: "10, 50, 90",
 };
 
@@ -98,5 +107,15 @@ export function settingsToPlotDefaults(s: AppSettings): PlotOptionDefaults {
     show_mode: s.show_mode,
     show_mean: s.show_mean,
     cmap: s.cmap,
+  };
+}
+
+/** ObsPy PPSD compute params taken from settings at submit time. */
+export function settingsToComputeDefaults(s: AppSettings) {
+  return {
+    ppsd_length: s.ppsd_length,
+    overlap: s.overlap,
+    period_step_octaves: s.period_step_octaves,
+    period_smoothing_width_octaves: s.period_smoothing_width_octaves,
   };
 }

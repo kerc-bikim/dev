@@ -5,7 +5,8 @@ Layout (mirrors SeisComP Data Structure, with a `.npz` suffix):
     <SDS>/<YEAR>/<NET>/<STA>/<CHAN>.<TYPE>/
         <NET>.<STA>.<LOC>.<CHAN>.<TYPE>.<YEAR>.<JULDAY>.npz
 
-There is one npz per channel per UTC day.
+There is one npz per channel per UTC day. When PPSD compute parameters change,
+the existing file is recomputed and overwritten (see :mod:`ppsd_service`).
 """
 
 from __future__ import annotations

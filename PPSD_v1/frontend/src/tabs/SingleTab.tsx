@@ -6,7 +6,7 @@ import { api, PPSDRequestBody, PPSDResponse } from "../api/client";
 import { mergePlotDefaults, usePlotDefaults } from "../hooks/usePlotDefaults";
 import { defaultTimeWindow, toIsoUtc } from "../utils/time";
 import { useSettings } from "../settings/SettingsContext";
-import { AppSettings, settingsToPlotDefaults } from "../settings/appSettings";
+import { AppSettings, settingsToComputeDefaults, settingsToPlotDefaults } from "../settings/appSettings";
 
 const initialForm = (settings: AppSettings): PPSDFormState => {
   const { start, end } = defaultTimeWindow();
@@ -59,6 +59,7 @@ export function SingleTab() {
         x_max: form.x_max,
         y_min: form.y_min,
         y_max: form.y_max,
+        ...settingsToComputeDefaults(settings),
       };
       const res = await api.ppsd(body);
       setResult(res);

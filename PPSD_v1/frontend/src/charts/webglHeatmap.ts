@@ -4,6 +4,8 @@
  * maps those to clip space using the plot-area resolution.
  */
 
+import { chartPixelRatio } from "./chartPixelRatio";
+
 const VERT_SRC = `
 attribute vec2 a_pos;
 attribute vec3 a_color;
@@ -17,7 +19,7 @@ void main() {
 `;
 
 const FRAG_SRC = `
-precision mediump float;
+precision highp float;
 varying vec3 v_color;
 void main() {
   gl_FragColor = vec4(v_color, 1.0);
@@ -82,7 +84,7 @@ export class WebGLQuadLayer {
     cssHeight: number
   ) {
     const gl = this.gl;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = chartPixelRatio();
     this.canvas.width = Math.max(1, Math.round(cssWidth * dpr));
     this.canvas.height = Math.max(1, Math.round(cssHeight * dpr));
     this.canvas.style.width = `${cssWidth}px`;

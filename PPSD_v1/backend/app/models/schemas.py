@@ -56,7 +56,24 @@ class ChannelTarget(BaseModel):
     )
 
 
-class PlotOptions(BaseModel):
+class PPSDComputeOptions(BaseModel):
+    """ObsPy PPSD constructor parameters that affect spectral estimation."""
+
+    ppsd_length: float = Field(
+        3600.0, gt=0, description="Length of each PPSD segment [s]"
+    )
+    overlap: float = Field(
+        0.5, ge=0.0, lt=1.0, description="Fractional overlap between segments"
+    )
+    period_step_octaves: float = Field(
+        0.0125, gt=0, description="Period axis step width [octaves]"
+    )
+    period_smoothing_width_octaves: float = Field(
+        0.125, gt=0, description="Smoothing width per period bin [octaves]"
+    )
+
+
+class PlotOptions(PPSDComputeOptions):
     percentile_low: float = Field(10.0, ge=0.0, le=100.0)
     percentile_high: float = Field(90.0, ge=0.0, le=100.0)
     show_overlay: bool = True
@@ -122,6 +139,14 @@ class PPSDRequest(BaseModel):
     x_max: Optional[float] = Field(None, description="X-axis maximum")
     y_min: Optional[float] = Field(None, description="Y-axis minimum [dB]")
     y_max: Optional[float] = Field(None, description="Y-axis maximum [dB]")
+    ppsd_length: float = Field(3600.0, gt=0, description="PPSD segment length [s]")
+    overlap: float = Field(0.5, ge=0.0, lt=1.0, description="Segment overlap fraction")
+    period_step_octaves: float = Field(
+        0.0125, gt=0, description="Period step [octaves]"
+    )
+    period_smoothing_width_octaves: float = Field(
+        0.125, gt=0, description="Period smoothing width [octaves]"
+    )
 
     @field_validator("percentile_high")
     @classmethod
@@ -231,7 +256,7 @@ class BatchPPSDResponse(BaseModel):
     elapsed_seconds: float
 
 
-class CompareRequest(BaseModel):
+class CompareRequest(PPSDComputeOptions):
     targets: List[ChannelTarget] = Field(..., min_length=1)
     starttime: datetime
     endtime: datetime
@@ -307,7 +332,7 @@ class CompareTimeWindow(BaseModel):
         return v
 
 
-class CompareTimeRequest(BaseModel):
+class CompareTimeRequest(PPSDComputeOptions):
     target: ChannelTarget
     windows: List[CompareTimeWindow] = Field(..., min_length=1)
     percentiles: List[float] = Field(default_factory=lambda: [10.0, 50.0, 90.0])

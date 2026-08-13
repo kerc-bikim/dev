@@ -18,6 +18,7 @@ import {
 } from "../utils/yaxisDefaults";
 import { channelId, defaultTimeWindow, toIsoUtc } from "../utils/time";
 import { useSettings } from "../settings/SettingsContext";
+import { settingsToComputeDefaults } from "../settings/appSettings";
 
 export function CompareStationTab() {
   const plotDefaults = usePlotDefaults();
@@ -105,6 +106,7 @@ export function CompareStationTab() {
         x_max: axisRange.x_max,
         y_min: axisRange.y_min,
         y_max: axisRange.y_max,
+        ...settingsToComputeDefaults(settings),
       });
       setChartData(res.data);
       setItems(res.items);

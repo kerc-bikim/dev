@@ -21,7 +21,7 @@ from obspy.signal.spectral_estimation import (
 )
 
 from ..models.schemas import CompareRequest, PlotOptions, PPSDRequest, YAxisType
-from .axis_limits import resolve_axis_limits
+from .axis_limits import auto_x_limits, resolve_axis_limits
 from .yaxis_units import (
     convert_db_curve,
     convert_histogram,
@@ -112,14 +112,25 @@ def _resolved_axis(
     yaxis_type: YAxisType,
     data_xmin: float,
     data_xmax: float,
+    *,
+    xaxis: str = "period",
+    sampling_rate: Optional[float] = None,
+    ppsd_length: Optional[float] = None,
 ) -> dict:
     rx_min, rx_max, ry_min, ry_max = resolve_axis_limits(
         opts_x_min, opts_x_max, opts_y_min, opts_y_max, yaxis_type
     )
     type_ymin, type_ymax = yaxis_default_limits(yaxis_type)
+    auto_xmin, auto_xmax = auto_x_limits(
+        data_xmin,
+        data_xmax,
+        xaxis=xaxis,
+        sampling_rate=sampling_rate,
+        ppsd_length=ppsd_length,
+    )
     return {
-        "x_min": rx_min if rx_min is not None else data_xmin,
-        "x_max": rx_max if rx_max is not None else data_xmax,
+        "x_min": rx_min if rx_min is not None else auto_xmin,
+        "x_max": rx_max if rx_max is not None else auto_xmax,
         "y_min": ry_min if ry_min is not None else type_ymin,
         "y_max": ry_max if ry_max is not None else type_ymax,
     }
@@ -254,6 +265,9 @@ def ppsd_heatmap_data(
         "axis": _resolved_axis(
             opts.x_min, opts.x_max, y_min_opt, y_max_opt, ytype,
             float(x_edges.min()), float(x_edges.max()),
+            xaxis=opts.xaxis,
+            sampling_rate=float(ppsd.sampling_rate) if ppsd.sampling_rate else None,
+            ppsd_length=float(ppsd.ppsd_length) if ppsd.ppsd_length else None,
         ),
         "title": title,
     }
@@ -294,6 +308,20 @@ def compare_curves_data(
     default_xmin = x_min_data if x_min_data is not None else 0.01
     default_xmax = x_max_data if x_max_data is not None else 100.0
 
+    rates = [
+        float(ppsd.sampling_rate)
+        for _, ppsd in entries
+        if getattr(ppsd, "sampling_rate", None)
+    ]
+    lengths = [
+        float(ppsd.ppsd_length)
+        for _, ppsd in entries
+        if getattr(ppsd, "ppsd_length", None)
+    ]
+    # Most restrictive high-freq limit; longest segment for low-freq floor.
+    compare_rate = min(rates) if rates else None
+    compare_length = max(lengths) if lengths else None
+
     if title is None:
         title = (
             f"PPSD Compare Station   "
@@ -310,6 +338,9 @@ def compare_curves_data(
         "axis": _resolved_axis(
             req.x_min, req.x_max, req.y_min, req.y_max, ytype,
             default_xmin, default_xmax,
+            xaxis=req.xaxis,
+            sampling_rate=compare_rate,
+            ppsd_length=compare_length,
         ),
         "title": title,
     }

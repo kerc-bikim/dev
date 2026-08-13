@@ -2,6 +2,9 @@
  * Composite a chart's WebGL canvas (if any) and its D3 SVG overlay into a
  * single PNG and trigger a download. Replaces the former server-side PNG.
  */
+
+import { chartPixelRatio } from "./chartPixelRatio";
+
 export async function exportChartPng(
   container: HTMLElement,
   filename: string
@@ -13,12 +16,15 @@ export async function exportChartPng(
   const height = Number(svg.getAttribute("height")) || container.clientHeight;
 
   const out = document.createElement("canvas");
-  const dpr = window.devicePixelRatio || 1;
+  // Prefer a sharp export scale (at least 2×, up to 3×).
+  const dpr = chartPixelRatio(3);
   out.width = Math.round(width * dpr);
   out.height = Math.round(height * dpr);
   const ctx = out.getContext("2d");
   if (!ctx) return;
   ctx.scale(dpr, dpr);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
   // white background
   ctx.fillStyle = "#ffffff";

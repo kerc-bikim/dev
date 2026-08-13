@@ -38,7 +38,21 @@ export interface ChannelTarget {
   color?: string;
 }
 
-export interface PlotOptions {
+export interface PPSDComputeOptions {
+  ppsd_length: number;
+  overlap: number;
+  period_step_octaves: number;
+  period_smoothing_width_octaves: number;
+}
+
+export const DEFAULT_PPSD_COMPUTE: PPSDComputeOptions = {
+  ppsd_length: 3600,
+  overlap: 0.5,
+  period_step_octaves: 0.0125,
+  period_smoothing_width_octaves: 0.125,
+};
+
+export interface PlotOptions extends PPSDComputeOptions {
   percentile_low: number;
   percentile_high: number;
   show_overlay: boolean;
@@ -55,7 +69,7 @@ export interface PlotOptions {
   y_max?: number | null;
 }
 
-export interface PPSDRequestBody {
+export interface PPSDRequestBody extends PPSDComputeOptions {
   network: string;
   station: string;
   location: string;
@@ -171,7 +185,7 @@ export interface BatchPPSDRequestBody {
   options: PlotOptions;
 }
 
-export interface CompareRequestBody {
+export interface CompareRequestBody extends PPSDComputeOptions {
   targets: ChannelTarget[];
   starttime: string;
   endtime: string;
@@ -192,7 +206,7 @@ export interface CompareTimeWindowBody {
   color?: string;
 }
 
-export interface CompareTimeRequestBody {
+export interface CompareTimeRequestBody extends PPSDComputeOptions {
   target: ChannelTarget;
   windows: CompareTimeWindowBody[];
   percentiles: number[];

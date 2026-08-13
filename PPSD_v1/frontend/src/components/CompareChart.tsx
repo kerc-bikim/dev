@@ -9,7 +9,7 @@ interface Props {
 
 const DASHES = [null, "6,3", "2,3", "6,3,2,3"];
 
-export function CompareChart({ data, height = 480 }: Props) {
+export function CompareChart({ data, height = 560 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 

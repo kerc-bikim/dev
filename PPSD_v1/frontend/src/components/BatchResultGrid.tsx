@@ -30,7 +30,7 @@ function GridCard({ item }: { item: BatchPPSDItem }) {
       {item.status === "ok" && item.data ? (
         <>
           <div ref={wrapRef} style={{ width: "100%" }}>
-            <PPSDChart data={item.data} height={280} compact />
+            <PPSDChart data={item.data} height={340} compact />
           </div>
           {item.stats && (
             <div className="grid-card-footer">

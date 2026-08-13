@@ -16,7 +16,7 @@ import { mergePlotDefaults, usePlotDefaults } from "../hooks/usePlotDefaults";
 import { defaultTimeWindow, toIsoUtc } from "../utils/time";
 import { yaxisTypeForChannels, yLimitsForType } from "../utils/yaxisDefaults";
 import { useSettings } from "../settings/SettingsContext";
-import { settingsToPlotDefaults } from "../settings/appSettings";
+import { settingsToComputeDefaults, settingsToPlotDefaults } from "../settings/appSettings";
 
 export function MultiTab() {
   const plotDefaults = usePlotDefaults();
@@ -66,7 +66,7 @@ export function MultiTab() {
         targets,
         starttime: toIsoUtc(starttime),
         endtime: toIsoUtc(endtime),
-        options,
+        options: { ...options, ...settingsToComputeDefaults(settings) },
       });
       setItems(res.items);
       setElapsed(res.elapsed_seconds);

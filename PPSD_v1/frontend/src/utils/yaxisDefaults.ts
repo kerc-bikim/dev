@@ -54,9 +54,8 @@ export function yLimitsForType(t: YAxisType) {
 
 /**
  * Infer the Y-axis data type from a SEED channel code (2nd char = instrument):
- *   D -> pressure (infrasound/pressure, e.g. BDF/HDF)
- *   N -> acceleration (accelerometer, e.g. BNZ/HNZ)
- *   H/L -> velocity (high/low-gain seismometer, e.g. BHZ/HHZ)
+ *   D           -> pressure (infrasound/pressure, e.g. BDF/HDF)
+ *   G/N/A/H/L   -> acceleration (e.g. HGZ, HNZ, HHZ, ELZ, …)
  * Returns null for unknown instrument codes (no auto-selection).
  */
 export function yaxisTypeForChannel(
@@ -67,11 +66,12 @@ export function yaxisTypeForChannel(
   switch (ch[1]) {
     case "D":
       return "pressure";
+    case "G":
     case "N":
-      return "acceleration";
+    case "A":
     case "H":
     case "L":
-      return "velocity";
+      return "acceleration";
     default:
       return null;
   }

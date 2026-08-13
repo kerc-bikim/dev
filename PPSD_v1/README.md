@@ -171,7 +171,11 @@ UI의 **Axis range** 섹션 또는 API 요청의 `x_min`, `x_max`, `y_min`, `y_m
 - X축 단위는 `xaxis` 에 따라 **period [s]** 또는 **frequency [Hz]**
 - Y축 단위는 **dB** (PSD). UI 드롭다운 라벨 예: `PSD [dB rel. (m/s²)²/Hz]`
 - Y축 물리량 타입: `acceleration` (기본), `velocity`, `velocity_nm`, `displacement`, `pressure`
-- 우선순위: **요청 값** → **`.env` 기본값** → **단위별 기본 범위** → **데이터 자동 범위**
+- 우선순위: **요청 값** → **`.env` 기본값** → **단위별 기본 범위** → **자동 범위**
+  - X축 auto: 채널 샘플레이트 기준으로 의미 있는 대역만 표시
+    (주기 `2/fs`–`min(ppsd_length/8, 179)`, 주파수는 그 역수; 데이터 범위와 교집합)
+    — ObsPy `plot(period_lim=…)` 관행에 맞춰 장주기 스파이크 구간을 제외
+  - Y축 auto: 단위별 기본 범위
 
 단위별 Y축 기본 범위 [dB] (요청·`.env` 미지정 시):
 
@@ -285,6 +289,8 @@ python -m pip install "setuptools>=68,<81" setuptools-scm
 - Colormap (`viridis`, `magma`, `plasma`, `inferno`, `cividis`, `turbo`, `hot`,
   `jet`, **`pqlx`** — ObsPy/PQLX PPSD 기본 스타일)
 - Probability [%] 컬러바 범위 (기본 **0–30**, ObsPy `ppsd.plot`과 동일)
+- **PPSD computation**: `ppsd_length`(3600), `overlap`(0.5),
+  `period_step_octaves`(**0.0125**), `period_smoothing_width_octaves`(**0.125**)
 - 오버레이/토글: Overlay percentile curves, Clip histogram to percentile range,
   Show Peterson NLNM/NHNM, Show mode curve, Show mean curve
 - Compare 탭 기본 percentile 목록(예: `10, 50, 90`)
@@ -292,6 +298,17 @@ python -m pip install "setuptools>=68,<81" setuptools-scm
 ## 변경 이력 (Changelog)
 
 형식은 [Keep a Changelog](https://keepachangelog.com/), 버전은 [Semantic Versioning](https://semver.org/lang/ko/)을 따릅니다.
+
+### [1.4.1] - 2026-07-21
+
+**Added**
+
+- 설정(⚙)에 **PPSD computation** 옵션 추가:
+  `ppsd_length`, `overlap`, `period_step_octaves`, `period_smoothing_width_octaves`.
+  요청 시 설정값이 API로 전달되며, 파라미터가 바뀌면 SDS npz를 재계산·덮어씁니다.
+- 기본값: `period_step_octaves=0.0125`, `period_smoothing_width_octaves=0.125`
+  (ObsPy 기본 0.125 / 1.0 보다 세밀한 주기 binning), `ppsd_length=3600`,
+  `overlap=0.5`.
 
 ### [1.4.0] - 2026-07-10
 
@@ -316,8 +333,7 @@ python -m pip install "setuptools>=68,<81" setuptools-scm
 
 **Note**
 
-- PPSD 계산은 ObsPy 기본 파라미터(`ppsd_length=3600`, `overlap=0.5` 등)를 사용합니다.
-  UI/API에서 계산 파라미터를 노출하던 실험적 변경은 롤백되었습니다.
+- (superseded by 1.4.1) PPSD 계산 파라미터는 설정 메뉴에서 조정합니다.
 
 ### [1.3.0] - 2026-07-10
 
@@ -337,7 +353,7 @@ python -m pip install "setuptools>=68,<81" setuptools-scm
 **Added**
 
 - Plot options의 **Y axis 데이터 종류를 선택한 채널에 따라 자동 선택**. SEED 계기코드
-  기준: `D`→음압(pressure), `N`→가속도(acceleration), `H`/`L`→속도(velocity).
+  기준: `D`→음압(pressure), `G`/`N`/`A`/`H`/`L`→가속도(acceleration).
   자동 선택 후에도 수동으로 다른 단위를 고를 수 있으며(수동 선택 유지),
   채널을 바꾸면 다시 채널에 맞는 단위로 갱신됩니다. Single/Multi/Compare Station/
   Compare Time 전 탭에 적용(여러 채널이 서로 다른 종류면 자동 변경하지 않음).

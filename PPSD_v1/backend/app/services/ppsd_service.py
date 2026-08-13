@@ -4,6 +4,9 @@ A request is split into UTC day chunks. Each day is computed once and stored as
 an SDS-style npz file (see :mod:`sds_store`); subsequent requests reuse or
 accumulate those day files. Days covered by a request are merged into a single
 in-memory PPSD via ``PPSD.load_npz`` + ``PPSD.add_npz``.
+
+There is one npz per channel per UTC day. When PPSD compute parameters change,
+the existing file is recomputed and overwritten.
 """
 
 from __future__ import annotations
@@ -30,10 +33,88 @@ logger = logging.getLogger(__name__)
 # values are never folded into the edge bins.
 INFRASOUND_DB_BINS = (-120.0, 80.0, 1.0)
 
+_DUMMY_METADATA = {"poles": [], "zeros": [], "sensitivity": 1.0}
+
 
 def _expected_handling(channel: str | None) -> str:
     """Special-handling tag expected for a channel ('infrasound' or '')."""
     return "infrasound" if is_infrasound_channel(channel) else ""
+
+
+def _ppsd_ctor_kwargs(req: PPSDRequest) -> dict:
+    """Keyword arguments shared by all PPSD(...) constructors for a request."""
+    return {
+        "ppsd_length": req.ppsd_length,
+        "overlap": req.overlap,
+        "period_step_octaves": req.period_step_octaves,
+        "period_smoothing_width_octaves": req.period_smoothing_width_octaves,
+    }
+
+
+def _read_npz_scalar(data, key: str):
+    """Read a scalar value from an np.load() archive."""
+    value = data[key]
+    return value.item() if hasattr(value, "item") else value
+
+
+def _expected_period_binning(req: PPSDRequest, sampling_rate: float) -> np.ndarray:
+    """Build the period-binning matrix that ``req`` would produce at ``sampling_rate``."""
+    from obspy.core.trace import Stats
+
+    stats = Stats()
+    stats.network = req.network
+    stats.station = req.station
+    stats.location = req.location or ""
+    stats.channel = req.channel
+    stats.sampling_rate = sampling_rate
+
+    ctor = _ppsd_ctor_kwargs(req)
+    if is_infrasound_channel(req.channel):
+        ref = PPSD(
+            stats,
+            metadata=_DUMMY_METADATA,
+            special_handling="infrasound",
+            db_bins=INFRASOUND_DB_BINS,
+            **ctor,
+        )
+    else:
+        ref = PPSD(stats, metadata=_DUMMY_METADATA, **ctor)
+    return ref._period_binning
+
+
+def _npz_matches_request(path, req: PPSDRequest) -> bool:
+    """Return True when an on-disk npz was computed with the same parameters as ``req``."""
+    try:
+        with np.load(str(path), allow_pickle=True) as data:
+            stored_length = float(_read_npz_scalar(data, "ppsd_length"))
+            stored_overlap = float(_read_npz_scalar(data, "overlap"))
+            if abs(stored_length - req.ppsd_length) > 1e-6:
+                return False
+            if abs(stored_overlap - req.overlap) > 1e-6:
+                return False
+
+            if "special_handling" in data.files:
+                stored_handling = _read_npz_scalar(data, "special_handling")
+                if stored_handling is None or stored_handling == "":
+                    stored_handling = ""
+                else:
+                    stored_handling = str(stored_handling)
+            else:
+                stored_handling = ""
+            if stored_handling != _expected_handling(req.channel):
+                return False
+
+            if "_period_binning" not in data.files:
+                return False
+            stored_binning = np.asarray(data["_period_binning"], dtype=float)
+            sampling_rate = float(_read_npz_scalar(data, "sampling_rate"))
+            expected = _expected_period_binning(req, sampling_rate)
+            if stored_binning.shape != expected.shape:
+                return False
+            return np.allclose(stored_binning, expected, rtol=1e-6, atol=1e-9)
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Could not validate cached PPSD %s: %s", path, exc)
+        return False
 
 
 @dataclass
@@ -78,6 +159,7 @@ def _compute_day(req: PPSDRequest, day: UTCDateTime) -> Optional[PPSD]:
         return None
 
     tr = st[0]
+    ctor = _ppsd_ctor_kwargs(req)
     if is_infrasound_channel(req.channel):
         # Pressure/infrasound: remove response but do NOT differentiate to
         # acceleration, and use a pressure-appropriate dB range.
@@ -86,45 +168,26 @@ def _compute_day(req: PPSDRequest, day: UTCDateTime) -> Optional[PPSD]:
             metadata=inv,
             special_handling="infrasound",
             db_bins=INFRASOUND_DB_BINS,
+            **ctor,
         )
     else:
-        ppsd = PPSD(tr.stats, metadata=inv)
+        ppsd = PPSD(tr.stats, metadata=inv, **ctor)
     ppsd.add(st)
     if len(ppsd.times_processed) == 0:
         return None
     return ppsd
 
 
-def _npz_special_handling(path) -> Optional[str]:
-    """Read the stored ``special_handling`` tag from a PPSD npz ('' for None).
-
-    Returns None when the file cannot be read/parsed.
-    """
-    try:
-        with np.load(str(path), allow_pickle=True) as data:
-            if "special_handling" not in data.files:
-                return ""
-            value = data["special_handling"]
-            value = value.item() if hasattr(value, "item") else value
-            return "" if value is None else str(value)
-    except Exception as exc:  # pragma: no cover
-        logger.warning("Could not read special_handling from %s: %s", path, exc)
-        return None
-
-
 def _get_or_build_day(req: PPSDRequest, day: UTCDateTime) -> Tuple[Optional[str], bool]:
     """Return (npz_path, from_cache) for a day, computing+saving if needed.
 
-    npz_path is None when there is no data for that day. An existing file whose
-    ``special_handling`` does not match the channel (e.g. a seismometer-style
-    cache for an infrasound channel) is recomputed and overwritten.
+    npz_path is None when there is no data for that day. An existing flat SDS
+    file is reused only when its stored compute parameters match ``req``;
+    otherwise it is recomputed and overwritten.
     """
     path = sds_npz_path(req.network, req.station, req.location, req.channel, day)
-    if path.exists():
-        stored = _npz_special_handling(path)
-        expected = _expected_handling(req.channel)
-        if stored is not None and stored == expected:
-            return str(path), True
+    if path.exists() and _npz_matches_request(path, req):
+        return str(path), True
 
     ppsd = _compute_day(req, day)
     if ppsd is None:
