@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import datetime
 from typing import Any
 
@@ -13,11 +14,9 @@ from .errors import ValidationError
 def is_blank(value: Any) -> bool:
     if value is None:
         return True
-    if isinstance(value, float) and value != value:  # NaN
+    if isinstance(value, float) and math.isnan(value):
         return True
-    if isinstance(value, str) and not value.strip():
-        return True
-    return False
+    return isinstance(value, str) and not value.strip()
 
 
 def as_str(value: Any, default: str = "") -> str:

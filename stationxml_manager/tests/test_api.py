@@ -95,6 +95,7 @@ def test_template_endpoint_contains_no_inventory(api_client):
     response = client.get("/api/template.xlsx")
     assert response.status_code == 200
     from io import BytesIO
+
     from openpyxl import load_workbook
 
     workbook = load_workbook(BytesIO(response.content))

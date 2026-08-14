@@ -4,7 +4,7 @@ import hmac
 import os
 from io import BytesIO
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -311,10 +311,10 @@ def api_delete_catalog(item_id: int, actor: str | None = None) -> dict[str, str]
 
 @app.post("/api/import")
 async def api_import(
-    file: UploadFile = File(...),
-    replace_all: bool = Form(False),
-    confirm_replace: bool = Form(False),
-    actor: str | None = Form(None),
+    file: Annotated[UploadFile, File()],
+    replace_all: Annotated[bool, Form()] = False,
+    confirm_replace: Annotated[bool, Form()] = False,
+    actor: Annotated[str | None, Form()] = None,
 ) -> dict[str, Any]:
     if replace_all and not confirm_replace:
         raise ValidationError("전체 교체 확인 값이 필요합니다")
@@ -327,10 +327,10 @@ async def api_import(
     session = get_session()
     try:
         try:
-            if name.endswith(".xml") or name.endswith(".stationxml"):
+            if name.endswith((".xml", ".stationxml")):
                 hierarchy = read_stationxml(BytesIO(raw), session)
                 source = "xml"
-            elif name.endswith(".xlsx") or name.endswith(".xls"):
+            elif name.endswith((".xlsx", ".xls")):
                 hierarchy = read_excel(BytesIO(raw))
                 source = "excel"
             else:

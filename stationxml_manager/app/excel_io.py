@@ -7,26 +7,19 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
-from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.worksheet.datavalidation import DataValidation
 from sqlalchemy.orm import Session
 
-from .catalog import catalog_map
 from .columns import (
-    ALIAS_TO_CANONICAL,
-    CANONICAL_FIELDS,
-    CHANNEL_FIELDS,
     EXCEL_SHEET_CHANNELS,
     EXCEL_SHEET_DATALOGGERS,
     EXCEL_SHEET_SENSORS,
     FIELDS,
     KOREAN_HEADERS,
-    NETWORK_FIELDS,
     REQUIRED_CHANNEL_FIELDS,
-    STATION_FIELDS,
     normalize_header,
     resolve_header,
 )

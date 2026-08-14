@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
                 try:
                     apply_nrl(session, ch.id, "cli")
                     print(f"NRL 적용: {ch.station.network.code}.{ch.station.code}.{ch.channel}")
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 - ObsPy NRL 오류는 채널별로 건너뜀
                     print(f"NRL 실패 ({ch.channel}): {exc}")
         out = Path(args.output) if args.output else src.with_suffix(".xml")
         if out.suffix.lower() in {".xlsx", ".xls"}:

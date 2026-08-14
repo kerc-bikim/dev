@@ -7,6 +7,7 @@ from typing import Any
 
 from obspy import read_inventory
 from obspy.core.inventory.util import Equipment
+from sqlalchemy.orm import Session
 
 from .catalog import find_by_manufacturer_model
 from .errors import ValidationError
@@ -18,7 +19,6 @@ from .validation import (
     validate_sample_rate,
     validate_time_order,
 )
-from sqlalchemy.orm import Session
 
 
 def _eq_manuf_model(eq: Equipment | None) -> tuple[str | None, str | None]:

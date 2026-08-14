@@ -24,7 +24,12 @@ from app.crud import (
 from app.db import Base, make_engine
 from app.errors import ValidationError
 from app.excel_io import read_excel, write_excel, write_template
-from app.validation import infer_az_dip, validate_lat_lon, validate_sample_rate, validate_time_order
+from app.validation import (
+    infer_az_dip,
+    validate_lat_lon,
+    validate_sample_rate,
+    validate_time_order,
+)
 from app.xml_io import read_stationxml
 
 
