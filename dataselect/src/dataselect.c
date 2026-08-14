@@ -169,6 +169,7 @@ typedef struct WriterData_s
   int8_t *errflagp;
   uint64_t *totalrecsoutp;
   uint64_t *totalbytesoutp;
+  int wrote_this_pack; /* Records emitted by the current msr3_pack() call */
 } WriterData;
 
 static int setselectionlimits (MS3TraceList *mstl);
@@ -184,6 +185,7 @@ static int buildfileindex (void);
 static Filelink *findfile (const char *filename);
 
 static int writetraces (MS3TraceList *mstl);
+static int encoding_can_pack (int16_t encoding);
 static int trimrecord (MS3RecordPtr *rec, char *recbuf, WriterData *writerdata);
 static void writerecord (char *record, int reclen, void *handlerdata);
 
@@ -853,6 +855,7 @@ writetraces (MS3TraceList *mstl)
   writerdata.errflagp = &errflag;
   writerdata.totalrecsoutp = &totalrecsout;
   writerdata.totalbytesoutp = &totalbytesout;
+  writerdata.wrote_this_pack = 0;
 
   if (!mstl)
     return 1;
@@ -1065,6 +1068,7 @@ writetraces (MS3TraceList *mstl)
         if ((newrange && (newrange->starttime != NSTUNSET || newrange->endtime != NSTUNSET)) ||
             outputreclen > 0)
         {
+          writerdata.wrote_this_pack = 0;
           rv = trimrecord (recptr, recordbuf, &writerdata);
 
           /* Nothing left of the record to write */
@@ -1073,7 +1077,8 @@ writetraces (MS3TraceList *mstl)
             recptr = recptr->next;
             continue;
           }
-          /* Record cannot be re-packed, write it as-is, reason already reported */
+          /* Cannot re-pack, and nothing was written: keep the original record.
+           * -B never takes this path; failing to honor a requested block size is fatal. */
           else if (rv == -2)
           {
             ms_log (1, "Writing %s record from byte offset %" PRId64 " in %s without re-packing\n",
@@ -1151,6 +1156,27 @@ writetraces (MS3TraceList *mstl)
 } /* End of writetraces() */
 
 /***************************************************************************
+ * Encodings that libmseed can unpack and pack without changing sample values.
+ ***************************************************************************/
+static int
+encoding_can_pack (int16_t encoding)
+{
+  switch (encoding)
+  {
+  case DE_TEXT:
+  case DE_INT16:
+  case DE_INT32:
+  case DE_FLOAT32:
+  case DE_FLOAT64:
+  case DE_STEIM1:
+  case DE_STEIM2:
+    return 1;
+  default:
+    return 0;
+  }
+} /* End of encoding_can_pack() */
+
+/***************************************************************************
  * Unpack a data record, optionally trim samples to TimeRange bounds,
  * optionally re-pack to the record length requested with -B, and write.
  *
@@ -1177,7 +1203,7 @@ trimrecord (MS3RecordPtr *recptr, char *recordbuf, WriterData *writerdata)
   int trimsamples;
   uint8_t samplesize;
   char sampletype;
-  int64_t packedsamples;
+  int64_t packedsamples = 0;
   int packedrecords;
   int retcode;
   int do_trim = 0;
@@ -1208,22 +1234,37 @@ trimrecord (MS3RecordPtr *recptr, char *recordbuf, WriterData *writerdata)
     return -3;
   }
 
-  /* Records that cannot be unpacked/re-packed are written unchanged, not an error */
-  if (ms_encoding_sizetype (recptr->msr->encoding, &samplesize, &sampletype))
+  /* Records that cannot be unpacked/re-packed: keep original when only
+   * trimming, but fail when -B requested a new block size. */
+  if (ms_encoding_sizetype (recptr->msr->encoding, &samplesize, &sampletype) ||
+      !encoding_can_pack (recptr->msr->encoding))
   {
     ms_nstime2timestr_n (recptr->msr->starttime, stime, sizeof (stime), ISOMONTHDAY_Z, NANO_MICRO);
-    ms_log (1, "Warning: cannot re-pack %s (%s), unknown encoding (%d)\n",
-            recptr->msr->sid, stime, recptr->msr->encoding);
+    if (outputreclen > 0)
+    {
+      ms_log (2, "Cannot re-pack %s (%s) to %d byte records, encoding %d (%s)\n",
+              recptr->msr->sid, stime, outputreclen, recptr->msr->encoding,
+              ms_encodingstr (recptr->msr->encoding));
+      return -3;
+    }
+
+    ms_log (1, "Warning: cannot re-pack %s (%s), unsupported encoding (%d: %s)\n",
+            recptr->msr->sid, stime, recptr->msr->encoding, ms_encodingstr (recptr->msr->encoding));
 
     return -2;
   }
 
-  /* Check for supported sample types.  Trimming requires numeric samples;
-   * re-packing for -B also supports text. */
-  if (sampletype != 'i' && sampletype != 'f' && sampletype != 'd' &&
-      !(sampletype == 't' && !do_trim))
+  /* Trimming requires numeric samples */
+  if (do_trim && sampletype != 'i' && sampletype != 'f' && sampletype != 'd')
   {
     ms_nstime2timestr_n (recptr->msr->starttime, stime, sizeof (stime), ISOMONTHDAY_Z, NANO_MICRO);
+    if (outputreclen > 0)
+    {
+      ms_log (2, "Cannot trim and re-pack %s (%s), encoding %d (%s)\n",
+              recptr->msr->sid, stime, recptr->msr->encoding, ms_encodingstr (recptr->msr->encoding));
+      return -3;
+    }
+
     ms_log (1, "Warning: cannot re-pack %s (%s), unsupported encoding (%d: %s)\n",
             recptr->msr->sid, stime, recptr->msr->encoding, ms_encodingstr (recptr->msr->encoding));
 
@@ -1236,7 +1277,7 @@ trimrecord (MS3RecordPtr *recptr, char *recordbuf, WriterData *writerdata)
     ms_log (2, "Cannot parse miniSEED record: %s\n", ms_errorstr (retcode));
 
     msr3_free (&msr);
-    return -2;
+    return (outputreclen > 0) ? -3 : -2;
   }
 
   if (verbose > 1 && do_trim)
@@ -1362,18 +1403,23 @@ trimrecord (MS3RecordPtr *recptr, char *recordbuf, WriterData *writerdata)
     msr->reclen = outputreclen;
 
   /* Pack the data record into the global record buffer used by writetraces() */
+  writerdata->wrote_this_pack = 0;
   writerdata->msr = msr;
   packedrecords = msr3_pack (msr, &writerecord, writerdata,
                              &packedsamples, MSF_FLUSHDATA, verbose - 1);
   writerdata->msr = recptr->msr;
 
-  if (packedrecords <= 0)
+  /* Every unpacked sample must be written.  If packing already emitted
+   * records, or -B was requested, do not fall back to the original record. */
+  if (packedrecords <= 0 || packedsamples != msr->numsamples)
   {
     ms_nstime2timestr_n (ostarttime, stime, sizeof (stime), ISOMONTHDAY_Z, NANO_MICRO);
-    ms_log (2, "%s(): Cannot pack miniSEED record for %s %s\n",
-            __func__, msr->sid, stime);
+    ms_log (2, "%s(): Cannot pack miniSEED record for %s %s (packed %" PRId64 " of %" PRId64 " samples)\n",
+            __func__, msr->sid, stime, packedsamples, msr->numsamples);
 
     msr3_free (&msr);
+    if (writerdata->wrote_this_pack > 0 || outputreclen > 0)
+      return -3;
     return -2;
   }
 
@@ -1513,6 +1559,7 @@ writerecord (char *record, int reclen, void *handlerdata)
     (*writerdata->totalrecsoutp)++;
   if (writerdata->totalbytesoutp)
     (*writerdata->totalbytesoutp) += (uint64_t)reclen;
+  writerdata->wrote_this_pack++;
 } /* End of writerecord() */
 
 /***************************************************************************
@@ -3274,8 +3321,9 @@ usage (int level)
            " ## Output options ##\n"
            " -o file      Specify a single output file, use +o file to append\n"
            " -A format    Write all records in a custom directory/file layout (try -H)\n"
-           " -B bytes     Specify output miniSEED record/block size in bytes\n"
-           "                Must be a power of 2 (e.g. 512, 4096); records are re-packed\n"
+           " -B bytes     Re-pack output to this miniSEED record/block size\n"
+           "                Power of 2 (e.g. 512, 4096); sample times and values are unchanged\n"
+           "                miniSEED 2: exact length; miniSEED 3: maximum length\n"
            " -Pr          Prune data at the record level using 'best' version priority\n"
            " -Ps          Prune data at the sample level using 'best' version priority\n"
            " -Pe          Prune traces at user specified edges only, leave overlaps\n"

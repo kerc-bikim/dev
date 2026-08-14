@@ -4,8 +4,8 @@ This program is a general use tool for extracting a subset and sorting data in
 miniSEED format.
 
 This copy includes a local extension: **`-B bytes`** sets the output miniSEED
-record/block size (power of 2, e.g. `-B 512`).  Without `-B` the original
-record length is preserved.
+record/block size (power of 2, e.g. `-B 512`).  Sample times and values are
+unchanged.  Without `-B` the original record length is preserved.
 
 For usage information see the [dataselect manual](doc/dataselect.md) in the
 'doc' directory.  Korean usage notes: [README.ko.md](README.ko.md).

@@ -15,6 +15,7 @@ import unittest
 
 TESTDIR = os.path.dirname(os.path.abspath(__file__))
 DATASELECT = os.path.join(TESTDIR, os.pardir, "dataselect")
+COMPARE = os.path.join(TESTDIR, "compare-series")
 DATA = os.path.join(TESTDIR, os.pardir, "libmseed", "test", "data")
 TMP = os.path.join(TESTDIR, "test-tmp")
 
@@ -174,6 +175,16 @@ def v2_block_size(record):
     """Return the Blockette 1000 record length encoded in a miniSEED 2 record."""
     first_blockette = struct.unpack(">H", record[46:48])[0]
     return 1 << record[first_blockette + 6]
+
+
+def series_identical(path_a, path_b):
+    """Return (ok, stderr) after comparing unpacked sample times and values."""
+    proc = subprocess.run(
+        [COMPARE, path_a, path_b],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    return proc.returncode == 0, proc.stderr
 
 
 def tmp(name):
@@ -526,6 +537,8 @@ class BlockSize(DataselectTest):
         for rec in recs:
             self.assertEqual(len(rec), 512)
             self.assertEqual(v2_block_size(rec), 512)
+        ok, cerr = series_identical(self.V2_4096, out)
+        self.assertTrue(ok, cerr.decode())
 
     def test_v2_512_to_4096(self):
         out = tmp("block4096.mseed")
@@ -536,6 +549,8 @@ class BlockSize(DataselectTest):
         for rec in recs:
             self.assertEqual(len(rec), 4096)
             self.assertEqual(v2_block_size(rec), 4096)
+        ok, cerr = series_identical(V2, out)
+        self.assertTrue(ok, cerr.decode())
 
     def test_v3_max_record_length(self):
         out = tmp("block512_v3.mseed")
@@ -546,6 +561,8 @@ class BlockSize(DataselectTest):
         for rec in recs:
             self.assertLessEqual(rec["reclen"], 512)
         self.assert_valid_ms3(out)
+        ok, cerr = series_identical(V3, out)
+        self.assertTrue(ok, cerr.decode())
 
     def test_block_size_with_trim(self):
         out = tmp("block512_trim.mseed")
@@ -556,6 +573,35 @@ class BlockSize(DataselectTest):
         for rec in recs:
             self.assertEqual(len(rec), 512)
             self.assertEqual(v2_block_size(rec), 512)
+
+        trimmed = tmp("trim_only.mseed")
+        code, _, err = run("-Ps", *WINDOW, V2, "-o", trimmed)
+        self.assertEqual(code, 0, err.decode())
+        ok, cerr = series_identical(trimmed, out)
+        self.assertTrue(ok, cerr.decode())
+
+    def test_repack_preserves_numeric_encodings(self):
+        for name in (
+            "reference-testdata-int16.mseed2",
+            "reference-testdata-int32.mseed2",
+            "reference-testdata-float32.mseed2",
+            "reference-testdata-float64.mseed2",
+            "reference-testdata-steim1.mseed2",
+            "reference-testdata-nsec.mseed3",
+        ):
+            source = os.path.join(DATA, name)
+            out = tmp("repack-%s" % name)
+            code, _, err = run("-B", "512", source, "-o", out)
+            self.assertEqual(code, 0, "%s: %s" % (name, err.decode()))
+            ok, cerr = series_identical(source, out)
+            self.assertTrue(ok, "%s: %s" % (name, cerr.decode()))
+
+    def test_unsupported_encoding_is_an_error(self):
+        crafted = craft3(V3, tmp("int24_block.mseed3"), encoding=2)
+        out = tmp("int24_block_out.mseed")
+        code, _, err = run("-B", "512", crafted, "-o", out)
+        self.assertEqual(code, 1)
+        self.assertIn(b"ERROR", err)
 
     def test_archive_matches_single_file_when_repacked(self):
         root = tmp("archive_b")
@@ -804,6 +850,8 @@ class CraftedInput(DataselectTest):
 def main():
     if not os.path.isfile(DATASELECT):
         sys.exit("dataselect not built, run 'make' first: %s" % DATASELECT)
+    if not os.path.isfile(COMPARE):
+        sys.exit("compare-series not built, run 'make test' first: %s" % COMPARE)
     if not os.path.isdir(DATA):
         sys.exit("test data not found: %s" % DATA)
 

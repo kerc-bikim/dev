@@ -35,8 +35,9 @@ files, miniSEED 2 and 3), selection (`-ts`, `-te`, `-s`, `-m`, `-r`), pruning (`
 
 Beyond option behavior the suite checks the written miniSEED: records are
 byte-identical when copied, the archive and `-o` paths produce the same bytes,
-every miniSEED 3 record has a valid CRC and a self consistent length, and extra
-headers survive the re-packing done when records are trimmed.
+every miniSEED 3 record has a valid CRC and a self consistent length, extra
+headers survive the re-packing done when records are trimmed, and `-B` re-packing
+preserves sample times and values exactly (compared after unpacking).
 
 Not covered: paths that require injecting a failure, such as a full filesystem, a
 failed allocation, or an archive file that cannot be opened.

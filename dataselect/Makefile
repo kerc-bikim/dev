@@ -30,14 +30,23 @@ endif
 # Variables passed to sub-makes
 SUBMAKE_ARGS = CFLAGS="$(CFLAGS) $(EXTRA_CFLAGS)" LDFLAGS="$(LDFLAGS) $(EXTRA_LDFLAGS)"
 
-.PHONY: all clean
-all clean:
-	$(MAKE) -C libmseed $@ $(SUBMAKE_ARGS)
-	$(MAKE) -C src $@ $(SUBMAKE_ARGS)
+.PHONY: all
+all:
+	$(MAKE) -C libmseed all $(SUBMAKE_ARGS)
+	$(MAKE) -C src all $(SUBMAKE_ARGS)
+
+.PHONY: clean
+clean:
+	$(MAKE) -C libmseed clean $(SUBMAKE_ARGS)
+	$(MAKE) -C src clean $(SUBMAKE_ARGS)
+	rm -f test/compare-series
 
 .PHONY: test
-test: all
+test: all test/compare-series
 	@test/run-tests.py
+
+test/compare-series: test/compare-series.c libmseed/libmseed.a
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -Ilibmseed -o $@ $< -Llibmseed -lmseed $(EXTRA_LDFLAGS) $(LDFLAGS)
 
 .PHONY: install
 install:

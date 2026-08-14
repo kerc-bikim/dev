@@ -8,6 +8,7 @@
 *.dll
 *.dSYM/
 dataselect
+test/compare-series
 
 # Docs
 doc/working/
