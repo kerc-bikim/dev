@@ -170,6 +170,7 @@ typedef struct WriterData_s
   uint64_t *totalrecsoutp;
   uint64_t *totalbytesoutp;
   int wrote_this_pack; /* Records emitted by the current msr3_pack() call */
+  int64_t next_v2seq;  /* Next miniSEED 2 sequence, -1 to leave the packed value */
 } WriterData;
 
 static int setselectionlimits (MS3TraceList *mstl);
@@ -856,6 +857,7 @@ writetraces (MS3TraceList *mstl)
   writerdata.totalrecsoutp = &totalrecsout;
   writerdata.totalbytesoutp = &totalbytesout;
   writerdata.wrote_this_pack = 0;
+  writerdata.next_v2seq = -1;
 
   if (!mstl)
     return 1;
@@ -1069,6 +1071,7 @@ writetraces (MS3TraceList *mstl)
             outputreclen > 0)
         {
           writerdata.wrote_this_pack = 0;
+          writerdata.next_v2seq = -1;
           rv = trimrecord (recptr, recordbuf, &writerdata);
 
           /* Nothing left of the record to write */
@@ -1395,6 +1398,11 @@ trimrecord (MS3RecordPtr *recptr, char *recordbuf, WriterData *writerdata)
       {
         ms_log (2, "Cannot set sequence number in extra headers\n");
       }
+      writerdata->next_v2seq = seqnum;
+    }
+    else
+    {
+      writerdata->next_v2seq = 0;
     }
   }
 
@@ -1484,6 +1492,18 @@ writerecord (char *record, int reclen, void *handlerdata)
       ms_log (2, "Cannot set publication version for format version %d\n",
               writerdata->msr->formatversion);
     }
+  }
+
+  /* When splitting a v2 record, give each packed record a unique sequence.
+   * libmseed reuses the extra-header sequence for every record in a pack
+   * session, so the value is written into the packed header here. */
+  if (writerdata->next_v2seq >= 0 && writerdata->msr->formatversion == 2 && reclen >= 6)
+  {
+    char seqstr[7];
+
+    snprintf (seqstr, sizeof (seqstr), "%06" PRId64, writerdata->next_v2seq % 1000000);
+    memcpy (record, seqstr, 6);
+    writerdata->next_v2seq = (writerdata->next_v2seq + 1) % 1000000;
   }
 
   /* Write to a single output file if specified */

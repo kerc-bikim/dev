@@ -4,6 +4,7 @@
 	- Re-packing preserves sample times and values; if a requested block size
 	  cannot be honored the program exits with an error instead of writing the
 	  original record.
+	- Increment miniSEED 2 sequence numbers when -B splits one record into many.
 
 2026.217: v4.3.2
 	- Fix -ts/-te limits landing exactly on a record boundary sample leaving the

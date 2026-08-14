@@ -603,6 +603,83 @@ class BlockSize(DataselectTest):
         self.assertEqual(code, 1)
         self.assertIn(b"ERROR", err)
 
+    def test_legacy_encoding_is_an_error(self):
+        source = os.path.join(DATA, "testdata-encoding-CDSN.mseed2")
+        code, _, err = run("-B", "512", source, "-o", tmp("cdsn.mseed"))
+        self.assertEqual(code, 1)
+        self.assertIn(b"ERROR", err)
+
+    def test_block_size_too_small_for_headers(self):
+        """nsec extra headers are larger than a 256-byte record."""
+        source = os.path.join(DATA, "reference-testdata-nsec.mseed3")
+        code, _, err = run("-B", "256", source, "-o", tmp("tiny.mseed"))
+        self.assertEqual(code, 1)
+        self.assertIn(b"ERROR", err)
+
+    def test_v2_sequence_increments_when_split(self):
+        out = tmp("seq.mseed")
+        code, _, err = run("-B", "512", self.V2_4096, "-o", out)
+        self.assertEqual(code, 0, err.decode())
+        recs = v2_records(out)
+        self.assertGreater(len(recs), 1)
+        seqs = [int(rec[:6]) for rec in recs]
+        self.assertEqual(seqs, list(range(seqs[0], seqs[0] + len(seqs))))
+
+    def test_summary_samples_match_when_repacked(self):
+        orig_sum = tmp("sum_orig.txt")
+        new_sum = tmp("sum_new.txt")
+        data = tmp("sum_data.mseed")
+        self.assertEqual(run("-out", orig_sum, self.V2_4096, "-o", os.devnull)[0], 0)
+        self.assertEqual(
+            run("-B", "512", "-out", new_sum, self.V2_4096, "-o", data)[0], 0
+        )
+
+        def fields(path):
+            with open(path, "r") as handle:
+                line = handle.read().strip().split("|")
+            return line
+
+        orig = fields(orig_sum)
+        new = fields(new_sum)
+        # SourceID, pubversion, start, end, samples must match; bytes change
+        self.assertEqual(orig[0], new[0])
+        self.assertEqual(orig[1], new[1])
+        self.assertEqual(orig[2], new[2])
+        self.assertEqual(orig[3], new[3])
+        self.assertEqual(orig[5], new[5], "sample count changed after -B")
+        self.assertNotEqual(orig[4], new[4], "byte count should change with block size")
+
+    def test_archive_time_layout_preserves_series(self):
+        """Split records with time in the archive path still form the original series."""
+        root = tmp("archive_time")
+        shutil.rmtree(root, ignore_errors=True)
+        os.makedirs(root)
+
+        code, _, err = run(
+            "-B",
+            "512",
+            self.V2_4096,
+            "-A",
+            os.path.join(root, "%n.%s.%l.%c.%H.%M.%S.%N"),
+        )
+        self.assertEqual(code, 0, err.decode())
+
+        paths = []
+        for dirpath, _, filenames in os.walk(root):
+            for name in filenames:
+                paths.append(os.path.join(dirpath, name))
+        paths.sort()
+        self.assertGreater(len(paths), 1)
+
+        combined = tmp("archive_time_combined.mseed")
+        with open(combined, "wb") as handle:
+            for path in paths:
+                with open(path, "rb") as part:
+                    handle.write(part.read())
+
+        ok, cerr = series_identical(self.V2_4096, combined)
+        self.assertTrue(ok, cerr.decode())
+
     def test_archive_matches_single_file_when_repacked(self):
         root = tmp("archive_b")
         shutil.rmtree(root, ignore_errors=True)
