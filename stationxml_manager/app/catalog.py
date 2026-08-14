@@ -47,7 +47,9 @@ def _item_to_row(kind: str, item: dict[str, Any]) -> EquipmentCatalog:
     )
 
 
-def get_by_code(session: Session, kind: str, code: str | None) -> EquipmentCatalog | None:
+def get_by_code(
+    session: Session, kind: str, code: str | None
+) -> EquipmentCatalog | None:
     if not code:
         return None
     return (
@@ -102,7 +104,9 @@ def assert_equipment_ids(
     if sensor_id:
         sensor = get_by_code(session, "sensor", sensor_id)
         if sensor is None:
-            allowed = [r.code for r in session.query(EquipmentCatalog).filter_by(kind="sensor")]
+            allowed = [
+                r.code for r in session.query(EquipmentCatalog).filter_by(kind="sensor")
+            ]
             raise ValidationError(
                 f"{prefix}알 수 없는 센서ID '{sensor_id}'. 허용: {', '.join(allowed) or '(없음)'}"
             )
@@ -110,7 +114,8 @@ def assert_equipment_ids(
         logger = get_by_code(session, "datalogger", datalogger_id)
         if logger is None:
             allowed = [
-                r.code for r in session.query(EquipmentCatalog).filter_by(kind="datalogger")
+                r.code
+                for r in session.query(EquipmentCatalog).filter_by(kind="datalogger")
             ]
             raise ValidationError(
                 f"{prefix}알 수 없는 기록계ID '{datalogger_id}'. 허용: {', '.join(allowed) or '(없음)'}"

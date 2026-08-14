@@ -133,12 +133,22 @@ def read_stationxml(path_or_buf, session: Session) -> dict[str, Any]:
                         "description": cha.description,
                         "comment": comment,
                         "channel_types": types,
-                        "clock_drift": float(clock_drift) if clock_drift is not None else None,
-                        "latitude": float(cha.latitude) if cha.latitude is not None else None,
-                        "longitude": float(cha.longitude) if cha.longitude is not None else None,
-                        "elevation": float(cha.elevation) if cha.elevation is not None else None,
+                        "clock_drift": float(clock_drift)
+                        if clock_drift is not None
+                        else None,
+                        "latitude": float(cha.latitude)
+                        if cha.latitude is not None
+                        else None,
+                        "longitude": float(cha.longitude)
+                        if cha.longitude is not None
+                        else None,
+                        "elevation": float(cha.elevation)
+                        if cha.elevation is not None
+                        else None,
                         "sensor_id": sensor_id,
-                        "sensor_serial": cha.sensor.serial_number if cha.sensor else None,
+                        "sensor_serial": cha.sensor.serial_number
+                        if cha.sensor
+                        else None,
                         "sensor_type": cha.sensor.type if cha.sensor else None,
                         "sensor_install_date": _time_iso(
                             cha.sensor.installation_date if cha.sensor else None
@@ -147,10 +157,16 @@ def read_stationxml(path_or_buf, session: Session) -> dict[str, Any]:
                             cha.sensor.removal_date if cha.sensor else None
                         ),
                         "datalogger_id": datalogger_id,
-                        "datalogger_serial": cha.data_logger.serial_number if cha.data_logger else None,
-                        "datalogger_type": cha.data_logger.type if cha.data_logger else None,
+                        "datalogger_serial": cha.data_logger.serial_number
+                        if cha.data_logger
+                        else None,
+                        "datalogger_type": cha.data_logger.type
+                        if cha.data_logger
+                        else None,
                         "datalogger_install_date": _time_iso(
-                            cha.data_logger.installation_date if cha.data_logger else None
+                            cha.data_logger.installation_date
+                            if cha.data_logger
+                            else None
                         ),
                         "datalogger_remove_date": _time_iso(
                             cha.data_logger.removal_date if cha.data_logger else None
@@ -161,4 +177,8 @@ def read_stationxml(path_or_buf, session: Session) -> dict[str, Any]:
                 )
             net_entry["stations"][sta.code] = sta_entry
         networks[net.code] = net_entry
-    return {"networks": networks, "warnings": warnings, "catalog": {"sensors": [], "dataloggers": []}}
+    return {
+        "networks": networks,
+        "warnings": warnings,
+        "catalog": {"sensors": [], "dataloggers": []},
+    }

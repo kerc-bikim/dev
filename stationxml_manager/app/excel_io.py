@@ -67,9 +67,13 @@ def _row_to_dict(raw: dict[str, Any], excel_row: int) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for spec in FIELDS:
         out[spec.canonical] = raw.get(spec.canonical)
-    missing = [KOREAN_HEADERS[f] for f in REQUIRED_CHANNEL_FIELDS if is_blank(out.get(f))]
+    missing = [
+        KOREAN_HEADERS[f] for f in REQUIRED_CHANNEL_FIELDS if is_blank(out.get(f))
+    ]
     if missing:
-        raise ValidationError(f"{excel_row}행: 필수 열이 비어 있습니다: {', '.join(missing)}")
+        raise ValidationError(
+            f"{excel_row}행: 필수 열이 비어 있습니다: {', '.join(missing)}"
+        )
     return out
 
 
@@ -150,9 +154,23 @@ def rows_to_hierarchy(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 "_rows": {excel_row},
             },
         )
-        _assert_same(net, "description", raw.get("network_description"), "네트워크설명", excel_row)
-        _assert_same(net, "operator_agency", raw.get("operator_agency"), "운영기관", excel_row)
-        _assert_same(net, "restricted_status", raw.get("restricted_status"), "공개제한", excel_row)
+        _assert_same(
+            net,
+            "description",
+            raw.get("network_description"),
+            "네트워크설명",
+            excel_row,
+        )
+        _assert_same(
+            net, "operator_agency", raw.get("operator_agency"), "운영기관", excel_row
+        )
+        _assert_same(
+            net,
+            "restricted_status",
+            raw.get("restricted_status"),
+            "공개제한",
+            excel_row,
+        )
 
         lat = parse_float(raw["latitude"], "위도", excel_row)
         lon = parse_float(raw["longitude"], "경도", excel_row)
@@ -179,8 +197,12 @@ def rows_to_hierarchy(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 "vault": as_str(raw.get("vault")) or None,
                 "geology": as_str(raw.get("geology")) or None,
                 "description": as_str(raw.get("station_description")) or None,
-                "creation_date": _time_str(raw.get("creation_date"), "설치일", excel_row),
-                "termination_date": _time_str(raw.get("termination_date"), "철거일", excel_row),
+                "creation_date": _time_str(
+                    raw.get("creation_date"), "설치일", excel_row
+                ),
+                "termination_date": _time_str(
+                    raw.get("termination_date"), "철거일", excel_row
+                ),
                 "channels": [],
                 "elevation_warning": elevation_warning,
             },
@@ -190,14 +212,26 @@ def rows_to_hierarchy(rows: list[dict[str, Any]]) -> dict[str, Any]:
             ("longitude", lon, "경도"),
             ("elevation", elev, "고도"),
             ("site_name", as_str(raw.get("site_name")) or None, "관측소명"),
-            ("site_description", as_str(raw.get("site_description")) or None, "위치설명"),
+            (
+                "site_description",
+                as_str(raw.get("site_description")) or None,
+                "위치설명",
+            ),
             ("site_town", as_str(raw.get("site_town")) or None, "시군구"),
             ("site_region", as_str(raw.get("site_region")) or None, "지역"),
             ("site_country", as_str(raw.get("site_country")) or None, "국가"),
             ("vault", as_str(raw.get("vault")) or None, "설치환경"),
             ("geology", as_str(raw.get("geology")) or None, "지질"),
-            ("description", as_str(raw.get("station_description")) or None, "관측소설명"),
-            ("creation_date", _time_str(raw.get("creation_date"), "설치일", excel_row), "설치일"),
+            (
+                "description",
+                as_str(raw.get("station_description")) or None,
+                "관측소설명",
+            ),
+            (
+                "creation_date",
+                _time_str(raw.get("creation_date"), "설치일", excel_row),
+                "설치일",
+            ),
             (
                 "termination_date",
                 _time_str(raw.get("termination_date"), "철거일", excel_row),
@@ -244,15 +278,27 @@ def rows_to_hierarchy(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 "description": as_str(raw.get("channel_description")) or None,
                 "comment": as_str(raw.get("comment")) or None,
                 "channel_types": as_str(raw.get("channel_types")) or None,
-                "clock_drift": parse_float(raw.get("clock_drift"), "시각오차", excel_row),
-                "latitude": parse_float(raw.get("channel_latitude"), "채널위도", excel_row),
-                "longitude": parse_float(raw.get("channel_longitude"), "채널경도", excel_row),
-                "elevation": parse_float(raw.get("channel_elevation"), "채널고도", excel_row),
+                "clock_drift": parse_float(
+                    raw.get("clock_drift"), "시각오차", excel_row
+                ),
+                "latitude": parse_float(
+                    raw.get("channel_latitude"), "채널위도", excel_row
+                ),
+                "longitude": parse_float(
+                    raw.get("channel_longitude"), "채널경도", excel_row
+                ),
+                "elevation": parse_float(
+                    raw.get("channel_elevation"), "채널고도", excel_row
+                ),
                 "sensor_id": as_str(raw.get("sensor_id")) or None,
                 "sensor_serial": as_str(raw.get("sensor_serial")) or None,
                 "sensor_type": as_str(raw.get("sensor_type")) or None,
-                "sensor_install_date": _time_str(raw.get("sensor_install_date"), "센서설치일", excel_row),
-                "sensor_remove_date": _time_str(raw.get("sensor_remove_date"), "센서철거일", excel_row),
+                "sensor_install_date": _time_str(
+                    raw.get("sensor_install_date"), "센서설치일", excel_row
+                ),
+                "sensor_remove_date": _time_str(
+                    raw.get("sensor_remove_date"), "센서철거일", excel_row
+                ),
                 "datalogger_id": as_str(raw.get("datalogger_id")) or None,
                 "datalogger_serial": as_str(raw.get("datalogger_serial")) or None,
                 "datalogger_type": as_str(raw.get("datalogger_type")) or None,
@@ -268,7 +314,9 @@ def rows_to_hierarchy(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {"networks": networks}
 
 
-def _assert_same(store: dict[str, Any], key: str, value: Any, label: str, excel_row: int) -> None:
+def _assert_same(
+    store: dict[str, Any], key: str, value: Any, label: str, excel_row: int
+) -> None:
     normalized = as_str(value) or None
     current = store.get(key)
     if current in (None, "") and normalized:
@@ -291,13 +339,19 @@ def read_excel(path_or_buf) -> dict[str, Any]:
         # first sheet as channels if named differently but has headers
         sheet = xls.sheet_names[0]
     else:
-        sheet = EXCEL_SHEET_CHANNELS if EXCEL_SHEET_CHANNELS in xls.sheet_names else xls.sheet_names[0]
+        sheet = (
+            EXCEL_SHEET_CHANNELS
+            if EXCEL_SHEET_CHANNELS in xls.sheet_names
+            else xls.sheet_names[0]
+        )
     channels_df = pd.read_excel(xls, sheet_name=sheet)
     hierarchy = rows_to_hierarchy(parse_channel_sheet(channels_df))
     sensors = []
     dataloggers = []
     if EXCEL_SHEET_SENSORS in xls.sheet_names:
-        sensors = parse_catalog_sheet(pd.read_excel(xls, sheet_name=EXCEL_SHEET_SENSORS), "sensor")
+        sensors = parse_catalog_sheet(
+            pd.read_excel(xls, sheet_name=EXCEL_SHEET_SENSORS), "sensor"
+        )
     if EXCEL_SHEET_DATALOGGERS in xls.sheet_names:
         dataloggers = parse_catalog_sheet(
             pd.read_excel(xls, sheet_name=EXCEL_SHEET_DATALOGGERS), "datalogger"
@@ -401,7 +455,8 @@ def write_excel(session: Session, *, include_channels: bool = True) -> bytes:
         r.code for r in session.query(EquipmentCatalog).filter_by(kind="sensor").all()
     ]
     logger_codes = [
-        r.code for r in session.query(EquipmentCatalog).filter_by(kind="datalogger").all()
+        r.code
+        for r in session.query(EquipmentCatalog).filter_by(kind="datalogger").all()
     ]
     _add_dropdown(ws, "센서ID", sensor_codes, EXCEL_SHEET_SENSORS)
     _add_dropdown(ws, "기록계ID", logger_codes, EXCEL_SHEET_DATALOGGERS)
@@ -448,7 +503,9 @@ def write_template(session: Session | None = None) -> bytes:
     return buf.getvalue()
 
 
-def _write_catalog_sheet(wb: Workbook, title: str, rows: list[EquipmentCatalog], with_rate: bool) -> None:
+def _write_catalog_sheet(
+    wb: Workbook, title: str, rows: list[EquipmentCatalog], with_rate: bool
+) -> None:
     ws = wb.create_sheet(title)
     headers = ["id", "manufacturer", "model"]
     if with_rate:
@@ -485,7 +542,9 @@ def _add_dropdown(ws, header_name: str, codes: list[str], sheet: str) -> None:
 
 
 def write_template_file(path: Path, session: Session | None = None) -> None:
-    path.write_bytes(write_template(session) if session is not None else _full_seed_template())
+    path.write_bytes(
+        write_template(session) if session is not None else _full_seed_template()
+    )
 
 
 def _full_seed_template() -> bytes:

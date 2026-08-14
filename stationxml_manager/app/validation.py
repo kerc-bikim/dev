@@ -36,7 +36,9 @@ def parse_float(value: Any, field: str, row: int | None = None) -> float | None:
     try:
         return float(value)
     except (TypeError, ValueError) as exc:
-        raise ValidationError(_row_msg(row, f"{field} 값이 숫자가 아닙니다: {value}")) from exc
+        raise ValidationError(
+            _row_msg(row, f"{field} 값이 숫자가 아닙니다: {value}")
+        ) from exc
 
 
 def parse_time(value: Any, field: str, row: int | None = None) -> UTCDateTime | None:
@@ -93,7 +95,9 @@ def validate_time_order(
 
 def validate_sample_rate(rate: float, row: int | None = None) -> None:
     if rate <= 0:
-        raise ValidationError(_row_msg(row, f"샘플링레이트는 0보다 커야 합니다: {rate}"))
+        raise ValidationError(
+            _row_msg(row, f"샘플링레이트는 0보다 커야 합니다: {rate}")
+        )
 
 
 def sample_rates_match(channel_rate: float, catalog_rate: float | None) -> bool:

@@ -14,11 +14,17 @@ from .xml_io import read_stationxml
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="엑셀/StationXML 메타데이터 변환")
-    parser.add_argument("--write-template", metavar="PATH", help="드롭다운이 있는 엑셀 템플릿 저장")
+    parser.add_argument(
+        "--write-template", metavar="PATH", help="드롭다운이 있는 엑셀 템플릿 저장"
+    )
     parser.add_argument("input", nargs="?", help="입력 엑셀 또는 StationXML")
     parser.add_argument("-o", "--output", help="출력 StationXML 또는 엑셀 경로")
-    parser.add_argument("--replace-all", action="store_true", help="기존 DB 목록을 지우고 가져오기")
-    parser.add_argument("--apply-nrl", action="store_true", help="카탈로그 NRL 키로 응답을 붙여 저장")
+    parser.add_argument(
+        "--replace-all", action="store_true", help="기존 DB 목록을 지우고 가져오기"
+    )
+    parser.add_argument(
+        "--apply-nrl", action="store_true", help="카탈로그 NRL 키로 응답을 붙여 저장"
+    )
     args = parser.parse_args(argv)
 
     init_db()
@@ -55,7 +61,9 @@ def main(argv: list[str] | None = None) -> int:
             for ch in list_channels(session):
                 try:
                     apply_nrl(session, ch.id, "cli")
-                    print(f"NRL 적용: {ch.station.network.code}.{ch.station.code}.{ch.channel}")
+                    print(
+                        f"NRL 적용: {ch.station.network.code}.{ch.station.code}.{ch.channel}"
+                    )
                 except Exception as exc:  # noqa: BLE001 - ObsPy NRL 오류는 채널별로 건너뜀
                     print(f"NRL 실패 ({ch.channel}): {exc}")
         out = Path(args.output) if args.output else src.with_suffix(".xml")

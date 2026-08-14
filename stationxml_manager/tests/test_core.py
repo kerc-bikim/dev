@@ -59,7 +59,9 @@ def test_validation_helpers():
         validate_sample_rate(0)
     validate_time_order(UTCDateTime(2020, 1, 1), UTCDateTime(2021, 1, 1), "시작", "끝")
     with pytest.raises(ValidationError):
-        validate_time_order(UTCDateTime(2021, 1, 1), UTCDateTime(2020, 1, 1), "시작", "끝")
+        validate_time_order(
+            UTCDateTime(2021, 1, 1), UTCDateTime(2020, 1, 1), "시작", "끝"
+        )
     assert infer_az_dip("HHZ") == (0.0, -90.0)
     assert infer_az_dip("HHE") == (90.0, 0.0)
 
@@ -127,7 +129,9 @@ def _sample_hierarchy():
 
 
 def test_import_and_station_edit(session):
-    result = import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor="테스터")
+    result = import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor="테스터"
+    )
     assert result["created"] == 1
     ch = list_channels(session)[0]
     assert ch.station.site_name == "첫번째"
@@ -151,7 +155,9 @@ def test_sample_rate_mismatch(session):
 
 
 def test_catalog_delete_in_use(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     from app.models import EquipmentCatalog
 
     row = session.query(EquipmentCatalog).filter_by(code="Guralp_CMG-3T").one()
@@ -180,7 +186,18 @@ def test_conflicting_site_name_excel(session, tmp_path):
     wb = Workbook()
     ws = wb.active
     ws.title = "channels"
-    ws.append(["네트워크", "관측소", "채널", "위도", "경도", "시작시간", "샘플링레이트", "관측소명"])
+    ws.append(
+        [
+            "네트워크",
+            "관측소",
+            "채널",
+            "위도",
+            "경도",
+            "시작시간",
+            "샘플링레이트",
+            "관측소명",
+        ]
+    )
     ws.append(["XX", "AAA", "HHZ", 37.5, 127.0, "2020-01-01", 100, "A"])
     ws.append(["XX", "AAA", "HHN", 37.5, 127.0, "2020-01-01", 100, "B"])
     wb.save(path)
@@ -194,7 +211,18 @@ def test_unknown_excel_header(tmp_path):
     path = tmp_path / "bad.xlsx"
     wb = Workbook()
     ws = wb.active
-    ws.append(["네트워크", "관측소", "채널", "위도", "경도", "시작시간", "샘플링레이트", "담당자"])
+    ws.append(
+        [
+            "네트워크",
+            "관측소",
+            "채널",
+            "위도",
+            "경도",
+            "시작시간",
+            "샘플링레이트",
+            "담당자",
+        ]
+    )
     ws.append(["XX", "AAA", "HHZ", 37.5, 127.0, "2020-01-01", 100, "홍길동"])
     wb.save(path)
     with pytest.raises(ValidationError, match="알 수 없는 엑셀 열"):
@@ -226,7 +254,9 @@ def test_xml_response_roundtrip(session):
     buf.seek(0)
     hierarchy = read_stationxml(buf, session)
     import_hierarchy(session, hierarchy, replace_all=True, source="xml", actor=None)
-    update_station(session, list_channels(session)[0].station.id, {"site_name": "변경"}, None)
+    update_station(
+        session, list_channels(session)[0].station.id, {"site_name": "변경"}, None
+    )
     exported = export_stationxml_bytes(session)
     from obspy import read_inventory
 
@@ -237,7 +267,9 @@ def test_xml_response_roundtrip(session):
 
 
 def test_depth_zero_channel_update(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     ch = list_channels(session)[0]
     updated = update_channel(
         session,
@@ -256,7 +288,9 @@ def test_depth_zero_channel_update(session):
 
 
 def test_excel_time_normalization_does_not_duplicate(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     excel_hierarchy = read_excel(BytesIO(write_excel(session)))
     import_hierarchy(
         session,
@@ -295,7 +329,9 @@ def test_replace_all_excel_keeps_matching_response(session):
 
 
 def test_replace_all_rejects_empty_inventory(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     with pytest.raises(ValidationError, match="가져올 채널이 없습니다"):
         import_hierarchy(
             session,
@@ -309,7 +345,9 @@ def test_replace_all_rejects_empty_inventory(session):
 
 
 def test_template_does_not_include_inventory_rows(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     from openpyxl import load_workbook
 
     workbook = load_workbook(BytesIO(write_template(session)))
@@ -318,7 +356,9 @@ def test_template_does_not_include_inventory_rows(session):
 
 
 def test_station_can_move_to_another_network(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     from app.models import Network
 
     target = Network(code="YY")
@@ -344,11 +384,7 @@ def test_catalog_import_does_not_erase_existing_validation_fields(session):
     from app.models import EquipmentCatalog
 
     sensor = session.query(EquipmentCatalog).filter_by(code="Guralp_CMG-3T").one()
-    logger = (
-        session.query(EquipmentCatalog)
-        .filter_by(code="REFTEK_RT130_100sps")
-        .one()
-    )
+    logger = session.query(EquipmentCatalog).filter_by(code="REFTEK_RT130_100sps").one()
     original_sensor_keys = sensor.nrl_keys
     original_rate = logger.sample_rate
     hierarchy = _sample_hierarchy()
@@ -371,9 +407,7 @@ def test_catalog_import_does_not_erase_existing_validation_fields(session):
             }
         ],
     }
-    import_hierarchy(
-        session, hierarchy, replace_all=False, source="excel", actor=None
-    )
+    import_hierarchy(session, hierarchy, replace_all=False, source="excel", actor=None)
     session.refresh(sensor)
     session.refresh(logger)
     assert sensor.nrl_keys == original_sensor_keys
@@ -382,18 +416,14 @@ def test_catalog_import_does_not_erase_existing_validation_fields(session):
 
 def test_legacy_start_time_matches_canonical_import(session):
     hierarchy = _sample_hierarchy()
-    hierarchy["networks"]["XX"]["stations"]["AAA"]["channels"][0][
-        "start_time"
-    ] = "2020-01-01T00:00:00"
-    import_hierarchy(
-        session, hierarchy, replace_all=False, source="ui", actor=None
+    hierarchy["networks"]["XX"]["stations"]["AAA"]["channels"][0]["start_time"] = (
+        "2020-01-01T00:00:00"
     )
+    import_hierarchy(session, hierarchy, replace_all=False, source="ui", actor=None)
     assert len(list_channels(session)) == 1
 
     canonical = _sample_hierarchy()
-    import_hierarchy(
-        session, canonical, replace_all=False, source="excel", actor=None
-    )
+    import_hierarchy(session, canonical, replace_all=False, source="excel", actor=None)
     rows = list_channels(session)
     assert len(rows) == 1
     assert rows[0].start_time == "2020-01-01T00:00:00.000000Z"
@@ -425,11 +455,7 @@ def test_used_datalogger_sample_rate_cannot_be_cleared(session):
     )
     from app.models import EquipmentCatalog
 
-    logger = (
-        session.query(EquipmentCatalog)
-        .filter_by(code="REFTEK_RT130_100sps")
-        .one()
-    )
+    logger = session.query(EquipmentCatalog).filter_by(code="REFTEK_RT130_100sps").one()
     with pytest.raises(ValidationError, match="비울 수 없습니다"):
         update_catalog_item(session, logger.id, {"sample_rate": None}, None)
 
@@ -455,7 +481,9 @@ def _inventory_with_response() -> Inventory:
         sample_rate=100.0,
         start_date=UTCDateTime(2020, 1, 1),
         sensor=Equipment(manufacturer="Guralp", model="CMG-3T", serial_number="S1"),
-        data_logger=Equipment(manufacturer="REF TEK", model="RT 130", serial_number="D1"),
+        data_logger=Equipment(
+            manufacturer="REF TEK", model="RT 130", serial_number="D1"
+        ),
     )
     cha.response = resp
     sta = Station(

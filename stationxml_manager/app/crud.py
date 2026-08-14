@@ -34,7 +34,13 @@ def get_network(session: Session, network_id: int) -> Network:
     return net
 
 
-def update_network(session: Session, network_id: int, payload: dict[str, Any], actor: str | None, source: str = "ui") -> Network:
+def update_network(
+    session: Session,
+    network_id: int,
+    payload: dict[str, Any],
+    actor: str | None,
+    source: str = "ui",
+) -> Network:
     net = get_network(session, network_id)
     before = to_dict(net)
     for key in ("code", "description", "operator_agency", "restricted_status"):
@@ -58,7 +64,11 @@ def update_network(session: Session, network_id: int, payload: dict[str, Any], a
 
 
 def list_stations(session: Session, network_id: int | None = None) -> list[Station]:
-    q = session.query(Station).options(joinedload(Station.network)).order_by(Station.code)
+    q = (
+        session.query(Station)
+        .options(joinedload(Station.network))
+        .order_by(Station.code)
+    )
     if network_id is not None:
         q = q.filter(Station.network_id == network_id)
     return q.all()
@@ -71,7 +81,9 @@ def get_station(session: Session, station_id: int) -> Station:
     return sta
 
 
-def create_station(session: Session, payload: dict[str, Any], actor: str | None) -> Station:
+def create_station(
+    session: Session, payload: dict[str, Any], actor: str | None
+) -> Station:
     net = _require_network(session, payload)
     sta = Station(network_id=net.id, **_station_fields(payload))
     session.add(sta)
@@ -92,7 +104,13 @@ def create_station(session: Session, payload: dict[str, Any], actor: str | None)
     return sta
 
 
-def update_station(session: Session, station_id: int, payload: dict[str, Any], actor: str | None, source: str = "ui") -> Station:
+def update_station(
+    session: Session,
+    station_id: int,
+    payload: dict[str, Any],
+    actor: str | None,
+    source: str = "ui",
+) -> Station:
     sta = get_station(session, station_id)
     before = to_dict(sta)
     if "network_id" in payload and payload["network_id"] is not None:
@@ -174,7 +192,13 @@ def list_channels(
         .join(Station)
         .join(Network)
         .options(joinedload(Channel.station).joinedload(Station.network))
-        .order_by(Network.code, Station.code, Channel.location, Channel.channel, Channel.start_time)
+        .order_by(
+            Network.code,
+            Station.code,
+            Channel.location,
+            Channel.channel,
+            Channel.start_time,
+        )
     )
     if network:
         q = q.filter(Network.code == network)
@@ -192,7 +216,9 @@ def get_channel(session: Session, channel_id: int) -> Channel:
     return ch
 
 
-def create_channel(session: Session, payload: dict[str, Any], actor: str | None) -> Channel:
+def create_channel(
+    session: Session, payload: dict[str, Any], actor: str | None
+) -> Channel:
     sta = _require_station(session, payload)
     fields = _channel_fields(session, payload, sta)
     ch = Channel(station_id=sta.id, **fields)
@@ -214,7 +240,9 @@ def create_channel(session: Session, payload: dict[str, Any], actor: str | None)
     return ch
 
 
-def update_channel(session: Session, channel_id: int, payload: dict[str, Any], actor: str | None) -> Channel:
+def update_channel(
+    session: Session, channel_id: int, payload: dict[str, Any], actor: str | None
+) -> Channel:
     ch = get_channel(session, channel_id)
     before = to_dict(ch)
     fields = _channel_fields(session, payload, ch.station, partial=True, existing=ch)
@@ -306,10 +334,9 @@ def import_hierarchy(
 
     created = updated = 0
     for net_data in hierarchy["networks"].values():
-        net = (
-            session.query(Network).filter_by(code=net_data["code"]).one_or_none()
-            or Network(code=net_data["code"])
-        )
+        net = session.query(Network).filter_by(
+            code=net_data["code"]
+        ).one_or_none() or Network(code=net_data["code"])
         net.description = net_data.get("description")
         net.operator_agency = net_data.get("operator_agency")
         net.restricted_status = net_data.get("restricted_status")
@@ -399,9 +426,13 @@ def import_hierarchy(
                     ch_data["start_time"],
                 )
                 if not incoming_response and response_key in preserved_responses:
-                    incoming_response, incoming_source = preserved_responses[response_key]
+                    incoming_response, incoming_source = preserved_responses[
+                        response_key
+                    ]
                 if existing is None:
-                    payload = {k: v for k, v in ch_data.items() if not k.startswith("_")}
+                    payload = {
+                        k: v for k, v in ch_data.items() if not k.startswith("_")
+                    }
                     if not incoming_response:
                         payload["response_xml"] = None
                         payload["response_source"] = "none"
@@ -428,7 +459,10 @@ def import_hierarchy(
                     keep_xml = existing.response_xml
                     keep_src = existing.response_source
                     for key, value in ch_data.items():
-                        if key.startswith("_") or key in ("response_xml", "response_source"):
+                        if key.startswith("_") or key in (
+                            "response_xml",
+                            "response_source",
+                        ):
                             continue
                         setattr(existing, key, value)
                     if incoming_response:
@@ -482,7 +516,9 @@ def apply_nrl(session: Session, channel_id: int, actor: str | None) -> Channel:
         nrl = NRL()
         response = nrl.get_response(
             sensor_keys=[p.strip() for p in sensor.nrl_keys.split("|") if p.strip()],
-            datalogger_keys=[p.strip() for p in logger.nrl_keys.split("|") if p.strip()],
+            datalogger_keys=[
+                p.strip() for p in logger.nrl_keys.split("|") if p.strip()
+            ],
         )
     except Exception as exc:
         raise AppError(f"NRL 응답을 가져오지 못했습니다: {exc}", 502) from exc
@@ -524,13 +560,17 @@ def apply_nrl(session: Session, channel_id: int, actor: str | None) -> Channel:
 
 
 def list_catalog(session: Session, kind: str | None = None) -> list[EquipmentCatalog]:
-    q = session.query(EquipmentCatalog).order_by(EquipmentCatalog.kind, EquipmentCatalog.code)
+    q = session.query(EquipmentCatalog).order_by(
+        EquipmentCatalog.kind, EquipmentCatalog.code
+    )
     if kind:
         q = q.filter(EquipmentCatalog.kind == kind)
     return q.all()
 
 
-def create_catalog_item(session: Session, payload: dict[str, Any], actor: str | None) -> EquipmentCatalog:
+def create_catalog_item(
+    session: Session, payload: dict[str, Any], actor: str | None
+) -> EquipmentCatalog:
     kind = str(payload.get("kind") or "").strip()
     code = str(payload.get("code") or "").strip()
     manufacturer = str(payload.get("manufacturer") or "").strip()
@@ -667,7 +707,9 @@ def _catalog_dict(row: EquipmentCatalog) -> dict[str, Any]:
     }
 
 
-def _upsert_catalog(session: Session, catalog: dict[str, Any], actor: str | None) -> None:
+def _upsert_catalog(
+    session: Session, catalog: dict[str, Any], actor: str | None
+) -> None:
     for kind, key in (("sensor", "sensors"), ("datalogger", "dataloggers")):
         for item in catalog.get(key) or []:
             row = get_by_code(session, kind, item["code"])
@@ -766,7 +808,14 @@ def _station_fields(payload: dict[str, Any], partial: bool = False) -> dict[str,
         "termination_date": canonical_time(termination, "철거일"),
     }
     if partial:
-        return {k: v for k, v in data.items() if k in payload or (k == "description" and "station_description" in payload) or k in ("latitude", "longitude", "elevation") and payload.get(k) is not None}
+        return {
+            k: v
+            for k, v in data.items()
+            if k in payload
+            or (k == "description" and "station_description" in payload)
+            or k in ("latitude", "longitude", "elevation")
+            and payload.get(k) is not None
+        }
     data["code"] = payload.get("code") or payload.get("station")
     if not data["code"]:
         raise ValidationError("관측소 코드는 필수입니다")
@@ -787,7 +836,12 @@ def _channel_fields(
     if start is None and not partial:
         raise ValidationError("시작시간은 필수입니다")
     end = parse_time(payload.get("end_time"), "끝시간")
-    validate_time_order(start or (parse_time(existing.start_time, "시작시간") if existing else None), end, "시작시간", "끝시간")
+    validate_time_order(
+        start or (parse_time(existing.start_time, "시작시간") if existing else None),
+        end,
+        "시작시간",
+        "끝시간",
+    )
     rate = parse_float(payload.get("sample_rate"), "샘플링레이트")
     if rate is None and not partial:
         raise ValidationError("샘플링레이트는 필수입니다")
@@ -801,12 +855,18 @@ def _channel_fields(
         dip = inf_dip if dip is None else dip
     sensor_id = payload.get("sensor_id")
     datalogger_id = payload.get("datalogger_id")
-    check_rate = rate if rate is not None else (existing.sample_rate if existing else None)
+    check_rate = (
+        rate if rate is not None else (existing.sample_rate if existing else None)
+    )
     if check_rate is not None:
         assert_equipment_ids(
             session,
-            sensor_id if "sensor_id" in payload or not partial else (existing.sensor_id if existing else None),
-            datalogger_id if "datalogger_id" in payload or not partial else (existing.datalogger_id if existing else None),
+            sensor_id
+            if "sensor_id" in payload or not partial
+            else (existing.sensor_id if existing else None),
+            datalogger_id
+            if "datalogger_id" in payload or not partial
+            else (existing.datalogger_id if existing else None),
             check_rate,
         )
     loc = payload.get("location")
@@ -819,7 +879,9 @@ def _channel_fields(
         "start_time": canonical_time(start, "시작시간"),
         "end_time": canonical_time(end, "끝시간"),
         "sample_rate": rate,
-        "depth": parsed_depth if parsed_depth is not None else (0.0 if not partial else None),
+        "depth": parsed_depth
+        if parsed_depth is not None
+        else (0.0 if not partial else None),
         "azimuth": az,
         "dip": dip,
         "description": payload.get("description") or payload.get("channel_description"),
@@ -852,13 +914,27 @@ def _channel_fields(
         "datalogger_id": datalogger_id or None,
         "datalogger_serial": payload.get("datalogger_serial"),
         "datalogger_type": payload.get("datalogger_type"),
-        "datalogger_install_date": _iso(payload.get("datalogger_install_date"), "기록계설치일"),
-        "datalogger_remove_date": _iso(payload.get("datalogger_remove_date"), "기록계철거일"),
+        "datalogger_install_date": _iso(
+            payload.get("datalogger_install_date"), "기록계설치일"
+        ),
+        "datalogger_remove_date": _iso(
+            payload.get("datalogger_remove_date"), "기록계철거일"
+        ),
     }
     if partial:
-        allowed = {k: v for k, v in data.items() if k in payload or k in ("description",) and "channel_description" in payload}
+        allowed = {
+            k: v
+            for k, v in data.items()
+            if k in payload
+            or k in ("description",)
+            and "channel_description" in payload
+        }
         return {k: v for k, v in allowed.items() if v is not None or k in payload}
-    return {k: v for k, v in data.items() if v is not None or k in ("location", "end_time", "comment")}
+    return {
+        k: v
+        for k, v in data.items()
+        if v is not None or k in ("location", "end_time", "comment")
+    }
 
 
 def _iso(value: Any, field: str) -> str | None:

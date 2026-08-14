@@ -147,7 +147,9 @@ def api_list_networks() -> list[dict[str, Any]]:
 
 
 @app.put("/api/networks/{network_id}")
-def api_update_network(network_id: int, payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_update_network(
+    network_id: int, payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         return to_dict(update_network(session, network_id, payload, _actor(actor)))
@@ -165,7 +167,9 @@ def api_list_stations(network_id: int | None = None) -> list[dict[str, Any]]:
 
 
 @app.post("/api/stations")
-def api_create_station(payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_create_station(
+    payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         return to_dict(create_station(session, payload, _actor(actor)))
@@ -174,7 +178,9 @@ def api_create_station(payload: dict[str, Any], actor: str | None = None) -> dic
 
 
 @app.put("/api/stations/{station_id}")
-def api_update_station(station_id: int, payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_update_station(
+    station_id: int, payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         return to_dict(update_station(session, station_id, payload, _actor(actor)))
@@ -206,7 +212,9 @@ def api_list_channels(
 
 
 @app.post("/api/channels")
-def api_create_channel(payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_create_channel(
+    payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         return to_dict(create_channel(session, payload, _actor(actor)))
@@ -215,7 +223,9 @@ def api_create_channel(payload: dict[str, Any], actor: str | None = None) -> dic
 
 
 @app.put("/api/channels/{channel_id}")
-def api_update_channel(channel_id: int, payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_update_channel(
+    channel_id: int, payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         return to_dict(update_channel(session, channel_id, payload, _actor(actor)))
@@ -264,7 +274,9 @@ def api_list_catalog(kind: str | None = None) -> list[dict[str, Any]]:
 
 
 @app.post("/api/catalog")
-def api_create_catalog(payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_create_catalog(
+    payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         row = create_catalog_item(session, payload, _actor(actor))
@@ -282,7 +294,9 @@ def api_create_catalog(payload: dict[str, Any], actor: str | None = None) -> dic
 
 
 @app.put("/api/catalog/{item_id}")
-def api_update_catalog(item_id: int, payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_update_catalog(
+    item_id: int, payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         row = update_catalog_item(session, item_id, payload, _actor(actor))
@@ -392,14 +406,18 @@ def api_template() -> Response:
         return Response(
             content=data,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": "attachment; filename=stationxml_template.xlsx"},
+            headers={
+                "Content-Disposition": "attachment; filename=stationxml_template.xlsx"
+            },
         )
     finally:
         session.close()
 
 
 @app.get("/api/history")
-def api_history(limit: int = Query(200, le=1000), nslc: str | None = None) -> list[dict[str, Any]]:
+def api_history(
+    limit: int = Query(200, le=1000), nslc: str | None = None
+) -> list[dict[str, Any]]:
     session = get_session()
     try:
         rows: list[AuditLog] = list_history(session, limit=limit, nslc=nslc)

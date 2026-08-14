@@ -57,9 +57,7 @@ def test_duplicate_station_returns_conflict(api_client):
             source="ui",
             actor=None,
         )
-        station = session.query(
-            importlib.import_module("app.models").Station
-        ).one()
+        station = session.query(importlib.import_module("app.models").Station).one()
         network_id = station.network_id
     finally:
         session.close()

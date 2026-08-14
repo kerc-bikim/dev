@@ -25,12 +25,16 @@ class Network(Base):
     operator_agency = Column(String(255), nullable=True)
     restricted_status = Column(String(32), nullable=True)
 
-    stations = relationship("Station", back_populates="network", cascade="all, delete-orphan")
+    stations = relationship(
+        "Station", back_populates="network", cascade="all, delete-orphan"
+    )
 
 
 class Station(Base):
     __tablename__ = "stations"
-    __table_args__ = (UniqueConstraint("network_id", "code", name="uq_station_net_code"),)
+    __table_args__ = (
+        UniqueConstraint("network_id", "code", name="uq_station_net_code"),
+    )
 
     id = Column(Integer, primary_key=True)
     network_id = Column(ForeignKey("networks.id"), nullable=False)
@@ -50,7 +54,9 @@ class Station(Base):
     termination_date = Column(String(64), nullable=True)
 
     network = relationship("Network", back_populates="stations")
-    channels = relationship("Channel", back_populates="station", cascade="all, delete-orphan")
+    channels = relationship(
+        "Channel", back_populates="station", cascade="all, delete-orphan"
+    )
 
 
 class Channel(Base):

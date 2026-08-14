@@ -13,11 +13,7 @@ FILES = ("README.md", "PLAN.md")
 
 def embedded_js(docs: dict[str, str]) -> str:
     payload = json.dumps(docs, ensure_ascii=False, indent=2).replace("<", "\\u003c")
-    return (
-        f"{MARKERS[0]}\n"
-        f"    const EMBEDDED_DOCS = {payload};\n"
-        f"    {MARKERS[1]}"
-    )
+    return f"{MARKERS[0]}\n    const EMBEDDED_DOCS = {payload};\n    {MARKERS[1]}"
 
 
 def main() -> None:
