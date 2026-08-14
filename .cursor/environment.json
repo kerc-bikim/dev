@@ -1,0 +1,20 @@
+{
+  "name": "Seismic tools monorepo (PPSD / ringserver / recvQSCD20 / seedlinkToMp3)",
+  "install": "bash .cursor/install.sh",
+  "terminals": [
+    {
+      "name": "ppsd-backend",
+      "command": "cd PPSD_v1/backend && FDSNWS_URL=https://service.iris.edu ../../.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      "description": "PPSD FastAPI + ObsPy backend on :8000. FDSNWS_URL points at the public IRIS server because the repo default (172.31.100.100) is an internal-only network. API docs at /docs; health at /api/health."
+    },
+    {
+      "name": "ppsd-frontend",
+      "command": "cd PPSD_v1/frontend && npm run dev -- --host 0.0.0.0 --port 5173",
+      "description": "PPSD React/Vite viewer on :5173 (proxies /api to the backend on :8000). Open the Single tab, pick a station (e.g. IU / ANMO / 00 / BHZ) and Compute PPSD."
+    }
+  ],
+  "ports": [
+    { "name": "ppsd-backend", "port": 8000 },
+    { "name": "ppsd-frontend", "port": 5173 }
+  ]
+}
