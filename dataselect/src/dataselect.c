@@ -66,9 +66,11 @@
  * unpacking, sample removal and repacking.  After trimming or if no
  * trimming is required the data record is written to the appropriate
  * output file. In this way only the minimal number of records needing
- * modification (trimming) are repacked.  When -B specifies an output
- * record/block size, every record is unpacked and re-packed to that
- * length (one input record may become several smaller records).
+ * modification (trimming) are repacked.
+ * >>> LOCAL: When -B specifies an output record/block size, every record
+ * is unpacked and re-packed to that length (one input record may become
+ * several smaller records).
+ * <<< LOCAL
  *
  ***************************************************************************/
 
@@ -92,8 +94,12 @@
 
 #include "dsarchive.h"
 
-#define VERSION "4.4.0"
+#define VERSION "4.3.2"
 #define PACKAGE "dataselect"
+
+/* >>> LOCAL */
+#include "local.h" /* -B option; redefines VERSION */
+/* <<< LOCAL */
 
 /* Input/output file selection information containers */
 typedef struct Filelink_s
@@ -167,10 +173,6 @@ typedef struct WriterData_s
   MS3Record *msr;
   Filelink *flp;
   int8_t *errflagp;
-  uint64_t *totalrecsoutp;
-  uint64_t *totalbytesoutp;
-  int wrote_this_pack; /* Records emitted by the current msr3_pack() call */
-  int64_t next_v2seq;  /* Next miniSEED 2 sequence, -1 to leave the packed value */
 } WriterData;
 
 static int setselectionlimits (MS3TraceList *mstl);
@@ -186,7 +188,6 @@ static int buildfileindex (void);
 static Filelink *findfile (const char *filename);
 
 static int writetraces (MS3TraceList *mstl);
-static int encoding_can_pack (int16_t encoding);
 static int trimrecord (MS3RecordPtr *rec, char *recbuf, WriterData *writerdata);
 static void writerecord (char *record, int reclen, void *handlerdata);
 
@@ -227,7 +228,6 @@ static int8_t skipnotdata = 0;    /* Controls skipping of non-miniSEED data */
 static int8_t bestversion = 1;    /* Prioritization of 'best' data when pruning: 0 = equal, 1 = use version, 2 = use file order */
 static int8_t prunedata = 0;      /* Prune data: 'r= record level, 's' = sample level, 'e' = edges only */
 static uint8_t setpubver = 0;     /* Set publication version/quality indicator on output records */
-static int outputreclen = 0;      /* Output miniSEED record/block length in bytes, 0 = keep original */
 static double timetol = -1.0;     /* Time tolerance for continuous traces */
 static double sampratetol = -1.0; /* Sample rate tolerance for continuous traces */
 static MS3Tolerance tolerance = MS3Tolerance_INITIALIZER;
@@ -823,9 +823,10 @@ findfile (const char *filename)
  * This routine will also call trimrecord() to trim a record when new
  * start and end times have been identified in earlier processing.
  * Record trimming is triggered when the RecordPtr.prvtptr has new
- * TimeRange.starttime or TimeRange.endtime values.  The same unpack
- * and re-pack path is used when -B requests a different output record
- * length.
+ * TimeRange.starttime or TimeRange.endtime values.
+ * >>> LOCAL: The same unpack and re-pack path is used when -B requests
+ * a different output record length.
+ * <<< LOCAL
  *
  * Returns 0 on success and 1 on error.
  ***************************************************************************/
@@ -854,10 +855,9 @@ writetraces (MS3TraceList *mstl)
   WriterData writerdata;
 
   writerdata.errflagp = &errflag;
-  writerdata.totalrecsoutp = &totalrecsout;
-  writerdata.totalbytesoutp = &totalbytesout;
-  writerdata.wrote_this_pack = 0;
-  writerdata.next_v2seq = -1;
+  /* >>> LOCAL */
+  local_set_counters (&totalrecsout, &totalbytesout);
+  /* <<< LOCAL */
 
   if (!mstl)
     return 1;
@@ -1065,13 +1065,14 @@ writetraces (MS3TraceList *mstl)
          * send to the record writer) or we send it directly to the record writer. */
         newrange = (TimeRange *)(recptr->prvtptr);
 
-        /* Unpack/re-pack when the record must be trimmed or an output
-         * record/block size was requested with -B. */
-        if ((newrange && (newrange->starttime != NSTUNSET || newrange->endtime != NSTUNSET)) ||
-            outputreclen > 0)
+        /* Trim data from the record if new start or end times are specifed.
+         * >>> LOCAL: also unpack/re-pack when -B requests a new record length.
+         * <<< LOCAL */
+        if (local_should_unpack (newrange && (newrange->starttime != NSTUNSET || newrange->endtime != NSTUNSET)))
         {
-          writerdata.wrote_this_pack = 0;
-          writerdata.next_v2seq = -1;
+          /* >>> LOCAL */
+          local_pack_begin ((const uint8_t *)recordbuf, recptr->msr->formatversion);
+          /* <<< LOCAL */
           rv = trimrecord (recptr, recordbuf, &writerdata);
 
           /* Nothing left of the record to write */
@@ -1080,11 +1081,13 @@ writetraces (MS3TraceList *mstl)
             recptr = recptr->next;
             continue;
           }
-          /* Cannot re-pack, and nothing was written: keep the original record.
-           * -B never takes this path; failing to honor a requested block size is fatal. */
+          /* Record cannot be trimmed, write it as-is, reason already reported.
+           * >>> LOCAL: -B never takes this path; failing to honor a requested
+           * block size is fatal (trimrecord returns -3).
+           * <<< LOCAL */
           else if (rv == -2)
           {
-            ms_log (1, "Writing %s record from byte offset %" PRId64 " in %s without re-packing\n",
+            ms_log (1, "Writing %s record from byte offset %" PRId64 " in %s without trimming\n",
                     id->sid, recptr->fileoffset, flp->infilename);
 
             writerecord (recordbuf, recptr->msr->reclen, &writerdata);
@@ -1102,6 +1105,16 @@ writetraces (MS3TraceList *mstl)
 
         if (errflag)
           break;
+
+        /* >>> LOCAL: -B counts packed output records in writerecord(). */
+        if (!local_write_counted ())
+        {
+          /* <<< LOCAL */
+          totalrecsout++;
+          totalbytesout += recptr->msr->reclen;
+          /* >>> LOCAL */
+        }
+        /* <<< LOCAL */
 
         recptr = recptr->next;
       } /* Done looping through record list */
@@ -1159,38 +1172,20 @@ writetraces (MS3TraceList *mstl)
 } /* End of writetraces() */
 
 /***************************************************************************
- * Encodings that libmseed can unpack and pack without changing sample values.
- ***************************************************************************/
-static int
-encoding_can_pack (int16_t encoding)
-{
-  switch (encoding)
-  {
-  case DE_TEXT:
-  case DE_INT16:
-  case DE_INT32:
-  case DE_FLOAT32:
-  case DE_FLOAT64:
-  case DE_STEIM1:
-  case DE_STEIM2:
-    return 1;
-  default:
-    return 0;
-  }
-} /* End of encoding_can_pack() */
-
-/***************************************************************************
- * Unpack a data record, optionally trim samples to TimeRange bounds,
- * optionally re-pack to the record length requested with -B, and write.
+ * Unpack a data record and trim samples, either from the beginning or
+ * the end, to fit the TimeRange.starttime and TimeRange.endtime boundary
+ * times and pack the record.
+ * >>> LOCAL: The same path re-packs to the record length requested with -B.
+ * <<< LOCAL
  *
  * Data samples times are not modified.  The new start and end times
  * are treated as arbitrary boundaries, not as explicit new start/end
  * times, this routine calculates which samples fit within the new
  * boundaries.
  *
- * Returns 0 when the record was written (trimmed and/or re-packed),
- * -1 when there is nothing left to write, -2 when the record cannot
- * be re-packed and should be written unchanged, and -3 on fatal errors.
+ * Returns 0 when the record was trimmed and written, -1 when there is
+ * nothing left to write, -2 when the record cannot be trimmed and should
+ * be written untrimmed, and -3 on fatal errors.
  ***************************************************************************/
 static int
 trimrecord (MS3RecordPtr *recptr, char *recordbuf, WriterData *writerdata)
@@ -1209,17 +1204,21 @@ trimrecord (MS3RecordPtr *recptr, char *recordbuf, WriterData *writerdata)
   int64_t packedsamples = 0;
   int packedrecords;
   int retcode;
-  int do_trim = 0;
+  /* >>> LOCAL */
+  int do_trim;
+  /* <<< LOCAL */
 
   if (!recptr || !recordbuf)
     return -3;
 
   ostarttime = recptr->msr->starttime;
   newrange = (TimeRange *)(recptr->prvtptr);
+  /* >>> LOCAL: -B may call this with no trim bounds. */
   do_trim = (newrange && (newrange->starttime != NSTUNSET || newrange->endtime != NSTUNSET));
+  /* <<< LOCAL */
 
   /* Sanity check for new start/end times */
-  if (do_trim &&
+  if (/* >>> LOCAL */ do_trim && /* <<< LOCAL */
       ((newrange->starttime != NSTUNSET && newrange->endtime != NSTUNSET && newrange->starttime > newrange->endtime) ||
        (newrange->starttime != NSTUNSET && (newrange->starttime < recptr->msr->starttime || newrange->starttime > recptr->endtime)) ||
        (newrange->endtime != NSTUNSET && (newrange->endtime > recptr->endtime || newrange->endtime < recptr->msr->starttime))))
@@ -1237,38 +1236,36 @@ trimrecord (MS3RecordPtr *recptr, char *recordbuf, WriterData *writerdata)
     return -3;
   }
 
-  /* Records that cannot be unpacked/re-packed: keep original when only
-   * trimming, but fail when -B requested a new block size. */
-  if (ms_encoding_sizetype (recptr->msr->encoding, &samplesize, &sampletype) ||
-      !encoding_can_pack (recptr->msr->encoding))
+  /* Records that cannot be trimmed are written untrimmed, not an error */
+  if (ms_encoding_sizetype (recptr->msr->encoding, &samplesize, &sampletype))
   {
-    ms_nstime2timestr_n (recptr->msr->starttime, stime, sizeof (stime), ISOMONTHDAY_Z, NANO_MICRO);
-    if (outputreclen > 0)
-    {
-      ms_log (2, "Cannot re-pack %s (%s) to %d byte records, encoding %d (%s)\n",
-              recptr->msr->sid, stime, outputreclen, recptr->msr->encoding,
-              ms_encodingstr (recptr->msr->encoding));
+    /* >>> LOCAL */
+    if (local_reject_encoding (recptr->msr))
       return -3;
-    }
-
-    ms_log (1, "Warning: cannot re-pack %s (%s), unsupported encoding (%d: %s)\n",
-            recptr->msr->sid, stime, recptr->msr->encoding, ms_encodingstr (recptr->msr->encoding));
+    /* <<< LOCAL */
+    ms_nstime2timestr_n (recptr->msr->starttime, stime, sizeof (stime), ISOMONTHDAY_Z, NANO_MICRO);
+    ms_log (1, "Warning: cannot trim %s (%s), unknown encoding (%d)\n",
+            recptr->msr->sid, stime, recptr->msr->encoding);
 
     return -2;
   }
 
-  /* Trimming requires numeric samples */
-  if (do_trim && sampletype != 'i' && sampletype != 'f' && sampletype != 'd')
-  {
-    ms_nstime2timestr_n (recptr->msr->starttime, stime, sizeof (stime), ISOMONTHDAY_Z, NANO_MICRO);
-    if (outputreclen > 0)
-    {
-      ms_log (2, "Cannot trim and re-pack %s (%s), encoding %d (%s)\n",
-              recptr->msr->sid, stime, recptr->msr->encoding, ms_encodingstr (recptr->msr->encoding));
-      return -3;
-    }
+  /* >>> LOCAL */
+  if (!local_encoding_can_pack (recptr->msr->encoding) &&
+      local_reject_encoding (recptr->msr))
+    return -3;
+  /* <<< LOCAL */
 
-    ms_log (1, "Warning: cannot re-pack %s (%s), unsupported encoding (%d: %s)\n",
+  /* Check for supported samples types, can only trim what can be packed */
+  if (/* >>> LOCAL */ do_trim && /* <<< LOCAL */
+      sampletype != 'i' && sampletype != 'f' && sampletype != 'd')
+  {
+    /* >>> LOCAL */
+    if (local_reject_trim_encoding (recptr->msr))
+      return -3;
+    /* <<< LOCAL */
+    ms_nstime2timestr_n (recptr->msr->starttime, stime, sizeof (stime), ISOMONTHDAY_Z, NANO_MICRO);
+    ms_log (1, "Warning: cannot trim %s (%s), unsupported encoding (%d: %s)\n",
             recptr->msr->sid, stime, recptr->msr->encoding, ms_encodingstr (recptr->msr->encoding));
 
     return -2;
@@ -1280,29 +1277,42 @@ trimrecord (MS3RecordPtr *recptr, char *recordbuf, WriterData *writerdata)
     ms_log (2, "Cannot parse miniSEED record: %s\n", ms_errorstr (retcode));
 
     msr3_free (&msr);
-    return (outputreclen > 0) ? -3 : -2;
+    /* >>> LOCAL */
+    if (local_pack_fail_is_fatal ())
+      return -3;
+    /* <<< LOCAL */
+    return -2;
   }
 
-  if (verbose > 1 && do_trim)
+  if (verbose > 1)
   {
-    ms_log (1, "Triming record: %s (%u)\n", msr->sid, msr->pubversion);
-    ms_nstime2timestr_n (msr->starttime, stime, sizeof (stime), ISOMONTHDAY_Z, NANO_MICRO);
-    ms_nstime2timestr_n (recptr->endtime, etime, sizeof (etime), ISOMONTHDAY_Z, NANO_MICRO);
-    ms_log (1, "       Start: %s        End: %s\n", stime, etime);
-    boundstr (newrange->starttime, stime, sizeof (stime));
-    boundstr (newrange->endtime, etime, sizeof (etime));
-    ms_log (1, " Start bound: %-24s  End bound: %-24s\n", stime, etime);
-  }
-  else if (verbose > 1 && outputreclen > 0)
-  {
-    ms_log (1, "Re-packing %s (%u) to %d byte records\n", msr->sid, msr->pubversion, outputreclen);
+    /* >>> LOCAL */
+    if (!do_trim)
+    {
+      ms_log (1, "Re-packing %s (%u) to %d byte records\n",
+              msr->sid, msr->pubversion, local_outputreclen ());
+    }
+    else
+    {
+      /* <<< LOCAL */
+      ms_log (1, "Triming record: %s (%u)\n", msr->sid, msr->pubversion);
+      ms_nstime2timestr_n (msr->starttime, stime, sizeof (stime), ISOMONTHDAY_Z, NANO_MICRO);
+      ms_nstime2timestr_n (recptr->endtime, etime, sizeof (etime), ISOMONTHDAY_Z, NANO_MICRO);
+      ms_log (1, "       Start: %s        End: %s\n", stime, etime);
+      boundstr (newrange->starttime, stime, sizeof (stime));
+      boundstr (newrange->endtime, etime, sizeof (etime));
+      ms_log (1, " Start bound: %-24s  End bound: %-24s\n", stime, etime);
+      /* >>> LOCAL */
+    }
+    /* <<< LOCAL */
   }
 
   /* Determine sample period in nanosecond time ticks */
   nsperiod = msr3_nsperiod (msr);
 
   /* Remove samples from the beginning of the record */
-  if (do_trim && newrange->starttime != NSTUNSET && nsperiod)
+  if (/* >>> LOCAL */ do_trim && /* <<< LOCAL */
+      newrange->starttime != NSTUNSET && nsperiod)
   {
     nstime_t newstarttime;
     int64_t trimcount;
@@ -1344,7 +1354,8 @@ trimrecord (MS3RecordPtr *recptr, char *recordbuf, WriterData *writerdata)
   }
 
   /* Remove samples from the end of the record */
-  if (do_trim && newrange->endtime != NSTUNSET && nsperiod)
+  if (/* >>> LOCAL */ do_trim && /* <<< LOCAL */
+      newrange->endtime != NSTUNSET && nsperiod)
   {
     nstime_t newendtime;
     int64_t trimcount;
@@ -1398,36 +1409,30 @@ trimrecord (MS3RecordPtr *recptr, char *recordbuf, WriterData *writerdata)
       {
         ms_log (2, "Cannot set sequence number in extra headers\n");
       }
-      writerdata->next_v2seq = seqnum;
-    }
-    else
-    {
-      writerdata->next_v2seq = 0;
     }
   }
 
-  /* Pack to the requested output record length when -B is specified */
-  if (outputreclen > 0)
-    msr->reclen = outputreclen;
+  /* >>> LOCAL */
+  local_prepare_pack (msr);
+  /* <<< LOCAL */
 
   /* Pack the data record into the global record buffer used by writetraces() */
-  writerdata->wrote_this_pack = 0;
   writerdata->msr = msr;
   packedrecords = msr3_pack (msr, &writerecord, writerdata,
                              &packedsamples, MSF_FLUSHDATA, verbose - 1);
   writerdata->msr = recptr->msr;
 
-  /* Every unpacked sample must be written.  If packing already emitted
-   * records, or -B was requested, do not fall back to the original record. */
-  if (packedrecords <= 0 || packedsamples != msr->numsamples)
+  if (/* >>> LOCAL */ local_incomplete_pack (packedrecords, packedsamples, msr) /* <<< LOCAL */)
   {
     ms_nstime2timestr_n (ostarttime, stime, sizeof (stime), ISOMONTHDAY_Z, NANO_MICRO);
     ms_log (2, "%s(): Cannot pack miniSEED record for %s %s (packed %" PRId64 " of %" PRId64 " samples)\n",
             __func__, msr->sid, stime, packedsamples, msr->numsamples);
 
     msr3_free (&msr);
-    if (writerdata->wrote_this_pack > 0 || outputreclen > 0)
+    /* >>> LOCAL */
+    if (local_discard_original ())
       return -3;
+    /* <<< LOCAL */
     return -2;
   }
 
@@ -1445,8 +1450,10 @@ writerecord (char *record, int reclen, void *handlerdata)
 {
   WriterData *writerdata = handlerdata;
   Archive *arch;
+  /* >>> LOCAL */
   MS3Record *outmsr;
   MS3Record *parsedmsr = NULL;
+  /* <<< LOCAL */
 
   if (!record || reclen <= 0 || !handlerdata)
     return;
@@ -1494,17 +1501,9 @@ writerecord (char *record, int reclen, void *handlerdata)
     }
   }
 
-  /* When splitting a v2 record, give each packed record a unique sequence.
-   * libmseed reuses the extra-header sequence for every record in a pack
-   * session, so the value is written into the packed header here. */
-  if (writerdata->next_v2seq >= 0 && writerdata->msr->formatversion == 2 && reclen >= 6)
-  {
-    char seqstr[7];
-
-    snprintf (seqstr, sizeof (seqstr), "%06" PRId64, writerdata->next_v2seq % 1000000);
-    memcpy (record, seqstr, 6);
-    writerdata->next_v2seq = (writerdata->next_v2seq + 1) % 1000000;
-  }
+  /* >>> LOCAL: stamp incrementing v2 sequences when -B splits a record. */
+  local_stamp_v2_sequence ((uint8_t *)record, reclen, writerdata->msr->formatversion);
+  /* <<< LOCAL */
 
   /* Write to a single output file if specified */
   if (writerdata->ofp)
@@ -1516,15 +1515,16 @@ writerecord (char *record, int reclen, void *handlerdata)
     }
   }
 
-  /* When re-packing to a new record length, parse each packed record so
-   * archive paths and the output summary use that record's start time. */
+  /* >>> LOCAL: parse each packed record so archive paths and -out
+   * use that record's start time, not the source record's. */
   outmsr = writerdata->msr;
-  if (outputreclen > 0 && (archiveroot || writtenfile) &&
+  if (local_should_parse_packed () && (archiveroot || writtenfile) &&
       msr3_parse (record, reclen, &parsedmsr, 0, 0) == MS_NOERROR)
   {
     parsedmsr->record = record;
     outmsr = parsedmsr;
   }
+  /* <<< LOCAL */
 
   /* Write to Archive(s) if specified */
   if (archiveroot)
@@ -1533,7 +1533,7 @@ writerecord (char *record, int reclen, void *handlerdata)
     while (arch)
     {
       if (ds_streamproc (&arch->datastream,
-                         outmsr,
+                         /* >>> LOCAL */ outmsr /* <<< LOCAL */,
                          reclen, verbose - 1, NULL))
       {
         *writerdata->errflagp = 1;
@@ -1548,7 +1548,7 @@ writerecord (char *record, int reclen, void *handlerdata)
   {
     MS3TraceSeg *seg;
 
-    if ((seg = mstl3_addmsr (writtentl, outmsr, 0, 0, 0, NULL)) == NULL)
+    if ((seg = mstl3_addmsr (writtentl, /* >>> LOCAL */ outmsr /* <<< LOCAL */, 0, 0, 0, NULL)) == NULL)
     {
       ms_log (2, "Error adding MS3Record to MS3TraceList, bah humbug.\n");
     }
@@ -1572,14 +1572,12 @@ writerecord (char *record, int reclen, void *handlerdata)
     }
   }
 
+  /* >>> LOCAL */
   if (parsedmsr)
     msr3_free (&parsedmsr);
 
-  if (writerdata->totalrecsoutp)
-    (*writerdata->totalrecsoutp)++;
-  if (writerdata->totalbytesoutp)
-    (*writerdata->totalbytesoutp) += (uint64_t)reclen;
-  writerdata->wrote_this_pack++;
+  local_note_write ((uint64_t)reclen);
+  /* <<< LOCAL */
 } /* End of writerecord() */
 
 /***************************************************************************
@@ -2801,20 +2799,13 @@ processparam (int argcount, char **argvec)
       if (addarchive (getoptval (argcount, argvec, optind++), NULL) == -1)
         return -1;
     }
+    /* >>> LOCAL */
     else if (strcmp (argvec[optind], "-B") == 0)
     {
-      tptr = getoptval (argcount, argvec, optind++);
-      ulong = strtoul (tptr, &endptr, 10);
-
-      if (*endptr != '\0' || ulong < 128 || ulong > 131072 || (ulong & (ulong - 1)) != 0)
-      {
-        ms_log (2, "Invalid miniSEED block size: %s\n", tptr);
-        ms_log (2, "Block size must be a power of 2 between 128 and 131072 bytes\n");
+      if (local_set_blocksize (getoptval (argcount, argvec, optind++)))
         return -1;
-      }
-
-      outputreclen = (int)ulong;
     }
+    /* <<< LOCAL */
     else if (strcmp (argvec[optind], "-Pr") == 0)
     {
       prunedata = 'r';
@@ -3341,9 +3332,9 @@ usage (int level)
            " ## Output options ##\n"
            " -o file      Specify a single output file, use +o file to append\n"
            " -A format    Write all records in a custom directory/file layout (try -H)\n"
-           " -B bytes     Re-pack output to this miniSEED record/block size\n"
-           "                Power of 2 (e.g. 512, 4096); sample times and values are unchanged\n"
-           "                miniSEED 2: exact length; miniSEED 3: maximum length\n"
+           /* >>> LOCAL */
+           LOCAL_USAGE_B
+           /* <<< LOCAL */
            " -Pr          Prune data at the record level using 'best' version priority\n"
            " -Ps          Prune data at the sample level using 'best' version priority\n"
            " -Pe          Prune traces at user specified edges only, leave overlaps\n"

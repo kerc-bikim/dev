@@ -6,7 +6,7 @@
 
 BIN = dataselect
 
-SRCS = dataselect.c dsarchive.c
+SRCS = dataselect.c dsarchive.c local.c
 OBJS = $(SRCS:.c=.o)
 
 # Required compiler parameters

@@ -5,7 +5,9 @@ miniSEED format.
 
 This copy includes a local extension: **`-B bytes`** sets the output miniSEED
 record/block size (power of 2, e.g. `-B 512`).  Sample times and values are
-unchanged.  Without `-B` the original record length is preserved.
+unchanged.  Without `-B` the original record length is preserved.  The
+extension lives in `src/local.c`; see [UPSTREAM.md](UPSTREAM.md) when merging
+a newer EarthScope dataselect.
 
 For usage information see the [dataselect manual](doc/dataselect.md) in the
 'doc' directory.  Korean usage notes: [README.ko.md](README.ko.md).

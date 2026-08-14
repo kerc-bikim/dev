@@ -5,6 +5,8 @@
 	  cannot be honored the program exits with an error instead of writing the
 	  original record.
 	- Increment miniSEED 2 sequence numbers when -B splits one record into many.
+	- Keep the -B implementation in src/local.c so EarthScope updates can be
+	  merged by re-applying the LOCAL hooks in dataselect.c (see UPSTREAM.md).
 
 2026.217: v4.3.2
 	- Fix -ts/-te limits landing exactly on a record boundary sample leaving the
