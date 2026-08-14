@@ -1,0 +1,424 @@
+.TH DATASELECT 1 2026/08/13
+.SH NAME
+dataselect \- miniSEED data selection, sorting and pruning
+
+.SH SYNOPSIS
+.nf
+dataselect [options] file1 [file2 file3 ...]
+.fi
+
+.SH DESCRIPTION
+\fBdataselect\fP selects, sorts and prunes miniSEED data.  Any output
+data will always be sorted by ascending time-series segments.  Various
+data selection operations are possible including time criteria, the
+removal of duplicate data and the splicing of partially overlapping
+data records to form continuous time-series.
+
+Data pruning, removal of overlap, can be performed at either the
+record or sample level.  Pruning at the record level guarantees that
+records are never unpacked/repacked, but this could potentially leave
+small amounts of overlap in the data.  Pruning at the sample level
+will remove any overlap and splice data to within the time-series
+tolerance, this requires the unpacking and repacking of data records
+and is done in a modification-minimizing way.
+
+When removing overlapping data records or samples the concept of
+priority is used to determine from which time-series data should be
+removed if overlaps are detected.  By default the priority is given to
+the highest publication version (or v2 quality data).  When the
+qualities are the same priority is given to the longer segment.
+
+An output destination must be specified, either a single file with
+\fB-o\fP or an archive layout with \fB-A\fP (or a pre-defined layout
+option).  Both may be used together, and \fB-A\fP may be used more
+than once, to write the same output to multiple destinations.  The
+input files are never modified.
+
+Multiple input files will be read in the order specified and processed
+all together as if all the data records were from the same file.  The
+program must read input data from regular, seekable files; input from
+pipes, standard input and URLs is not possible.
+
+Records are checked against their CRC when one is present (miniSEED
+v3), and a mismatch is a fatal error unless \fB-snd\fP is specified.
+
+Files on the command line prefixed with a '@' character are input list
+files and are expected to contain a simple list of input files, see
+\fBINPUT LIST FILE\fP for more details.
+
+Each input file may be specified with an explicit byte range to read.
+The program will begin reading at the specified start offset and stop
+reading at the specified end range.  See \fBINPUT FILE RANGE\fP for
+more details.
+
+.SH OPTIONS
+
+.IP "-V         "
+Print program version and exit.
+
+.IP "-h         "
+Print program usage and exit.
+
+.IP "-H         "
+Print verbose program usage including details of archive format
+specification and exit.
+
+.IP "-v         "
+Be more verbose.  This flag can be used multiple times ("-v -v" or
+"-vv") for more verbosity.
+
+.IP "-tt \fIsecs\fP"
+Specify a time tolerance for constructing continuous trace
+segments. The tolerance is specified in seconds.  The default
+tolerance is 1/2 of the sample period.
+
+.IP "-rt \fIdiff\fP"
+Specify a sample rate tolerance for constructing continuous trace
+segments. The tolerance is specified as the difference between two
+sampling rates.  The default tolerance is tested as: (abs(1-sr1/sr2) <
+0.0001).
+
+.IP "-snd"
+Skip non-miniSEED records.  By default the program will stop when
+it encounters data that cannot be identified as a miniSEED record.
+This option can be useful with full SEED volumes or files with bad
+data.  Records that fail CRC validation are also skipped.
+
+.IP "-E"
+Consider all publication versions (or v2 qualities) equal when
+determining priority for pruning.  By default priority is given to
+the data with the highest publication version.
+
+.IP "-F"
+Use input file order for 'best' prioritization, lowest to highest,
+for pruning regardless of publication version (or v2 quality).  Data
+in input files specified later will be considered higher priority
+than data in input files specified earlier.
+
+.IP "-s \fIselectfile\fP"
+Limit processing to miniSEED records that match a selection in the
+specified file.  The selection file contains parameters to match the
+SourceID (network, station, location, channel), publication version
+(or v2 quality), and time range for input records.
+As a special case, specifying "-" will result in selection
+lines being read from stdin.  For more details see the \fBSELECTION
+FILE\fP section below.
+
+.IP "-ts \fItime\fP"
+Limit processing to miniSEED records that start after or contain
+\fItime\fP.  The preferred format of the \fItime\fP argument
+is: 'YYYY-MM-DD[THH:MM:SS.FFFFFFFFF]'.
+
+.IP "-te \fItime\fP"
+Limit processing to miniSEED records that end before or contain
+\fItime\fP.  The preferred format of the \fItime\fP argument
+is: 'YYYY-MM-DD[THH:MM:SS.FFFFFFFFF]'.
+
+.IP "-m \fImatch\fP"
+Limit input to records that match this globbing pattern, the
+\fImatch\fP is tested against the full FDSN Source ID
+\&'FDSN:NET_STA_LOC_B_S_SS'.  The pattern is applied as a logical
+"contains", i.e. it does not need to match the entire Source ID.
+This option may be used multiple times; a Source ID matching any
+\fB-m\fP pattern is selected.
+
+Each \fB-m\fP pattern is combined with \fB-ts\fP and \fB-te\fP into a
+selection.  When used together with \fB-s\fP these selections are
+\fIadditional\fP to those in the selection file, records matching any
+selection are processed.
+
+.IP "-r \fIreject\fP"
+Limit input by excluding records that match this globbing pattern, the
+inverse of \fB-m\fP.  The \fIreject\fP is tested against the full FDSN
+Source ID \&'FDSN:NET_STA_LOC_B_S_SS' as a logical "contains".  This
+option may be used multiple times; a Source ID matching any \fB-r\fP
+pattern is rejected.  Rejection is applied after selection, taking
+precedence over \fB-s\fP, \fB-m\fP, \fB-ts\fP and \fB-te\fP.
+
+.IP "-o \fIfile\fP"
+Write all output data to output \fIfile\fP.  If '-' is specified as
+the output file all output data will be written to standard out.  By
+default the output file will be overwritten, changing the option to
+\fI+o file\fP appends to the output file.  This option may be combined
+with \fB-A\fP to write the same output to more than one destination.
+
+.IP "-A \fIformat\fP"
+All output records will be written to a directory/file layout defined
+by \fIformat\fP.  All directories implied in the \fIformat\fP string
+will be created if necessary.  The option may be used multiple times
+to write input records to multiple archives.  See the \fBARCHIVE
+FORMAT\fP section below for more details including pre-defined archive
+layouts.
+
+.IP "-B \fIbytes\fP"
+Re-pack all output records to the specified miniSEED record/block
+size.  The value must be a power of 2 between 128 and 131072 bytes
+(for example 512, 1024, 4096).  Each input record is unpacked and
+written as one or more records of this length.  Sample times and
+sample values are unchanged: the output time-series is identical to
+the input, only the record/block framing changes.  For miniSEED 2 the
+records are exactly \fIbytes\fP long; for miniSEED 3 \fIbytes\fP is the
+maximum record length.  Input records are not merged when a larger
+size is requested.  If a record cannot be re-packed to the requested
+size the program exits with an error rather than writing the original
+record.
+
+.IP "-CHAN \fIdirectory\fP"
+.IP "-VCHAN \fIdirectory\fP"
+.IP "-QCHAN \fIdirectory\fP"
+.IP "-CDAY \fIdirectory\fP"
+.IP "-SDAY \fIdirectory\fP"
+.IP "-BUD \fIdirectory\fP"
+.IP "-SDS \fIdirectory\fP"
+.IP "-CSS \fIdirectory\fP"
+Pre-defined output archive formats, see the \fBARCHIVE FORMAT\fP
+section below for more details.
+
+.IP "-Pr         "
+Prune, remove overlap data, at the record level.  This will result in
+removal of all the completely overlapped data records.  Small,
+partial-record overlaps might remain in the data.
+
+.IP "-Ps         "
+Prune, remove overlap data, at the sample level.  This will result in
+removal of all the completely overlapped data samples.  When data
+records partially overlap the lowest priority record is unpacked,
+trimmed and repacked.  Record trimming requires a supported data
+encoding, if unsupported (primarily older encodings) the record will
+be in the output untrimmed.
+
+.IP "-Pe         "
+Prune (trim) returned traces to user specified edges (start and end
+times) at the sample level. This option will not remove overlap data
+within specified start and end time window.  Caveats the same as for
+\fB-Ps\fP.  This option has no effect unless time limits are specified
+with \fB-ts\fP, \fB-te\fP or a selection file.
+
+.IP "-Q pubversion"
+Change the data publication version or quality indicator for all output
+records to the specified value.  If this value is one of the letters:
+R, D, Q or M it will be translated to the appropriate publication of
+1, 2, 3, 4 respectively.  If the value is not one of these letters it
+must be a number between 1 and 255.  Note that miniSEED v2 data quality
+indicators only support values 1-4, and all higher values will result in
+a publication version of 4 (aka data quality 'M').
+
+.IP "-out file    "
+Print a summary of output records to the specified file.  Any existing
+file will be appended to.  Specify the file as '-' to print to stdout
+or '--' to print to stderr.  One line is printed per output trace
+segment, containing the following '|' separated fields:
+
+.nf
+SourceID|PubVersion|Starttime|Endtime|Bytes|Samples
+.fi
+
+.IP "-outprefix prefix"
+Include the specified prefix string at the beginning of each line of
+summary output when using the \fI-out\fP option.  This is useful to
+identify the summary output in a stream that is potentially mixed with
+other output.
+
+.SH THE PRUNING PROCESS
+
+The pruning algorithm used is independent of the file structure and
+organization.  Data from all input files are parsed and a map created
+for every data record and their relationship in continuous time
+series segments.
+
+Each data record time coverage in each continuous time-series is
+compared to the time coverage of every other continuous time-series.
+When overlap is detected, data is optionally removed from the lower
+priority time-series until the overlap is minimized or completely
+removed depending on the pruning option specified.
+
+.SH "SELECTION FILE"
+A selection file is used to match input data records based on their
+FDSN Source ID, which contains the network, station, location and
+channel information.  Optionally a publication version (or v2 quality)
+and time range may also be specified for more refined selection.  The
+non-time fields may use the '*' wildcard to match multiple characters
+and the '?' wildcard to match single characters.  Character sets may
+also be used, for example '[ENZ]' will match either E, N or Z.
+Empty lines and lines with a '#' as their first non-whitespace
+character are ignored, trailing comments are not recognized.  A record
+is selected if it matches any entry in the file.
+
+The Source ID pattern is matched against the entire Source ID, which
+includes the leading 'FDSN:' namespace, so wildcards are needed to
+match a prefix such as a network code.  The time fields, when present,
+must be times; there is no wildcard placeholder for them, and the
+publication version cannot be specified without them.
+
+Example selection file entries (only the Source ID is required)
+.nf
+#SourceID                  Starttime             Endtime               Pubversion
+FDSN:IU_ANMO_*_B_H_?
+FDSN:IU_COLA_00_L_H_[ENZ]  2008-04-09T10:00:00Z
+FDSN:IU_COLA_00_L_H_Z      2008-04-09T10:00:00Z  2008-04-09T10:30:00Z
+FDSN:II_*                  2008-04-09T00:00:00Z  2008-04-10T00:00:00Z  3
+.fi
+
+For compatibility, entries may alternatively be specified as separate
+network, station, location and channel fields, where all four fields
+are required:
+
+.nf
+#Net  Sta   Loc  Chan  Pubversion  Starttime             Endtime
+IU    ANMO  *    BH?
+IU    COLA  00   LHZ   1           2008-04-09T10:00:00Z  2008-04-09T10:30:00Z
+.fi
+
+Entries that match neither form are skipped with a warning.
+
+\fBWarning:\fP with a selection file it is possible to specify
+multiple, arbitrary selections.  Some combinations of these selects
+are not possible.  See \fBCAVEATS AND LIMITATIONS\fP for more details.
+
+.SH "INPUT LIST FILE"
+A list file can be used to specify input files, one file per line.
+The initial '@' character indicating a list file is not considered
+part of the file name.  As an example, if the following command line
+option was used:
+
+.nf
+\fB@files.list\fP
+.fi
+
+The 'files.list' file might look like this:
+
+.nf
+data/day1.mseed
+data/day2.mseed
+data/day3.mseed
+.fi
+
+Empty lines and lines beginning with a '#' character are ignored.  Each
+entry may include a byte range as described in \fBINPUT FILE RANGE\fP.
+List files cannot be nested.
+
+.SH "INPUT FILE RANGE"
+Each input file may be specified with an associated byte range to
+read.  The program will begin reading at the specified start offset
+and finish reading when at or beyond the end offset.  The range is
+specified by appending an '@' character to the filename with the start
+and end offsets separated by a dash:
+
+.nf
+filename.mseed@[startoffset][-][endoffset]
+.fi
+
+For example: "filename.mseed@4096-8192".  Both the start and end
+offsets are optional.  The dash separator is optional if no end
+offset is specified.  A ':' is also accepted as the separator for
+compatibility with previous versions.
+
+The start offset must be the beginning of a data record.
+
+.SH "ARCHIVE FORMAT"
+The pre-defined archive layouts are as follows:
+
+.nf
+-CHAN dir   :: dir/%n.%s.%l.%c
+-VCHAN dir  :: dir/%n.%s.%l.%c.%v
+-QCHAN dir  :: dir/%n.%s.%l.%c.%q
+-CDAY dir   :: dir/%n.%s.%l.%c.%Y:%j:#H:#M:#S
+-SDAY dir   :: dir/%n.%s.%Y:%j
+-BUD dir    :: dir/%n/%s/%s.%n.%l.%c.%Y.%j
+-SDS dir    :: dir/%Y/%n/%s/%c.D/%n.%s.%l.%c.D.%Y.%j
+-CSS dir    :: dir/%Y/%j/%s.%c.%Y:%j:#H:#M:#S
+.fi
+
+An archive format is expanded for each record using the following
+substitution flags:
+
+.nf
+  \fBn\fP : network code, white space removed
+  \fBs\fP : station code, white space removed
+  \fBl\fP : location code, white space removed
+  \fBc\fP : channel code, white space removed
+  \fBY\fP : year, 4 digits
+  \fBy\fP : year, 2 digits zero padded
+  \fBj\fP : day of year, 3 digits zero padded
+  \fBH\fP : hour, 2 digits zero padded
+  \fBM\fP : minute, 2 digits zero padded
+  \fBS\fP : second, 2 digits zero padded
+  \fBN\fP : nanoseconds, 9 digits zero padded
+  \fBv\fP : publication version, 1-255
+  \fBq\fP : data quality if possible, otherwise pub version (D, R, Q, M, or #)
+  \fBL\fP : data record length in bytes
+  \fBr\fP : sample rate (Hz) as a rounded integer
+  \fBR\fP : sample rate (Hz) as a float with 6 digit precision
+  \fB%\fP : the percent (%) character
+  \fB#\fP : the number (#) character
+.fi
+
+The flags are prefaced with either the \fB%\fP or \fB#\fP modifier.
+The \fB%\fP modifier indicates a defining flag while the \fB#\fP
+indicates a non-defining flag.  All records with the same set of
+defining flags will be written to the same file.  Non-defining flags
+will be expanded using the values in the first record for the
+resulting file name.
+
+Time flags are based on the start time of the given record.
+
+.SH ARCHIVE FORMAT EXAMPLES
+
+The format string for the predefined \fIBUD\fP layout:
+
+\fB/archive/%n/%s/%s.%n.%l.%c.%Y.%j\fP
+
+would expand to day length files named something like:
+
+\fB/archive/NL/HGN/HGN.NL..BHE.2003.055\fP
+
+As an example of using non-defining flags the format string for the
+predefined \fICSS\fP layout:
+
+\fB/data/%Y/%j/%s.%c.%Y:%j:#H:#M:#S\fP
+
+would expand to:
+
+\fB/data/2003/055/HGN.BHE.2003:055:14:17:54\fP
+
+resulting in day length files because the hour, minute and second are
+specified with the non-defining modifier.  The hour, minute and second
+fields are from the first record in the file.
+
+.SH LEAP SECOND LIST FILE
+NOTE: A list of leap seconds is included in the program and no external
+list should be needed unless a leap second is added after year 2023.
+
+If the environment variable LIBMSEED_LEAPSECOND_FILE is set it is
+expected to indicate a file containing a list of leap seconds in NTP
+leap second list format. Some locations where this file can be obtained
+are indicated in RFC 8633 section 3.7:
+https://www.rfc-editor.org/rfc/rfc8633.html#section-3.7
+
+If present, the leap seconds listed in this file will be used to
+adjust the time coverage for records that contain a leap second.
+Also, leap second indicators in the miniSEED headers will be ignored.
+
+.SH ERROR HANDLING AND RETURN CODES
+Any significant error message will be pre-pended with "ERROR" which
+can be parsed to determine run-time errors.  Additionally the program
+will return an exit code of 0 on successful operation and 1 when any
+errors were encountered.
+
+.SH CAVEATS AND LIMITATIONS
+
+With the ability to specify multiple, arbitrary data selections it is
+possible to specify very complex and pathological compound selections.
+When pruning samples from records in order to fit the requested
+selections, this program is limited to trimming samples from the
+beginning and/or end of the record.  This means it is not possible to
+select two or more non-intersecting time ranges from a single record.
+Put another way, one cannot select data from the beginning and
+end, but not the middle of a record.  The work-around for this
+limitation is to run the program once for each selection.
+
+.SH AUTHOR
+.nf
+Chad Trabant
+EarthScope Data Services
+.fi
