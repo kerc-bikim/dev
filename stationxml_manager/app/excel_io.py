@@ -112,6 +112,10 @@ def parse_catalog_sheet(df: pd.DataFrame, kind: str) -> list[dict[str, Any]]:
             "샘플링레이트": "sample_rate",
             "nrl_keys": "nrl_keys",
             "nrl키": "nrl_keys",
+            "origin": "origin",
+            "출처": "origin",
+            "description": "description",
+            "설명": "description",
         }
         if key not in mapping:
             raise ValidationError(f"카탈로그 시트의 알 수 없는 열: {col}")
@@ -132,6 +136,8 @@ def parse_catalog_sheet(df: pd.DataFrame, kind: str) -> list[dict[str, Any]]:
                 if kind == "datalogger"
                 else None,
                 "nrl_keys": as_str(series.get("nrl_keys")) or None,
+                "origin": as_str(series.get("origin")) or None,
+                "description": as_str(series.get("description")) or None,
             }
         )
     return items
@@ -510,13 +516,13 @@ def _write_catalog_sheet(
     headers = ["id", "manufacturer", "model"]
     if with_rate:
         headers.append("sample_rate")
-    headers.append("nrl_keys")
+    headers.extend(["nrl_keys", "origin", "description"])
     ws.append(headers)
     for row in rows:
         values = [row.code, row.manufacturer, row.model]
         if with_rate:
             values.append(row.sample_rate)
-        values.append(row.nrl_keys)
+        values.extend([row.nrl_keys, row.origin or "seed", row.description])
         ws.append(values)
 
 
@@ -565,6 +571,7 @@ def _full_seed_template() -> bytes:
                         manufacturer=item["manufacturer"],
                         model=item["model"],
                         nrl_keys=item.get("nrl_keys") or None,
+                        origin="seed",
                     )
                 )
             for item in data["dataloggers"]:
@@ -576,6 +583,7 @@ def _full_seed_template() -> bytes:
                         model=item["model"],
                         sample_rate=item.get("sample_rate"),
                         nrl_keys=item.get("nrl_keys") or None,
+                        origin="seed",
                     )
                 )
             session.commit()

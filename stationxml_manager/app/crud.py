@@ -7,7 +7,13 @@ from typing import Any
 from sqlalchemy.orm import Session, joinedload
 
 from .audit import nslc_of, to_dict, write_audit
-from .catalog import assert_equipment_ids, catalog_in_use, catalog_map, get_by_code
+from .catalog import (
+    assert_equipment_ids,
+    catalog_in_use,
+    catalog_map,
+    get_by_code,
+    get_or_create_custom_equipment,
+)
 from .errors import AppError, ValidationError
 from .inventory import build_inventory, dump_response_xml, inventory_to_bytes
 from .models import Channel, EquipmentCatalog, Network, Station
@@ -572,39 +578,29 @@ def create_catalog_item(
     session: Session, payload: dict[str, Any], actor: str | None
 ) -> EquipmentCatalog:
     kind = str(payload.get("kind") or "").strip()
-    code = str(payload.get("code") or "").strip()
-    manufacturer = str(payload.get("manufacturer") or "").strip()
-    model = str(payload.get("model") or "").strip()
-    if kind not in {"sensor", "datalogger"}:
-        raise ValidationError("장비 종류는 sensor 또는 datalogger여야 합니다")
-    if not code or not manufacturer or not model:
-        raise ValidationError("장비 ID, 제조사, 모델은 필수입니다")
     sample_rate = parse_float(payload.get("sample_rate"), "샘플링레이트")
-    if kind == "datalogger" and sample_rate is not None:
-        validate_sample_rate(sample_rate)
-    if get_by_code(session, kind, code):
-        raise ValidationError(f"이미 있는 장비 ID입니다: {code}")
-    row = EquipmentCatalog(
-        kind=kind,
-        code=code,
-        manufacturer=manufacturer,
-        model=model,
-        sample_rate=sample_rate,
-        nrl_keys=(payload.get("nrl_keys") or None),
-    )
-    session.add(row)
-    session.flush()
-    write_audit(
+    row, created = get_or_create_custom_equipment(
         session,
-        action="create",
-        entity_type="catalog",
-        entity_id=row.id,
-        source="ui",
-        actor=actor,
-        nslc=f"{kind}:{code}",
-        before=None,
-        after=_catalog_dict(row),
+        kind=kind,
+        manufacturer=str(payload.get("manufacturer") or ""),
+        model=str(payload.get("model") or ""),
+        sample_rate=sample_rate,
+        code=str(payload.get("code") or "").strip() or None,
+        description=str(payload.get("description") or "").strip() or None,
+        nrl_keys=str(payload.get("nrl_keys") or "").strip() or None,
     )
+    if created:
+        write_audit(
+            session,
+            action="create",
+            entity_type="catalog",
+            entity_id=row.id,
+            source="ui",
+            actor=actor,
+            nslc=f"{row.kind}:{row.code}",
+            before=None,
+            after=catalog_to_dict(row),
+        )
     session.commit()
     session.refresh(row)
     return row
@@ -616,7 +612,7 @@ def update_catalog_item(
     row = session.query(EquipmentCatalog).get(item_id)
     if row is None:
         raise AppError("카탈로그 항목을 찾을 수 없습니다", 404)
-    before = _catalog_dict(row)
+    before = catalog_to_dict(row)
     if "sample_rate" in payload:
         new_rate = parse_float(payload.get("sample_rate"), "샘플링레이트")
         if new_rate is not None:
@@ -641,7 +637,7 @@ def update_catalog_item(
                     + ", ".join(mismatched)
                 )
         payload = {**payload, "sample_rate": new_rate}
-    for key in ("manufacturer", "model", "sample_rate", "nrl_keys"):
+    for key in ("manufacturer", "model", "sample_rate", "nrl_keys", "description"):
         if key in payload:
             setattr(row, key, payload[key] if payload[key] not in ("",) else None)
     session.flush()
@@ -654,7 +650,7 @@ def update_catalog_item(
         actor=actor,
         nslc=f"{row.kind}:{row.code}",
         before=before,
-        after=_catalog_dict(row),
+        after=catalog_to_dict(row),
     )
     session.commit()
     session.refresh(row)
@@ -670,7 +666,7 @@ def delete_catalog_item(session: Session, item_id: int, actor: str | None) -> No
         raise ValidationError(
             f"'{row.code}'를 사용하는 채널이 있어 삭제할 수 없습니다: {', '.join(used)}"
         )
-    before = _catalog_dict(row)
+    before = catalog_to_dict(row)
     session.delete(row)
     write_audit(
         session,
@@ -695,7 +691,7 @@ def list_history(session: Session, limit: int = 200, nslc: str | None = None):
     return q.limit(limit).all()
 
 
-def _catalog_dict(row: EquipmentCatalog) -> dict[str, Any]:
+def catalog_to_dict(row: EquipmentCatalog) -> dict[str, Any]:
     return {
         "id": row.id,
         "kind": row.kind,
@@ -704,6 +700,8 @@ def _catalog_dict(row: EquipmentCatalog) -> dict[str, Any]:
         "model": row.model,
         "sample_rate": row.sample_rate,
         "nrl_keys": row.nrl_keys,
+        "origin": row.origin or "seed",
+        "description": row.description,
     }
 
 
@@ -714,10 +712,15 @@ def _upsert_catalog(
         for item in catalog.get(key) or []:
             row = get_by_code(session, kind, item["code"])
             if row is None:
-                row = EquipmentCatalog(kind=kind, code=item["code"])
+                origin = item.get("origin") if item.get("origin") in {"seed", "custom"} else "custom"
+                row = EquipmentCatalog(kind=kind, code=item["code"], origin=origin)
                 session.add(row)
+            elif item.get("origin") in {"seed", "custom"}:
+                row.origin = item["origin"]
             row.manufacturer = item.get("manufacturer") or row.manufacturer or ""
             row.model = item.get("model") or row.model or ""
+            if item.get("description") is not None:
+                row.description = item.get("description") or None
             if kind == "datalogger" and item.get("sample_rate") is not None:
                 imported_rate = parse_float(
                     item.get("sample_rate"), "카탈로그 샘플링레이트"

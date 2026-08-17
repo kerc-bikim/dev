@@ -44,7 +44,107 @@ def _item_to_row(kind: str, item: dict[str, Any]) -> EquipmentCatalog:
         model=str(item.get("model") or "").strip(),
         sample_rate=item.get("sample_rate"),
         nrl_keys=(str(item["nrl_keys"]).strip() if item.get("nrl_keys") else None),
+        origin="seed",
+        description=None,
     )
+
+
+def _slug_part(value: str) -> str:
+    parts: list[str] = []
+    for char in value.strip():
+        if char.isalnum() or char in "-_":
+            parts.append(char)
+        elif char.isspace():
+            parts.append("_")
+    slug = "".join(parts).strip("_")
+    return slug or "EQ"
+
+
+def suggest_custom_code(
+    session: Session,
+    kind: str,
+    manufacturer: str,
+    model: str,
+    sample_rate: float | None = None,
+) -> str:
+    mid = f"{_slug_part(manufacturer)}_{_slug_part(model)}"
+    suffix = ""
+    if kind == "datalogger" and sample_rate is not None:
+        rate = float(sample_rate)
+        if rate.is_integer():
+            suffix = f"_{int(rate)}sps"
+        else:
+            suffix = f"_{str(rate).replace('.', 'p')}sps"
+    room = 64 - len("CUSTOM_") - len(suffix) - 3
+    base = f"CUSTOM_{mid[: max(room, 1)].rstrip('_')}{suffix}"
+    if get_by_code(session, kind, base) is None:
+        return base
+    index = 2
+    while True:
+        extra = f"_{index}"
+        candidate = f"{base}{extra}"
+        if len(candidate) > 64:
+            candidate = f"{base[: 64 - len(extra)]}{extra}"
+        if get_by_code(session, kind, candidate) is None:
+            return candidate
+        index += 1
+
+
+def get_or_create_custom_equipment(
+    session: Session,
+    *,
+    kind: str,
+    manufacturer: str,
+    model: str,
+    sample_rate: float | None = None,
+    code: str | None = None,
+    description: str | None = None,
+    nrl_keys: str | None = None,
+) -> tuple[EquipmentCatalog, bool]:
+    from .validation import validate_sample_rate
+
+    if kind not in {"sensor", "datalogger"}:
+        raise ValidationError("장비 종류는 sensor 또는 datalogger여야 합니다")
+    manufacturer = (manufacturer or "").strip()
+    model = (model or "").strip()
+    if not manufacturer or not model:
+        raise ValidationError("제조사와 모델은 필수입니다")
+    if kind == "datalogger":
+        if sample_rate is None:
+            raise ValidationError("기록계 샘플링레이트는 필수입니다")
+        validate_sample_rate(sample_rate)
+
+    existing = find_by_manufacturer_model(
+        session,
+        kind,
+        manufacturer,
+        model,
+        sample_rate if kind == "datalogger" else None,
+    )
+    if existing is not None:
+        return existing, False
+
+    code = (code or "").strip()
+    if code:
+        taken = get_by_code(session, kind, code)
+        if taken is not None:
+            raise ValidationError(f"이미 있는 장비 ID입니다: {code}")
+    else:
+        code = suggest_custom_code(session, kind, manufacturer, model, sample_rate)
+
+    row = EquipmentCatalog(
+        kind=kind,
+        code=code,
+        manufacturer=manufacturer,
+        model=model,
+        sample_rate=sample_rate if kind == "datalogger" else None,
+        nrl_keys=str(nrl_keys).strip() if nrl_keys else None,
+        origin="custom",
+        description=(description or "").strip() or None,
+    )
+    session.add(row)
+    session.flush()
+    return row, True
 
 
 def get_by_code(

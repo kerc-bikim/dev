@@ -116,3 +116,20 @@ def test_api_key_error_keeps_cors_headers(api_client, monkeypatch):
 
     ok = client.get("/api/health", headers={"X-API-Key": "secret"})
     assert ok.status_code == 200
+
+
+def test_api_create_custom_catalog_without_code(api_client):
+    client, SessionLocal = api_client
+    session = SessionLocal()
+    try:
+        seed_catalog(session)
+    finally:
+        session.close()
+    response = client.post(
+        "/api/catalog",
+        json={"kind": "sensor", "manufacturer": "Acme", "model": "Geophone"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["code"] == "CUSTOM_Acme_Geophone"
+    assert body["origin"] == "custom"

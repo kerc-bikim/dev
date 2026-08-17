@@ -1,6 +1,6 @@
 # NRL에 없는 장비 — 사용자 정의 메타데이터
 
-상태: **결정 확정** (코드 미착수). 구현 착수 가능.
+상태: **결정 확정, 구현 완료**.
 
 2026-08-17 사용자 확인: Q1–Q9 모두 제안값.  
 Q1-A, Q2-A, Q3-A, Q4-A, Q5-B, Q6-A, Q7-C, Q8-A, Q9-A.
@@ -146,13 +146,11 @@ dataless S8: B33 문자열은 카탈로그 제조사·모델. custom도 동일.
 
 ## 구현 단계
 
-코드는 이 순서로만 넣는다. 한 단계가 테스트 통과한 뒤에 다음으로 간다.
-
-1. `origin` / `description` 열, 카탈로그 API·엑셀 시트, 시드 행은 `seed`.
-2. 채널 모달 “목록에 없음”, 중복 제조사·모델 재사용, ID 자동(C9).
-3. StationXML 미매칭 → custom 승격 + 경고 (C5). SEED 가져오기는 Inventory 허브 이후 같은 함수를 쓴다.
-4. NRL 버튼 비활성 안내 (C10). 카탈로그 키 수정은 채널 blob을 건드리지 않음 (C11).
-5. README·카탈로그 탭 라벨, 이 문서 체크리스트.
+- [x] `origin` / `description` 열, 카탈로그 API·엑셀 시트, 시드 행은 `seed`.
+- [x] 채널 모달 “목록에 없음”, 중복 제조사·모델 재사용, ID 자동(C9).
+- [x] StationXML 미매칭 → custom 승격 + 경고 (C5).
+- [x] NRL 버튼 비활성 안내 (C10). 카탈로그 키 수정은 채널 blob을 건드리지 않음 (C11).
+- [x] README·카탈로그 탭 라벨, 이 문서 체크리스트.
 
 그다음 [`RESPONSE_CHART.md`](RESPONSE_CHART.md), 그다음 [`DATALESS_SEED.md`](DATALESS_SEED.md).
 

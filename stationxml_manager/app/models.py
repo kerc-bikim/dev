@@ -115,6 +115,8 @@ class EquipmentCatalog(Base):
     model = Column(String(128), nullable=False)
     sample_rate = Column(Float, nullable=True)
     nrl_keys = Column(String(512), nullable=True)
+    origin = Column(String(16), nullable=False, default="seed")
+    description = Column(Text, nullable=True)
 
 
 class AuditLog(Base):

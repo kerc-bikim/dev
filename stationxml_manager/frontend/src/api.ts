@@ -69,6 +69,8 @@ export interface CatalogRow {
   model: string;
   sample_rate?: number | null;
   nrl_keys?: string | null;
+  origin?: "seed" | "custom" | string;
+  description?: string | null;
 }
 
 export interface HistoryRow {

@@ -30,7 +30,33 @@ def get_session():
     return SessionLocal()
 
 
+def migrate_schema(bind=None) -> None:
+    from sqlalchemy import inspect, text
+
+    bind = bind or engine
+    inspector = inspect(bind)
+    if "equipment_catalog" not in inspector.get_table_names():
+        return
+    columns = {col["name"] for col in inspector.get_columns("equipment_catalog")}
+    statements: list[str] = []
+    if "origin" not in columns:
+        statements.append(
+            "ALTER TABLE equipment_catalog ADD COLUMN origin VARCHAR(16) DEFAULT 'seed'"
+        )
+        statements.append(
+            "UPDATE equipment_catalog SET origin = 'seed' WHERE origin IS NULL"
+        )
+    if "description" not in columns:
+        statements.append("ALTER TABLE equipment_catalog ADD COLUMN description TEXT")
+    if not statements:
+        return
+    with bind.begin() as conn:
+        for statement in statements:
+            conn.execute(text(statement))
+
+
 def init_db() -> None:
     from . import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    migrate_schema(engine)

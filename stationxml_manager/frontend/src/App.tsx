@@ -21,6 +21,24 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "history", label: "변경이력" },
 ];
 
+const NEW_EQUIPMENT = "__new__";
+const NRL_DISABLED_HINT =
+  "이 장비는 NRL 키가 없습니다. StationXML/SEED로 응답을 가져오거나, 카탈로그에 키를 넣은 뒤 적용하세요.";
+
+function catalogLabel(row: CatalogRow): string {
+  const tag = row.nrl_keys ? "NRL" : "사용자 정의";
+  if (row.kind === "datalogger" && row.sample_rate) {
+    return `${row.code} (${row.sample_rate} sps, ${tag})`;
+  }
+  return `${row.code} (${tag})`;
+}
+
+function canApplyNrl(row: ChannelRow, sensors: CatalogRow[], loggers: CatalogRow[]): boolean {
+  const sensor = sensors.find((item) => item.code === row.sensor_id);
+  const logger = loggers.find((item) => item.code === row.datalogger_id);
+  return Boolean(sensor?.nrl_keys && logger?.nrl_keys);
+}
+
 function useActor() {
   const [actor, setActor] = useState(() => localStorage.getItem("sxm-actor") || "");
   useEffect(() => {
@@ -203,7 +221,10 @@ function ChannelsTab({
                   </button>{" "}
                   <button
                     className="secondary"
+                    disabled={!canApplyNrl(r, sensors, loggers)}
+                    title={canApplyNrl(r, sensors, loggers) ? "NRL 응답 적용" : NRL_DISABLED_HINT}
                     onClick={async () => {
+                      if (!canApplyNrl(r, sensors, loggers)) return;
                       if (!confirm("NRL 응답을 적용할까요? 기존 응답을 덮어씁니다.")) return;
                       try {
                         await apiSend("POST", `/api/channels/${r.id}/apply-nrl`, undefined, actor);
@@ -241,6 +262,7 @@ function ChannelsTab({
           stations={stations}
           sensors={sensors}
           loggers={loggers}
+          actor={actor}
           onClose={() => setEditing(null)}
           onSave={async (payload) => {
             if (payload.id) {
@@ -262,6 +284,7 @@ function ChannelForm({
   stations,
   sensors,
   loggers,
+  actor,
   onClose,
   onSave,
 }: {
@@ -269,11 +292,25 @@ function ChannelForm({
   stations: StationRow[];
   sensors: CatalogRow[];
   loggers: CatalogRow[];
+  actor: string;
   onClose: () => void;
   onSave: (payload: Record<string, unknown>) => Promise<void>;
 }) {
   const [form, setForm] = useState(value);
   const [err, setErr] = useState<string | null>(null);
+  const [customSensor, setCustomSensor] = useState({
+    code: "",
+    manufacturer: "",
+    model: "",
+    description: "",
+  });
+  const [customLogger, setCustomLogger] = useState({
+    code: "",
+    manufacturer: "",
+    model: "",
+    sample_rate: value.sample_rate ? String(value.sample_rate) : "",
+    description: "",
+  });
   const set = (k: string, v: unknown) => setForm((p) => ({ ...p, [k]: v }));
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -342,11 +379,41 @@ function ChannelForm({
               <option value="">(없음)</option>
               {sensors.map((s) => (
                 <option key={s.code} value={s.code}>
-                  {s.code}
+                  {catalogLabel(s)}
                 </option>
               ))}
+              <option value={NEW_EQUIPMENT}>목록에 없음…</option>
             </select>
           </Field>
+          {form.sensor_id === NEW_EQUIPMENT && (
+            <>
+              <Field label="센서 제조사">
+                <input
+                  value={customSensor.manufacturer}
+                  onChange={(e) => setCustomSensor({ ...customSensor, manufacturer: e.target.value })}
+                />
+              </Field>
+              <Field label="센서 모델">
+                <input
+                  value={customSensor.model}
+                  onChange={(e) => setCustomSensor({ ...customSensor, model: e.target.value })}
+                />
+              </Field>
+              <Field label="센서 ID (선택)">
+                <input
+                  placeholder="비우면 자동"
+                  value={customSensor.code}
+                  onChange={(e) => setCustomSensor({ ...customSensor, code: e.target.value })}
+                />
+              </Field>
+              <Field label="센서 설명">
+                <input
+                  value={customSensor.description}
+                  onChange={(e) => setCustomSensor({ ...customSensor, description: e.target.value })}
+                />
+              </Field>
+            </>
+          )}
           <Field label="센서 일련번호">
             <input
               value={form.sensor_serial ?? ""}
@@ -361,11 +428,48 @@ function ChannelForm({
               <option value="">(없음)</option>
               {loggers.map((s) => (
                 <option key={s.code} value={s.code}>
-                  {s.code} {s.sample_rate ? `(${s.sample_rate} sps)` : ""}
+                  {catalogLabel(s)}
                 </option>
               ))}
+              <option value={NEW_EQUIPMENT}>목록에 없음…</option>
             </select>
           </Field>
+          {form.datalogger_id === NEW_EQUIPMENT && (
+            <>
+              <Field label="기록계 제조사">
+                <input
+                  value={customLogger.manufacturer}
+                  onChange={(e) => setCustomLogger({ ...customLogger, manufacturer: e.target.value })}
+                />
+              </Field>
+              <Field label="기록계 모델">
+                <input
+                  value={customLogger.model}
+                  onChange={(e) => setCustomLogger({ ...customLogger, model: e.target.value })}
+                />
+              </Field>
+              <Field label="기록계 sps">
+                <input
+                  type="number"
+                  value={customLogger.sample_rate}
+                  onChange={(e) => setCustomLogger({ ...customLogger, sample_rate: e.target.value })}
+                />
+              </Field>
+              <Field label="기록계 ID (선택)">
+                <input
+                  placeholder="비우면 자동"
+                  value={customLogger.code}
+                  onChange={(e) => setCustomLogger({ ...customLogger, code: e.target.value })}
+                />
+              </Field>
+              <Field label="기록계 설명">
+                <input
+                  value={customLogger.description}
+                  onChange={(e) => setCustomLogger({ ...customLogger, description: e.target.value })}
+                />
+              </Field>
+            </>
+          )}
           <Field label="기록계 일련번호">
             <input
               value={form.datalogger_serial ?? ""}
@@ -395,7 +499,39 @@ function ChannelForm({
           <button
             onClick={async () => {
               try {
-                await onSave(form as Record<string, unknown>);
+                const payload: Record<string, unknown> = { ...form };
+                if (form.sensor_id === NEW_EQUIPMENT) {
+                  const created = await apiSend<CatalogRow>(
+                    "POST",
+                    "/api/catalog",
+                    {
+                      kind: "sensor",
+                      code: customSensor.code || null,
+                      manufacturer: customSensor.manufacturer,
+                      model: customSensor.model,
+                      description: customSensor.description || null,
+                    },
+                    actor
+                  );
+                  payload.sensor_id = created.code;
+                }
+                if (form.datalogger_id === NEW_EQUIPMENT) {
+                  const created = await apiSend<CatalogRow>(
+                    "POST",
+                    "/api/catalog",
+                    {
+                      kind: "datalogger",
+                      code: customLogger.code || null,
+                      manufacturer: customLogger.manufacturer,
+                      model: customLogger.model,
+                      sample_rate: customLogger.sample_rate ? Number(customLogger.sample_rate) : null,
+                      description: customLogger.description || null,
+                    },
+                    actor
+                  );
+                  payload.datalogger_id = created.code;
+                }
+                await onSave(payload);
               } catch (e) {
                 setErr(e instanceof Error ? e.message : String(e));
               }
@@ -740,6 +876,7 @@ function CatalogTab({ actor, onError }: { actor: string; onError: (e: string | n
     model: "",
     sample_rate: "",
     nrl_keys: "",
+    description: "",
   });
   const reload = useCallback(async () => {
     try {
@@ -755,7 +892,9 @@ function CatalogTab({ actor, onError }: { actor: string; onError: (e: string | n
   return (
     <>
       <div className="note">
-        센서/기록계는 카탈로그 ID만 선택합니다. 사용 중인 항목은 삭제할 수 없습니다.
+        센서/기록계는 카탈로그 ID만 선택합니다. NRL에 없으면 채널의 「목록에 없음」으로 사용자
+        정의 항목을 만들 수 있습니다. ID를 비우면 자동으로 붙습니다. 사용 중인 항목은 삭제할 수
+        없습니다. NRL 키를 나중에 넣어도 채널 응답은 바뀌지 않습니다.
       </div>
       <div className="toolbar">
         <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
@@ -763,7 +902,7 @@ function CatalogTab({ actor, onError }: { actor: string; onError: (e: string | n
           <option value="datalogger">기록계</option>
         </select>
         <input
-          placeholder="ID"
+          placeholder="ID (선택, 비우면 자동)"
           value={form.code}
           onChange={(e) => setForm({ ...form, code: e.target.value })}
         />
@@ -783,6 +922,11 @@ function CatalogTab({ actor, onError }: { actor: string; onError: (e: string | n
           onChange={(e) => setForm({ ...form, sample_rate: e.target.value })}
         />
         <input
+          placeholder="설명 (선택)"
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+        />
+        <input
           placeholder="NRL 키 (선택, | 구분)"
           value={form.nrl_keys}
           onChange={(e) => setForm({ ...form, nrl_keys: e.target.value })}
@@ -799,7 +943,15 @@ function CatalogTab({ actor, onError }: { actor: string; onError: (e: string | n
                 },
                 actor
               );
-              setForm({ ...form, code: "", manufacturer: "", model: "", sample_rate: "", nrl_keys: "" });
+              setForm({
+                ...form,
+                code: "",
+                manufacturer: "",
+                model: "",
+                sample_rate: "",
+                nrl_keys: "",
+                description: "",
+              });
               await reload();
             } catch (e) {
               onError(e instanceof Error ? e.message : String(e));
@@ -818,6 +970,8 @@ function CatalogTab({ actor, onError }: { actor: string; onError: (e: string | n
               <th>제조사</th>
               <th>모델</th>
               <th>sps</th>
+              <th>출처</th>
+              <th>설명</th>
               <th>NRL</th>
               <th></th>
             </tr>
@@ -830,6 +984,8 @@ function CatalogTab({ actor, onError }: { actor: string; onError: (e: string | n
                 <td>{r.manufacturer}</td>
                 <td>{r.model}</td>
                 <td>{r.sample_rate ?? "—"}</td>
+                <td>{r.origin === "custom" ? "사용자 정의" : "시드"}</td>
+                <td>{r.description || "—"}</td>
                 <td>{r.nrl_keys || "—"}</td>
                 <td>
                   <button

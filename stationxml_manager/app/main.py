@@ -16,6 +16,7 @@ from .audit import to_dict
 from .catalog import seed_catalog
 from .crud import (
     apply_nrl,
+    catalog_to_dict,
     create_catalog_item,
     create_channel,
     create_station,
@@ -257,18 +258,7 @@ def api_list_catalog(kind: str | None = None) -> list[dict[str, Any]]:
     session = get_session()
     try:
         rows = list_catalog(session, kind)
-        return [
-            {
-                "id": r.id,
-                "kind": r.kind,
-                "code": r.code,
-                "manufacturer": r.manufacturer,
-                "model": r.model,
-                "sample_rate": r.sample_rate,
-                "nrl_keys": r.nrl_keys,
-            }
-            for r in rows
-        ]
+        return [catalog_to_dict(r) for r in rows]
     finally:
         session.close()
 
@@ -280,15 +270,7 @@ def api_create_catalog(
     session = get_session()
     try:
         row = create_catalog_item(session, payload, _actor(actor))
-        return {
-            "id": row.id,
-            "kind": row.kind,
-            "code": row.code,
-            "manufacturer": row.manufacturer,
-            "model": row.model,
-            "sample_rate": row.sample_rate,
-            "nrl_keys": row.nrl_keys,
-        }
+        return catalog_to_dict(row)
     finally:
         session.close()
 
@@ -300,15 +282,7 @@ def api_update_catalog(
     session = get_session()
     try:
         row = update_catalog_item(session, item_id, payload, _actor(actor))
-        return {
-            "id": row.id,
-            "kind": row.kind,
-            "code": row.code,
-            "manufacturer": row.manufacturer,
-            "model": row.model,
-            "sample_rate": row.sample_rate,
-            "nrl_keys": row.nrl_keys,
-        }
+        return catalog_to_dict(row)
     finally:
         session.close()
 
