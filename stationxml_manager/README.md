@@ -281,4 +281,4 @@ ObsPy 1.4.1은 SQLAlchemy 1.4가 필요합니다 (`requirements.txt`의 `sqlalch
 
 ## 계획과 범위
 
-확정 결정, 구현 체크리스트, 코드 리뷰 반영은 [`PLAN.md`](PLAN.md)를 봅니다. dataless SEED는 [`DATALESS_SEED.md`](DATALESS_SEED.md), 응답 곡선은 [`RESPONSE_CHART.md`](RESPONSE_CHART.md), NRL에 없는 장비는 [`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md)에 계획이 있습니다.
+확정 결정, 구현 체크리스트, 코드 리뷰 반영은 [`PLAN.md`](PLAN.md)를 봅니다. 다음 구현 순서: 사용자 정의 장비([`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md)) → 응답 곡선([`RESPONSE_CHART.md`](RESPONSE_CHART.md)) → dataless SEED([`DATALESS_SEED.md`](DATALESS_SEED.md)).

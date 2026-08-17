@@ -6,9 +6,7 @@
 - 스택: FastAPI + ObsPy + SQLite (`app/`), React + Vite + TypeScript (`frontend/`)
 - 사용법·API·엑셀 열: [`README.md`](README.md)
 - HTML 보기: [`docs.html`](docs.html)
-- 다음 작업(결정 확정): [`DATALESS_SEED.md`](DATALESS_SEED.md) — dataless SEED 가져오기·내보내기
-- 다음 작업(제안): [`RESPONSE_CHART.md`](RESPONSE_CHART.md) — 응답 곡선·겹치기·PZ 편집·PNG
-- 다음 작업(제안): [`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md) — NRL에 없는 장비 사용자 정의 메타데이터
+- 다음 작업(결정 확정, 구현 순서): [`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md) → [`RESPONSE_CHART.md`](RESPONSE_CHART.md) → [`DATALESS_SEED.md`](DATALESS_SEED.md)
 
 실제 백엔드 경로는 `backend/`이 아니라 `app/`입니다. CLI는 `python -m app.cli`입니다.
 
@@ -162,7 +160,7 @@ flowchart TB
 
 SEED Manual V2.4의 dataless 볼륨(Volume + Abbreviation + Station Control, 파형 없음)을 엑셀·StationXML과 같은 입구로 넣는다.
 
-- 상태: [ ] 결정 확정, 구현 대기
+- 상태: [ ] 결정 확정, 구현은 사용자 정의 장비·응답 곡선 다음
 - 내부 원본은 그대로 DB + `response_xml`. ObsPy `Inventory.write/read format="SEED"`가 변환 허브
 - **S4** full SEED → 메타만 적재 + 파형 무시 경고. MiniSEED 전용은 거절
 - **S11** 응답 없는 채널이 하나라도 있으면 dataless 내보내기 전체 실패 (400, 파일 없음)
@@ -172,27 +170,27 @@ SEED Manual V2.4의 dataless 볼륨(Volume + Abbreviation + Station Control, 파
 
 ---
 
-## v1.2 제안 — 채널 응답 곡선
+## v1.2 — 채널 응답 곡선 (결정 확정)
 
 채널 탭에서 관측소·채널을 고르면 `response_xml`을 진폭·위상 차트로 보여 준다.
 
-- 상태: [ ] 제안. 백엔드 JSON + 프론트 D3 (서버 matplotlib PNG 아님)
-- 구현 순서: 단곡선 → 겹치기(최대 8, 부분 성공) → PNG(화면 SVG 래스터) → Poles/Zeros 편집
+- 상태: [ ] 결정 확정, 구현은 사용자 정의 장비 다음
+- 단곡선 → 겹치기(최대 **8**, 부분 성공) → PNG(화면 SVG 래스터) → Poles/Zeros 편집
 - 겹치기: `GET /api/response-curves` 공통 주파수 격자. S11 전체 실패와 다름
 - PZ: `PolesZeros` 단계만. 저장 시 A0 재계산·evalresp 검증·실패 시 롤백. `response_source=edited`
 - PNG: PPSD `exportPng`와 같이 클라이언트만. 단채널·비교 파일명 규칙
 - 상세: [`RESPONSE_CHART.md`](RESPONSE_CHART.md)
-- 겹치기 상한 등 열린 선택: [`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md) Q8
 
 ---
 
-## v1.3 제안 — NRL에 없는 장비
+## v1.3 — NRL에 없는 장비 (결정 확정, 먼저 구현)
 
 NRL 사전에 없는 센서·기록계를 카탈로그 `origin=custom`으로 넣고, 채널은 계속 ID만 가리킨다.
 
-- 상태: [ ] 제안. 답이 오기 전 기본값: 메타데이터만 (응답 생성은 Q2), StationXML 미매칭은 custom 승격
-- 채널 모달 **목록에 없음**, 엑셀 채널 시트에는 제조사·모델 열을 열지 않음
-- 선택이 필요한 항목(Q1–Q9)은 문서에 다지선다로 적어 둠
+- 상태: [ ] 결정 확정, 구현 대기 (곡선·SEED보다 먼저)
+- 2026-08-17: Q1-A, Q2-A, Q3-A, Q4-A, Q5-B, Q6-A, Q7-C, Q8-A, Q9-A
+- 메타데이터만. 채널 모달 **목록에 없음**. StationXML 미매칭은 custom 승격. 엑셀 없는 ID는 거절
+- NRL 키 추가가 기존 채널 응답을 덮지 않음. 겹치기 상한 8
 - 상세: [`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md)
 
 ---

@@ -1,6 +1,6 @@
 # Dataless SEED 가져오기·내보내기 — 구현 전 계획
 
-상태: **결정 확정** (코드 미착수). 구현 착수 가능.
+상태: **결정 확정** (코드 미착수). 구현은 사용자 정의 장비·응답 곡선 다음.
 
 참조: [SEED Reference Manual V2.4](https://www.fdsn.org/pdf/SEEDManual_V2.4.pdf) (FDSN, May 2012).  
 현재 앱: 엑셀·StationXML만 지원. 내부 원본은 SQLite 계층 + `response_xml`(StationXML blob).
@@ -291,4 +291,4 @@ StationXML 내보내기는 응답이 없어도 지금처럼 허용한다. S11·S
 
 침습은 중간이다. DB 스키마 변경은 없다. 핵심은 `inventory` 변환 한 곳과 import/export 입구 세 곳(API, CLI, UI)이다. 응답이 있는 합성 SEED 왕복 테스트가 공수의 상당 부분을 차지한다.
 
-S4·S11이 확정되었으므로 구현은 위 1→6 단계 순으로 시작한다.
+S4·S11이 확정되었다. 앱 전체 순서는 사용자 정의 장비 → 응답 곡선 → 이 문서 1→6이다.
