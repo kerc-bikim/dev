@@ -1,6 +1,6 @@
 # Dataless SEED 가져오기·내보내기 — 구현 전 계획
 
-상태: **제안** (코드 미착수). 확정 후 v1.1로 구현한다.
+상태: **결정 확정** (코드 미착수). 구현 착수 가능.
 
 참조: [SEED Reference Manual V2.4](https://www.fdsn.org/pdf/SEEDManual_V2.4.pdf) (FDSN, May 2012).  
 현재 앱: 엑셀·StationXML만 지원. 내부 원본은 SQLite 계층 + `response_xml`(StationXML blob).
@@ -50,24 +50,55 @@ flowchart LR
 
 블록ette를 손으로 쓰거나 원본 SEED를 DB에 보관하지 않는다.
 
+```mermaid
+flowchart TB
+  file[올린 SEED 파일] --> kind{헤더 종류}
+  kind -->|MiniSEED만| reject[400 거절]
+  kind -->|dataless| meta[채널·응답만 적재]
+  kind -->|full SEED| meta
+  kind -->|full SEED| warn[경고: 파형 무시]
+  meta --> db[(SQLite)]
+  db --> exp[dataless 내보내기]
+  exp --> has{모든 채널에 response_xml?}
+  has -->|아니오| fail[400 전체 실패 · 파일 없음]
+  has -->|예| out[inventory.dataless]
+```
+
 ---
 
-## 제안 확정 결정
+## 확정 결정
 
-| # | 제안 | 이유 |
+2026-08-17 사용자 확인: **S4 메타만+경고**, **S11 응답 없는 채널이면 내보내기 전체 실패**.
+
+| # | 결정 | 이유 |
 |---|------|------|
 | S1 | 내부 원본은 계속 계층 DB + StationXML `response_xml` | v1 왕복·NRL·엑셀 재import 보존 로직을 그대로 씀 |
 | S2 | ObsPy `format="SEED"`만 사용. 커스텀 블록ette writer 없음 | 매뉴얼 준수는 ObsPy xseed가 담당 |
-| S3 | dataless만. MiniSEED·full SEED 파형은 저장하지 않음 | 이 앱은 메타데이터 관리기 |
-| S4 | full SEED(헤더+파형)는 **메타데이터만** 가져오고 경고 | 현장 배포본에 파형이 붙어 있어도 메타는 살려야 함 |
+| S3 | 저장·배포 대상은 dataless만. 파형 레코드는 DB에 넣지 않음 | 이 앱은 메타데이터 관리기 |
+| S4 | full SEED(헤더+파형)는 **메타데이터만** 가져오고 경고 | 현장 배포본에 파형이 붙어 있어도 메타는 살린다 |
 | S5 | MiniSEED만 있는 파일(블록ette 50/52 없음)은 거절 | 가져올 채널이 없음. 빈 import 가드와 동일 |
 | S6 | SEED 필드는 ASCII. 한글 사이트명 등은 내보내기 때 ASCII로 줄이거나 관측소 코드로 대체하고 경고 | 매뉴얼: 제어 헤더는 ANSI ASCII, 대문자 권장 |
 | S7 | 네트워크 코드 2자, 관측소 5자, 채널 3자, 위치코드 2자를 내보내기 전 검사 | B50 F16 / B50 F3 / B52 F4 / B52 F3 길이 |
 | S8 | 장비는 B33 Generic Abbreviation(계측기 이름) → 카탈로그 제조사·모델 매칭 | SEED에는 StationXML Equipment 객체가 없음 |
 | S9 | 응답 왕복은 StationXML blob 경유. SEED 약어 사전(B41–48, B60) 재현은 ObsPy에 맡김 | 바이트 동일성 불필요 |
 | S10 | NRL 자동 부착 없음 (v1과 동일) | 명시적 NRL만 |
+| S11 | 응답(`response_xml`)이 없는 채널이 **하나라도** 있으면 dataless 내보내기 **전체 실패** (400). 부분 파일은 만들지 않음 | 불완전한 SEED가 조용히 나가지 않게 |
 
-이 표는 구현 전에 한 번 더 확인하면 된다. 특히 **S4**(full SEED 허용) vs 거절은 운영 정책이다.
+### S4 — 가져오기: 메타만 + 경고
+
+- 파일에 Volume/Station Control과 data record가 같이 있어도 채널·응답만 적재한다.
+- 경고 예: `파형 레코드는 무시하고 메타데이터만 가져왔습니다`.
+- 파형은 디스크·DB에 남기지 않는다.
+- Time Span Header(B70–74)도 저장하지 않는다.
+- 스테이션 헤더가 없는 MiniSEED는 S5로 거절한다 (경고가 아니라 400).
+
+### S11 — 내보내기: 전체 실패
+
+- `GET /api/export/dataless`와 CLI SEED 출력 전에 모든 채널의 `response_xml`을 검사한다.
+- 비어 있는 채널이 있으면 파일을 쓰지 않고 400. 메시지에 NSLC 목록을 넣는다.
+  예: `Dataless SEED를 만들 수 없습니다. 응답이 없는 채널: KG.SEO.--.HHZ, KG.BUS.--.HHN`
+- 웹은 기존 오류 배너로 보여 준다. 잘린 `.dataless`를 내려주지 않는다.
+- 해결: 해당 채널에 NRL을 적용하거나, StationXML에서 응답이 있는 상태로 다시 가져온다.
 
 ---
 
@@ -91,7 +122,7 @@ flowchart LR
 | B50 F4–6 lat / lon / elev | 관측소 좌표·고도 |
 | B50 F9 Site name (최대 60자 ASCII) | `site_name` (가져오기). 내보내기 때 ASCII 제약 |
 | B50 F13–14 유효 시작·끝 | `creation_date` / `termination_date` |
-| B50 F16 Network Code (2자, v2.3+) | `networks.code`. 없거나 공백이면 경고 후 거절 또는 `XX` — **거절을 기본 제안** |
+| B50 F16 Network Code (2자, v2.3+) | `networks.code`. 없거나 공백이면 **거절** |
 | B51 Station Comment | `station_description` 또는 첫 댓글. 다중 댓글은 첫 건만 (엑셀과 같음) |
 | B52 F3 Location ID (2자) | `channels.location` |
 | B52 F4 Channel ID (3자) | `channels.channel` |
@@ -136,8 +167,8 @@ flowchart LR
 
 - `read_seed(path_or_buf, session)`: `format="SEED"`.
 - 확장자 `.seed`, `.dataless`, `.dlsv` 및 내용 스니프(논리 레코드 헤더 `V` volume).
-- MiniSEED만이면 ValidationError: 한글 메시지.
-- full SEED면 경고 리스트에 “파형 레코드는 무시했습니다” (S4 확정 시).
+- MiniSEED만이면 ValidationError: 한글 메시지 (S5).
+- full SEED면 가져오기는 성공하고 경고에 “파형 레코드는 무시하고 메타데이터만 가져왔습니다” (S4).
 - 네트워크 코드 없음/길이 위반은 거절.
 - 응답은 기존 `dump_response_xml`.
 - import `source="seed"`.
@@ -145,8 +176,9 @@ flowchart LR
 ### 3. dataless 쓰기
 
 - `inventory_to_seed_bytes(inv) -> bytes`: `inv.write(format="SEED")`.
-- 내보내기 전 코드 길이·ASCII 검사. 실패는 400, 대체는 경고.
-- 응답 없는 채널도 SEED에 나간다 (게인 없는 채널은 ObsPy가 실패할 수 있음 → 실패 시 해당 채널만 빼고 경고할지, 전체 실패할지 **전체 실패를 기본 제안**. 메타데이터 파일이 조용히 불완전해지는 것을 막기 위함).
+- 내보내기 전 코드 길이·ASCII 검사. 길이 위반은 400. 한글 사이트명은 관측소 코드로 대체하고 경고 (S6–S7).
+- **S11:** 채널 중 `response_xml`이 비어 있으면 즉시 400. `inv.write`를 호출하지 않는다.
+- Response는 있으나 ObsPy writer가 단계 오류로 실패해도 마찬가지로 전체 실패 (부분 파일 없음).
 - `GET /api/export/dataless` → `inventory.dataless` (`application/vnd.fdsn.seed` 또는 `application/octet-stream`).
 
 ### 4. API · CLI · UI
@@ -159,9 +191,12 @@ flowchart LR
 
 - ObsPy로 만든 합성 Inventory를 SEED로 쓴 뒤 import → NSLC·좌표·sps.
 - poles/zeros + sensitivity가 있는 채널: SEED → DB → StationXML → 다시 SEED → 다시 읽었을 때 단계 수·단위 유지.
-- MiniSEED 샘플 거절.
+- MiniSEED 샘플 거절 (S5).
+- 합성 full SEED(헤더+더미 파형): import 성공, `warnings`에 파형 무시 문구, DB에 파형 없음 (S4).
 - 한글 `site_name` 내보내기 경고/대체.
 - 네트워크 코드 3자 내보내기 400.
+- 채널 하나라도 응답이 없으면 `/api/export/dataless`와 CLI SEED 출력이 400이고 바이트가 없음 (S11).
+- 모든 채널에 응답이 있을 때만 SEED 파일이 나오고, 다시 읽으면 NSLC가 같다.
 - 엑셀 재import가 seed로 넣은 `response_xml`을 지우지 않음 (기존 보존 테스트 확장).
 
 ### 6. 문서
@@ -186,7 +221,7 @@ flowchart LR
 
 | 위험 | 대응 |
 |------|------|
-| ObsPy SEED writer가 불완전 응답 단계에서 예외 | 내보내기 전 Response 유무 검사. 실패 메시지는 한글 400 |
+| ObsPy SEED writer가 불완전 응답 단계에서 예외 | S11: 내보내기 전 전 채널 Response 검사. writer 예외도 한글 400, 파일 없음 |
 | 구버전 SEED(네트워크 코드 없음) | 거절 + “네트워크 코드(B50 F16)가 필요합니다” |
 | 위치코드 공백 vs `"--"` vs `""` | 가져오기 때 `""`로 정규화 (지금 StationXML과 동일) |
 | B33 문자열이 카탈로그와 다름 | 경고만, 채널은 저장 (지금 XML 장비 미매칭과 동일) |
@@ -198,4 +233,4 @@ flowchart LR
 
 침습은 중간이다. DB 스키마 변경은 없다. 핵심은 `inventory` 변환 한 곳과 import/export 입구 세 곳(API, CLI, UI)이다. 응답이 있는 합성 SEED 왕복 테스트가 공수의 상당 부분을 차지한다.
 
-구현은 위 결정표(특히 S4, 응답 없는 채널 내보내기) 확인 후에 시작한다.
+S4·S11이 확정되었으므로 구현은 위 1→6 단계 순으로 시작한다.

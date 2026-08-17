@@ -6,7 +6,7 @@
 - 스택: FastAPI + ObsPy + SQLite (`app/`), React + Vite + TypeScript (`frontend/`)
 - 사용법·API·엑셀 열: [`README.md`](README.md)
 - HTML 보기: [`docs.html`](docs.html)
-- 다음 작업(제안): [`DATALESS_SEED.md`](DATALESS_SEED.md) — dataless SEED 가져오기·내보내기
+- 다음 작업(결정 확정): [`DATALESS_SEED.md`](DATALESS_SEED.md) — dataless SEED 가져오기·내보내기
 
 실제 백엔드 경로는 `backend/`이 아니라 `app/`입니다. CLI는 `python -m app.cli`입니다.
 
@@ -155,14 +155,15 @@ flowchart TB
 
 ---
 
-## v1.1 제안 — dataless SEED
+## v1.1 — dataless SEED (결정 확정)
 
 SEED Manual V2.4의 dataless 볼륨(Volume + Abbreviation + Station Control, 파형 없음)을 엑셀·StationXML과 같은 입구로 넣는다.
 
-- 상태: [ ] 계획만. 구현 전 결정표(S1–S10) 확인 필요
+- 상태: [ ] 결정 확정, 구현 대기
 - 내부 원본은 그대로 DB + `response_xml`. ObsPy `Inventory.write/read format="SEED"`가 변환 허브
-- MiniSEED 전용 파일은 거절. 한글 사이트명은 ASCII 제약
-- 상세 매핑·단계·위험: [`DATALESS_SEED.md`](DATALESS_SEED.md)
+- **S4** full SEED → 메타만 적재 + 파형 무시 경고. MiniSEED 전용은 거절
+- **S11** 응답 없는 채널이 하나라도 있으면 dataless 내보내기 전체 실패 (400, 파일 없음)
+- 한글 사이트명은 ASCII 제약. 상세: [`DATALESS_SEED.md`](DATALESS_SEED.md)
 
 ---
 
