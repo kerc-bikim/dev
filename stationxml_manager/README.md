@@ -65,7 +65,7 @@ flowchart TB
 | 장비 | `equipment_catalog` | `catalog_sensors` / `catalog_dataloggers` 시트 또는 웹 카탈로그 탭 |
 | 이력 | `audit_log` | 웹 변경이력 탭 (복원 기능 없음) |
 
-채널의 계측기 응답은 `response_xml` blob으로 보관합니다. 출처는 `response_source` (`none` / `imported` / `nrl`)입니다.
+채널의 계측기 응답은 `response_xml` blob으로 보관합니다. 출처는 `response_source` (`none` / `imported` / `nrl`)입니다. Poles/Zeros 편집이 생기면 `edited`를 추가할 예정입니다 ([`RESPONSE_CHART.md`](RESPONSE_CHART.md)).
 
 ---
 
@@ -281,4 +281,4 @@ ObsPy 1.4.1은 SQLAlchemy 1.4가 필요합니다 (`requirements.txt`의 `sqlalch
 
 ## 계획과 범위
 
-확정 결정, 구현 체크리스트, 코드 리뷰 반영은 [`PLAN.md`](PLAN.md)를 봅니다. dataless SEED는 [`DATALESS_SEED.md`](DATALESS_SEED.md), 채널 응답 곡선은 [`RESPONSE_CHART.md`](RESPONSE_CHART.md)에 계획이 있습니다.
+확정 결정, 구현 체크리스트, 코드 리뷰 반영은 [`PLAN.md`](PLAN.md)를 봅니다. dataless SEED는 [`DATALESS_SEED.md`](DATALESS_SEED.md), 응답 곡선·겹치기·PZ 편집·PNG는 [`RESPONSE_CHART.md`](RESPONSE_CHART.md)에 계획이 있습니다.

@@ -7,7 +7,7 @@
 - 사용법·API·엑셀 열: [`README.md`](README.md)
 - HTML 보기: [`docs.html`](docs.html)
 - 다음 작업(결정 확정): [`DATALESS_SEED.md`](DATALESS_SEED.md) — dataless SEED 가져오기·내보내기
-- 다음 작업(제안): [`RESPONSE_CHART.md`](RESPONSE_CHART.md) — 채널 응답 곡선 차트
+- 다음 작업(제안): [`RESPONSE_CHART.md`](RESPONSE_CHART.md) — 응답 곡선·겹치기·PZ 편집·PNG
 
 실제 백엔드 경로는 `backend/`이 아니라 `app/`입니다. CLI는 `python -m app.cli`입니다.
 
@@ -174,8 +174,11 @@ SEED Manual V2.4의 dataless 볼륨(Volume + Abbreviation + Station Control, 파
 
 채널 탭에서 관측소·채널을 고르면 `response_xml`을 진폭·위상 차트로 보여 준다.
 
-- 상태: [ ] 제안. 백엔드 JSON + 프론트 D3 (matplotlib PNG 아님)
-- 한 채널씩. 응답 없으면 한글 안내. 실패는 NSLC와 함께 로그
+- 상태: [ ] 제안. 백엔드 JSON + 프론트 D3 (서버 matplotlib PNG 아님)
+- 구현 순서: 단곡선 → 겹치기(최대 8, 부분 성공) → PNG(화면 SVG 래스터) → Poles/Zeros 편집
+- 겹치기: `GET /api/response-curves` 공통 주파수 격자. S11 전체 실패와 다름
+- PZ: `PolesZeros` 단계만. 저장 시 A0 재계산·evalresp 검증·실패 시 롤백. `response_source=edited`
+- PNG: PPSD `exportPng`와 같이 클라이언트만. 단채널·비교 파일명 규칙
 - 상세: [`RESPONSE_CHART.md`](RESPONSE_CHART.md)
 
 ---
@@ -199,4 +202,4 @@ SEED Manual V2.4의 dataless 볼륨(Volume + Abbreviation + Station Control, 파
 | `docs.html` | README/PLAN/SEED 계획 HTML 로더 |
 | `scripts/build_docs_html.py` | 마크다운을 docs.html에 내장 |
 | `DATALESS_SEED.md` | dataless SEED 구현 전 계획 |
-| `RESPONSE_CHART.md` | 채널 응답 곡선 차트 계획 |
+| `RESPONSE_CHART.md` | 응답 곡선·겹치기·PZ 편집·PNG 계획 |
