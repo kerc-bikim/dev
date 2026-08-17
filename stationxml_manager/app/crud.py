@@ -712,7 +712,11 @@ def _upsert_catalog(
         for item in catalog.get(key) or []:
             row = get_by_code(session, kind, item["code"])
             if row is None:
-                origin = item.get("origin") if item.get("origin") in {"seed", "custom"} else "custom"
+                origin = (
+                    item.get("origin")
+                    if item.get("origin") in {"seed", "custom"}
+                    else "custom"
+                )
                 row = EquipmentCatalog(kind=kind, code=item["code"], origin=origin)
                 session.add(row)
             elif item.get("origin") in {"seed", "custom"}:

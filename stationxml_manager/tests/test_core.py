@@ -551,7 +551,9 @@ def test_xml_unmatched_equipment_is_promoted(session):
         sample_rate=100.0,
         start_date=UTCDateTime(2020, 1, 1),
         sensor=Equipment(manufacturer="Acme", model="Geophone", serial_number="S9"),
-        data_logger=Equipment(manufacturer="FieldCo", model="Datalog", serial_number="D9"),
+        data_logger=Equipment(
+            manufacturer="FieldCo", model="Datalog", serial_number="D9"
+        ),
     )
     sta = Station(
         code="BBB",
@@ -567,14 +569,18 @@ def test_xml_unmatched_equipment_is_promoted(session):
     inv.write(buf, format="STATIONXML")
     buf.seek(0)
     hierarchy = read_stationxml(buf, session)
-    assert any("사용자 정의 항목 CUSTOM_Acme_Geophone" in w for w in hierarchy["warnings"])
+    assert any(
+        "사용자 정의 항목 CUSTOM_Acme_Geophone" in w for w in hierarchy["warnings"]
+    )
     import_hierarchy(session, hierarchy, replace_all=False, source="xml", actor=None)
     ch = list_channels(session)[0]
     assert ch.sensor_id == "CUSTOM_Acme_Geophone"
     assert ch.datalogger_id == "CUSTOM_FieldCo_Datalog_100sps"
     from app.models import EquipmentCatalog
 
-    sensor = session.query(EquipmentCatalog).filter_by(code="CUSTOM_Acme_Geophone").one()
+    sensor = (
+        session.query(EquipmentCatalog).filter_by(code="CUSTOM_Acme_Geophone").one()
+    )
     assert sensor.origin == "custom"
     exported = export_stationxml_bytes(session)
     from obspy import read_inventory
@@ -590,7 +596,11 @@ def test_update_nrl_keys_does_not_change_response(session):
     inv.write(buf, format="STATIONXML")
     buf.seek(0)
     import_hierarchy(
-        session, read_stationxml(buf, session), replace_all=False, source="xml", actor=None
+        session,
+        read_stationxml(buf, session),
+        replace_all=False,
+        source="xml",
+        actor=None,
     )
     ch = list_channels(session)[0]
     original = ch.response_xml
@@ -603,6 +613,9 @@ def test_update_nrl_keys_does_not_change_response(session):
 
 
 def test_excel_catalog_includes_origin(session):
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     create_catalog_item(
         session,
         {
