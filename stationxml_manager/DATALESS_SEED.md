@@ -58,9 +58,10 @@ flowchart TB
   kind -->|full SEED| meta
   kind -->|full SEED| warn[경고: 파형 무시]
   meta --> db[(SQLite)]
-  db --> exp[dataless 내보내기]
-  exp --> has{모든 채널에 response_xml?}
-  has -->|아니오| fail[400 전체 실패 · 파일 없음]
+  db --> pick{형식 선택}
+  pick -->|StationXML| xml[inventory.xml]
+  pick -->|Dataless SEED| has{모든 채널에 response_xml?}
+  has -->|아니오| fail[400 + 채널별 로그]
   has -->|예| out[inventory.dataless]
 ```
 
@@ -83,6 +84,8 @@ flowchart TB
 | S9 | 응답 왕복은 StationXML blob 경유. SEED 약어 사전(B41–48, B60) 재현은 ObsPy에 맡김 | 바이트 동일성 불필요 |
 | S10 | NRL 자동 부착 없음 (v1과 동일) | 명시적 NRL만 |
 | S11 | 응답(`response_xml`)이 없는 채널이 **하나라도** 있으면 dataless 내보내기 **전체 실패** (400). 부분 파일은 만들지 않음 | 불완전한 SEED가 조용히 나가지 않게 |
+| S12 | 내보내기 실패는 **채널(NSLC)마다 원인**을 서버 로그·API 본문·화면·CLI에 남긴다 | 어느 채널이 왜 막혔는지 바로 확인 |
+| S13 | 웹 내보내기에 **형식 선택**(StationXML / Dataless SEED)을 둔다. 지금은 선택지가 없음 | 한 화면에서 목적 형식을 고른 뒤 받는다 |
 
 ### S4 — 가져오기: 메타만 + 경고
 
@@ -99,6 +102,58 @@ flowchart TB
   예: `Dataless SEED를 만들 수 없습니다. 응답이 없는 채널: KG.SEO.--.HHZ, KG.BUS.--.HHN`
 - 웹은 기존 오류 배너로 보여 준다. 잘린 `.dataless`를 내려주지 않는다.
 - 해결: 해당 채널에 NRL을 적용하거나, StationXML에서 응답이 있는 상태로 다시 가져온다.
+- 실패 채널은 S12로 한 줄씩 로그한다.
+
+### S12 — 내보내기 실패 로그 (채널 단위)
+
+지금은 서버에 전용 export 로거가 없고, 웹은 빨간 배너 한 줄만 보여 준다. dataless(그리고 StationXML writer 실패)는 아래처럼 남긴다.
+
+**검사 항목과 로그 문구**
+
+| 원인 | 로그/화면 문구 예 |
+|------|-------------------|
+| `response_xml` 없음 | `KG.SEO.--.HHZ: 계측기 응답이 없습니다` |
+| 네트워크 코드 길이 | `KGX: 네트워크 코드는 2자여야 합니다` |
+| 관측소/채널/위치 코드 길이 | `KG.SEOUL.--.HHZ: 관측소 코드는 5자 이하여야 합니다` |
+| `response_xml` 파싱 실패 | `KG.SEO.--.HHZ: 저장된 응답 XML을 읽지 못했습니다: …` |
+| ObsPy SEED writer 예외 | `KG.SEO.--.HHZ: SEED 응답 단계를 쓰지 못했습니다: …` |
+
+**어디에 남기는가**
+
+- 서버: `logging.getLogger("stationxml_manager.export")` ERROR. 한 채널 한 줄. `response_xml` 본문은 넣지 않는다.
+- API 400 JSON:
+  ```json
+  {
+    "detail": "Dataless SEED를 만들 수 없습니다. 문제 채널 2개",
+    "errors": [
+      {"nslc": "KG.SEO.--.HHZ", "reason": "계측기 응답이 없습니다"},
+      {"nslc": "KG.BUS.--.HHN", "reason": "계측기 응답이 없습니다"}
+    ]
+  }
+  ```
+- 웹: 배너 + 채널별 목록. 다운로드는 시작하지 않음.
+- CLI: 같은 줄을 stderr에 찍고 종료 코드 ≠ 0.
+
+S11과 같이 **파일을 만들지 않은 뒤에** 로그를 남긴다. 성공한 내보내기는 INFO 한 줄(`dataless 36 channels`).
+
+### S13 — 지금 선택 옵션이 있는가 / 어떻게 둘 것인가
+
+**지금(v1):** 없다. 가져오기/내보내기 탭은 버튼이 나뉘어 있다.
+
+- StationXML 다운로드 → `/api/export/stationxml`
+- 엑셀 다운로드 → `/api/export/xlsx`
+- 엑셀 템플릿
+- Dataless SEED 버튼·형식 콤보는 **아직 없음**
+
+**계획:** 메타데이터 볼륨은 라디오로 고른 뒤 한 번 받는다.
+
+- 형식: `StationXML` / `Dataless SEED` (기본 StationXML)
+- 버튼: **다운로드** → 고른 형식의 API를 호출
+- 엑셀·템플릿은 표 왕복용이므로 옆에 그대로 둔다
+- CLI는 출력 확장자로 고른다: `-o inventory.xml` / `-o inventory.seed`
+- API는 경로를 유지한다 (`/api/export/stationxml`, `/api/export/dataless`). 콤보는 UI만의 선택이다.
+
+StationXML 내보내기는 응답이 없어도 지금처럼 허용한다. S11·S12의 “전체 실패 + 채널 로그”는 **Dataless SEED를 골랐을 때**만 적용한다.
 
 ---
 
@@ -185,7 +240,8 @@ flowchart TB
 
 - `POST /api/import`: 확장자·스니프에 seed 추가. 업로드 용량 제한 그대로.
 - CLI: 입력 확장자 인식, `-o inventory.seed`.
-- 가져오기 탭: `accept`에 seed 추가, **Dataless SEED 다운로드** 버튼, 왕복 한계 문구.
+- 가져오기 탭: `accept`에 seed 추가. **형식 라디오**(StationXML / Dataless SEED) + 다운로드 (S13).
+- 실패 시 채널별 `errors`를 배너 아래 목록으로 표시하고, 서버 로그에도 동일 문구 (S12).
 
 ### 5. 테스트
 
@@ -196,6 +252,8 @@ flowchart TB
 - 한글 `site_name` 내보내기 경고/대체.
 - 네트워크 코드 3자 내보내기 400.
 - 채널 하나라도 응답이 없으면 `/api/export/dataless`와 CLI SEED 출력이 400이고 바이트가 없음 (S11).
+- 그 400 본문에 `errors[].nslc` / `reason`이 있고, caplog에 같은 NSLC 줄이 있다 (S12).
+- StationXML 내보내기는 응답 없는 채널이 있어도 200 (S13).
 - 모든 채널에 응답이 있을 때만 SEED 파일이 나오고, 다시 읽으면 NSLC가 같다.
 - 엑셀 재import가 seed로 넣은 `response_xml`을 지우지 않음 (기존 보존 테스트 확장).
 

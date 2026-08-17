@@ -163,6 +163,8 @@ SEED Manual V2.4의 dataless 볼륨(Volume + Abbreviation + Station Control, 파
 - 내부 원본은 그대로 DB + `response_xml`. ObsPy `Inventory.write/read format="SEED"`가 변환 허브
 - **S4** full SEED → 메타만 적재 + 파형 무시 경고. MiniSEED 전용은 거절
 - **S11** 응답 없는 채널이 하나라도 있으면 dataless 내보내기 전체 실패 (400, 파일 없음)
+- **S12** 실패 시 채널(NSLC)마다 원인을 서버 로그·API·화면·CLI에 남김
+- **S13** 웹에 StationXML / Dataless SEED 형식 선택. 지금은 버튼이 StationXML·엑셀뿐이라 선택 옵션 없음
 - 한글 사이트명은 ASCII 제약. 상세: [`DATALESS_SEED.md`](DATALESS_SEED.md)
 
 ---
