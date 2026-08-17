@@ -99,9 +99,7 @@ def read_seed(path_or_buf, session: Session) -> dict[str, Any]:
             raise ValidationError("네트워크 코드(B50 F16)가 필요합니다")
     hierarchy = inventory_to_hierarchy(inv, session)
     if kind == "full":
-        hierarchy["warnings"].append(
-            "파형 레코드는 무시하고 메타데이터만 가져왔습니다"
-        )
+        hierarchy["warnings"].append("파형 레코드는 무시하고 메타데이터만 가져왔습니다")
     return hierarchy
 
 
@@ -118,7 +116,10 @@ def collect_dataless_errors(session: Session) -> list[dict[str, str]]:
         nslc = f"{net}.{ch.station.code}.{ch.location or '--'}.{ch.channel}"
         if len(net) != 2:
             errors.append(
-                {"nslc": nslc, "reason": f"{net or '?'}: 네트워크 코드는 2자여야 합니다"}
+                {
+                    "nslc": nslc,
+                    "reason": f"{net or '?'}: 네트워크 코드는 2자여야 합니다",
+                }
             )
         if len(ch.station.code) > 5:
             errors.append(
@@ -178,7 +179,9 @@ def export_dataless_bytes(session: Session) -> tuple[bytes, list[str]]:
     except Exception as exc:
         LOG.error("SEED 응답 단계를 쓰지 못했습니다: %s", exc)
         raise AppError(f"SEED 응답 단계를 쓰지 못했습니다: {exc}", 400) from exc
-    LOG.info("dataless %s channels", sum(len(sta.channels) for net in inv for sta in net))
+    LOG.info(
+        "dataless %s channels", sum(len(sta.channels) for net in inv for sta in net)
+    )
     return data, warnings
 
 
@@ -284,7 +287,9 @@ def inventory_to_seed_bytes(inv: Inventory) -> bytes:
             b50.network_identifier_code = net_abbrev
             b50.word_order_32bit = 3210
             b50.word_order_16bit = 10
-            b50.start_effective_date = _seed_time(sta.creation_date) or UTCDateTime(1970, 1, 1)
+            b50.start_effective_date = _seed_time(sta.creation_date) or UTCDateTime(
+                1970, 1, 1
+            )
             b50.end_effective_date = _seed_time(sta.termination_date)
             b50.update_flag = "N"
             b50.network_code = net.code
@@ -293,12 +298,18 @@ def inventory_to_seed_bytes(inv: Inventory) -> bytes:
                 if cha.start_date:
                     starts.append(cha.start_date)
                 lat = float(cha.latitude if cha.latitude is not None else sta.latitude)
-                lon = float(cha.longitude if cha.longitude is not None else sta.longitude)
-                elev = float(cha.elevation if cha.elevation is not None else sta.elevation or 0)
+                lon = float(
+                    cha.longitude if cha.longitude is not None else sta.longitude
+                )
+                elev = float(
+                    cha.elevation if cha.elevation is not None else sta.elevation or 0
+                )
                 resp = cha.response
                 first_in = None
                 if resp and resp.response_stages:
-                    first_in = _unit_name(getattr(resp.response_stages[0], "input_units", None))
+                    first_in = _unit_name(
+                        getattr(resp.response_stages[0], "input_units", None)
+                    )
                 elif resp and resp.instrument_sensitivity:
                     first_in = _unit_name(resp.instrument_sensitivity.input_units)
                 b52 = Blockette052()
@@ -318,7 +329,9 @@ def inventory_to_seed_bytes(inv: Inventory) -> bytes:
                 b52.data_format_identifier_code = 1
                 b52.data_record_length = 12
                 b52.sample_rate = float(cha.sample_rate)
-                b52.max_clock_drift = float(cha.clock_drift_in_seconds_per_sample or 0.0)
+                b52.max_clock_drift = float(
+                    cha.clock_drift_in_seconds_per_sample or 0.0
+                )
                 b52.number_of_comments = 0
                 b52.channel_flags = _channel_flags(cha)
                 b52.start_date = _seed_time(cha.start_date) or UTCDateTime(1970, 1, 1)
@@ -326,7 +339,9 @@ def inventory_to_seed_bytes(inv: Inventory) -> bytes:
                 b52.update_flag = "N"
                 station_blkts.append(b52)
                 if resp is None:
-                    raise AppError(f"{net.code}.{sta.code}.{cha.code}: 계측기 응답이 없습니다", 400)
+                    raise AppError(
+                        f"{net.code}.{sta.code}.{cha.code}: 계측기 응답이 없습니다", 400
+                    )
                 for stage in resp.response_stages or []:
                     seq = int(stage.stage_sequence_number)
                     in_u = unit_code(_unit_name(getattr(stage, "input_units", None)))
@@ -339,8 +354,12 @@ def inventory_to_seed_bytes(inv: Inventory) -> bytes:
                         b53.stage_sequence_number = seq
                         b53.stage_signal_input_units = in_u
                         b53.stage_signal_output_units = out_u
-                        b53.A0_normalization_factor = float(stage.normalization_factor or 1.0)
-                        b53.normalization_frequency = float(stage.normalization_frequency or 1.0)
+                        b53.A0_normalization_factor = float(
+                            stage.normalization_factor or 1.0
+                        )
+                        b53.normalization_frequency = float(
+                            stage.normalization_frequency or 1.0
+                        )
                         b53.number_of_complex_zeros = len(zeros)
                         b53.real_zero = [float(z.real) for z in zeros]
                         b53.imaginary_zero = [float(z.imag) for z in zeros]
@@ -384,11 +403,15 @@ def inventory_to_seed_bytes(inv: Inventory) -> bytes:
                     if getattr(stage, "decimation_input_sample_rate", None):
                         b57 = Blockette057()
                         b57.stage_sequence_number = seq
-                        b57.input_sample_rate = float(stage.decimation_input_sample_rate)
+                        b57.input_sample_rate = float(
+                            stage.decimation_input_sample_rate
+                        )
                         b57.decimation_factor = int(stage.decimation_factor or 1)
                         b57.decimation_offset = int(stage.decimation_offset or 0)
                         b57.estimated_delay = float(stage.decimation_delay or 0.0)
-                        b57.correction_applied = float(stage.decimation_correction or 0.0)
+                        b57.correction_applied = float(
+                            stage.decimation_correction or 0.0
+                        )
                         station_blkts.append(b57)
                     if stage.stage_gain is not None:
                         b58 = Blockette058()

@@ -11,7 +11,12 @@ from .crud import export_stationxml_bytes, import_hierarchy
 from .db import get_session, init_db
 from .errors import AppError
 from .excel_io import read_excel, write_excel, write_template_file
-from .seed_io import SEED_SUFFIXES, export_dataless_bytes, looks_like_seed_name, read_seed
+from .seed_io import (
+    SEED_SUFFIXES,
+    export_dataless_bytes,
+    looks_like_seed_name,
+    read_seed,
+)
 from .xml_io import read_stationxml
 
 
@@ -20,7 +25,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--write-template", metavar="PATH", help="드롭다운이 있는 엑셀 템플릿 저장"
     )
-    parser.add_argument("input", nargs="?", help="입력 엑셀, StationXML 또는 dataless SEED")
+    parser.add_argument(
+        "input", nargs="?", help="입력 엑셀, StationXML 또는 dataless SEED"
+    )
     parser.add_argument("-o", "--output", help="출력 StationXML, 엑셀 또는 SEED 경로")
     parser.add_argument(
         "--replace-all", action="store_true", help="기존 DB 목록을 지우고 가져오기"

@@ -85,7 +85,9 @@ def test_full_seed_imports_metadata_only(session):
 
 
 def test_export_dataless_requires_response(session, caplog):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     with caplog.at_level("ERROR", logger="stationxml_manager.export"):
         with pytest.raises(AppError, match="문제 채널") as exc:
             export_dataless_bytes(session)
@@ -97,7 +99,9 @@ def test_export_dataless_requires_response(session, caplog):
 
 
 def test_export_stationxml_allows_missing_response(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     data = export_stationxml_bytes(session)
     assert data.startswith(b"<?xml") or b"<FDSNStationXML" in data
 
@@ -157,7 +161,9 @@ def test_api_miniseed_rejected(api_client):
     client, _ = api_client
     response = client.post(
         "/api/import",
-        files={"file": ("wave.miniseed", _miniseed_bytes(), "application/octet-stream")},
+        files={
+            "file": ("wave.miniseed", _miniseed_bytes(), "application/octet-stream")
+        },
         data={"replace_all": "false"},
     )
     # 확장자가 seed가 아니면 거절. .seed로 올려 MiniSEED 내용을 검사한다.
@@ -179,7 +185,9 @@ def test_excel_reimport_keeps_seed_response(session):
 
 
 def test_cli_seed_export_failure(tmp_path, monkeypatch, session, capsys):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     xml_path = tmp_path / "in.xml"
     xml_path.write_bytes(stationxml_bytes(make_inventory([make_channel("HHZ")])))
     out = tmp_path / "out.seed"

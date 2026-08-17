@@ -2,25 +2,9 @@ from __future__ import annotations
 
 import importlib
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import sessionmaker
-
 from app.catalog import seed_catalog
 from app.crud import import_hierarchy
-from app.db import Base, make_engine
 from tests.test_core import _sample_hierarchy
-
-
-@pytest.fixture
-def api_client(tmp_path, monkeypatch):
-    engine = make_engine(f"sqlite:///{tmp_path}/api.db")
-    Base.metadata.create_all(engine)
-    SessionLocal = sessionmaker(bind=engine, autoflush=False)
-    main_module = importlib.import_module("app.main")
-    monkeypatch.setattr(main_module, "get_session", SessionLocal)
-    with TestClient(main_module.app) as client:
-        yield client, SessionLocal
 
 
 def test_invalid_xml_returns_korean_400(api_client):

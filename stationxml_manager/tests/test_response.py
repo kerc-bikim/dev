@@ -47,7 +47,9 @@ def test_parse_ids_and_conjugates():
 
 
 def test_single_curve_requires_response(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     ch = list_channels(session)[0]
     with pytest.raises(ValidationError, match="계측기 응답이 없습니다"):
         eval_response_curve(ch)
@@ -146,7 +148,10 @@ def test_pz_edit_success_and_guards(api_client):
     saved = client.put(
         f"/api/channels/{cid}/response-stages/{pz['stage_sequence_number']}",
         json={
-            "poles": [{"real": -0.037, "imag": 0.037}, {"real": -0.037, "imag": -0.037}],
+            "poles": [
+                {"real": -0.037, "imag": 0.037},
+                {"real": -0.037, "imag": -0.037},
+            ],
             "zeros": [{"real": 0.0, "imag": 0.0}],
             "stage_gain": 1500.0,
             "normalization_frequency": 1.0,
@@ -189,7 +194,10 @@ def test_pz_conjugate_warning_and_fir_rejected(api_client):
 
     warn = client.put(
         f"/api/channels/{pz_id}/response-stages/1",
-        json={"poles": [{"real": -0.1, "imag": 0.2}], "zeros": [{"real": 0.0, "imag": 0.0}]},
+        json={
+            "poles": [{"real": -0.1, "imag": 0.2}],
+            "zeros": [{"real": 0.0, "imag": 0.0}],
+        },
     )
     assert warn.status_code == 200
     assert warn.json()["warnings"] == ["켤레가 아닌 극이 있습니다"]

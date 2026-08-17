@@ -7,9 +7,7 @@ from obspy import UTCDateTime
 from obspy.core.inventory import Channel, Inventory, Network, Station
 from obspy.core.inventory.response import InstrumentSensitivity, Response
 from obspy.core.inventory.util import Equipment, Site
-from sqlalchemy.orm import Session, sessionmaker
-
-from app.catalog import find_by_manufacturer_model, seed_catalog, suggest_custom_code
+from app.catalog import find_by_manufacturer_model, suggest_custom_code
 from app.columns import resolve_header
 from app.crud import (
     create_catalog_item,
@@ -21,7 +19,7 @@ from app.crud import (
     update_channel,
     update_station,
 )
-from app.db import Base, make_engine
+from app.db import make_engine
 from app.errors import ValidationError
 from app.excel_io import read_excel, write_excel, write_template
 from app.validation import (
@@ -31,17 +29,6 @@ from app.validation import (
     validate_time_order,
 )
 from app.xml_io import read_stationxml
-
-
-@pytest.fixture
-def session(tmp_path) -> Session:
-    engine = make_engine(f"sqlite:///{tmp_path}/test.db")
-    Base.metadata.create_all(engine)
-    SessionLocal = sessionmaker(bind=engine, autoflush=False)
-    s = SessionLocal()
-    seed_catalog(s)
-    yield s
-    s.close()
 
 
 def test_header_aliases():

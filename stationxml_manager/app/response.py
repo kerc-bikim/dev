@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from .audit import nslc_of, write_audit
 from .crud import get_channel
-from .errors import AppError, ValidationError
+from .errors import ValidationError
 from .inventory import dump_response_xml, load_response
 from .models import Channel
 
@@ -290,7 +290,9 @@ def list_response_stages(ch: Channel) -> dict[str, Any]:
     try:
         resp = load_response(ch.response_xml)
     except Exception as exc:
-        raise ValidationError(f"{nslc}: 저장된 응답 XML을 읽지 못했습니다: {exc}") from exc
+        raise ValidationError(
+            f"{nslc}: 저장된 응답 XML을 읽지 못했습니다: {exc}"
+        ) from exc
     return {
         "channel_id": ch.id,
         "nslc": nslc,
@@ -334,7 +336,9 @@ def update_pz_stage(
     try:
         resp = load_response(ch.response_xml)
     except Exception as exc:
-        raise ValidationError(f"{nslc}: 저장된 응답 XML을 읽지 못했습니다: {exc}") from exc
+        raise ValidationError(
+            f"{nslc}: 저장된 응답 XML을 읽지 못했습니다: {exc}"
+        ) from exc
     stage = next(
         (
             item
@@ -371,14 +375,19 @@ def update_pz_stage(
         try:
             fnorm = float(payload["normalization_frequency"])
         except (TypeError, ValueError) as exc:
-            raise ValidationError("normalization_frequency가 올바르지 않습니다") from exc
+            raise ValidationError(
+                "normalization_frequency가 올바르지 않습니다"
+            ) from exc
         if fnorm <= 0 or not math.isfinite(fnorm):
             raise ValidationError("normalization_frequency가 올바르지 않습니다")
         stage.normalization_frequency = fnorm
     stage.poles = poles
     stage.zeros = zeros
     stage.normalization_factor = recompute_a0(
-        poles, zeros, float(stage.normalization_frequency or 1.0), stage.pz_transfer_function_type
+        poles,
+        zeros,
+        float(stage.normalization_frequency or 1.0),
+        stage.pz_transfer_function_type,
     )
     dummy = ObspyChannel(
         code=ch.channel,

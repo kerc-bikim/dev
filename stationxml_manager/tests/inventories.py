@@ -102,7 +102,9 @@ def make_channel(
         sample_rate=sample_rate,
         start_date=UTCDateTime(start),
         sensor=Equipment(manufacturer="Guralp", model="CMG-3T", serial_number="S1"),
-        data_logger=Equipment(manufacturer="REF TEK", model="RT 130", serial_number="D1"),
+        data_logger=Equipment(
+            manufacturer="REF TEK", model="RT 130", serial_number="D1"
+        ),
     )
     if response is not None:
         cha.response = response
@@ -124,7 +126,10 @@ def make_inventory(
         site=Site(name=site_name),
         channels=channels,
     )
-    return Inventory(networks=[Network(code=network, stations=[sta], description="테스트망")], source="test")
+    return Inventory(
+        networks=[Network(code=network, stations=[sta], description="테스트망")],
+        source="test",
+    )
 
 
 def inventory_with_pz(
