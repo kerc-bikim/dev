@@ -2,7 +2,7 @@
 
 엑셀 또는 StationXML을 올려 네트워크·관측소·채널 메타데이터를 고치고, 다시 StationXML·엑셀로 내보내는 로컬 웹 도구입니다. 센서와 기록계는 장비 카탈로그 ID만 고를 수 있습니다.
 
-가독성 있는 HTML 문서는 [`docs.html`](docs.html)에서 이 파일과 [`PLAN.md`](PLAN.md), [`DATALESS_SEED.md`](DATALESS_SEED.md), [`RESPONSE_CHART.md`](RESPONSE_CHART.md)를 불러와 봅니다.
+가독성 있는 HTML 문서는 [`docs.html`](docs.html)에서 이 파일과 [`PLAN.md`](PLAN.md), [`DATALESS_SEED.md`](DATALESS_SEED.md), [`RESPONSE_CHART.md`](RESPONSE_CHART.md), [`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md)를 불러와 봅니다.
 
 - 상태: v1 구현 완료 (코드 리뷰 반영 포함)
 - 스택: FastAPI + ObsPy + SQLite (`app/`), React + Vite + TypeScript (`frontend/`)
@@ -33,7 +33,7 @@ stationxml_manager/
 ├── equipment_catalog.yaml    최초 장비 목록(이후는 DB가 원본)
 ├── data/stationxml.db        SQLite (실행 후 생성)
 ├── scripts/build_docs_html.py  README/PLAN을 docs.html에 내장
-├── README.md · PLAN.md · DATALESS_SEED.md · RESPONSE_CHART.md
+├── README.md · PLAN.md · DATALESS_SEED.md · RESPONSE_CHART.md · CUSTOM_EQUIPMENT.md
 └── docs.html                 마크다운 HTML 로더
 ```
 
@@ -281,4 +281,4 @@ ObsPy 1.4.1은 SQLAlchemy 1.4가 필요합니다 (`requirements.txt`의 `sqlalch
 
 ## 계획과 범위
 
-확정 결정, 구현 체크리스트, 코드 리뷰 반영은 [`PLAN.md`](PLAN.md)를 봅니다. dataless SEED는 [`DATALESS_SEED.md`](DATALESS_SEED.md), 응답 곡선·겹치기·PZ 편집·PNG는 [`RESPONSE_CHART.md`](RESPONSE_CHART.md)에 계획이 있습니다.
+확정 결정, 구현 체크리스트, 코드 리뷰 반영은 [`PLAN.md`](PLAN.md)를 봅니다. dataless SEED는 [`DATALESS_SEED.md`](DATALESS_SEED.md), 응답 곡선은 [`RESPONSE_CHART.md`](RESPONSE_CHART.md), NRL에 없는 장비는 [`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md)에 계획이 있습니다.

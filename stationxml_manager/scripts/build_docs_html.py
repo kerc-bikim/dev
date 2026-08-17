@@ -1,4 +1,4 @@
-"""README.md / PLAN.md / DATALESS_SEED.md를 docs.html에 내장해 file://에서도 보이게 한다."""
+"""README / PLAN / SEED / 응답곡선 / 사용자정의 마크다운을 docs.html에 내장한다."""
 
 from __future__ import annotations
 
@@ -8,7 +8,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DOCS_HTML = ROOT / "docs.html"
 MARKERS = ("/* EMBEDDED_DOCS_BEGIN */", "/* EMBEDDED_DOCS_END */")
-FILES = ("README.md", "PLAN.md", "DATALESS_SEED.md", "RESPONSE_CHART.md")
+FILES = (
+    "README.md",
+    "PLAN.md",
+    "DATALESS_SEED.md",
+    "RESPONSE_CHART.md",
+    "CUSTOM_EQUIPMENT.md",
+)
 
 
 def embedded_js(docs: dict[str, str]) -> str:

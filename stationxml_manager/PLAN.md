@@ -8,6 +8,7 @@
 - HTML 보기: [`docs.html`](docs.html)
 - 다음 작업(결정 확정): [`DATALESS_SEED.md`](DATALESS_SEED.md) — dataless SEED 가져오기·내보내기
 - 다음 작업(제안): [`RESPONSE_CHART.md`](RESPONSE_CHART.md) — 응답 곡선·겹치기·PZ 편집·PNG
+- 다음 작업(제안): [`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md) — NRL에 없는 장비 사용자 정의 메타데이터
 
 실제 백엔드 경로는 `backend/`이 아니라 `app/`입니다. CLI는 `python -m app.cli`입니다.
 
@@ -153,6 +154,7 @@ flowchart TB
 - 다중 사용자 동시 편집 잠금
 - FDSN 원격 조회
 - dataless SEED (계획만: [`DATALESS_SEED.md`](DATALESS_SEED.md))
+- NRL에 없는 장비 입력 UX (계획만: [`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md))
 
 ---
 
@@ -180,6 +182,18 @@ SEED Manual V2.4의 dataless 볼륨(Volume + Abbreviation + Station Control, 파
 - PZ: `PolesZeros` 단계만. 저장 시 A0 재계산·evalresp 검증·실패 시 롤백. `response_source=edited`
 - PNG: PPSD `exportPng`와 같이 클라이언트만. 단채널·비교 파일명 규칙
 - 상세: [`RESPONSE_CHART.md`](RESPONSE_CHART.md)
+- 겹치기 상한 등 열린 선택: [`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md) Q8
+
+---
+
+## v1.3 제안 — NRL에 없는 장비
+
+NRL 사전에 없는 센서·기록계를 카탈로그 `origin=custom`으로 넣고, 채널은 계속 ID만 가리킨다.
+
+- 상태: [ ] 제안. 답이 오기 전 기본값: 메타데이터만 (응답 생성은 Q2), StationXML 미매칭은 custom 승격
+- 채널 모달 **목록에 없음**, 엑셀 채널 시트에는 제조사·모델 열을 열지 않음
+- 선택이 필요한 항목(Q1–Q9)은 문서에 다지선다로 적어 둠
+- 상세: [`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md)
 
 ---
 
@@ -203,3 +217,4 @@ SEED Manual V2.4의 dataless 볼륨(Volume + Abbreviation + Station Control, 파
 | `scripts/build_docs_html.py` | 마크다운을 docs.html에 내장 |
 | `DATALESS_SEED.md` | dataless SEED 구현 전 계획 |
 | `RESPONSE_CHART.md` | 응답 곡선·겹치기·PZ 편집·PNG 계획 |
+| `CUSTOM_EQUIPMENT.md` | NRL에 없는 장비 사용자 정의 계획 |
