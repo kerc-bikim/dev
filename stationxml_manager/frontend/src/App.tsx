@@ -11,6 +11,7 @@ import {
   type StationRow,
   type Tab,
 } from "./api";
+import { ResponsePanel } from "./ResponsePanel";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "channels", label: "채널" },
@@ -122,6 +123,8 @@ function ChannelsTab({
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
   const [filter, setFilter] = useState({ network: "", station: "", channel: "" });
   const [editing, setEditing] = useState<Partial<ChannelRow> | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [overlayIds, setOverlayIds] = useState<number[]>([]);
   const requestId = useRef(0);
 
   const reload = useCallback(async () => {
@@ -193,6 +196,7 @@ function ChannelsTab({
         <table>
           <thead>
             <tr>
+              <th className="check-col">겹치기</th>
               <th>NSLC</th>
               <th>시작</th>
               <th>끝</th>
@@ -206,7 +210,30 @@ function ChannelsTab({
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id}>
+              <tr
+                key={r.id}
+                className={selectedId === r.id ? "selected" : ""}
+                onClick={() => setSelectedId(r.id)}
+              >
+                <td className="check-col" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    disabled={!r.has_response}
+                    checked={overlayIds.includes(r.id)}
+                    title={r.has_response ? "겹치기에 포함" : "응답이 없어 겹칠 수 없습니다"}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        if (overlayIds.length >= 8) {
+                          onError("겹치기는 최대 8채널입니다");
+                          return;
+                        }
+                        setOverlayIds([...overlayIds, r.id]);
+                      } else {
+                        setOverlayIds(overlayIds.filter((id) => id !== r.id));
+                      }
+                    }}
+                  />
+                </td>
                 <td>{r.nslc}</td>
                 <td>{r.start_time}</td>
                 <td>{r.end_time || "—"}</td>
@@ -256,6 +283,14 @@ function ChannelsTab({
           </tbody>
         </table>
       </div>
+      <ResponsePanel
+        rows={rows}
+        selectedId={selectedId}
+        overlayIds={overlayIds}
+        actor={actor}
+        onReload={reload}
+        onError={onError}
+      />
       {editing && (
         <ChannelForm
           value={editing}
@@ -1013,6 +1048,7 @@ function CatalogTab({ actor, onError }: { actor: string; onError: (e: string | n
 
 function IoTab({ actor, onError }: { actor: string; onError: (e: string | null) => void }) {
   const [replaceAll, setReplaceAll] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"stationxml" | "dataless">("stationxml");
   const [msg, setMsg] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   return (
@@ -1021,6 +1057,13 @@ function IoTab({ actor, onError }: { actor: string; onError: (e: string | null) 
         <strong>엑셀 왕복 한계:</strong> 계측기 응답(Response)과 상세 Comment 구조는 StationXML에만
         있습니다. 엑셀은 표 형태의 메타데이터용입니다. StationXML을 올린 뒤 엑셀을 다시 가져와도
         기존 응답은 지우지 않습니다.
+      </div>
+      <div className="note">
+        <strong>SEED 왕복 한계:</strong> dataless SEED는 메타데이터만 다룹니다. 한글 사이트명·설명은
+        ASCII로 줄이거나 관측소 코드로 바꿉니다. 카탈로그 ID는 SEED에 없어, 다시 가져오면
+        제조사·모델이 맞을 때만 복구됩니다. 응답은 수학적으로 같아야 하지만 블록ette 번호·약어
+        사전은 달라질 수 있습니다. MiniSEED(파형만)는 가져올 수 없고, 응답이 없는 채널이 하나라도
+        있으면 Dataless SEED 내보내기는 실패합니다. StationXML 내보내기는 응답이 없어도 됩니다.
       </div>
       <div className="toolbar">
         <label>
@@ -1033,7 +1076,7 @@ function IoTab({ actor, onError }: { actor: string; onError: (e: string | null) 
         </label>
         <input
           type="file"
-          accept=".xlsx,.xml,.stationxml"
+          accept=".xlsx,.xml,.stationxml,.seed,.dataless,.dlsv"
           onChange={async (e) => {
             const file = e.target.files?.[0];
             e.target.value = "";
@@ -1064,14 +1107,35 @@ function IoTab({ actor, onError }: { actor: string; onError: (e: string | null) 
         </p>
       ))}
       <div className="toolbar">
+        <label>
+          <input
+            type="radio"
+            name="export-format"
+            checked={exportFormat === "stationxml"}
+            onChange={() => setExportFormat("stationxml")}
+          />{" "}
+          StationXML
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="export-format"
+            checked={exportFormat === "dataless"}
+            onChange={() => setExportFormat("dataless")}
+          />{" "}
+          Dataless SEED
+        </label>
         <button
-          onClick={() =>
-            void downloadFile("/api/export/stationxml", "inventory.xml").catch((e) =>
+          onClick={() => {
+            const path =
+              exportFormat === "dataless" ? "/api/export/dataless" : "/api/export/stationxml";
+            const name = exportFormat === "dataless" ? "inventory.dataless" : "inventory.xml";
+            void downloadFile(path, name).catch((e) =>
               onError(e instanceof Error ? e.message : String(e))
-            )
-          }
+            );
+          }}
         >
-          StationXML 다운로드
+          다운로드
         </button>
         <button
           className="secondary"

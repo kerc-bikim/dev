@@ -24,6 +24,7 @@ from .crud import (
     delete_channel,
     delete_station,
     export_stationxml_bytes,
+    get_channel,
     import_hierarchy,
     list_catalog,
     list_channels,
@@ -39,6 +40,14 @@ from .db import get_session, init_db
 from .errors import AppError, ValidationError
 from .excel_io import read_excel, write_excel, write_template
 from .models import AuditLog
+from .response import (
+    eval_response_curve,
+    list_response_stages,
+    overlay_response_curves,
+    parse_ids,
+    update_pz_stage,
+)
+from .seed_io import export_dataless_bytes, looks_like_seed_name, read_seed
 from .xml_io import read_stationxml
 
 app = FastAPI(title="StationXML 메타데이터 관리", version="0.1.0")
@@ -117,7 +126,10 @@ def _startup() -> None:
 
 @app.exception_handler(AppError)
 def _app_error(_request: Request, exc: AppError) -> JSONResponse:
-    return JSONResponse({"detail": exc.message}, status_code=exc.status_code)
+    body: dict[str, Any] = {"detail": exc.message}
+    if exc.errors:
+        body["errors"] = exc.errors
+    return JSONResponse(body, status_code=exc.status_code)
 
 
 @app.exception_handler(IntegrityError)
@@ -244,6 +256,74 @@ def api_delete_channel(channel_id: int, actor: str | None = None) -> dict[str, s
         session.close()
 
 
+@app.get("/api/channels/{channel_id}/response-curve")
+def api_response_curve(
+    channel_id: int,
+    output: str = "VEL",
+    min_freq: float = 0.001,
+    max_freq: float | None = None,
+    npts: int = 200,
+) -> dict[str, Any]:
+    session = get_session()
+    try:
+        return eval_response_curve(
+            get_channel(session, channel_id),
+            output=output,
+            min_freq=min_freq,
+            max_freq=max_freq,
+            npts=npts,
+        )
+    finally:
+        session.close()
+
+
+@app.get("/api/response-curves")
+def api_response_curves(
+    ids: str,
+    output: str = "VEL",
+    min_freq: float = 0.001,
+    max_freq: float | None = None,
+    npts: int = 200,
+) -> dict[str, Any]:
+    session = get_session()
+    try:
+        return overlay_response_curves(
+            session,
+            parse_ids(ids),
+            output=output,
+            min_freq=min_freq,
+            max_freq=max_freq,
+            npts=npts,
+        )
+    finally:
+        session.close()
+
+
+@app.get("/api/channels/{channel_id}/response-stages")
+def api_response_stages(channel_id: int) -> dict[str, Any]:
+    session = get_session()
+    try:
+        return list_response_stages(get_channel(session, channel_id))
+    finally:
+        session.close()
+
+
+@app.put("/api/channels/{channel_id}/response-stages/{stage_number}")
+def api_update_pz_stage(
+    channel_id: int,
+    stage_number: int,
+    payload: dict[str, Any],
+    actor: str | None = None,
+) -> dict[str, Any]:
+    session = get_session()
+    try:
+        return update_pz_stage(
+            session, channel_id, stage_number, payload, _actor(actor)
+        )
+    finally:
+        session.close()
+
+
 @app.post("/api/channels/{channel_id}/apply-nrl")
 def api_apply_nrl(channel_id: int, actor: str | None = None) -> dict[str, Any]:
     session = get_session()
@@ -321,10 +401,13 @@ async def api_import(
             elif name.endswith((".xlsx", ".xls")):
                 hierarchy = read_excel(BytesIO(raw))
                 source = "excel"
+            elif looks_like_seed_name(name):
+                hierarchy = read_seed(BytesIO(raw), session)
+                source = "seed"
             else:
                 raise HTTPException(
                     status_code=400,
-                    detail="xlsx 또는 StationXML(xml) 파일만 올릴 수 있습니다",
+                    detail="xlsx, StationXML(xml), dataless SEED 파일만 올릴 수 있습니다",
                 )
         except (AppError, HTTPException):
             raise
@@ -353,6 +436,20 @@ def api_export_xml() -> Response:
             content=data,
             media_type="application/xml",
             headers={"Content-Disposition": "attachment; filename=inventory.xml"},
+        )
+    finally:
+        session.close()
+
+
+@app.get("/api/export/dataless")
+def api_export_dataless() -> Response:
+    session = get_session()
+    try:
+        data, _warnings = export_dataless_bytes(session)
+        return Response(
+            content=data,
+            media_type="application/vnd.fdsn.seed",
+            headers={"Content-Disposition": "attachment; filename=inventory.dataless"},
         )
     finally:
         session.close()

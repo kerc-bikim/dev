@@ -37,7 +37,10 @@ def read_stationxml(path_or_buf, session: Session) -> dict[str, Any]:
         inv = read_inventory(BytesIO(data), format="STATIONXML")
     else:
         inv = read_inventory(str(path_or_buf), format="STATIONXML")
+    return inventory_to_hierarchy(inv, session)
 
+
+def inventory_to_hierarchy(inv, session: Session) -> dict[str, Any]:
     warnings: list[str] = []
     networks: dict[str, Any] = {}
     for net in inv:

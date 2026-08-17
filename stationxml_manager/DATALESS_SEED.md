@@ -1,9 +1,11 @@
-# Dataless SEED 가져오기·내보내기 — 구현 전 계획
+# Dataless SEED 가져오기·내보내기
 
-상태: **결정 확정** (코드 미착수). 구현은 사용자 정의 장비·응답 곡선 다음.
+상태: **결정 확정, 구현 완료**.
+
+ObsPy 1.4.1은 `Inventory.write(format="SEED")`를 지원하지 않습니다. 읽기는 `read_inventory(..., format="SEED")`, 쓰기는 `obspy.io.xseed.Parser` 블록ette로 논리 레코드를 만듭니다. 블록ette 바이너리를 직접 짜지 않고 ObsPy 직렬화를 씁니다.
 
 참조: [SEED Reference Manual V2.4](https://www.fdsn.org/pdf/SEEDManual_V2.4.pdf) (FDSN, May 2012).  
-현재 앱: 엑셀·StationXML만 지원. 내부 원본은 SQLite 계층 + `response_xml`(StationXML blob).
+내부 원본은 SQLite 계층 + `response_xml`(StationXML blob). 엑셀·StationXML과 같은 입구로 dataless SEED를 넣고 뺍니다.
 
 ---
 
@@ -29,7 +31,7 @@ SEED는 고정 폭 ASCII 블록ette(10, 11, 30–34, 50–62 등)의 논리 레�
 ObsPy 1.4.1 `Inventory`가 이미 이 변환을 한다.
 
 - 읽기: `read_inventory(..., format="SEED")`
-- 쓰기: `inv.write(..., format="SEED")` → dataless (파형 없음)
+- 쓰기: Inventory → xseed Parser 블록ette → `Parser.get_seed()` (파형 없음)
 
 앱은 **Inventory를 허브**로 두고, 기존 `xml_io` 매핑을 StationXML 전용이 아니라 Inventory 전용으로 끌어올린다.
 
@@ -138,14 +140,7 @@ S11과 같이 **파일을 만들지 않은 뒤에** 로그를 남긴다. 성공�
 
 ### S13 — 지금 선택 옵션이 있는가 / 어떻게 둘 것인가
 
-**지금(v1):** 없다. 가져오기/내보내기 탭은 버튼이 나뉘어 있다.
-
-- StationXML 다운로드 → `/api/export/stationxml`
-- 엑셀 다운로드 → `/api/export/xlsx`
-- 엑셀 템플릿
-- Dataless SEED 버튼·형식 콤보는 **아직 없음**
-
-**계획:** 메타데이터 볼륨은 라디오로 고른 뒤 한 번 받는다.
+웹 가져오기/내보내기 탭에서 메타데이터 볼륨은 라디오로 고른 뒤 한 번 받는다.
 
 - 형식: `StationXML` / `Dataless SEED` (기본 StationXML)
 - 버튼: **다운로드** → 고른 형식의 API를 호출
@@ -214,53 +209,28 @@ StationXML 내보내기는 응답이 없어도 지금처럼 허용한다. S11·S
 
 ### 1. Inventory 허브 리팩터
 
-- `xml_io.read_stationxml`에서 Inventory → hierarchy 매핑을 `inventory_to_hierarchy(inv, session)`로 분리.
-- StationXML 읽기는 `read_inventory(..., format="STATIONXML")` 후 그 함수 호출.
-- 기존 StationXML·엑셀 테스트가 그대로 통과해야 함.
+- [x] `inventory_to_hierarchy(inv, session)` 분리. StationXML 읽기는 그 함수 호출.
 
 ### 2. dataless 읽기
 
-- `read_seed(path_or_buf, session)`: `format="SEED"`.
-- 확장자 `.seed`, `.dataless`, `.dlsv` 및 내용 스니프(논리 레코드 헤더 `V` volume).
-- MiniSEED만이면 ValidationError: 한글 메시지 (S5).
-- full SEED면 가져오기는 성공하고 경고에 “파형 레코드는 무시하고 메타데이터만 가져왔습니다” (S4).
-- 네트워크 코드 없음/길이 위반은 거절.
-- 응답은 기존 `dump_response_xml`.
-- import `source="seed"`.
+- [x] `read_seed`: `format="SEED"`. `.seed` / `.dataless` / `.dlsv`.
+- [x] MiniSEED만이면 400 (S5). full SEED는 메타만 + 파형 무시 경고 (S4).
 
 ### 3. dataless 쓰기
 
-- `inventory_to_seed_bytes(inv) -> bytes`: `inv.write(format="SEED")`.
-- 내보내기 전 코드 길이·ASCII 검사. 길이 위반은 400. 한글 사이트명은 관측소 코드로 대체하고 경고 (S6–S7).
-- **S11:** 채널 중 `response_xml`이 비어 있으면 즉시 400. `inv.write`를 호출하지 않는다.
-- Response는 있으나 ObsPy writer가 단계 오류로 실패해도 마찬가지로 전체 실패 (부분 파일 없음).
-- `GET /api/export/dataless` → `inventory.dataless` (`application/vnd.fdsn.seed` 또는 `application/octet-stream`).
+- [x] `inventory_to_seed_bytes(inv)`: xseed Parser. 응답 없으면 400 (S11). 한글 사이트명 대체 (S6).
 
 ### 4. API · CLI · UI
 
-- `POST /api/import`: 확장자·스니프에 seed 추가. 업로드 용량 제한 그대로.
-- CLI: 입력 확장자 인식, `-o inventory.seed`.
-- 가져오기 탭: `accept`에 seed 추가. **형식 라디오**(StationXML / Dataless SEED) + 다운로드 (S13).
-- 실패 시 채널별 `errors`를 배너 아래 목록으로 표시하고, 서버 로그에도 동일 문구 (S12).
+- [x] import 확장자, CLI 출력 확장자, 웹 라디오 + 다운로드 (S13). 실패 시 `errors[]` (S12).
 
 ### 5. 테스트
 
-- ObsPy로 만든 합성 Inventory를 SEED로 쓴 뒤 import → NSLC·좌표·sps.
-- poles/zeros + sensitivity가 있는 채널: SEED → DB → StationXML → 다시 SEED → 다시 읽었을 때 단계 수·단위 유지.
-- MiniSEED 샘플 거절 (S5).
-- 합성 full SEED(헤더+더미 파형): import 성공, `warnings`에 파형 무시 문구, DB에 파형 없음 (S4).
-- 한글 `site_name` 내보내기 경고/대체.
-- 네트워크 코드 3자 내보내기 400.
-- 채널 하나라도 응답이 없으면 `/api/export/dataless`와 CLI SEED 출력이 400이고 바이트가 없음 (S11).
-- 그 400 본문에 `errors[].nslc` / `reason`이 있고, caplog에 같은 NSLC 줄이 있다 (S12).
-- StationXML 내보내기는 응답 없는 채널이 있어도 200 (S13).
-- 모든 채널에 응답이 있을 때만 SEED 파일이 나오고, 다시 읽으면 NSLC가 같다.
-- 엑셀 재import가 seed로 넣은 `response_xml`을 지우지 않음 (기존 보존 테스트 확장).
+- [x] 합성 SEED 왕복, MiniSEED 거절, full SEED 경고, 한글 사이트명, 네트워크 3자, 응답 없으면 400, StationXML은 200, 엑셀 재import 보존.
 
 ### 6. 문서
 
-- README 형식 표, PLAN 체크리스트, 이 파일의 한계 절을 UI 노트와 맞춤.
-- `docs.html` 탭에 이 문서 포함.
+- [x] README / PLAN / UI 노트 / `docs.html`.
 
 ---
 

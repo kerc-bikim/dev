@@ -1,10 +1,10 @@
-# 채널 응답 곡선 차트 — 구현 전 계획
+# 채널 응답 곡선 차트
 
-상태: **결정 확정** (코드 미착수). 구현은 사용자 정의 장비([`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md)) 다음.
+상태: **결정 확정, 구현 완료**.
 
 웹에서 관측소·채널을 고르면 저장된 계측기 응답(`response_xml`)을 **진폭·위상 곡선**으로 보여 준다. 여러 채널을 겹치고, Poles/Zeros를 고치고, 보이는 차트를 PNG로 저장한다.
 
-dataless SEED 계획과 별개이며, 이미 DB에 있는 StationXML Response blob을 쓴다. 지금 채널 탭은 `imported` / `nrl` / `없음`만 보여 주고 곡선은 없다.
+dataless SEED 계획과 별개이며, 이미 DB에 있는 StationXML Response blob을 쓴다. 채널 탭 아래 패널에서 곡선을 그리고, 체크한 채널을 겹치며, Poles/Zeros를 고치고 PNG로 저장한다.
 
 ---
 
@@ -295,12 +295,12 @@ PPSD_v1 `frontend/src/charts/exportPng.ts`와 같이 **보이는 SVG를 캔버�
 
 ## 구현 단계
 
-1. 단채널 `eval_response_curve` + GET + 테스트.
-2. 채널 탭 주 선택·빈 안내·D3 단곡선·단위 전환.
-3. 체크박스 + `GET /api/response-curves` + 범례·부분 실패.
-4. PNG 저장 (단곡선·겹치기 모두, 테마 배경).
-5. stages GET/PUT, 확인, A0 재계산, evalresp 검증·롤백, audit, 저장 후 곡선 갱신.
-6. README 출처에 `edited` 추가, 이 문서 체크리스트.
+- [x] 단채널 `eval_response_curve` + GET + 테스트.
+- [x] 채널 탭 주 선택·빈 안내·D3 단곡선·단위 전환.
+- [x] 체크박스 + `GET /api/response-curves` + 범례·부분 실패.
+- [x] PNG 저장 (단곡선·겹치기 모두, 테마 배경).
+- [x] stages GET/PUT, 확인, A0 재계산, evalresp 검증·롤백, audit, 저장 후 곡선 갱신.
+- [x] README 출처에 `edited` 추가.
 
 SEED(v1.1)와 병행할 필요 없다. blob만 있으면 된다.
 
