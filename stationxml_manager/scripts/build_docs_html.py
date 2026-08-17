@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DOCS_HTML = ROOT / "docs.html"
 MARKERS = ("/* EMBEDDED_DOCS_BEGIN */", "/* EMBEDDED_DOCS_END */")
-FILES = ("README.md", "PLAN.md", "DATALESS_SEED.md")
+FILES = ("README.md", "PLAN.md", "DATALESS_SEED.md", "RESPONSE_CHART.md")
 
 
 def embedded_js(docs: dict[str, str]) -> str:
