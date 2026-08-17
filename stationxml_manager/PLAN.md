@@ -6,6 +6,7 @@
 - 스택: FastAPI + ObsPy + SQLite (`app/`), React + Vite + TypeScript (`frontend/`)
 - 사용법·API·엑셀 열: [`README.md`](README.md)
 - HTML 보기: [`docs.html`](docs.html)
+- 다음 작업(제안): [`DATALESS_SEED.md`](DATALESS_SEED.md) — dataless SEED 가져오기·내보내기
 
 실제 백엔드 경로는 `backend/`이 아니라 `app/`입니다. CLI는 `python -m app.cli`입니다.
 
@@ -150,6 +151,18 @@ flowchart TB
 - 로그인 계정·권한 모델
 - 다중 사용자 동시 편집 잠금
 - FDSN 원격 조회
+- dataless SEED (계획만: [`DATALESS_SEED.md`](DATALESS_SEED.md))
+
+---
+
+## v1.1 제안 — dataless SEED
+
+SEED Manual V2.4의 dataless 볼륨(Volume + Abbreviation + Station Control, 파형 없음)을 엑셀·StationXML과 같은 입구로 넣는다.
+
+- 상태: [ ] 계획만. 구현 전 결정표(S1–S10) 확인 필요
+- 내부 원본은 그대로 DB + `response_xml`. ObsPy `Inventory.write/read format="SEED"`가 변환 허브
+- MiniSEED 전용 파일은 거절. 한글 사이트명은 ASCII 제약
+- 상세 매핑·단계·위험: [`DATALESS_SEED.md`](DATALESS_SEED.md)
 
 ---
 
@@ -169,5 +182,6 @@ flowchart TB
 | `frontend/src/App.tsx` | 한글 탭 UI |
 | `frontend/src/api.ts` | API 키 헤더, 업로드/다운로드 |
 | `equipment_catalog.yaml` | 빈 DB일 때만 시드 |
-| `docs.html` | README/PLAN HTML 로더 |
+| `docs.html` | README/PLAN/SEED 계획 HTML 로더 |
 | `scripts/build_docs_html.py` | 마크다운을 docs.html에 내장 |
+| `DATALESS_SEED.md` | dataless SEED 구현 전 계획 |
