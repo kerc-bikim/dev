@@ -17,6 +17,7 @@ from obspy.core.inventory.response import (
     CoefficientsTypeResponseStage,
     FIRResponseStage,
     PolesZerosResponseStage,
+    ResponseStage,
 )
 from obspy.io.xseed import Parser
 from obspy.io.xseed.blockette import (
@@ -37,7 +38,7 @@ from sqlalchemy.orm import Session, joinedload
 from .catalog import catalog_map
 from .crud import list_channels
 from .errors import AppError, ValidationError
-from .inventory import build_inventory
+from .inventory import build_inventory, load_response
 from .models import Network
 from .xml_io import inventory_to_hierarchy
 
@@ -45,20 +46,47 @@ LOG = logging.getLogger("stationxml_manager.export")
 SEED_SUFFIXES = {".seed", ".dataless", ".dlsv"}
 DATA_TYPES = {"D", "R", "Q", "M"}
 HEADER_TYPES = {"V", "A", "S"}
+SEED_MARKERS = HEADER_TYPES | DATA_TYPES
+WRITABLE_STAGES = (
+    PolesZerosResponseStage,
+    CoefficientsTypeResponseStage,
+    FIRResponseStage,
+)
+MAX_BLOCKETTE_BYTES = 9999
+
+
+def _looks_seq(buf: bytes) -> bool:
+    return len(buf) >= 6 and buf[:6].isdigit()
+
+
+def _record_length(data: bytes) -> int:
+    if len(data) < 8 or not _looks_seq(data) or not data[6:7].isalpha():
+        return 4096
+    for rec_len in (4096, 512, 256):
+        nxt = rec_len
+        if (
+            len(data) >= nxt + 8
+            and _looks_seq(data[nxt : nxt + 6])
+            and data[nxt + 6 : nxt + 7].isalpha()
+        ):
+            return rec_len
+    for rec_len in (4096, 512, 256):
+        if len(data) % rec_len == 0:
+            return rec_len
+    return 4096
 
 
 def classify_seed(data: bytes) -> str:
     types: set[str] = set()
-    for rec_len in (4096, 512):
-        for offset in range(0, min(len(data), rec_len * 64), rec_len):
-            rec = data[offset : offset + 8]
-            if len(rec) < 7:
-                break
-            marker = rec[6:7]
-            if marker.isalpha():
-                types.add(marker.decode("ascii", errors="ignore"))
-        if types:
-            break
+    rec_len = _record_length(data)
+    for offset in range(0, max(0, len(data) - 6), rec_len):
+        if not _looks_seq(data[offset : offset + 6]):
+            continue
+        marker = data[offset + 6 : offset + 7]
+        if marker.isalpha():
+            kind = marker.decode("ascii", errors="ignore")
+            if kind in SEED_MARKERS:
+                types.add(kind)
     has_header = bool(types & HEADER_TYPES)
     has_data = bool(types & DATA_TYPES)
     if has_data and not has_header:
@@ -77,7 +105,8 @@ def read_seed(path_or_buf, session: Session) -> dict[str, Any]:
             data = data.encode("utf-8")
         raw = data
     else:
-        raw = open(path_or_buf, "rb").read()
+        with open(path_or_buf, "rb") as handle:
+            raw = handle.read()
     kind = classify_seed(raw)
     if kind == "miniseed":
         raise ValidationError(
@@ -109,9 +138,30 @@ def _ascii_ok(value: str | None) -> bool:
     return all(ord(char) < 128 for char in value)
 
 
+def _stage_writable(stage) -> bool:
+    if isinstance(stage, WRITABLE_STAGES):
+        return True
+    return type(stage) is ResponseStage
+
+
+def _stage_blockette_too_long(stage) -> bool:
+    if isinstance(stage, CoefficientsTypeResponseStage):
+        count = len(list(stage.numerator or [])) + len(list(stage.denominator or []))
+        return count * 24 + 120 > MAX_BLOCKETTE_BYTES
+    if isinstance(stage, FIRResponseStage):
+        return len(list(stage.coefficients or [])) * 14 + 80 > MAX_BLOCKETTE_BYTES
+    if isinstance(stage, PolesZerosResponseStage):
+        count = len(list(stage.poles or [])) + len(list(stage.zeros or []))
+        return count * 48 + 120 > MAX_BLOCKETTE_BYTES
+    return False
+
+
 def collect_dataless_errors(session: Session) -> list[dict[str, str]]:
     errors: list[dict[str, str]] = []
-    for ch in list_channels(session):
+    channels = list(list_channels(session))
+    if not channels:
+        return [{"nslc": "", "reason": "내보낼 채널이 없습니다"}]
+    for ch in channels:
         net = ch.station.network.code if ch.station and ch.station.network else ""
         nslc = f"{net}.{ch.station.code}.{ch.location or '--'}.{ch.channel}"
         if len(net) != 2:
@@ -125,7 +175,7 @@ def collect_dataless_errors(session: Session) -> list[dict[str, str]]:
             errors.append(
                 {"nslc": nslc, "reason": f"{nslc}: 관측소 코드는 5자 이하여야 합니다"}
             )
-        if len(ch.channel) > 3:
+        if len(ch.channel) != 3:
             errors.append(
                 {"nslc": nslc, "reason": f"{nslc}: 채널 코드는 3자여야 합니다"}
             )
@@ -135,6 +185,35 @@ def collect_dataless_errors(session: Session) -> list[dict[str, str]]:
             )
         if not ch.response_xml:
             errors.append({"nslc": nslc, "reason": f"{nslc}: 계측기 응답이 없습니다"})
+            continue
+        try:
+            resp = load_response(ch.response_xml)
+        except Exception as exc:
+            errors.append(
+                {
+                    "nslc": nslc,
+                    "reason": f"{nslc}: 저장된 응답 XML을 읽지 못했습니다: {exc}",
+                }
+            )
+            continue
+        for stage in resp.response_stages or []:
+            if not _stage_writable(stage):
+                errors.append(
+                    {
+                        "nslc": nslc,
+                        "reason": (
+                            f"{nslc}: SEED로 쓸 수 없는 응답 단계 "
+                            f"{type(stage).__name__}"
+                        ),
+                    }
+                )
+            elif _stage_blockette_too_long(stage):
+                errors.append(
+                    {
+                        "nslc": nslc,
+                        "reason": f"{nslc}: SEED 응답 단계가 너무 깁니다",
+                    }
+                )
     return errors
 
 
@@ -176,6 +255,8 @@ def export_dataless_bytes(session: Session) -> tuple[bytes, list[str]]:
     warnings = _prepare_seed_inventory(inv)
     try:
         data = inventory_to_seed_bytes(inv)
+    except AppError:
+        raise
     except Exception as exc:
         LOG.error("SEED 응답 단계를 쓰지 못했습니다: %s", exc)
         raise AppError(f"SEED 응답 단계를 쓰지 못했습니다: {exc}", 400) from exc
@@ -194,7 +275,7 @@ def _unit_name(value) -> str:
 
 def _pz_type(stage: PolesZerosResponseStage) -> str:
     raw = (stage.pz_transfer_function_type or "").upper()
-    if "HERTZ" in raw or "HZ" in raw:
+    if "HERTZ" in raw:
         return "B"
     if "DIGITAL" in raw or "Z-TRANSFORM" in raw:
         return "D"
@@ -230,15 +311,24 @@ def _instrument_name(cha) -> str:
         label = " ".join(p for p in (eq.manufacturer, eq.model) if p)
         if label and label not in parts:
             parts.append(label)
-    return parts[0] if parts else "UNKNOWN"
+    return " + ".join(parts)[:50] if parts else "UNKNOWN"
 
 
-def _seed_time(value) -> str:
+def _seed_time(value) -> UTCDateTime | str:
     if not value:
         return ""
     if not isinstance(value, UTCDateTime):
         value = UTCDateTime(value)
     return value
+
+
+def _append_blockette(station_blkts: list, blkt, nslc: str) -> None:
+    encoded = blkt.get_seed()
+    if len(encoded) > MAX_BLOCKETTE_BYTES:
+        seq = getattr(blkt, "stage_sequence_number", "?")
+        reason = f"{nslc}: SEED 응답 단계가 너무 깁니다 (stage {seq})"
+        raise AppError(reason, 400, errors=[{"nslc": nslc, "reason": reason}])
+    station_blkts.append(blkt)
 
 
 def inventory_to_seed_bytes(inv: Inventory) -> bytes:
@@ -338,11 +428,21 @@ def inventory_to_seed_bytes(inv: Inventory) -> bytes:
                 b52.end_date = _seed_time(cha.end_date)
                 b52.update_flag = "N"
                 station_blkts.append(b52)
+                nslc = f"{net.code}.{sta.code}.{cha.location_code or '--'}.{cha.code}"
                 if resp is None:
+                    reason = f"{nslc}: 계측기 응답이 없습니다"
                     raise AppError(
-                        f"{net.code}.{sta.code}.{cha.code}: 계측기 응답이 없습니다", 400
+                        reason, 400, errors=[{"nslc": nslc, "reason": reason}]
                     )
                 for stage in resp.response_stages or []:
+                    if not _stage_writable(stage):
+                        reason = (
+                            f"{nslc}: SEED로 쓸 수 없는 응답 단계 "
+                            f"{type(stage).__name__}"
+                        )
+                        raise AppError(
+                            reason, 400, errors=[{"nslc": nslc, "reason": reason}]
+                        )
                     seq = int(stage.stage_sequence_number)
                     in_u = unit_code(_unit_name(getattr(stage, "input_units", None)))
                     out_u = unit_code(_unit_name(getattr(stage, "output_units", None)))
@@ -370,7 +470,7 @@ def inventory_to_seed_bytes(inv: Inventory) -> bytes:
                         b53.imaginary_pole = [float(p.imag) for p in poles]
                         b53.real_pole_error = [0.0] * len(poles)
                         b53.imaginary_pole_error = [0.0] * len(poles)
-                        station_blkts.append(b53)
+                        _append_blockette(station_blkts, b53, nslc)
                     elif isinstance(stage, CoefficientsTypeResponseStage):
                         nums = list(stage.numerator or [])
                         dens = list(stage.denominator or [])
@@ -385,7 +485,7 @@ def inventory_to_seed_bytes(inv: Inventory) -> bytes:
                         b54.number_of_denominators = len(dens)
                         b54.denominator_coefficient = [float(x) for x in dens]
                         b54.denominator_error = [0.0] * len(dens)
-                        station_blkts.append(b54)
+                        _append_blockette(station_blkts, b54, nslc)
                     elif isinstance(stage, FIRResponseStage):
                         coeffs = list(stage.coefficients or [])
                         symmetry = (getattr(stage, "symmetry", None) or "NONE").upper()
@@ -399,7 +499,7 @@ def inventory_to_seed_bytes(inv: Inventory) -> bytes:
                         b61.signal_out_units = out_u
                         b61.number_of_coefficients = len(coeffs)
                         b61.FIR_coefficient = [float(x) for x in coeffs]
-                        station_blkts.append(b61)
+                        _append_blockette(station_blkts, b61, nslc)
                     if getattr(stage, "decimation_input_sample_rate", None):
                         b57 = Blockette057()
                         b57.stage_sequence_number = seq
@@ -412,14 +512,14 @@ def inventory_to_seed_bytes(inv: Inventory) -> bytes:
                         b57.correction_applied = float(
                             stage.decimation_correction or 0.0
                         )
-                        station_blkts.append(b57)
+                        _append_blockette(station_blkts, b57, nslc)
                     if stage.stage_gain is not None:
                         b58 = Blockette058()
                         b58.stage_sequence_number = seq
                         b58.sensitivity_gain = float(stage.stage_gain)
                         b58.frequency = float(stage.stage_gain_frequency or 1.0)
                         b58.number_of_history_values = 0
-                        station_blkts.append(b58)
+                        _append_blockette(station_blkts, b58, nslc)
                 if resp.instrument_sensitivity is not None:
                     sens = resp.instrument_sensitivity
                     b0 = Blockette058()
@@ -427,7 +527,7 @@ def inventory_to_seed_bytes(inv: Inventory) -> bytes:
                     b0.sensitivity_gain = float(sens.value)
                     b0.frequency = float(sens.frequency or 1.0)
                     b0.number_of_history_values = 0
-                    station_blkts.append(b0)
+                    _append_blockette(station_blkts, b0, nslc)
             stations_out.append(station_blkts)
 
     b30 = Blockette030()

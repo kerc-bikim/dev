@@ -8,9 +8,13 @@ from obspy import UTCDateTime
 from obspy.core.inventory import Channel, Inventory, Network, Station
 from obspy.core.inventory.response import (
     CoefficientsTypeResponseStage,
+    FIRResponseStage,
     InstrumentSensitivity,
     PolesZerosResponseStage,
+    PolynomialResponseStage,
     Response,
+    ResponseListElement,
+    ResponseListResponseStage,
 )
 from obspy.core.inventory.util import Equipment, Site
 
@@ -75,6 +79,105 @@ def fir_only_response() -> Response:
     )
     return Response(
         response_stages=[digital],
+        instrument_sensitivity=InstrumentSensitivity(
+            value=1.0,
+            frequency=1.0,
+            input_units="V",
+            output_units="COUNTS",
+        ),
+    )
+
+
+def polynomial_response() -> Response:
+    poly = PolynomialResponseStage(
+        stage_sequence_number=1,
+        stage_gain=1.0,
+        stage_gain_frequency=1.0,
+        input_units="M/S",
+        output_units="V",
+        frequency_lower_bound=0.01,
+        frequency_upper_bound=50.0,
+        approximation_lower_bound=0.01,
+        approximation_upper_bound=50.0,
+        maximum_error=0.0,
+        coefficients=[1.0, 0.0],
+    )
+    return Response(
+        response_stages=[poly],
+        instrument_sensitivity=InstrumentSensitivity(
+            value=1.0,
+            frequency=1.0,
+            input_units="M/S",
+            output_units="V",
+        ),
+    )
+
+
+def response_list_response() -> Response:
+    listed = ResponseListResponseStage(
+        stage_sequence_number=1,
+        stage_gain=1.0,
+        stage_gain_frequency=1.0,
+        input_units="M/S",
+        output_units="V",
+        response_list_elements=[
+            ResponseListElement(frequency=1.0, amplitude=1.0, phase=0.0)
+        ],
+    )
+    return Response(
+        response_stages=[listed],
+        instrument_sensitivity=InstrumentSensitivity(
+            value=1.0,
+            frequency=1.0,
+            input_units="M/S",
+            output_units="V",
+        ),
+    )
+
+
+def long_coeff_response(count: int = 500) -> Response:
+    digital = CoefficientsTypeResponseStage(
+        stage_sequence_number=1,
+        stage_gain=1.0,
+        stage_gain_frequency=1.0,
+        input_units="V",
+        output_units="COUNTS",
+        cf_transfer_function_type="DIGITAL",
+        numerator=[0.001] * count,
+        denominator=[],
+        decimation_input_sample_rate=100.0,
+        decimation_factor=1,
+        decimation_offset=0,
+        decimation_delay=0.0,
+        decimation_correction=0.0,
+    )
+    return Response(
+        response_stages=[digital],
+        instrument_sensitivity=InstrumentSensitivity(
+            value=1.0,
+            frequency=1.0,
+            input_units="V",
+            output_units="COUNTS",
+        ),
+    )
+
+
+def long_fir_response(count: int = 800) -> Response:
+    fir = FIRResponseStage(
+        stage_sequence_number=1,
+        stage_gain=1.0,
+        stage_gain_frequency=1.0,
+        input_units="V",
+        output_units="COUNTS",
+        coefficients=[0.001] * count,
+        decimation_input_sample_rate=100.0,
+        decimation_factor=1,
+        decimation_offset=0,
+        decimation_delay=0.0,
+        decimation_correction=0.0,
+    )
+    return Response(
+        response_stages=[fir],
         instrument_sensitivity=InstrumentSensitivity(
             value=1.0,
             frequency=1.0,

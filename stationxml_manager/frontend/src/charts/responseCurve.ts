@@ -195,18 +195,31 @@ export function renderResponseCurve(container: HTMLElement, data: CurveChartData
     .attr("stroke-dasharray", "3 3")
     .style("display", "none");
 
-  const setHover = (index: number | null, clientX = 0, clientY = 0) => {
+  const setHover = (
+    index: number | null,
+    clientX = 0,
+    clientY = 0,
+    nearestSeries: number | null = null
+  ) => {
     if (index == null) {
       hoverAmp.style("display", "none");
       hoverPhase.style("display", "none");
       tooltip.style("display", "none");
-      ampPaths.forEach((path) => path.attr("opacity", 1));
-      phasePaths.forEach((path) => path.attr("opacity", 1));
+      ampPaths.forEach((path) => path.attr("opacity", 1).attr("stroke-width", 1.6));
+      phasePaths.forEach((path) => path.attr("opacity", 1).attr("stroke-width", 1.6));
       return;
     }
     const freq = freqs[index];
     hoverAmp.attr("x1", x(freq)).attr("x2", x(freq)).style("display", null);
     hoverPhase.attr("x1", x(freq)).attr("x2", x(freq)).style("display", null);
+    ampPaths.forEach((path, i) => {
+      const active = nearestSeries == null || i === nearestSeries;
+      path.attr("opacity", active ? 1 : 0.22).attr("stroke-width", active ? 2.2 : 1.2);
+    });
+    phasePaths.forEach((path, i) => {
+      const active = nearestSeries == null || i === nearestSeries;
+      path.attr("opacity", active ? 1 : 0.22).attr("stroke-width", active ? 2.2 : 1.2);
+    });
     const lines = data.series.map((series) => {
       const amp = series.amplitude[index];
       const phase = series.phase_deg[index];
@@ -216,7 +229,8 @@ export function renderResponseCurve(container: HTMLElement, data: CurveChartData
       .style("display", "block")
       .style("left", `${Math.min(clientX + 12, width - 80)}px`)
       .style("top", `${Math.max(clientY - 12, 8)}px`)
-      .html(lines.join("<br/>"));
+      .style("white-space", "pre")
+      .text(lines.join("\n"));
   };
 
   const nearestIndex = (px: number) => {
@@ -233,29 +247,40 @@ export function renderResponseCurve(container: HTMLElement, data: CurveChartData
     return best;
   };
 
+  const nearestSeriesAt = (index: number, py: number, isAmp: boolean) => {
+    let best = 0;
+    let bestDist = Infinity;
+    data.series.forEach((series, si) => {
+      const yVal = isAmp
+        ? yAmp(Math.max(series.amplitude[index] || 0, 1e-18))
+        : yPhase(series.phase_deg[index]);
+      const dist = Math.abs(yVal - py);
+      if (dist < bestDist) {
+        best = si;
+        bestDist = dist;
+      }
+    });
+    return best;
+  };
+
   const bindHover = (
-    g: d3.Selection<SVGGElement, unknown, null, undefined>
+    g: d3.Selection<SVGGElement, unknown, null, undefined>,
+    isAmp: boolean
   ) => {
     g.append("rect")
       .attr("width", plotWidth)
       .attr("height", plotHeight)
       .attr("fill", "transparent")
       .on("mousemove", (event: MouseEvent) => {
-        const [px] = d3.pointer(event);
-        setHover(nearestIndex(px), event.offsetX, event.offsetY);
+        const [px, py] = d3.pointer(event);
+        const index = nearestIndex(px);
+        const [cx, cy] = d3.pointer(event, container);
+        setHover(index, cx, cy, nearestSeriesAt(index, py, isAmp));
       })
       .on("mouseleave", () => setHover(null));
   };
-  bindHover(gAmp);
-  bindHover(gPhase);
-
-  data.series.forEach((_series, index) => {
-    ampPaths[index].on("mouseenter", () => {
-      ampPaths.forEach((path, i) => path.attr("opacity", i === index ? 1 : 0.2));
-      phasePaths.forEach((path, i) => path.attr("opacity", i === index ? 1 : 0.2));
-    });
-    ampPaths[index].on("mouseleave", () => setHover(null));
-  });
+  bindHover(gAmp, true);
+  bindHover(gPhase, false);
 
   const legend = svg.append("g").attr("transform", `translate(${width - 220}, 16)`);
   data.series.forEach((series, index) => {

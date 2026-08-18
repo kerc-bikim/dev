@@ -126,7 +126,9 @@ def build_inventory(
                 channels=[],
             )
             for ch_row in sta_row.channels:
-                sta.channels.append(_channel_from_row(ch_row, sta_row, catalog))
+                sta.channels.append(
+                    _channel_from_row(ch_row, sta_row, catalog, net_row.code)
+                )
             net.stations.append(sta)
         obspy_nets.append(net)
     return Inventory(networks=obspy_nets, source="stationxml_manager")
@@ -136,6 +138,7 @@ def _channel_from_row(
     ch_row: ChannelRow,
     sta_row: StationRow,
     catalog: dict[str, dict[str, Any]],
+    network_code: str,
 ) -> Channel:
     az, dip = ch_row.azimuth, ch_row.dip
     if az is None or dip is None:
@@ -163,7 +166,7 @@ def _channel_from_row(
     )
     if ch_row.clock_drift is not None:
         try:
-            cha.clock_drift = float(ch_row.clock_drift)
+            cha.clock_drift_in_seconds_per_sample = float(ch_row.clock_drift)
         except (TypeError, ValueError, AttributeError):
             pass
     if ch_row.comment:
@@ -187,10 +190,16 @@ def _channel_from_row(
         ch_row.datalogger_remove_date,
     )
     if ch_row.response_xml:
+        nslc = (
+            f"{network_code}.{sta_row.code}.{ch_row.location or '--'}.{ch_row.channel}"
+        )
         try:
             cha.response = load_response(ch_row.response_xml)
         except Exception as exc:
-            raise AppError(f"저장된 응답 XML을 읽지 못했습니다: {exc}", 500) from exc
+            reason = f"{nslc}: 저장된 응답 XML을 읽지 못했습니다: {exc}"
+            raise AppError(
+                reason, 400, errors=[{"nslc": nslc, "reason": reason}]
+            ) from exc
     return cha
 
 

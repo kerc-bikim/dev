@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import hmac
+import json
 import os
 from io import BytesIO
 from pathlib import Path
 from typing import Annotated, Any
+from urllib.parse import quote
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -111,6 +113,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Export-Warnings"],
 )
 
 
@@ -445,11 +448,18 @@ def api_export_xml() -> Response:
 def api_export_dataless() -> Response:
     session = get_session()
     try:
-        data, _warnings = export_dataless_bytes(session)
+        data, warnings = export_dataless_bytes(session)
+        headers = {
+            "Content-Disposition": "attachment; filename=inventory.dataless",
+        }
+        if warnings:
+            headers["X-Export-Warnings"] = quote(
+                json.dumps(warnings, ensure_ascii=True)
+            )
         return Response(
             content=data,
             media_type="application/vnd.fdsn.seed",
-            headers={"Content-Disposition": "attachment; filename=inventory.dataless"},
+            headers=headers,
         )
     finally:
         session.close()

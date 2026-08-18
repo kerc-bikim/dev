@@ -148,7 +148,9 @@ def inventory_to_hierarchy(inv, session: Session) -> dict[str, Any]:
                 if cha.types:
                     types = ",".join(cha.types)
                 response_xml = dump_response_xml(cha)
-                clock_drift = getattr(cha, "clock_drift", None)
+                clock_drift = getattr(cha, "clock_drift_in_seconds_per_sample", None)
+                if clock_drift is None:
+                    clock_drift = getattr(cha, "clock_drift", None)
                 sta_entry["channels"].append(
                     {
                         "location": cha.location_code or "",

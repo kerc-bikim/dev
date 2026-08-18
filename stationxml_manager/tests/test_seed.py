@@ -20,8 +20,12 @@ from app.seed_io import (
 from tests.inventories import (
     import_inventory,
     inventory_with_pz,
+    long_coeff_response,
+    long_fir_response,
     make_channel,
     make_inventory,
+    polynomial_response,
+    response_list_response,
     stationxml_bytes,
 )
 from tests.test_core import _sample_hierarchy
@@ -219,6 +223,139 @@ def test_cli_seed_export_success(tmp_path, monkeypatch, session):
 
 
 def test_sample_obspy_dataless_imports(session):
+    sample = Path(
+        "/home/ubuntu/.local/lib/python3.12/site-packages/obspy/io/xseed/tests/data/dataless.seed.BW_FURT"
+    )
+    if not sample.exists():
+        pytest.skip("ObsPy 샘플 dataless 없음")
+    hierarchy = read_seed(sample, session)
+    import_hierarchy(session, hierarchy, replace_all=False, source="seed", actor=None)
+    rows = list_channels(session)
+    assert rows
+    assert any(ch.response_xml for ch in rows)
+
+
+def test_classify_full_seed_after_64_records():
+    dataless = inventory_to_seed_bytes(inventory_with_pz(site_name="AAA"))
+    rec_len = 4096
+    pad = (-len(dataless)) % rec_len
+    filler = b"".join(
+        f"{index:06d}".encode("ascii") + b"S " + b"\x00" * (rec_len - 8)
+        for index in range(1, 71)
+    )
+    data_rec = bytearray(rec_len)
+    data_rec[:6] = b"000071"
+    data_rec[6:7] = b"D"
+    blob = dataless + (b"\x00" * pad) + filler + bytes(data_rec)
+    assert classify_seed(blob) == "full"
+
+
+def test_classify_256_byte_miniseed():
+    rec = bytearray(256)
+    rec[:6] = b"000001"
+    rec[6:7] = b"D"
+    assert classify_seed(bytes(rec)) == "miniseed"
+
+
+def test_polynomial_rejected_for_seed(session):
+    import_inventory(
+        session, make_inventory([make_channel("HHZ", 100.0, polynomial_response())])
+    )
+    with pytest.raises(AppError) as exc:
+        export_dataless_bytes(session)
+    assert exc.value.status_code == 400
+    assert any("Polynomial" in e["reason"] for e in exc.value.errors)
+    assert all(e["nslc"] for e in exc.value.errors)
+
+
+def test_response_list_rejected_for_seed(session):
+    import_inventory(
+        session, make_inventory([make_channel("HHN", 100.0, response_list_response())])
+    )
+    with pytest.raises(AppError) as exc:
+        export_dataless_bytes(session)
+    assert exc.value.status_code == 400
+    assert any("ResponseList" in e["reason"] for e in exc.value.errors)
+
+
+def test_short_channel_code_rejected_for_seed(session):
+    import_inventory(session, inventory_with_pz(channel="HZ"))
+    errors = collect_dataless_errors(session)
+    assert any("채널 코드는 3자" in e["reason"] for e in errors)
+
+
+def test_long_coefficients_rejected_for_seed(session):
+    import_inventory(
+        session, make_inventory([make_channel("HHZ", 100.0, long_coeff_response())])
+    )
+    errors = collect_dataless_errors(session)
+    assert any("너무 깁니다" in e["reason"] for e in errors)
+    with pytest.raises(AppError) as exc:
+        export_dataless_bytes(session)
+    assert exc.value.status_code == 400
+
+
+def test_long_fir_rejected_for_seed(session):
+    import_inventory(
+        session, make_inventory([make_channel("HHN", 100.0, long_fir_response())])
+    )
+    errors = collect_dataless_errors(session)
+    assert any("너무 깁니다" in e["reason"] for e in errors)
+
+
+def test_broken_response_xml_returns_400_with_nslc(api_client):
+    client, SessionLocal = api_client
+    session = SessionLocal()
+    try:
+        import_inventory(session, inventory_with_pz(site_name="AAA"))
+        ch = list_channels(session)[0]
+        ch.response_xml = "<not-valid-stationxml/>"
+        session.commit()
+        nslc = f"{ch.station.network.code}.{ch.station.code}.{ch.location or '--'}.{ch.channel}"
+    finally:
+        session.close()
+
+    dataless = client.get("/api/export/dataless")
+    assert dataless.status_code == 400
+    body = dataless.json()
+    assert body["errors"]
+    assert body["errors"][0]["nslc"] == nslc
+    assert "읽지 못했습니다" in body["errors"][0]["reason"]
+
+    xml = client.get("/api/export/stationxml")
+    assert xml.status_code == 400
+    xml_body = xml.json()
+    assert xml_body["errors"]
+    assert xml_body["errors"][0]["nslc"] == nslc
+
+
+def test_api_dataless_export_warning_header(api_client):
+    import json
+    from urllib.parse import unquote
+
+    client, SessionLocal = api_client
+    session = SessionLocal()
+    try:
+        import_inventory(session, inventory_with_pz(site_name="첫번째"))
+    finally:
+        session.close()
+    ok = client.get("/api/export/dataless")
+    assert ok.status_code == 200
+    raw = ok.headers.get("x-export-warnings")
+    assert raw
+    warnings = json.loads(unquote(raw))
+    assert any("한글 사이트명" in w for w in warnings)
+
+
+def test_clock_drift_roundtrip(session):
+    inv = inventory_with_pz(site_name="AAA")
+    inv[0][0][0].clock_drift_in_seconds_per_sample = 1.2e-4
+    import_inventory(session, inv)
+    ch = list_channels(session)[0]
+    assert ch.clock_drift == pytest.approx(1.2e-4)
+    xml = export_stationxml_bytes(session)
+    back = read_inventory(BytesIO(xml), format="STATIONXML")
+    assert back[0][0][0].clock_drift_in_seconds_per_sample == pytest.approx(1.2e-4)
     sample = Path(
         "/home/ubuntu/.local/lib/python3.12/site-packages/obspy/io/xseed/tests/data/dataless.seed.BW_FURT"
     )

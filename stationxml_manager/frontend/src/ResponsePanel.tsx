@@ -39,6 +39,7 @@ export function ResponsePanel({
     if (!selected && overlayIds.length === 0) {
       setCurve(null);
       setErrors([]);
+      onError(null);
       return;
     }
     try {
@@ -54,6 +55,7 @@ export function ResponsePanel({
           setErrors([
             "이 채널에는 계측기 응답이 없습니다. StationXML/SEED를 가져오거나 NRL을 적용하세요.",
           ]);
+          onError(null);
           return;
         }
         const data = await apiGet<SingleCurve>(

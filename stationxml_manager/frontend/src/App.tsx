@@ -212,7 +212,7 @@ function ChannelsTab({
             {rows.map((r) => (
               <tr
                 key={r.id}
-                className={selectedId === r.id ? "selected" : ""}
+                className={`selectable${selectedId === r.id ? " selected" : ""}`}
                 onClick={() => setSelectedId(r.id)}
               >
                 <td className="check-col" onClick={(e) => e.stopPropagation()}>
@@ -1051,6 +1051,7 @@ function IoTab({ actor, onError }: { actor: string; onError: (e: string | null) 
   const [exportFormat, setExportFormat] = useState<"stationxml" | "dataless">("stationxml");
   const [msg, setMsg] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [exportWarnings, setExportWarnings] = useState<string[]>([]);
   return (
     <>
       <div className="note">
@@ -1093,6 +1094,7 @@ function IoTab({ actor, onError }: { actor: string; onError: (e: string | null) 
               const result = await uploadFile(file, replaceAll, actor);
               setMsg(`가져오기 완료: 추가 ${result.created}, 수정 ${result.updated}`);
               setWarnings(result.warnings || []);
+              setExportWarnings([]);
               onError(null);
             } catch (err) {
               onError(err instanceof Error ? err.message : String(err));
@@ -1102,6 +1104,11 @@ function IoTab({ actor, onError }: { actor: string; onError: (e: string | null) 
       </div>
       {msg && <p className="ok">{msg}</p>}
       {warnings.map((w) => (
+        <p key={w} className="warn">
+          {w}
+        </p>
+      ))}
+      {exportWarnings.map((w) => (
         <p key={w} className="warn">
           {w}
         </p>
@@ -1130,9 +1137,12 @@ function IoTab({ actor, onError }: { actor: string; onError: (e: string | null) 
             const path =
               exportFormat === "dataless" ? "/api/export/dataless" : "/api/export/stationxml";
             const name = exportFormat === "dataless" ? "inventory.dataless" : "inventory.xml";
-            void downloadFile(path, name).catch((e) =>
-              onError(e instanceof Error ? e.message : String(e))
-            );
+            void downloadFile(path, name)
+              .then((items) => {
+                setExportWarnings(items);
+                onError(null);
+              })
+              .catch((e) => onError(e instanceof Error ? e.message : String(e)));
           }}
         >
           다운로드
@@ -1140,9 +1150,12 @@ function IoTab({ actor, onError }: { actor: string; onError: (e: string | null) 
         <button
           className="secondary"
           onClick={() =>
-            void downloadFile("/api/export/xlsx", "inventory.xlsx").catch((e) =>
-              onError(e instanceof Error ? e.message : String(e))
-            )
+            void downloadFile("/api/export/xlsx", "inventory.xlsx")
+              .then((items) => {
+                setExportWarnings(items);
+                onError(null);
+              })
+              .catch((e) => onError(e instanceof Error ? e.message : String(e)))
           }
         >
           엑셀 다운로드
@@ -1150,10 +1163,12 @@ function IoTab({ actor, onError }: { actor: string; onError: (e: string | null) 
         <button
           className="secondary"
           onClick={() =>
-            void downloadFile(
-              "/api/template.xlsx",
-              "stationxml_template.xlsx"
-            ).catch((e) => onError(e instanceof Error ? e.message : String(e)))
+            void downloadFile("/api/template.xlsx", "stationxml_template.xlsx")
+              .then((items) => {
+                setExportWarnings(items);
+                onError(null);
+              })
+              .catch((e) => onError(e instanceof Error ? e.message : String(e)))
           }
         >
           엑셀 템플릿
@@ -1221,7 +1236,7 @@ function HistoryTab({ onError }: { onError: (e: string | null) => void }) {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} onClick={() => setDetail(r)} style={{ cursor: "pointer" }}>
+              <tr key={r.id} className="selectable" onClick={() => setDetail(r)}>
                 <td>{r.created_at}</td>
                 <td>{r.action}</td>
                 <td>{r.entity_type}</td>

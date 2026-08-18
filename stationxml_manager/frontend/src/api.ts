@@ -209,9 +209,20 @@ export async function uploadFile(
   return res.json();
 }
 
-export async function downloadFile(path: string, filename: string): Promise<void> {
+function parseExportWarnings(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(decodeURIComponent(raw));
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function downloadFile(path: string, filename: string): Promise<string[]> {
   const res = await fetch(path, { headers: apiKeyHeader() });
   if (!res.ok) throw new Error(await parseError(res));
+  const warnings = parseExportWarnings(res.headers.get("X-Export-Warnings"));
   const url = URL.createObjectURL(await res.blob());
   const link = document.createElement("a");
   link.href = url;
@@ -219,5 +230,6 @@ export async function downloadFile(path: string, filename: string): Promise<void
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return warnings;
 }

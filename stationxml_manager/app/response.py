@@ -86,6 +86,10 @@ def eval_response_curve(
             f"{nslc}: 응답 곡선을 계산하지 못했습니다: {exc}"
         ) from exc
     units = _response_units(resp)
+    amplitude = [float(abs(x)) for x in values]
+    phase_deg = [float(np.angle(x, deg=True)) for x in values]
+    if not all(math.isfinite(x) for x in amplitude + phase_deg):
+        raise ValidationError(f"{nslc}: 응답 곡선에 유한하지 않은 값이 있습니다")
     return {
         "channel_id": ch.id,
         "nslc": nslc,
@@ -95,8 +99,8 @@ def eval_response_curve(
         "input_units": units[0],
         "output_units": units[1],
         "frequencies": [float(x) for x in frequencies],
-        "amplitude": [float(abs(x)) for x in values],
-        "phase_deg": [float(np.angle(x, deg=True)) for x in values],
+        "amplitude": amplitude,
+        "phase_deg": phase_deg,
         "response_source": ch.response_source,
         "max_freq": used_max,
         "min_freq": float(frequencies[0]),
@@ -401,6 +405,14 @@ def update_pz_stage(
         sample_rate=ch.sample_rate,
     )
     dummy.response = resp
+    original_xml = ch.response_xml
+    original_source = ch.response_source
+
+    def _restore_response() -> None:
+        ch.response_xml = original_xml
+        ch.response_source = original_source
+        session.flush()
+
     try:
         xml = dump_response_xml(dummy)
         if not xml:
@@ -409,14 +421,14 @@ def update_pz_stage(
         session.flush()
         eval_response_curve(ch, output="VEL", npts=50)
     except ValidationError as exc:
-        session.rollback()
-        if "계산하지 못했습니다" in exc.message:
+        _restore_response()
+        if "계산하지 못했습니다" in exc.message or "유한하지 않은" in exc.message:
             raise ValidationError(
                 f"{nslc}: 수정한 응답을 계산하지 못해 저장하지 않았습니다: {exc.message}"
             ) from exc
         raise
     except Exception as exc:
-        session.rollback()
+        _restore_response()
         LOG.error("%s: 수정한 응답을 계산하지 못했습니다: %s", nslc, exc)
         raise ValidationError(
             f"{nslc}: 수정한 응답을 계산하지 못해 저장하지 않았습니다: {exc}"

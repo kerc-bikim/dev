@@ -97,7 +97,7 @@ th, td { border-bottom: 1px solid var(--border); padding: 7px 8px; text-align: l
 th { background: var(--panel); position: sticky; top: 0; }
 tr:hover td { background: var(--panel-2); }
 tr.selected td { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--accent); }
-tr { cursor: pointer; }
+tr.selectable { cursor: pointer; }
 .check-col { width: 52px; text-align: center; }
 .response-panel {
   margin-top: 16px;
@@ -116,7 +116,7 @@ tr { cursor: pointer; }
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 12px;
-  white-space: nowrap;
+  white-space: pre;
 }
 .pz-editor {
   margin-top: 12px;

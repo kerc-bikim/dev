@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pytest
 
-from app.crud import list_channels, list_history
+from app.crud import import_hierarchy, list_channels, list_history
 from app.errors import ValidationError
 from app.response import (
     eval_response_curve,
@@ -15,6 +16,7 @@ from app.response import (
     unpaired_conjugates,
     update_pz_stage,
 )
+from obspy.core.inventory.response import Response
 from tests.inventories import (
     import_inventory,
     inventory_with_fir,
@@ -24,7 +26,6 @@ from tests.inventories import (
     pz_response,
 )
 from tests.test_core import _sample_hierarchy
-from app.crud import import_hierarchy
 
 
 def test_png_filename_convention():
@@ -249,3 +250,45 @@ def test_overlay_uses_shared_grid(session):
     assert len(result["series"]) == 2
     assert result["errors"] == []
     assert result["series"][0]["amplitude"]
+
+
+def test_curve_rejects_nonfinite(session, monkeypatch):
+    import_inventory(session, inventory_with_pz())
+    ch = list_channels(session)[0]
+    real = Response.get_evalresp_response_for_frequencies
+
+    def inf_values(self, frequencies, output="VEL"):
+        _ = real(self, frequencies, output=output)
+        return np.full(len(frequencies), np.inf + 0j)
+
+    monkeypatch.setattr(Response, "get_evalresp_response_for_frequencies", inf_values)
+    with pytest.raises(ValidationError, match="유한하지 않은"):
+        eval_response_curve(ch)
+
+
+def test_overlay_nonfinite_is_partial_error(session, monkeypatch):
+    import_inventory(
+        session,
+        make_inventory(
+            [
+                make_channel("HHZ", 100.0, pz_response()),
+                make_channel("HHE", 50.0, pz_response(), start="2020-01-03"),
+            ]
+        ),
+    )
+    ids = [ch.id for ch in list_channels(session)]
+    real = Response.get_evalresp_response_for_frequencies
+    calls = {"n": 0}
+
+    def mixed(self, frequencies, output="VEL"):
+        values = real(self, frequencies, output=output)
+        calls["n"] += 1
+        if calls["n"] >= 2:
+            return np.full(len(frequencies), np.inf + 0j)
+        return values
+
+    monkeypatch.setattr(Response, "get_evalresp_response_for_frequencies", mixed)
+    result = overlay_response_curves(session, ids)
+    assert len(result["series"]) == 1
+    assert len(result["errors"]) == 1
+    assert "유한하지 않은" in result["errors"][0]["reason"]
