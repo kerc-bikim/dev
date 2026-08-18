@@ -80,13 +80,15 @@ def classify_seed(data: bytes) -> str:
     types: set[str] = set()
     rec_len = _record_length(data)
     for offset in range(0, max(0, len(data) - 6), rec_len):
-        if not _looks_seq(data[offset : offset + 6]):
-            continue
         marker = data[offset + 6 : offset + 7]
-        if marker.isalpha():
-            kind = marker.decode("ascii", errors="ignore")
-            if kind in SEED_MARKERS:
-                types.add(kind)
+        if not marker.isalpha():
+            continue
+        kind = marker.decode("ascii", errors="ignore")
+        if kind not in SEED_MARKERS:
+            continue
+        # MiniSEED 논리 레코드는 시퀀스가 비어 있을 수 있다.
+        if _looks_seq(data[offset : offset + 6]) or kind in DATA_TYPES:
+            types.add(kind)
     has_header = bool(types & HEADER_TYPES)
     has_data = bool(types & DATA_TYPES)
     if has_data and not has_header:

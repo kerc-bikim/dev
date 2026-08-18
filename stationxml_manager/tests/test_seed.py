@@ -31,15 +31,18 @@ from tests.inventories import (
 from tests.test_core import _sample_hierarchy
 
 
-def _miniseed_bytes() -> bytes:
-    rec = bytearray(4096)
+def _miniseed_bytes(rec_len: int = 4096) -> bytes:
+    rec = bytearray(rec_len)
+    rec[:6] = b"000001"
     rec[6:7] = b"D"
     return bytes(rec)
 
 
 def _full_seed_bytes(dataless: bytes) -> bytes:
-    pad = (-len(dataless)) % 4096
-    rec = bytearray(4096)
+    rec_len = 4096
+    pad = (-len(dataless)) % rec_len
+    rec = bytearray(rec_len)
+    rec[:6] = b"000099"
     rec[6:7] = b"D"
     return dataless + (b"\x00" * pad) + bytes(rec)
 
@@ -251,10 +254,7 @@ def test_classify_full_seed_after_64_records():
 
 
 def test_classify_256_byte_miniseed():
-    rec = bytearray(256)
-    rec[:6] = b"000001"
-    rec[6:7] = b"D"
-    assert classify_seed(bytes(rec)) == "miniseed"
+    assert classify_seed(_miniseed_bytes(256)) == "miniseed"
 
 
 def test_polynomial_rejected_for_seed(session):
