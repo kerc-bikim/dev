@@ -7,9 +7,7 @@ from obspy import UTCDateTime
 from obspy.core.inventory import Channel, Inventory, Network, Station
 from obspy.core.inventory.response import InstrumentSensitivity, Response
 from obspy.core.inventory.util import Equipment, Site
-from sqlalchemy.orm import Session, sessionmaker
-
-from app.catalog import find_by_manufacturer_model, seed_catalog
+from app.catalog import find_by_manufacturer_model, suggest_custom_code
 from app.columns import resolve_header
 from app.crud import (
     create_catalog_item,
@@ -21,22 +19,16 @@ from app.crud import (
     update_channel,
     update_station,
 )
-from app.db import Base, make_engine
+from app.db import make_engine
 from app.errors import ValidationError
 from app.excel_io import read_excel, write_excel, write_template
-from app.validation import infer_az_dip, validate_lat_lon, validate_sample_rate, validate_time_order
+from app.validation import (
+    infer_az_dip,
+    validate_lat_lon,
+    validate_sample_rate,
+    validate_time_order,
+)
 from app.xml_io import read_stationxml
-
-
-@pytest.fixture
-def session(tmp_path) -> Session:
-    engine = make_engine(f"sqlite:///{tmp_path}/test.db")
-    Base.metadata.create_all(engine)
-    SessionLocal = sessionmaker(bind=engine, autoflush=False)
-    s = SessionLocal()
-    seed_catalog(s)
-    yield s
-    s.close()
 
 
 def test_header_aliases():
@@ -54,7 +46,9 @@ def test_validation_helpers():
         validate_sample_rate(0)
     validate_time_order(UTCDateTime(2020, 1, 1), UTCDateTime(2021, 1, 1), "시작", "끝")
     with pytest.raises(ValidationError):
-        validate_time_order(UTCDateTime(2021, 1, 1), UTCDateTime(2020, 1, 1), "시작", "끝")
+        validate_time_order(
+            UTCDateTime(2021, 1, 1), UTCDateTime(2020, 1, 1), "시작", "끝"
+        )
     assert infer_az_dip("HHZ") == (0.0, -90.0)
     assert infer_az_dip("HHE") == (90.0, 0.0)
 
@@ -122,7 +116,9 @@ def _sample_hierarchy():
 
 
 def test_import_and_station_edit(session):
-    result = import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor="테스터")
+    result = import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor="테스터"
+    )
     assert result["created"] == 1
     ch = list_channels(session)[0]
     assert ch.station.site_name == "첫번째"
@@ -146,7 +142,9 @@ def test_sample_rate_mismatch(session):
 
 
 def test_catalog_delete_in_use(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     from app.models import EquipmentCatalog
 
     row = session.query(EquipmentCatalog).filter_by(code="Guralp_CMG-3T").one()
@@ -175,7 +173,18 @@ def test_conflicting_site_name_excel(session, tmp_path):
     wb = Workbook()
     ws = wb.active
     ws.title = "channels"
-    ws.append(["네트워크", "관측소", "채널", "위도", "경도", "시작시간", "샘플링레이트", "관측소명"])
+    ws.append(
+        [
+            "네트워크",
+            "관측소",
+            "채널",
+            "위도",
+            "경도",
+            "시작시간",
+            "샘플링레이트",
+            "관측소명",
+        ]
+    )
     ws.append(["XX", "AAA", "HHZ", 37.5, 127.0, "2020-01-01", 100, "A"])
     ws.append(["XX", "AAA", "HHN", 37.5, 127.0, "2020-01-01", 100, "B"])
     wb.save(path)
@@ -189,7 +198,18 @@ def test_unknown_excel_header(tmp_path):
     path = tmp_path / "bad.xlsx"
     wb = Workbook()
     ws = wb.active
-    ws.append(["네트워크", "관측소", "채널", "위도", "경도", "시작시간", "샘플링레이트", "담당자"])
+    ws.append(
+        [
+            "네트워크",
+            "관측소",
+            "채널",
+            "위도",
+            "경도",
+            "시작시간",
+            "샘플링레이트",
+            "담당자",
+        ]
+    )
     ws.append(["XX", "AAA", "HHZ", 37.5, 127.0, "2020-01-01", 100, "홍길동"])
     wb.save(path)
     with pytest.raises(ValidationError, match="알 수 없는 엑셀 열"):
@@ -221,7 +241,9 @@ def test_xml_response_roundtrip(session):
     buf.seek(0)
     hierarchy = read_stationxml(buf, session)
     import_hierarchy(session, hierarchy, replace_all=True, source="xml", actor=None)
-    update_station(session, list_channels(session)[0].station.id, {"site_name": "변경"}, None)
+    update_station(
+        session, list_channels(session)[0].station.id, {"site_name": "변경"}, None
+    )
     exported = export_stationxml_bytes(session)
     from obspy import read_inventory
 
@@ -232,7 +254,9 @@ def test_xml_response_roundtrip(session):
 
 
 def test_depth_zero_channel_update(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     ch = list_channels(session)[0]
     updated = update_channel(
         session,
@@ -251,7 +275,9 @@ def test_depth_zero_channel_update(session):
 
 
 def test_excel_time_normalization_does_not_duplicate(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     excel_hierarchy = read_excel(BytesIO(write_excel(session)))
     import_hierarchy(
         session,
@@ -290,7 +316,9 @@ def test_replace_all_excel_keeps_matching_response(session):
 
 
 def test_replace_all_rejects_empty_inventory(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     with pytest.raises(ValidationError, match="가져올 채널이 없습니다"):
         import_hierarchy(
             session,
@@ -304,7 +332,9 @@ def test_replace_all_rejects_empty_inventory(session):
 
 
 def test_template_does_not_include_inventory_rows(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     from openpyxl import load_workbook
 
     workbook = load_workbook(BytesIO(write_template(session)))
@@ -313,7 +343,9 @@ def test_template_does_not_include_inventory_rows(session):
 
 
 def test_station_can_move_to_another_network(session):
-    import_hierarchy(session, _sample_hierarchy(), replace_all=False, source="ui", actor=None)
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
     from app.models import Network
 
     target = Network(code="YY")
@@ -339,11 +371,7 @@ def test_catalog_import_does_not_erase_existing_validation_fields(session):
     from app.models import EquipmentCatalog
 
     sensor = session.query(EquipmentCatalog).filter_by(code="Guralp_CMG-3T").one()
-    logger = (
-        session.query(EquipmentCatalog)
-        .filter_by(code="REFTEK_RT130_100sps")
-        .one()
-    )
+    logger = session.query(EquipmentCatalog).filter_by(code="REFTEK_RT130_100sps").one()
     original_sensor_keys = sensor.nrl_keys
     original_rate = logger.sample_rate
     hierarchy = _sample_hierarchy()
@@ -366,9 +394,7 @@ def test_catalog_import_does_not_erase_existing_validation_fields(session):
             }
         ],
     }
-    import_hierarchy(
-        session, hierarchy, replace_all=False, source="excel", actor=None
-    )
+    import_hierarchy(session, hierarchy, replace_all=False, source="excel", actor=None)
     session.refresh(sensor)
     session.refresh(logger)
     assert sensor.nrl_keys == original_sensor_keys
@@ -377,18 +403,14 @@ def test_catalog_import_does_not_erase_existing_validation_fields(session):
 
 def test_legacy_start_time_matches_canonical_import(session):
     hierarchy = _sample_hierarchy()
-    hierarchy["networks"]["XX"]["stations"]["AAA"]["channels"][0][
-        "start_time"
-    ] = "2020-01-01T00:00:00"
-    import_hierarchy(
-        session, hierarchy, replace_all=False, source="ui", actor=None
+    hierarchy["networks"]["XX"]["stations"]["AAA"]["channels"][0]["start_time"] = (
+        "2020-01-01T00:00:00"
     )
+    import_hierarchy(session, hierarchy, replace_all=False, source="ui", actor=None)
     assert len(list_channels(session)) == 1
 
     canonical = _sample_hierarchy()
-    import_hierarchy(
-        session, canonical, replace_all=False, source="excel", actor=None
-    )
+    import_hierarchy(session, canonical, replace_all=False, source="excel", actor=None)
     rows = list_channels(session)
     assert len(rows) == 1
     assert rows[0].start_time == "2020-01-01T00:00:00.000000Z"
@@ -420,11 +442,7 @@ def test_used_datalogger_sample_rate_cannot_be_cleared(session):
     )
     from app.models import EquipmentCatalog
 
-    logger = (
-        session.query(EquipmentCatalog)
-        .filter_by(code="REFTEK_RT130_100sps")
-        .one()
-    )
+    logger = session.query(EquipmentCatalog).filter_by(code="REFTEK_RT130_100sps").one()
     with pytest.raises(ValidationError, match="비울 수 없습니다"):
         update_catalog_item(session, logger.id, {"sample_rate": None}, None)
 
@@ -450,7 +468,9 @@ def _inventory_with_response() -> Inventory:
         sample_rate=100.0,
         start_date=UTCDateTime(2020, 1, 1),
         sensor=Equipment(manufacturer="Guralp", model="CMG-3T", serial_number="S1"),
-        data_logger=Equipment(manufacturer="REF TEK", model="RT 130", serial_number="D1"),
+        data_logger=Equipment(
+            manufacturer="REF TEK", model="RT 130", serial_number="D1"
+        ),
     )
     cha.response = resp
     sta = Station(
@@ -464,3 +484,163 @@ def _inventory_with_response() -> Inventory:
     )
     net = Network(code="XX", stations=[sta], description="테스트망")
     return Inventory(networks=[net], source="test")
+
+
+def test_custom_catalog_auto_code_and_reuse(session):
+    first = create_catalog_item(
+        session,
+        {"kind": "sensor", "manufacturer": "Acme", "model": "Geophone"},
+        "테스터",
+    )
+    second = create_catalog_item(
+        session,
+        {"kind": "sensor", "manufacturer": "acme", "model": "geophone"},
+        "테스터",
+    )
+    assert first.code == "CUSTOM_Acme_Geophone"
+    assert first.origin == "custom"
+    assert first.id == second.id
+
+
+def test_custom_datalogger_requires_sample_rate(session):
+    with pytest.raises(ValidationError, match="샘플링레이트는 필수"):
+        create_catalog_item(
+            session,
+            {"kind": "datalogger", "manufacturer": "Acme", "model": "Logger"},
+            None,
+        )
+
+
+def test_suggest_custom_code_collision(session):
+    create_catalog_item(
+        session,
+        {
+            "kind": "sensor",
+            "code": "CUSTOM_Acme_Geo",
+            "manufacturer": "Other",
+            "model": "X",
+        },
+        None,
+    )
+    assert suggest_custom_code(session, "sensor", "Acme", "Geo") == "CUSTOM_Acme_Geo_2"
+
+
+def test_xml_unmatched_equipment_is_promoted(session):
+    cha = Channel(
+        code="HHZ",
+        location_code="",
+        latitude=37.5,
+        longitude=127.1,
+        elevation=80.0,
+        depth=0.0,
+        azimuth=0.0,
+        dip=-90.0,
+        sample_rate=100.0,
+        start_date=UTCDateTime(2020, 1, 1),
+        sensor=Equipment(manufacturer="Acme", model="Geophone", serial_number="S9"),
+        data_logger=Equipment(
+            manufacturer="FieldCo", model="Datalog", serial_number="D9"
+        ),
+    )
+    sta = Station(
+        code="BBB",
+        latitude=37.5,
+        longitude=127.1,
+        elevation=80.0,
+        creation_date=UTCDateTime(2020, 1, 1),
+        site=Site(name="현장"),
+        channels=[cha],
+    )
+    inv = Inventory(networks=[Network(code="XX", stations=[sta])], source="test")
+    buf = BytesIO()
+    inv.write(buf, format="STATIONXML")
+    buf.seek(0)
+    hierarchy = read_stationxml(buf, session)
+    assert any(
+        "사용자 정의 항목 CUSTOM_Acme_Geophone" in w for w in hierarchy["warnings"]
+    )
+    import_hierarchy(session, hierarchy, replace_all=False, source="xml", actor=None)
+    ch = list_channels(session)[0]
+    assert ch.sensor_id == "CUSTOM_Acme_Geophone"
+    assert ch.datalogger_id == "CUSTOM_FieldCo_Datalog_100sps"
+    from app.models import EquipmentCatalog
+
+    sensor = (
+        session.query(EquipmentCatalog).filter_by(code="CUSTOM_Acme_Geophone").one()
+    )
+    assert sensor.origin == "custom"
+    exported = export_stationxml_bytes(session)
+    from obspy import read_inventory
+
+    back = read_inventory(BytesIO(exported), format="STATIONXML")
+    assert back[0][0][0].sensor.manufacturer == "Acme"
+    assert back[0][0][0].data_logger.model == "Datalog"
+
+
+def test_update_nrl_keys_does_not_change_response(session):
+    inv = _inventory_with_response()
+    buf = BytesIO()
+    inv.write(buf, format="STATIONXML")
+    buf.seek(0)
+    import_hierarchy(
+        session,
+        read_stationxml(buf, session),
+        replace_all=False,
+        source="xml",
+        actor=None,
+    )
+    ch = list_channels(session)[0]
+    original = ch.response_xml
+    from app.models import EquipmentCatalog
+
+    sensor = session.query(EquipmentCatalog).filter_by(code="Guralp_CMG-3T").one()
+    update_catalog_item(session, sensor.id, {"nrl_keys": "Guralp|Changed"}, None)
+    session.refresh(ch)
+    assert ch.response_xml == original
+
+
+def test_excel_catalog_includes_origin(session):
+    import_hierarchy(
+        session, _sample_hierarchy(), replace_all=False, source="ui", actor=None
+    )
+    create_catalog_item(
+        session,
+        {
+            "kind": "sensor",
+            "manufacturer": "Acme",
+            "model": "Geo",
+            "description": "현장 센서",
+        },
+        None,
+    )
+    hierarchy = read_excel(BytesIO(write_excel(session)))
+    custom = next(
+        item
+        for item in hierarchy["catalog"]["sensors"]
+        if item["code"] == "CUSTOM_Acme_Geo"
+    )
+    assert custom["origin"] == "custom"
+    assert custom["description"] == "현장 센서"
+
+
+def test_migrate_adds_catalog_origin(tmp_path):
+    from sqlalchemy import text
+
+    from app.db import migrate_schema
+
+    engine = make_engine(f"sqlite:///{tmp_path}/old.db")
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE equipment_catalog ("
+                "id INTEGER PRIMARY KEY, kind VARCHAR(16), code VARCHAR(64), "
+                "manufacturer VARCHAR(128), model VARCHAR(128), "
+                "sample_rate FLOAT, nrl_keys VARCHAR(512))"
+            )
+        )
+    migrate_schema(engine)
+    from sqlalchemy import inspect
+
+    columns = {col["name"] for col in inspect(engine).get_columns("equipment_catalog")}
+    assert "origin" in columns
+    assert "description" in columns

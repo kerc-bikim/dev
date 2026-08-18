@@ -69,6 +69,8 @@ export interface CatalogRow {
   model: string;
   sample_rate?: number | null;
   nrl_keys?: string | null;
+  origin?: "seed" | "custom" | string;
+  description?: string | null;
 }
 
 export interface HistoryRow {
@@ -85,10 +87,69 @@ export interface HistoryRow {
   summary?: string | null;
 }
 
+export interface ResponseSeries {
+  channel_id: number;
+  nslc: string;
+  start_time?: string | null;
+  sample_rate?: number;
+  amplitude: number[];
+  phase_deg: number[];
+  response_source?: string;
+}
+
+export interface OverlayCurve {
+  output: string;
+  min_freq: number;
+  max_freq: number;
+  npts: number;
+  frequencies: number[];
+  series: ResponseSeries[];
+  errors: { channel_id: number; nslc: string; reason: string }[];
+}
+
+export interface SingleCurve extends ResponseSeries {
+  output: string;
+  input_units?: string | null;
+  output_units?: string | null;
+  frequencies: number[];
+}
+
+export interface ResponseStage {
+  stage_sequence_number: number;
+  type: string;
+  editable: boolean;
+  input_units?: string | null;
+  output_units?: string | null;
+  pz_transfer_function_type?: string;
+  normalization_frequency?: number;
+  normalization_factor?: number;
+  stage_gain?: number;
+  stage_gain_frequency?: number;
+  poles?: { real: number; imag: number }[];
+  zeros?: { real: number; imag: number }[];
+}
+
+export interface ResponseStages {
+  channel_id: number;
+  nslc: string;
+  response_source?: string;
+  stages: ResponseStage[];
+  warnings?: string[];
+}
+
 async function parseError(res: Response): Promise<string> {
   try {
     const data = await res.json();
-    if (typeof data.detail === "string") return data.detail;
+    if (typeof data.detail === "string") {
+      if (Array.isArray(data.errors) && data.errors.length) {
+        const extra = data.errors
+          .map((item: { reason?: string }) => item.reason)
+          .filter(Boolean)
+          .join("\n");
+        return extra ? `${data.detail}\n${extra}` : data.detail;
+      }
+      return data.detail;
+    }
     return JSON.stringify(data.detail);
   } catch {
     return res.statusText;

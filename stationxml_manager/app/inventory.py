@@ -163,8 +163,8 @@ def _channel_from_row(
     )
     if ch_row.clock_drift is not None:
         try:
-            cha.clock_drift = ch_row.clock_drift
-        except Exception:
+            cha.clock_drift = float(ch_row.clock_drift)
+        except (TypeError, ValueError, AttributeError):
             pass
     if ch_row.comment:
         cha.comments = [Comment(value=ch_row.comment)]

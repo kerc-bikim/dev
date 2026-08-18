@@ -2,25 +2,9 @@ from __future__ import annotations
 
 import importlib
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import sessionmaker
-
 from app.catalog import seed_catalog
 from app.crud import import_hierarchy
-from app.db import Base, make_engine
 from tests.test_core import _sample_hierarchy
-
-
-@pytest.fixture
-def api_client(tmp_path, monkeypatch):
-    engine = make_engine(f"sqlite:///{tmp_path}/api.db")
-    Base.metadata.create_all(engine)
-    SessionLocal = sessionmaker(bind=engine, autoflush=False)
-    main_module = importlib.import_module("app.main")
-    monkeypatch.setattr(main_module, "get_session", SessionLocal)
-    with TestClient(main_module.app) as client:
-        yield client, SessionLocal
 
 
 def test_invalid_xml_returns_korean_400(api_client):
@@ -57,9 +41,7 @@ def test_duplicate_station_returns_conflict(api_client):
             source="ui",
             actor=None,
         )
-        station = session.query(
-            importlib.import_module("app.models").Station
-        ).one()
+        station = session.query(importlib.import_module("app.models").Station).one()
         network_id = station.network_id
     finally:
         session.close()
@@ -95,6 +77,7 @@ def test_template_endpoint_contains_no_inventory(api_client):
     response = client.get("/api/template.xlsx")
     assert response.status_code == 200
     from io import BytesIO
+
     from openpyxl import load_workbook
 
     workbook = load_workbook(BytesIO(response.content))
@@ -117,3 +100,20 @@ def test_api_key_error_keeps_cors_headers(api_client, monkeypatch):
 
     ok = client.get("/api/health", headers={"X-API-Key": "secret"})
     assert ok.status_code == 200
+
+
+def test_api_create_custom_catalog_without_code(api_client):
+    client, SessionLocal = api_client
+    session = SessionLocal()
+    try:
+        seed_catalog(session)
+    finally:
+        session.close()
+    response = client.post(
+        "/api/catalog",
+        json={"kind": "sensor", "manufacturer": "Acme", "model": "Geophone"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["code"] == "CUSTOM_Acme_Geophone"
+    assert body["origin"] == "custom"

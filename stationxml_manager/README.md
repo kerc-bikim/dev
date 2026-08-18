@@ -1,10 +1,10 @@
 # StationXML 메타데이터 관리
 
-엑셀 또는 StationXML을 올려 네트워크·관측소·채널 메타데이터를 고치고, 다시 StationXML·엑셀로 내보내는 로컬 웹 도구입니다. 센서와 기록계는 장비 카탈로그 ID만 고를 수 있습니다.
+엑셀·StationXML·dataless SEED를 올려 네트워크·관측소·채널 메타데이터를 고치고, 다시 StationXML·엑셀·dataless SEED로 내보내는 로컬 웹 도구입니다. 센서와 기록계는 장비 카탈로그 ID만 고를 수 있습니다. 채널 탭에서 응답 곡선을 보고 Poles/Zeros를 고칠 수 있습니다.
 
-가독성 있는 HTML 문서는 [`docs.html`](docs.html)에서 이 파일과 [`PLAN.md`](PLAN.md)를 불러와 봅니다.
+가독성 있는 HTML 문서는 [`docs.html`](docs.html)에서 이 파일과 [`PLAN.md`](PLAN.md), [`DATALESS_SEED.md`](DATALESS_SEED.md), [`RESPONSE_CHART.md`](RESPONSE_CHART.md), [`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md)를 불러와 봅니다.
 
-- 상태: v1 구현 완료 (코드 리뷰 반영 포함)
+- 상태: v1 + 사용자 정의 장비 + 응답 곡선 + dataless SEED 구현 완료
 - 스택: FastAPI + ObsPy + SQLite (`app/`), React + Vite + TypeScript (`frontend/`)
 - UI: 한국어
 
@@ -20,7 +20,9 @@ stationxml_manager/
 │   ├── models.py             Network / Station / Channel / Catalog / Audit
 │   ├── crud.py               upsert, NRL, 응답(Response) 보존
 │   ├── excel_io.py           엑셀 읽기/쓰기, 빈 템플릿
-│   ├── xml_io.py             StationXML → 계층 구조
+│   ├── xml_io.py             StationXML/Inventory → 계층 구조
+│   ├── seed_io.py            dataless SEED 읽기·쓰기
+│   ├── response.py           응답 곡선(evalresp)·Poles/Zeros
 │   ├── inventory.py          DB → ObsPy Inventory
 │   ├── catalog.py            시드 YAML, 제조사·모델 매칭
 │   ├── columns.py            엑셀 열 이름·수준(네트워크/관측소/채널)
@@ -28,12 +30,12 @@ stationxml_manager/
 │   ├── audit.py              변경이력 JSON
 │   ├── db.py                 SQLite 세션
 │   └── errors.py             ValidationError / AppError
-├── frontend/                 React + Vite (한글 UI)
+├── frontend/                 React + Vite (한글 UI, D3 응답 차트)
 ├── tests/                    pytest (코어 + API)
 ├── equipment_catalog.yaml    최초 장비 목록(이후는 DB가 원본)
 ├── data/stationxml.db        SQLite (실행 후 생성)
 ├── scripts/build_docs_html.py  README/PLAN을 docs.html에 내장
-├── README.md · PLAN.md       사용법 · 계획
+├── README.md · PLAN.md · DATALESS_SEED.md · RESPONSE_CHART.md · CUSTOM_EQUIPMENT.md
 └── docs.html                 마크다운 HTML 로더
 ```
 
@@ -65,7 +67,7 @@ flowchart TB
 | 장비 | `equipment_catalog` | `catalog_sensors` / `catalog_dataloggers` 시트 또는 웹 카탈로그 탭 |
 | 이력 | `audit_log` | 웹 변경이력 탭 (복원 기능 없음) |
 
-채널의 계측기 응답은 `response_xml` blob으로 보관합니다. 출처는 `response_source` (`none` / `imported` / `nrl`)입니다.
+채널의 계측기 응답은 `response_xml` blob으로 보관합니다. 출처는 `response_source` (`none` / `imported` / `nrl` / `edited`)입니다. 채널 탭에서 곡선을 보고 Poles/Zeros를 고치면 `edited`가 됩니다.
 
 ---
 
@@ -149,6 +151,7 @@ python -m app.cli --write-template stations.xlsx
 # 엑셀 또는 StationXML → DB 적재 후 StationXML 저장
 python -m app.cli stations.xlsx -o inventory.xml
 python -m app.cli inventory.xml -o inventory.xml --replace-all
+python -m app.cli inventory.seed -o inventory.dataless
 
 # 카탈로그 NRL 키로 응답을 붙인 뒤 저장
 python -m app.cli inventory.xml -o inventory.xml --apply-nrl
@@ -164,11 +167,11 @@ NRL 응답은 내보내기 때 자동으로 붙지 않습니다. 웹의 **NRL** 
 
 | 탭 | 역할 |
 |----|------|
-| 채널 | 필터, 추가/수정/삭제, 센서·기록계 드롭다운, NRL 적용 |
+| 채널 | 필터, 추가/수정/삭제, 센서·기록계 드롭다운, **목록에 없음**, NRL(키 있을 때만), 응답 곡선·겹치기·Poles/Zeros |
 | 관측소 | 좌표·사이트 정보. 네트워크 이동 가능(중복 코드 검사) |
 | 네트워크 | 설명·운영기관·공개제한 |
-| 장비 카탈로그 | 센서/기록계 CRUD. 사용 중인 ID는 삭제 불가 |
-| 가져오기/내보내기 | xlsx·xml 업로드, StationXML/엑셀/템플릿 다운로드 |
+| 장비 카탈로그 | 센서/기록계 CRUD. 시드/사용자 정의 구분. 사용 중인 ID는 삭제 불가 |
+| 가져오기/내보내기 | xlsx·xml·seed 업로드, StationXML/Dataless SEED 형식 선택 후 다운로드, 엑셀/템플릿 |
 | 변경이력 | 감사 로그 조회. 복원 없음 |
 
 작업자 이름은 이력에만 남습니다. 로그인 계정은 없습니다.
@@ -183,7 +186,7 @@ NRL 응답은 내보내기 때 자동으로 붙지 않습니다. 웹의 **NRL** 
 
 **필수 열:** 네트워크, 관측소, 채널, 위도, 경도, 시작시간, 샘플링레이트
 
-센서ID·기록계ID는 `catalog_sensors` / `catalog_dataloggers` 시트 값만 쓸 수 있습니다. 알 수 없는 열 이름은 거절됩니다. `extra` 키-값 열은 없습니다.
+센서ID·기록계ID는 `catalog_sensors` / `catalog_dataloggers` 시트 값만 쓸 수 있습니다. 채널 시트에 없는 ID는 거절됩니다. NRL에 없는 장비는 웹 채널 모달의 **목록에 없음** 또는 카탈로그 탭에서 `origin=custom` 항목으로 만듭니다. 알 수 없는 열 이름은 거절됩니다. `extra` 키-값 열은 없습니다.
 
 ### 시트
 
@@ -221,8 +224,10 @@ NRL 응답은 내보내기 때 자동으로 붙지 않습니다. 웹의 **NRL** 
 flowchart LR
   XLSX[엑셀] --> IMP[import_hierarchy]
   XML[StationXML] --> IMP
+  SEED[dataless SEED] --> IMP
   IMP --> DB[(SQLite)]
   DB --> OUTXML[StationXML 내보내기]
+  DB --> OUTSEED[Dataless SEED 내보내기]
   DB --> OUTXLS[엑셀 내보내기]
   CAT[카탈로그 nrl_keys] -.->|명시적 NRL만| DB
 ```
@@ -258,10 +263,15 @@ flowchart LR
 | GET/PUT | `/api/networks`, `/api/networks/{id}` | 네트워크 |
 | GET/POST/PUT/DELETE | `/api/stations`, `/api/stations/{id}` | 관측소. PUT으로 `network_id` 이동 가능 |
 | GET/POST/PUT/DELETE | `/api/channels`, `/api/channels/{id}` | 채널 |
+| GET | `/api/channels/{id}/response-curve` | 단채널 진폭·위상 (`output=VEL`) |
+| GET | `/api/response-curves` | 겹치기 (`ids=1,2`, 최대 8, 부분 성공) |
+| GET | `/api/channels/{id}/response-stages` | 응답 단계 목록 |
+| PUT | `/api/channels/{id}/response-stages/{n}` | Poles/Zeros 저장 (`edited`) |
 | POST | `/api/channels/{id}/apply-nrl` | NRL 응답 적용 |
 | GET/POST/PUT/DELETE | `/api/catalog`, `/api/catalog/{id}` | 장비 카탈로그 |
-| POST | `/api/import` | `file` + `replace_all` + `confirm_replace` + `actor` |
+| POST | `/api/import` | `file` + `replace_all` + `confirm_replace` + `actor` (xlsx/xml/seed) |
 | GET | `/api/export/stationxml` | StationXML 다운로드 |
+| GET | `/api/export/dataless` | Dataless SEED. 응답 없는 채널이 있으면 400 |
 | GET | `/api/export/xlsx` | 엑셀 다운로드 (채널 포함) |
 | GET | `/api/template.xlsx` | 빈 템플릿 (카탈로그만) |
 | GET | `/api/history` | 변경이력 (`limit`, `nslc`) |
@@ -281,4 +291,4 @@ ObsPy 1.4.1은 SQLAlchemy 1.4가 필요합니다 (`requirements.txt`의 `sqlalch
 
 ## 계획과 범위
 
-확정 결정, 구현 체크리스트, 코드 리뷰 반영은 [`PLAN.md`](PLAN.md)를 봅니다.
+확정 결정, 구현 체크리스트, 코드 리뷰 반영은 [`PLAN.md`](PLAN.md)를 봅니다. 사용자 정의 장비([`CUSTOM_EQUIPMENT.md`](CUSTOM_EQUIPMENT.md)), 응답 곡선([`RESPONSE_CHART.md`](RESPONSE_CHART.md)), dataless SEED([`DATALESS_SEED.md`](DATALESS_SEED.md))는 구현되어 있습니다.

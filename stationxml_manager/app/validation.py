@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import datetime
 from typing import Any
 
@@ -13,11 +14,9 @@ from .errors import ValidationError
 def is_blank(value: Any) -> bool:
     if value is None:
         return True
-    if isinstance(value, float) and value != value:  # NaN
+    if isinstance(value, float) and math.isnan(value):
         return True
-    if isinstance(value, str) and not value.strip():
-        return True
-    return False
+    return isinstance(value, str) and not value.strip()
 
 
 def as_str(value: Any, default: str = "") -> str:
@@ -37,7 +36,9 @@ def parse_float(value: Any, field: str, row: int | None = None) -> float | None:
     try:
         return float(value)
     except (TypeError, ValueError) as exc:
-        raise ValidationError(_row_msg(row, f"{field} 값이 숫자가 아닙니다: {value}")) from exc
+        raise ValidationError(
+            _row_msg(row, f"{field} 값이 숫자가 아닙니다: {value}")
+        ) from exc
 
 
 def parse_time(value: Any, field: str, row: int | None = None) -> UTCDateTime | None:
@@ -94,7 +95,9 @@ def validate_time_order(
 
 def validate_sample_rate(rate: float, row: int | None = None) -> None:
     if rate <= 0:
-        raise ValidationError(_row_msg(row, f"샘플링레이트는 0보다 커야 합니다: {rate}"))
+        raise ValidationError(
+            _row_msg(row, f"샘플링레이트는 0보다 커야 합니다: {rate}")
+        )
 
 
 def sample_rates_match(channel_rate: float, catalog_rate: float | None) -> bool:

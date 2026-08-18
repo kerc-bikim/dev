@@ -7,8 +7,9 @@ from typing import Any
 
 from obspy import read_inventory
 from obspy.core.inventory.util import Equipment
+from sqlalchemy.orm import Session
 
-from .catalog import find_by_manufacturer_model
+from .catalog import find_by_manufacturer_model, get_or_create_custom_equipment
 from .errors import ValidationError
 from .inventory import dump_response_xml
 from .validation import (
@@ -18,7 +19,6 @@ from .validation import (
     validate_sample_rate,
     validate_time_order,
 )
-from sqlalchemy.orm import Session
 
 
 def _eq_manuf_model(eq: Equipment | None) -> tuple[str | None, str | None]:
@@ -37,7 +37,10 @@ def read_stationxml(path_or_buf, session: Session) -> dict[str, Any]:
         inv = read_inventory(BytesIO(data), format="STATIONXML")
     else:
         inv = read_inventory(str(path_or_buf), format="STATIONXML")
+    return inventory_to_hierarchy(inv, session)
 
+
+def inventory_to_hierarchy(inv, session: Session) -> dict[str, Any]:
     warnings: list[str] = []
     networks: dict[str, Any] = {}
     for net in inv:
@@ -90,15 +93,28 @@ def read_stationxml(path_or_buf, session: Session) -> dict[str, Any]:
                     inf_az, inf_dip = infer_az_dip(cha.code)
                     az = inf_az if az is None else az
                     dip = inf_dip if dip is None else dip
+                nslc = f"{net.code}.{sta.code}.{cha.location_code or '--'}.{cha.code}"
                 sensor_id = None
                 man, model = _eq_manuf_model(cha.sensor)
                 matched = find_by_manufacturer_model(session, "sensor", man, model)
                 if matched:
                     sensor_id = matched.code
+                elif man and model:
+                    row, created = get_or_create_custom_equipment(
+                        session,
+                        kind="sensor",
+                        manufacturer=man,
+                        model=model,
+                    )
+                    sensor_id = row.code
+                    if created:
+                        warnings.append(
+                            f"{nslc}: 카탈로그에 없는 센서 {man} / {model}를 "
+                            f"사용자 정의 항목 {row.code}로 추가했습니다"
+                        )
                 elif man or model:
                     warnings.append(
-                        f"{net.code}.{sta.code}.{cha.location_code or '--'}.{cha.code}: "
-                        f"센서 {man} {model} 을 카탈로그에서 찾지 못했습니다"
+                        f"{nslc}: 센서 {man or ''} {model or ''} 을 카탈로그에서 찾지 못했습니다"
                     )
                 datalogger_id = None
                 dman, dmodel = _eq_manuf_model(cha.data_logger)
@@ -107,10 +123,23 @@ def read_stationxml(path_or_buf, session: Session) -> dict[str, Any]:
                 )
                 if dmatched:
                     datalogger_id = dmatched.code
+                elif dman and dmodel:
+                    row, created = get_or_create_custom_equipment(
+                        session,
+                        kind="datalogger",
+                        manufacturer=dman,
+                        model=dmodel,
+                        sample_rate=float(cha.sample_rate),
+                    )
+                    datalogger_id = row.code
+                    if created:
+                        warnings.append(
+                            f"{nslc}: 카탈로그에 없는 기록계 {dman} / {dmodel}를 "
+                            f"사용자 정의 항목 {row.code}로 추가했습니다"
+                        )
                 elif dman or dmodel:
                     warnings.append(
-                        f"{net.code}.{sta.code}.{cha.location_code or '--'}.{cha.code}: "
-                        f"기록계 {dman} {dmodel} 을 카탈로그에서 찾지 못했습니다"
+                        f"{nslc}: 기록계 {dman or ''} {dmodel or ''} 을 카탈로그에서 찾지 못했습니다"
                     )
                 comment = None
                 if cha.comments:
@@ -133,12 +162,22 @@ def read_stationxml(path_or_buf, session: Session) -> dict[str, Any]:
                         "description": cha.description,
                         "comment": comment,
                         "channel_types": types,
-                        "clock_drift": float(clock_drift) if clock_drift is not None else None,
-                        "latitude": float(cha.latitude) if cha.latitude is not None else None,
-                        "longitude": float(cha.longitude) if cha.longitude is not None else None,
-                        "elevation": float(cha.elevation) if cha.elevation is not None else None,
+                        "clock_drift": float(clock_drift)
+                        if clock_drift is not None
+                        else None,
+                        "latitude": float(cha.latitude)
+                        if cha.latitude is not None
+                        else None,
+                        "longitude": float(cha.longitude)
+                        if cha.longitude is not None
+                        else None,
+                        "elevation": float(cha.elevation)
+                        if cha.elevation is not None
+                        else None,
                         "sensor_id": sensor_id,
-                        "sensor_serial": cha.sensor.serial_number if cha.sensor else None,
+                        "sensor_serial": cha.sensor.serial_number
+                        if cha.sensor
+                        else None,
                         "sensor_type": cha.sensor.type if cha.sensor else None,
                         "sensor_install_date": _time_iso(
                             cha.sensor.installation_date if cha.sensor else None
@@ -147,10 +186,16 @@ def read_stationxml(path_or_buf, session: Session) -> dict[str, Any]:
                             cha.sensor.removal_date if cha.sensor else None
                         ),
                         "datalogger_id": datalogger_id,
-                        "datalogger_serial": cha.data_logger.serial_number if cha.data_logger else None,
-                        "datalogger_type": cha.data_logger.type if cha.data_logger else None,
+                        "datalogger_serial": cha.data_logger.serial_number
+                        if cha.data_logger
+                        else None,
+                        "datalogger_type": cha.data_logger.type
+                        if cha.data_logger
+                        else None,
                         "datalogger_install_date": _time_iso(
-                            cha.data_logger.installation_date if cha.data_logger else None
+                            cha.data_logger.installation_date
+                            if cha.data_logger
+                            else None
                         ),
                         "datalogger_remove_date": _time_iso(
                             cha.data_logger.removal_date if cha.data_logger else None
@@ -161,4 +206,8 @@ def read_stationxml(path_or_buf, session: Session) -> dict[str, Any]:
                 )
             net_entry["stations"][sta.code] = sta_entry
         networks[net.code] = net_entry
-    return {"networks": networks, "warnings": warnings, "catalog": {"sensors": [], "dataloggers": []}}
+    return {
+        "networks": networks,
+        "warnings": warnings,
+        "catalog": {"sensors": [], "dataloggers": []},
+    }

@@ -4,7 +4,7 @@ import hmac
 import os
 from io import BytesIO
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +16,7 @@ from .audit import to_dict
 from .catalog import seed_catalog
 from .crud import (
     apply_nrl,
+    catalog_to_dict,
     create_catalog_item,
     create_channel,
     create_station,
@@ -23,6 +24,7 @@ from .crud import (
     delete_channel,
     delete_station,
     export_stationxml_bytes,
+    get_channel,
     import_hierarchy,
     list_catalog,
     list_channels,
@@ -38,6 +40,14 @@ from .db import get_session, init_db
 from .errors import AppError, ValidationError
 from .excel_io import read_excel, write_excel, write_template
 from .models import AuditLog
+from .response import (
+    eval_response_curve,
+    list_response_stages,
+    overlay_response_curves,
+    parse_ids,
+    update_pz_stage,
+)
+from .seed_io import export_dataless_bytes, looks_like_seed_name, read_seed
 from .xml_io import read_stationxml
 
 app = FastAPI(title="StationXML 메타데이터 관리", version="0.1.0")
@@ -116,7 +126,10 @@ def _startup() -> None:
 
 @app.exception_handler(AppError)
 def _app_error(_request: Request, exc: AppError) -> JSONResponse:
-    return JSONResponse({"detail": exc.message}, status_code=exc.status_code)
+    body: dict[str, Any] = {"detail": exc.message}
+    if exc.errors:
+        body["errors"] = exc.errors
+    return JSONResponse(body, status_code=exc.status_code)
 
 
 @app.exception_handler(IntegrityError)
@@ -147,7 +160,9 @@ def api_list_networks() -> list[dict[str, Any]]:
 
 
 @app.put("/api/networks/{network_id}")
-def api_update_network(network_id: int, payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_update_network(
+    network_id: int, payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         return to_dict(update_network(session, network_id, payload, _actor(actor)))
@@ -165,7 +180,9 @@ def api_list_stations(network_id: int | None = None) -> list[dict[str, Any]]:
 
 
 @app.post("/api/stations")
-def api_create_station(payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_create_station(
+    payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         return to_dict(create_station(session, payload, _actor(actor)))
@@ -174,7 +191,9 @@ def api_create_station(payload: dict[str, Any], actor: str | None = None) -> dic
 
 
 @app.put("/api/stations/{station_id}")
-def api_update_station(station_id: int, payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_update_station(
+    station_id: int, payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         return to_dict(update_station(session, station_id, payload, _actor(actor)))
@@ -206,7 +225,9 @@ def api_list_channels(
 
 
 @app.post("/api/channels")
-def api_create_channel(payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_create_channel(
+    payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         return to_dict(create_channel(session, payload, _actor(actor)))
@@ -215,7 +236,9 @@ def api_create_channel(payload: dict[str, Any], actor: str | None = None) -> dic
 
 
 @app.put("/api/channels/{channel_id}")
-def api_update_channel(channel_id: int, payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_update_channel(
+    channel_id: int, payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         return to_dict(update_channel(session, channel_id, payload, _actor(actor)))
@@ -229,6 +252,74 @@ def api_delete_channel(channel_id: int, actor: str | None = None) -> dict[str, s
     try:
         delete_channel(session, channel_id, _actor(actor))
         return {"status": "deleted"}
+    finally:
+        session.close()
+
+
+@app.get("/api/channels/{channel_id}/response-curve")
+def api_response_curve(
+    channel_id: int,
+    output: str = "VEL",
+    min_freq: float = 0.001,
+    max_freq: float | None = None,
+    npts: int = 200,
+) -> dict[str, Any]:
+    session = get_session()
+    try:
+        return eval_response_curve(
+            get_channel(session, channel_id),
+            output=output,
+            min_freq=min_freq,
+            max_freq=max_freq,
+            npts=npts,
+        )
+    finally:
+        session.close()
+
+
+@app.get("/api/response-curves")
+def api_response_curves(
+    ids: str,
+    output: str = "VEL",
+    min_freq: float = 0.001,
+    max_freq: float | None = None,
+    npts: int = 200,
+) -> dict[str, Any]:
+    session = get_session()
+    try:
+        return overlay_response_curves(
+            session,
+            parse_ids(ids),
+            output=output,
+            min_freq=min_freq,
+            max_freq=max_freq,
+            npts=npts,
+        )
+    finally:
+        session.close()
+
+
+@app.get("/api/channels/{channel_id}/response-stages")
+def api_response_stages(channel_id: int) -> dict[str, Any]:
+    session = get_session()
+    try:
+        return list_response_stages(get_channel(session, channel_id))
+    finally:
+        session.close()
+
+
+@app.put("/api/channels/{channel_id}/response-stages/{stage_number}")
+def api_update_pz_stage(
+    channel_id: int,
+    stage_number: int,
+    payload: dict[str, Any],
+    actor: str | None = None,
+) -> dict[str, Any]:
+    session = get_session()
+    try:
+        return update_pz_stage(
+            session, channel_id, stage_number, payload, _actor(actor)
+        )
     finally:
         session.close()
 
@@ -247,54 +338,31 @@ def api_list_catalog(kind: str | None = None) -> list[dict[str, Any]]:
     session = get_session()
     try:
         rows = list_catalog(session, kind)
-        return [
-            {
-                "id": r.id,
-                "kind": r.kind,
-                "code": r.code,
-                "manufacturer": r.manufacturer,
-                "model": r.model,
-                "sample_rate": r.sample_rate,
-                "nrl_keys": r.nrl_keys,
-            }
-            for r in rows
-        ]
+        return [catalog_to_dict(r) for r in rows]
     finally:
         session.close()
 
 
 @app.post("/api/catalog")
-def api_create_catalog(payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_create_catalog(
+    payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         row = create_catalog_item(session, payload, _actor(actor))
-        return {
-            "id": row.id,
-            "kind": row.kind,
-            "code": row.code,
-            "manufacturer": row.manufacturer,
-            "model": row.model,
-            "sample_rate": row.sample_rate,
-            "nrl_keys": row.nrl_keys,
-        }
+        return catalog_to_dict(row)
     finally:
         session.close()
 
 
 @app.put("/api/catalog/{item_id}")
-def api_update_catalog(item_id: int, payload: dict[str, Any], actor: str | None = None) -> dict[str, Any]:
+def api_update_catalog(
+    item_id: int, payload: dict[str, Any], actor: str | None = None
+) -> dict[str, Any]:
     session = get_session()
     try:
         row = update_catalog_item(session, item_id, payload, _actor(actor))
-        return {
-            "id": row.id,
-            "kind": row.kind,
-            "code": row.code,
-            "manufacturer": row.manufacturer,
-            "model": row.model,
-            "sample_rate": row.sample_rate,
-            "nrl_keys": row.nrl_keys,
-        }
+        return catalog_to_dict(row)
     finally:
         session.close()
 
@@ -311,10 +379,10 @@ def api_delete_catalog(item_id: int, actor: str | None = None) -> dict[str, str]
 
 @app.post("/api/import")
 async def api_import(
-    file: UploadFile = File(...),
-    replace_all: bool = Form(False),
-    confirm_replace: bool = Form(False),
-    actor: str | None = Form(None),
+    file: Annotated[UploadFile, File()],
+    replace_all: Annotated[bool, Form()] = False,
+    confirm_replace: Annotated[bool, Form()] = False,
+    actor: Annotated[str | None, Form()] = None,
 ) -> dict[str, Any]:
     if replace_all and not confirm_replace:
         raise ValidationError("전체 교체 확인 값이 필요합니다")
@@ -327,16 +395,19 @@ async def api_import(
     session = get_session()
     try:
         try:
-            if name.endswith(".xml") or name.endswith(".stationxml"):
+            if name.endswith((".xml", ".stationxml")):
                 hierarchy = read_stationxml(BytesIO(raw), session)
                 source = "xml"
-            elif name.endswith(".xlsx") or name.endswith(".xls"):
+            elif name.endswith((".xlsx", ".xls")):
                 hierarchy = read_excel(BytesIO(raw))
                 source = "excel"
+            elif looks_like_seed_name(name):
+                hierarchy = read_seed(BytesIO(raw), session)
+                source = "seed"
             else:
                 raise HTTPException(
                     status_code=400,
-                    detail="xlsx 또는 StationXML(xml) 파일만 올릴 수 있습니다",
+                    detail="xlsx, StationXML(xml), dataless SEED 파일만 올릴 수 있습니다",
                 )
         except (AppError, HTTPException):
             raise
@@ -370,6 +441,20 @@ def api_export_xml() -> Response:
         session.close()
 
 
+@app.get("/api/export/dataless")
+def api_export_dataless() -> Response:
+    session = get_session()
+    try:
+        data, _warnings = export_dataless_bytes(session)
+        return Response(
+            content=data,
+            media_type="application/vnd.fdsn.seed",
+            headers={"Content-Disposition": "attachment; filename=inventory.dataless"},
+        )
+    finally:
+        session.close()
+
+
 @app.get("/api/export/xlsx")
 def api_export_xlsx() -> Response:
     session = get_session()
@@ -392,14 +477,18 @@ def api_template() -> Response:
         return Response(
             content=data,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": "attachment; filename=stationxml_template.xlsx"},
+            headers={
+                "Content-Disposition": "attachment; filename=stationxml_template.xlsx"
+            },
         )
     finally:
         session.close()
 
 
 @app.get("/api/history")
-def api_history(limit: int = Query(200, le=1000), nslc: str | None = None) -> list[dict[str, Any]]:
+def api_history(
+    limit: int = Query(200, le=1000), nslc: str | None = None
+) -> list[dict[str, Any]]:
     session = get_session()
     try:
         rows: list[AuditLog] = list_history(session, limit=limit, nslc=nslc)

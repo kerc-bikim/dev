@@ -96,6 +96,40 @@ table { border-collapse: collapse; width: 100%; min-width: 900px; }
 th, td { border-bottom: 1px solid var(--border); padding: 7px 8px; text-align: left; white-space: nowrap; }
 th { background: var(--panel); position: sticky; top: 0; }
 tr:hover td { background: var(--panel-2); }
+tr.selected td { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--accent); }
+tr { cursor: pointer; }
+.check-col { width: 52px; text-align: center; }
+.response-panel {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--panel);
+}
+.response-chart { width: 100%; min-height: 520px; overflow: hidden; }
+.response-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--panel-2);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.pz-editor {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.pz-stage {
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--panel-2);
+  border-radius: 8px;
+}
+.pz-stage table { min-width: 360px; }
 .muted { color: var(--muted); }
 .error { color: var(--danger); margin: 8px 0; }
 .warn { color: var(--warn); }

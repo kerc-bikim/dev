@@ -91,8 +91,12 @@ def write_audit(
         source=source,
         actor=actor or None,
         nslc=nslc,
-        before_json=json.dumps(before, ensure_ascii=False, default=str) if before else None,
-        after_json=json.dumps(after, ensure_ascii=False, default=str) if after else None,
+        before_json=json.dumps(before, ensure_ascii=False, default=str)
+        if before
+        else None,
+        after_json=json.dumps(after, ensure_ascii=False, default=str)
+        if after
+        else None,
         summary=summary or diff_summary(before, after),
     )
     session.add(log)
