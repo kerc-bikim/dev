@@ -49,7 +49,12 @@ from .response import (
     parse_ids,
     update_pz_stage,
 )
-from .seed_io import export_dataless_bytes, looks_like_seed_name, read_seed
+from .seed_io import (
+    collect_dataless_errors,
+    export_dataless_bytes,
+    looks_like_seed_name,
+    read_seed,
+)
 from .xml_io import read_stationxml
 
 app = FastAPI(title="StationXML 메타데이터 관리", version="0.1.0")
@@ -426,6 +431,26 @@ async def api_import(
             actor=_actor(actor),
         )
         return result
+    finally:
+        session.close()
+
+
+@app.get("/api/export/status")
+def api_export_status() -> dict[str, Any]:
+    session = get_session()
+    try:
+        channels = list(list_channels(session))
+        errors = collect_dataless_errors(session)
+        dataless_ok = bool(channels) and not errors
+        return {
+            "network_count": len(list_networks(session)),
+            "station_count": len(list_stations(session)),
+            "channel_count": len(channels),
+            "response_count": sum(1 for ch in channels if ch.response_xml),
+            "stationxml_ok": bool(channels),
+            "dataless_ok": dataless_ok,
+            "errors": errors[:30],
+        }
     finally:
         session.close()
 

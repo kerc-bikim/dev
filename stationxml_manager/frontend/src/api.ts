@@ -1,4 +1,14 @@
-export type Tab = "channels" | "stations" | "networks" | "catalog" | "io" | "history";
+export type Mode = "workspace" | "catalog" | "history" | "help";
+
+export interface ExportStatus {
+  network_count: number;
+  station_count: number;
+  channel_count: number;
+  response_count: number;
+  stationxml_ok: boolean;
+  dataless_ok: boolean;
+  errors: { nslc: string; reason: string }[];
+}
 
 export interface NetworkRow {
   id: number;

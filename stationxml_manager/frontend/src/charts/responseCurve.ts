@@ -41,7 +41,7 @@ function legendLabel(item: CurveSeries, all: CurveSeries[]): string {
 export function renderResponseCurve(container: HTMLElement, data: CurveChartData): void {
   container.innerHTML = "";
   const width = Math.max(container.clientWidth || 720, 480);
-  const height = 520;
+  const height = Math.max(container.clientHeight || 520, 320);
   const margin = { top: 48, right: 24, bottom: 36, left: 64 };
   const panelGap = 18;
   const plotWidth = width - margin.left - margin.right;

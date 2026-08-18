@@ -4,6 +4,7 @@ import importlib
 
 from app.catalog import seed_catalog
 from app.crud import import_hierarchy
+from tests.inventories import import_inventory, inventory_with_pz
 from tests.test_core import _sample_hierarchy
 
 
@@ -117,3 +118,38 @@ def test_api_create_custom_catalog_without_code(api_client):
     body = response.json()
     assert body["code"] == "CUSTOM_Acme_Geophone"
     assert body["origin"] == "custom"
+
+
+def test_export_status_empty_and_ready(api_client):
+    client, SessionLocal = api_client
+    empty = client.get("/api/export/status")
+    assert empty.status_code == 200
+    body = empty.json()
+    assert body["channel_count"] == 0
+    assert body["stationxml_ok"] is False
+    assert body["dataless_ok"] is False
+
+    session = SessionLocal()
+    try:
+        import_inventory(session, inventory_with_pz(site_name="AAA"))
+    finally:
+        session.close()
+    ready = client.get("/api/export/status")
+    assert ready.status_code == 200
+    ok = ready.json()
+    assert ok["channel_count"] == 1
+    assert ok["response_count"] == 1
+    assert ok["stationxml_ok"] is True
+    assert ok["dataless_ok"] is True
+
+
+def test_help_page_covers_metadata_methods():
+    from pathlib import Path
+
+    text = Path("frontend/src/HelpPage.tsx").read_text(encoding="utf-8")
+    assert "메타데이터 생성 방법" in text
+    assert "엑셀로 만들기" in text
+    assert "StationXML" in text
+    assert "Dataless SEED" in text
+    assert "NRL" in text
+    assert "Poles/Zeros" in text
