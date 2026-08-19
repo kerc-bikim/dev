@@ -1501,8 +1501,9 @@ writerecord (char *record, int reclen, void *handlerdata)
     }
   }
 
-  /* >>> LOCAL: stamp incrementing v2 sequences when -B splits a record. */
-  local_stamp_v2_sequence ((uint8_t *)record, reclen, writerdata->msr->formatversion);
+  /* >>> LOCAL: stamp per-channel v2 sequences in write order when -B is used. */
+  local_stamp_v2_sequence ((uint8_t *)record, reclen, writerdata->msr->formatversion,
+                           writerdata->msr->sid);
   /* <<< LOCAL */
 
   /* Write to a single output file if specified */

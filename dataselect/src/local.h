@@ -50,7 +50,7 @@ int local_pack_fail_is_fatal (void);
 /* Register writetraces() output counters so -B can count packed records. */
 void local_set_counters (uint64_t *recs, uint64_t *bytes);
 
-/* Reset per-pack state (v2 sequence, records written this pack). */
+/* Reset per-pack write count (sequence state is kept per SourceID). */
 void local_pack_begin (const uint8_t *srcbuf, uint8_t formatversion);
 
 /* Apply -B record length to the unpacked record before msr3_pack(). */
@@ -69,8 +69,9 @@ int local_write_counted (void);
 /* 1 when each packed record must be parsed for archive / -out. */
 int local_should_parse_packed (void);
 
-/* Stamp an incrementing miniSEED 2 sequence into a packed record. */
-void local_stamp_v2_sequence (uint8_t *record, int reclen, uint8_t formatversion);
+/* Stamp the next per-channel miniSEED 2 sequence (write order, from 1). */
+void local_stamp_v2_sequence (uint8_t *record, int reclen, uint8_t formatversion,
+                              const char *sid);
 
 /* Count a written record (no-op for the input-record counter when -B is off). */
 void local_note_write (uint64_t recsize);
