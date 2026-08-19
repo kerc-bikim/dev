@@ -1,0 +1,4 @@
+modName tankplayer
+modId   MOD_TANKPLAYER
+instId  INST_WILDCARD
+tsec    90

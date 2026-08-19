@@ -10,3 +10,11 @@ __pycache__/
 # PPSD backend runtime output (recreated at runtime)
 PPSD_v1/backend/cache/
 PPSD_v1/backend/sds/
+
+# Earthworm web control
+earthworm_web/frontend/node_modules/
+earthworm_web/frontend/dist/
+earthworm_web/.ew_home/
+earthworm_web/backend/data/app.json
+earthworm_web/backend/.env
+
