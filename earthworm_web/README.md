@@ -10,7 +10,13 @@ Earthworm **v8.0b17** 를 웹에서 설정·기동·감시하기 위한 콘솔 �
 
 백엔드(FastAPI)와 프론트엔드(React + Vite)를 분리합니다. 상세 API·화면·파일 규칙은 계획서를 따릅니다.
 
-HTML 다시 만들기:
+미리보기 (백엔드 없이 목 데이터):
+
+```bash
+cd frontend/preview
+python3 -m http.server 8765
+# 브라우저에서 http://127.0.0.1:8765
+```
 
 ```bash
 pip install markdown
