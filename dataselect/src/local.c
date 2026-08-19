@@ -9,6 +9,11 @@
  * Packing failures (unsupported encoding, header larger than the
  * requested length, partial pack) are fatal: the original record is
  * not written mixed with re-packed output.
+ *
+ * miniSEED 2 sequence numbers are rewritten per output file and
+ * SourceID in write (time) order, starting at 1 and wrapping at
+ * 1000000.  A new archive file (for example a new SDS day) starts
+ * again at 1.
  ***************************************************************************/
 
 #include <inttypes.h>
@@ -22,9 +27,89 @@
 
 static int outputreclen = 0; /* 0 = keep original record length */
 static int wrote_this_pack = 0;
-static int64_t next_v2seq = -1; /* -1 = leave the packed sequence */
 static uint64_t *totalrecsoutp = NULL;
 static uint64_t *totalbytesoutp = NULL;
+
+/* Per output-file + SourceID miniSEED 2 sequence, from 1. */
+typedef struct SidSeq_s
+{
+  char *filekey;
+  char *sid;
+  int64_t next;
+  struct SidSeq_s *nextsid;
+} SidSeq;
+
+static SidSeq *sidseqs = NULL;
+
+static char *
+local_dupstr (const char *s)
+{
+  size_t n;
+  char *d;
+
+  if (!s)
+    s = "";
+
+  n = strlen (s) + 1;
+  d = (char *)malloc (n);
+  if (!d)
+    return NULL;
+
+  memcpy (d, s, n);
+  return d;
+}
+
+static void
+local_seq_reset (void)
+{
+  SidSeq *p;
+
+  while (sidseqs)
+  {
+    p = sidseqs;
+    sidseqs = p->nextsid;
+    free (p->filekey);
+    free (p->sid);
+    free (p);
+  }
+}
+
+static int64_t
+local_take_v2seq (const char *sid, const char *filekey)
+{
+  SidSeq *p;
+  const char *sidkey = (sid && sid[0]) ? sid : "";
+  const char *fkey = (filekey && filekey[0]) ? filekey : "";
+
+  for (p = sidseqs; p; p = p->nextsid)
+  {
+    if (strcmp (p->sid, sidkey) == 0 && strcmp (p->filekey, fkey) == 0)
+    {
+      int64_t seq = p->next;
+      p->next = (p->next + 1) % 1000000;
+      return seq;
+    }
+  }
+
+  p = (SidSeq *)malloc (sizeof (SidSeq));
+  if (!p)
+    return -1;
+
+  p->filekey = local_dupstr (fkey);
+  p->sid = local_dupstr (sidkey);
+  if (!p->filekey || !p->sid)
+  {
+    free (p->filekey);
+    free (p->sid);
+    free (p);
+    return -1;
+  }
+
+  p->next = 2;
+  p->nextsid = sidseqs;
+  sidseqs = p;
+  return 1;
+}
 
 static int
 encoding_can_pack (int16_t encoding)
@@ -125,6 +210,7 @@ local_pack_fail_is_fatal (void)
 void
 local_set_counters (uint64_t *recs, uint64_t *bytes)
 {
+  local_seq_reset ();
   totalrecsoutp = recs;
   totalbytesoutp = bytes;
 }
@@ -132,27 +218,9 @@ local_set_counters (uint64_t *recs, uint64_t *bytes)
 void
 local_pack_begin (const uint8_t *srcbuf, uint8_t formatversion)
 {
+  (void)srcbuf;
+  (void)formatversion;
   wrote_this_pack = 0;
-  next_v2seq = -1;
-
-  if (outputreclen <= 0 || formatversion != 2 || !srcbuf)
-    return;
-
-  if (srcbuf[0] >= '0' && srcbuf[0] <= '9')
-  {
-    char seqstr[7];
-    char *endptr;
-    int64_t seqnum;
-
-    memcpy (seqstr, srcbuf, 6);
-    seqstr[6] = '\0';
-    seqnum = (int64_t)strtoll (seqstr, &endptr, 10);
-    next_v2seq = (endptr != seqstr) ? seqnum : 0;
-  }
-  else
-  {
-    next_v2seq = 0;
-  }
 }
 
 void
@@ -193,19 +261,21 @@ local_should_parse_packed (void)
 }
 
 void
-local_stamp_v2_sequence (uint8_t *record, int reclen, uint8_t formatversion)
+local_stamp_v2_sequence (uint8_t *record, int reclen, uint8_t formatversion,
+                         const char *sid, const char *filekey)
 {
   char seqstr[7];
+  int64_t seq;
 
   if (outputreclen <= 0 || formatversion != 2 || reclen < 6 || !record)
     return;
 
-  if (next_v2seq < 0)
+  seq = local_take_v2seq (sid, filekey);
+  if (seq < 0)
     return;
 
-  snprintf (seqstr, sizeof (seqstr), "%06" PRId64, next_v2seq % 1000000);
+  snprintf (seqstr, sizeof (seqstr), "%06" PRId64, seq % 1000000);
   memcpy (record, seqstr, 6);
-  next_v2seq = (next_v2seq + 1) % 1000000;
 }
 
 void

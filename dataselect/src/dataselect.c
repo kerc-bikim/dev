@@ -1501,13 +1501,13 @@ writerecord (char *record, int reclen, void *handlerdata)
     }
   }
 
-  /* >>> LOCAL: stamp incrementing v2 sequences when -B splits a record. */
-  local_stamp_v2_sequence ((uint8_t *)record, reclen, writerdata->msr->formatversion);
-  /* <<< LOCAL */
-
   /* Write to a single output file if specified */
   if (writerdata->ofp)
   {
+    /* >>> LOCAL: sequence is per output file; stamp before this fwrite. */
+    local_stamp_v2_sequence ((uint8_t *)record, reclen, writerdata->msr->formatversion,
+                             writerdata->msr->sid, outputfile ? outputfile : "-");
+    /* <<< LOCAL */
     if (fwrite (record, reclen, 1, writerdata->ofp) != 1)
     {
       ms_log (2, "Cannot write to '%s'\n", outputfile);
