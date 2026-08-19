@@ -3,6 +3,7 @@
 Earthworm **v8.0b17** 를 웹에서 설정·기동·감시하기 위한 콘솔 계획입니다. 구현은 아직 없고, 계획서만 있습니다.
 
 - 계획: [`plan.md`](plan.md) · HTML [`plan.html`](plan.html)
+- 웹 흐름: **초기 설정**(디렉터리·링) → **이후 설정**(모듈·제어·로그·스니프)
 - 대상 바이너리: 컴파일 완료본 [earthworm_v8-0b8_rockylinux9_4.tar.gz](http://www.earthwormcentral.org/distribution/earthworm_v8-0b8_rockylinux9_4.tar.gz)
 - 소스: [gitlab.com/seismic-software/earthworm](https://gitlab.com/seismic-software/earthworm.git) 태그 `v8.0b17`
 - 매뉴얼: 소스 `doc/WEB_DOC`

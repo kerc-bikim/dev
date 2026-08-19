@@ -11,7 +11,7 @@ Earthworm **v8.0b17** 기준으로, 이미 컴파일된 Rocky Linux 9 바이너�
 | UI 언어 | 한국어 |
 | 스택 | 백엔드 FastAPI · 프론트엔드 React + Vite + TypeScript (이 저장소 PPSD / StationXML 과 동일) |
 
-상태: 계획만. 구현 체크리스트는 [구현 단계](#12-구현-단계)에 둔다.
+상태: 계획만. 구현 체크리스트는 [구현 단계](#12-구현-단계)에 둔다. 웹 흐름은 **초기 설정**(디렉터리·링)과 **이후 설정**(모듈·운영)으로 나눈다. 근거는 [17절](#17-소스매뉴얼-분석-근거).
 
 ---
 
@@ -29,6 +29,8 @@ Earthworm **v8.0b17** 기준으로, 이미 컴파일된 Rocky Linux 9 바이너�
 8. 로그 디렉터리를 설정하고 모듈별 로그를 본다.
 9. 로그 보관 기간을 설정한다.
 10. `sniffwave` · `sniffring` 결과를 옵션과 함께 실시간으로 본다.
+11. **초기 설정 마법사**로 기본 디렉터리(`params`/`log`/`data`)와 링 이름·키·크기·순서를 웹에서 한 번에 만든다.
+12. 초기 설정이 끝난 뒤에만 모듈 토글·복제·기동·로그·스니프를 연다 (**이후 설정**).
 
 백엔드와 프론트엔드는 **프로세스·저장소·API 계약**으로 완전히 분리한다. 프론트는 Earthworm 바이너리를 직접 호출하지 않는다.
 
@@ -76,7 +78,7 @@ ${EW_HOME}                          # 기본 /opt/earthworm
 | 파형 링 | `sniffwave` | TRACEBUF / TRACEBUF2 |
 | 임의 메시지 링 | `sniffring` | 사용자가 말한 “sniffing” 은 공식 이름 **sniffring** 으로 매핑 |
 
-Earthworm 에는 **시스템 전체 pause** 가 없다. 웹의 “일시중지” 는 기본값으로 **모든 업무 모듈 `stopmodule`** (startstop · statmgr 는 유지) 이다. 개별 모듈 중지는 대시보드의 행 액션으로 둔다. 소스·매뉴얼에서 드러난 추가 제약은 [16절](#16-소스매뉴얼-분석-후-보완-필수) 에 모았다.
+Earthworm 에는 **시스템 전체 pause** 가 없다. 웹의 “일시중지” 는 기본값으로 **모든 업무 모듈 `stopmodule`** (startstop · statmgr 는 유지) 이다. 개별 모듈 중지는 대시보드의 행 액션으로 둔다. `pidpau` 는 쓰지 않는다. 소스 근거는 [17절](#17-소스매뉴얼-분석-근거).
 
 ---
 
@@ -95,10 +97,197 @@ Earthworm 에는 **시스템 전체 pause** 가 없다. 웹의 “일시중지�
 | 9 | `earthworm_global.d` 는 읽기 전용(경고 후 고급 편집만) | Installation / Message Type 전역 계약 |
 | 10 | `FLAG_RING` 은 startstop 링 목록에 넣지 않음 | 공식 주석. startstop 이 숨은 링으로 씀 |
 | 11 | 모든 EW CLI 는 `source ew_linux.bash` 된 환경에서 `argv` 리스트로만 실행 | 셸 문자열 조립 금지 (명령 주입 방지) |
+| 12 | UI 를 **초기 설정** / **이후 설정** 으로 분리. `app.json.setup_complete` 가 false 면 마법사만 | 링·경로는 startstop 이 shm 을 만들기 전에 고정해야 함 |
+| 13 | 기본 첫 링은 `STATUS_RING` (작음). `FLAG_RING` 은 startstop 목록에 넣지 않음 | 제어 메시지(`status`/`pau`)가 WAVE_RING 에서 덮이지 않게 |
+| 14 | 최소 기동 세트는 `statmgr` + `CheckAllRings 1` (또는 모든 링→STATUS_RING `copystatus`) | 샘플 설정은 하트비트가 statmgr 에 안 닿을 수 있음 |
+| 15 | 외부 CLI 재시작/중지는 **PID 숫자만**. 일시중지는 `stopmodule` 만 | 콘솔 이름/`pidpau` 는 웹에서 오동작 |
+| 16 | 복제 시 `.d` + Module ID + `.desc` + `statmgr.d` Descriptor 를 한 트랜잭션으로 | 로고 충돌·하트비트 미감시 방지 |
 
 ---
 
-## 4. 아키텍처 (백엔드 / 프론트엔드 분리)
+## 4. 초기 설정과 이후 설정
+
+Earthworm 은 **한 번 기동하면 공유메모리 링이 고정**되고, 모듈은 `EW_PARAMS` 의 테이블을 기동 시점에 읽는다. 웹도 이 경계를 그대로 따른다.
+
+```mermaid
+flowchart TB
+  subgraph init [초기 설정 마법사 setup_complete false]
+    D[디렉터리 EW_HOME RUN_DIR params log data]
+    I[설치 ID EW_INSTALLATION]
+    T[earthworm.d global commonvars 를 params 로 복사]
+    R[링 이름 키 크기 순서]
+    M[최소 모듈 statmgr]
+    D --> I --> T --> R --> M
+  end
+  subgraph later [이후 설정 setup_complete true]
+    Mod[모듈 토글 복제]
+    Var[통합 변수]
+    Run[시작 종료 일시중지]
+    Dash[대시보드 로그 sniff]
+    Mod --> Var --> Run --> Dash
+  end
+  M -->|검증 통과| later
+```
+
+### 4.1 왜 나누는가
+
+| 구분 | 초기 설정에서만 | 이후 설정에서 | 기동 중 반영 |
+|------|-----------------|---------------|--------------|
+| `EW_HOME` / `EW_VERSION` / `EW_RUN_DIR` | ○ | 고급만. 기동 중 잠금 | 전체 재시작 |
+| `params/` `log/` `data/` 생성 | ○ | 로그 경로 변경은 이후 설정 | 재시작 후 유효 |
+| `earthworm.d` Ring 키 할당 | ○ (기본 세트) | 새 링 추가 가능 | 추가는 `reconfigure`, 삭제·크기·순서 변경은 **전체 재시작** |
+| `startstop_unix.d` 링 목록·첫 링 | ○ | 동일 | 위와 같음 |
+| `FLAG_RING` 키 | ○ (earthworm.d 만, startstop 제외) | 잠금 권장 | 재시작 |
+| `EW_INSTALLATION` | ○ | 이후에도 가능 | 모듈 restart |
+| 모듈 Process 토글 | 최소 `statmgr` 만 | ○ 본 작업 | on=`reconfigure`, off=`stopmodule` |
+| 모듈 `.d` 값, 통합 변수 | 기본값만 | ○ | 해당 모듈 `restart` |
+| 복제 | × | ○ | 켜면 `reconfigure` |
+| 로그 보관 일수 | 기본 14 | ○ | 즉시 (웹 청소 태스크) |
+| sniffwave / sniffring | × (링이 있어야 함) | ○ | 즉시 |
+
+초기 설정을 건너뛰고 배포 샘플 `startstop_unix.d` 를 그대로 쓰면, 첫 링이 `WAVE_RING` 이고 `copystatus` 가 `HYPO_RING` 으로만 가서 **status 유실 + 하트비트 미감시** 가 나올 수 있다. 마법사가 이 두 가지를 고친 기본값을 쓴다.
+
+### 4.2 초기 설정 마법사 (프론트: `SetupWizard`)
+
+`GET /api/setup/status` 의 `setup_complete === false` 이면 사이드의 이후 메뉴는 잠그고 마법사만 연다. 이미 `params/earthworm.d` 와 `startstop_unix.d` 가 있고 링이 정의돼 있으면 “기존 구성 가져오기” 로 마법사 값을 채운 뒤 확인만 받는다.
+
+#### 단계 A — 기본 디렉터리
+
+화면에서 받는 값:
+
+| 필드 | 기본 | 백엔드 동작 |
+|------|------|-------------|
+| `EW_HOME` | `/opt/earthworm` | `ew_linux.bash` 치환. tarball 이 풀린 경로인지, `$EW_HOME/$EW_VERSION/bin/startstop` 존재 검사 |
+| `EW_VERSION` | tarball 디렉터리명 자동 탐지 | `bin/` 존재 확인. 없으면 목록에서 고름 |
+| `EW_RUN_DIR` | `$EW_HOME/run_working` | `params/`, `log/`, `data/` 생성 (이미 있으면 유지) |
+| 로그 보관 일수 | 14 | `app.json` |
+
+생성하는 트리:
+
+```
+${EW_RUN_DIR}/
+  params/     # EW_PARAMS
+  log/        # EW_LOG   (끝 슬래시 유지)
+  data/       # EW_DATA_DIR
+```
+
+권한: 웹 백엔드 유저 = Earthworm 유저. root 거부.
+
+#### 단계 B — 설치 ID 와 테이블 파일
+
+1. `environment/earthworm_global.d` 의 `Inst` 목록을 콤보로. 기본 `INST_UNKNOWN`.
+2. `ew_linux.bash` 의 `EW_INSTALLATION` 과 `earthworm_commonvars.d` 의 `EW_INST_ID` 를 같은 값으로.
+3. 없을 때만 복사:
+   - `environment/earthworm.d` → `EW_PARAMS/earthworm.d`
+   - `environment/earthworm_global.d` → `EW_PARAMS/`
+   - `environment/earthworm_commonvars.d` → `EW_PARAMS/`
+   - 배포 `params/*.d` `*.desc` 템플릿 (이미 있으면 덮지 않음)
+4. `GetLocalInst` 가 성공할 수 있는지 문자열 검증.
+5. `SYS_NAME` 은 `hostname` (스크립트가 이미 export). 화면에 읽기 전용 표시.
+
+`GetUtil_LoadTable` 은 **`EW_PARAMS` 만** 본다. 이 복사를 빼면 이후 모든 모듈이 기동 실패한다.
+
+#### 단계 C — 링 구성과 크기
+
+링 편집 표 (추가/삭제/위아래 순서). **첫 행 = startstop 이 제어 메시지를 넣는 링.**
+
+기본 프리셋 (마법사 “표준 관측망”):
+
+| 순서 | 이름 | 키 (`earthworm.d`) | 크기 KiB | `startstop_unix.d` | 설명 |
+|------|------|-------------------|----------|-------------------|------|
+| 1 | `STATUS_RING` | 1040 | 128 | ○ 첫 줄 | `status` / `pau` / `stopmodule` 교통. 작게 |
+| 2 | `WAVE_RING` | 1000 | 1024 (권장: 채널 수에 따라 4096–32768) | ○ | 파형. sniffwave 대상 |
+| 3 | `PICK_RING` | 1005 | 1024 | ○ | 피크 |
+| 4 | `HYPO_RING` | 1015 | 1024 | ○ | 위치·이벤트 |
+| — | `BINDER_RING` | 1020 | 256 | **넣지 않음** | binder 전용. earthworm.d 에만 |
+| — | `FLAG_RING` | 2000 | (startstop 자동) | **넣지 않음** | 종료 플래그. 숨김 |
+
+제약 (소스 `startstop_lib.h`, `earthworm_defs.h`):
+
+- 공개 링 개수 ≤ `MAX_RING` **50**
+- 이름 ≤ 32자, `[A-Za-z0-9_]`
+- 키는 `earthworm.d` 에서 유일. 1차 웹은 단일 startstop 만
+- 크기: 정수 KiB. UI 범위 1–1048576, 큰 값은 램 경고
+- `FLAG_RING` 을 startstop 목록에 넣으려 하면 거부
+
+크기 가이드 (Inst_config 매뉴얼 + `startstop_unix.d` 주석):
+
+- 관측소 10 전후: WAVE 1024–5120
+- 관측소 수백: WAVE 16384–32768
+- PICK/HYPO: 보통 1024
+- STATUS: 128
+
+저장 시 백엔드가:
+
+1. `earthworm.d` 의 `Ring NAME KEY` 를 맞춘다 (없는 이름만 추가. 키 변경은 고급·재시작 확인)
+2. `startstop_unix.d` 의 `Ring` 블록을 **마법사 순서대로** 다시 쓴다
+3. `statmgr.d` 의 `RingName` 을 `STATUS_RING`, `CheckAllRings 1` 로 맞춘다
+4. 샘플 `copystatus … HYPO_RING` 은 CheckAllRings 가 켜지면 주석 처리하고 안내
+
+#### 단계 D — 최소 모듈과 검증
+
+마법사가 `startstop_unix.d` Process 를 다음만 **활성**으로 남긴다.
+
+- `statmgr statmgr.d` (강제)
+- 나머지는 주석 (tankplayer 등 샘플은 이후 설정에서 켜기)
+
+검증 (`POST /api/setup/validate`):
+
+- `bin/startstop`, `status`, `pau`, `statmgr` 존재
+- `EW_PARAMS` 에 세 테이블 파일 존재
+- `EW_INSTALLATION` ∈ global Inst
+- 링 이름 ⊆ earthworm.d
+- 첫 링이 `FLAG_RING` 이 아님
+- `MAX_RING` / 이름 길이 / 키 중복 없음
+- `log/` 쓰기 가능
+
+통과 시 `app.json.setup_complete = true`, `setup_at` 기록. 이후 설정 메뉴를 연다. **이 시점에 startstop 을 자동 기동하지는 않는다.** 운영자가 대시보드에서 시작한다.
+
+### 4.3 이후 설정
+
+초기 설정이 끝난 뒤의 일상 화면이다. 요구 2–10 이 여기 해당한다.
+
+| 메뉴 | 하는 일 | 기동 중 |
+|------|---------|---------|
+| 기반 설정 (재진입) | 디렉터리·링 표. 기동 중이면 읽기 전용 + “종료 후 수정” | 링 크기/순서/경로 변경은 pau 후 |
+| 모듈 설정 | 토글, 복제, `.d`/`.desc` | 토글 on=`reconfigure`(statmgr 재시작됨), off=`stopmodule` |
+| 통합 변수 | commonvars + HeartbeatInt→desc `tsec` | 영향 모듈 restart 옵션 |
+| 파일 편집 | params / environment 원문 | 저장은 되나 동작은 restart 후 |
+| 제어 | 시작/종료/일시중지/재개 | PID 만 CLI 에 전달 |
+| 대시보드 | 프로세스 + 하트비트 + 디스크 + 락/IPC | 2초 폴링 |
+| 로그 | 경로·보관·뷰어. `*.lock`·`EW_DATA_DIR` 제외 | 경로 변경은 재시작 후 |
+| 링 모니터 | sniffwave / sniffring | 세션 2개 |
+| 네트워크 (P2) | export/import/wave_server 포트 | 모듈 restart |
+
+이후 설정에서 **링 추가**: earthworm.d 키 확인 → startstop 에 Ring 줄 → `reconfigure`.  
+**링 삭제·크기 변경·순서(첫 링) 변경**: 같은 폼을 열되, startstop 이 Alive 면 저장을 막고 pau 를 요구한다.
+
+### 4.4 초기 설정 시퀀스
+
+```mermaid
+sequenceDiagram
+  participant U as 브라우저
+  participant BE as FastAPI
+  participant FS as 파일시스템
+
+  U->>BE: GET /api/setup/status
+  BE-->>U: setup_complete false
+  U->>BE: PUT /api/setup/directories
+  BE->>FS: mkdir params log data, ew_linux.bash 치환
+  U->>BE: PUT /api/setup/installation
+  BE->>FS: 테이블 파일 복사, EW_INST_ID
+  U->>BE: PUT /api/setup/rings
+  BE->>FS: earthworm.d Ring, startstop_unix.d Ring 순서
+  U->>BE: POST /api/setup/validate
+  BE-->>U: ok
+  U->>BE: POST /api/setup/complete
+  BE->>FS: app.json.setup_complete true
+  Note over U: 이후 설정 메뉴 개방, startstop 은 수동 시작
+```
+
+---
+
+## 5. 아키텍처 (백엔드 / 프론트엔드 분리)
 
 ```mermaid
 flowchart LR
@@ -134,7 +323,7 @@ flowchart LR
 
 ---
 
-## 5. 백엔드 설계
+## 6. 백엔드 설계
 
 프로젝트 경로: `earthworm_web/backend/`
 
@@ -148,7 +337,8 @@ backend/
     models/schemas.py
     api/
       health.py
-      environment.py        # ew_linux.bash, environment/* 파일
+      setup.py              # 초기 설정 마법사 (디렉터리·링)
+      diagnostics.py        # 락파일·잔류 IPC
       params.py             # params 파일 목록·읽기·쓰기
       modules.py            # 카탈로그, 토글, 복제
       variables.py          # 통합 변수
@@ -157,6 +347,8 @@ backend/
       logs.py               # 디렉터리 설정, 목록, 내용, 보관기간
       sniff.py              # sniff 세션 시작/중지 (REST) + WS 는 main
     services/
+      setup_wizard.py       # mkdir, 테이블 복사, 링 프리셋 기록
+      ipc_diag.py           # lockfile, ipcs 요약
       ew_process.py         # sourced env + argv 실행, 타임아웃
       startstop_file.py     # startstop_unix.d 파서/시리얼라이저
       earthworm_d.py        # Ring / Module 할당
@@ -172,7 +364,7 @@ backend/
   requirements.txt
 ```
 
-### 5.1 환경 로더 (`env.py`)
+### 6.1 환경 로더 (`env.py`)
 
 매 CLI 호출 전에 `ew_linux.bash` 를 **login-free bash** 로 소스하고 `env -0` 으로 변수를 가져온다.
 
@@ -198,7 +390,7 @@ bash -lc 'source /path/to/ew_linux.bash >/dev/null; env -0'
 
 `environment/` 나머지 파일(`earthworm.d`, `earthworm_commonvars.d`, …)은 파일 트리 편집 API 로 다룬다. 운영 사본은 `EW_PARAMS` 에 복사돼 있어야 하므로, 백엔드는 “버전 트리 `environment/`” 와 “런타임 `params/` 의 동명 파일” 을 구분해 보여 주고, **저장 시 런타임 `params/` 를 우선** 한다. `ew_linux.bash` 만 버전 트리 쪽을 직접 수정한다.
 
-### 5.2 모듈 카탈로그 (`module_catalog.py`)
+### 6.2 모듈 카탈로그 (`module_catalog.py`)
 
 한 행 = 기동 가능한 모듈 인스턴스.
 
@@ -224,7 +416,7 @@ doc_url       : "/api/docs/module/pick_ew"            # WEB_DOC 프록시
 
 `params` 에만 있고 `bin` 에 없으면 활성화 불가. 그 반대(바이너리만 있음)는 카탈로그에 **설정 파일 없음** 으로 두고, 토글 전에 `.d` 템플릿을 고르게 한다.
 
-### 5.3 `startstop_unix.d` 편집 (`startstop_file.py`)
+### 6.3 `startstop_unix.d` 편집 (`startstop_file.py`)
 
 v8.0b17 샘플은 구버전 문서의 `nRing` 없이 `Ring` 줄을 나열한다. 파서는 둘 다 읽는다. 기록은 **현재 파일 스타일을 유지** 한다 (있는 `nRing` 을 임의로 지우지 않음).
 
@@ -251,7 +443,7 @@ Process          "pick_ew pick_ew.d"
 - Ring 추가 → `earthworm.d` 키 확인 후 `startstop_unix.d` 에 `Ring` 추가 + `reconfigure`.
 - Ring 삭제·크기 변경 → **전체 재시작 필요**. UI 에서 명시.
 
-### 5.4 모듈 복제 (`clone.py`)
+### 6.4 모듈 복제 (`clone.py`)
 
 요청: 활성 모듈을 복제해 다른 이름으로 같은 기능을 쓴다.
 
@@ -265,11 +457,11 @@ Process          "pick_ew pick_ew.d"
 6. `foo.desc` 가 있으면 복사하고 내부 모듈명을 갱신. `statmgr.d` 가 desc 목록을 나열하면 한 줄 추가.
 7. `startstop_unix.d` 에 `Process "foo_bar foo_bar.d"` 를 주석으로 추가.
 8. `app.json.clones` 에 `{ id, clone_of, binary, param_file, module_id }` 기록.
-9. `.desc` 의 `modId`/`modName` 과 `statmgr.d` `Descriptor` 줄을 빼먹으면 하트비트 감시와 `restartMe` 가 동작하지 않는다 ([16.2](#162-프로세스-alive--모듈-생존--statmgr--desc-가-본-감시)).
+9. `.desc` 의 `modId`/`modName` 과 `statmgr.d` `Descriptor` 줄을 빼먹으면 하트비트 감시와 `restartMe` 가 동작하지 않는다 ([17.2](#172-프로세스-alive--모듈-생존--statmgr--desc-가-본-감시)).
 
 복제 삭제: 기동 중이면 `stopmodule` → 주석/블록 제거 → 복사한 bin·d·desc 삭제. 원본은 건드리지 않는다. `earthworm.d` 의 Module 줄은 주석 처리(숫자 재사용 혼란 방지).
 
-### 5.5 통합 변수 (`variables.py` + `commonvars.py`)
+### 6.5 통합 변수 (`variables.py` + `commonvars.py`)
 
 두 층:
 
@@ -301,20 +493,23 @@ SetEnvVariable STATIONFILE "${EW_PARAMS}/stations.hinv"
 
 모듈별 나머지(그리드, 포트, SCNL 리스트)는 **모듈 상세 편집기** 에서 다룬다. `.d` 는 INI 가 아니라 명령 문법이다. 1차는 줄 단위 키/값 파서 + 원문 편집을 병행하고, WEB_DOC `cmd/` HTML 을 사이드에 띄운다. 완전 스키마화는 2차.
 
-`@include` (`@ncal_model.d`) 는 따라가서 보여주고, 포함 파일도 같은 편집 API 로 연다.
+통합 변수로 `HeartbeatInt` 를 바꾸면 해당 모듈 `.desc` 의 `tsec` 도 `max(현재, HeartbeatInt×3)` 으로 올린다 ([17.2](#172-프로세스-alive--모듈-생존--statmgr--desc-가-본-감시)).
 
-### 5.6 프로세스 제어 (`ew_process.py`, `control.py`)
+`@include` (`@ncal_model.d`) 는 `EW_PARAMS` 상대 경로로 따라가서 보여주고, 포함 파일도 같은 편집 API 로 연다.
 
-- **시작**: 이미 Alive 인 startstop 이 있으면 거부. 없으면  
-  `cwd=EW_PARAMS`, env=sourced, `startstop` 를 백그라운드로 띄우고 pid·로그 경로를 `app.json` 에 저장. stdout/stderr 는 `EW_LOG/web_startstop.out` 으로 리다이렉트 (콘솔이 없는 서비스 모드).
-- **종료**: `pau`. KillDelay 대기 후 `status` 실패를 정상 종료로 본다.
-- **일시중지**: 카탈로그에서 startstop/statmgr 제외 활성 모듈에 `stopmodule`.
-- **재개**: Status=`Stop` 인 모듈에 `restart`.
-- **개별**: 대시보드에서 `restart` / `stopmodule`.
+`${VAR}` 확장: 셸 env 가 먼저, 그다음 `SetEnvVariable`. 같은 파일 안 재귀 확장 없음. `EW_HOME`/`EW_LOG`/`EW_PARAMS` 는 commonvars 에 넣지 않음 ([17.7](#177-var-확장-규칙-komc--통합-변수-함정)).
+
+### 6.6 프로세스 제어 (`ew_process.py`, `control.py`)
+
+- **시작**: `setup_complete` 가 아니면 409. 락파일 `EW_LOG/startstop_unix.d.lock` 이 있으면 진단 JSON 과 함께 거부 (확인 후 강제 해제 API 는 별도). 이미 Alive 인 startstop 이 있으면 거부. 없으면 `cwd=EW_PARAMS`, env=sourced, `startstop` 백그라운드. stdout 은 `EW_LOG/web_startstop.out`.
+- **종료**: `pau`. `KillDelay`+`HardKillDelay` 동안 `status` 폴링. 잔류 프로세스/IPC 는 진단에 남김.
+- **일시중지**: startstop/statmgr 제외 활성 모듈에 **`stopmodule <pid>` 만**. `pidpau` 금지. 각 pid 는 `status` 에서 얻음. 이름 문자열을 CLI 에 넣지 않음.
+- **재개**: Status=`Stop` 인 모듈에 `restart <pid>`.
+- **개별**: 대시보드에서 pid 로 `restart` / `stopmodule`. 직후 Alive 일 수 있으므로 KillDelay 동안 폴링.
 
 동시 제어는 asyncio Lock. 진행 중이면 409.
 
-### 5.7 상태 (`status_parser.py`)
+### 6.7 상태 (`status_parser.py`)
 
 주기(기본 2초)로 `status` 를 실행해 파싱한다.
 
@@ -324,29 +519,32 @@ Ring n name/key/size, Log Dir, Params Dir, Bin Dir, Version
 rows: name, pid, status, class/priority, cpu, argument
 ```
 
-`Alive` / `Stop` / `Dead` / 공백을 enum 으로. 웹 메타의 `enabled` 와 조인:
+`Alive` / `Stop` / `Dead` / 공백을 enum 으로. 웹 메타의 `enabled` 와 조인하고, **하트비트 열**을 따로 둔다 (`statmgr.d` Descriptor 등록 여부, `restartMe`, statmgr.log 의 dead 알림).
 
-| enabled | status | 대시보드 |
-|---------|--------|----------|
-| true | Alive | 정상 |
-| true | Dead / 없음 | 장애 |
-| false | Stop / 없음 | 꺼짐 |
-| false | Alive | 설정과 불일치 (경고) |
+| enabled | process | heartbeat | 대시보드 |
+|---------|---------|-----------|----------|
+| true | Alive | ok | 정상 |
+| true | Alive | missing / no desc | 하트비트 장애 (프로세스는 있음) |
+| true | Dead / 없음 | — | 프로세스 장애 |
+| false | Stop / 없음 | — | 꺼짐 |
+| false | Alive | — | 설정과 불일치 (경고) |
+
+헤더의 Disk space, 링 name/key/size, Log/Params/Bin Dir 도 카드로 표시. 락파일·IPC 요약은 진단 배지.
 
 WebSocket `/ws/status` 가 스냅샷 JSON 을 푸시한다. REST `GET /api/status` 는 마지막 스냅샷.
 
-### 5.8 로그 (`log_store.py`)
+### 6.8 로그 (`log_store.py`)
 
 - 경로: `EW_LOG`. 설정 창에서 바꾸면 `ew_linux.bash` 의 `EW_LOG` 를 쓰고 디렉터리를 만든다. **기동 중 변경은 재시작 후 유효** 함을 UI 에 표시.
 - 파일명 관례: `{config}_YYYYMMDD.log`, stderr 는 `.err`.
 - `GET /api/logs` : 모듈(설정 파일 basename)별 파일 목록, 날짜, 크기.
 - `GET /api/logs/{name}?date=&tail=` : 본문. 큰 파일은 tail.
 - `WS /ws/logs?file=` : `tail -F` 와 동일한 폴링 append.
-- **보관 기간**: `app.json.log_retention_days` (기본 14). 백그라운드 태스크가 UTC 날짜 스탬프가 기간 밖인 `*_YYYYMMDD.log` / `.err` 를 삭제. `web_startstop.out` 은 크기 상한으로 로테이트.
+- **보관 기간**: `app.json.log_retention_days` (기본 14). UTC 날짜 스탬프가 기간 밖인 `*_YYYYMMDD.log` / `.err` 만 삭제. **`*.lock` 과 `EW_DATA_DIR` 아래 tank/waveserver 파일은 삭제하지 않음.** `web_startstop.out` 은 크기 상한으로 로테이트.
 
 Earthworm 자체는 일 단위 파일을 무한히 남긴다. 보관 정책은 웹 앱이 파일 시스템에서 집행한다.
 
-### 5.9 링 스니프 (`sniff_broker.py`)
+### 6.9 링 스니프 (`sniff_broker.py`)
 
 동시 세션 상한 2 (링 부하). 세션당 하나의 Popen.
 
@@ -379,7 +577,7 @@ sniffring [-n] <ringname> <instid> <mod> <type> verbose
 
 WS 종료 시 프로세스에 SIGTERM, 수 초 후 SIGKILL.
 
-### 5.10 보안
+### 6.10 보안
 
 - 파일 API 는 `EW_PARAMS`, `environment/`, `ew_linux.bash`, 복제 대상 `bin/` 밖으로의 `..` 를 거부.
 - CLI 인자: 링 이름·모듈명·SCNL 은 `[A-Za-z0-9_.*\-]` .
@@ -388,37 +586,43 @@ WS 종료 시 프로세스에 SIGTERM, 수 초 후 SIGKILL.
 
 ---
 
-## 6. 프론트엔드 설계
+## 7. 프론트엔드 설계
 
 프로젝트 경로: `earthworm_web/frontend/`
 
 기존 `PPSD_v1/frontend` 와 같이 React 18 + Vite + TypeScript. 상태: 간단한 Context + fetch/WS. 1차에 Redux 없음.
 
-### 6.1 화면 구성
+### 7.1 화면 구성
 
 ```
-┌─ 탑바: 로고 · EW 버전 · startstop 상태 뱃지 · 시작/종료/일시중지/재개 · 설정 ─────────┐
-├─ 사이드 (데스크톱) / 드로어 (모바일) ──────────────────────────────────────────────┤
-│  대시보드                                                                         │
-│  모듈 설정 (토글·복제)                                                            │
-│  통합 변수                                                                        │
-│  파일 편집 (params / environment)                                                 │
-│  로그                                                                            │
-│  링 모니터 (sniffwave / sniffring)                                                │
+┌─ 탑바: 로고 · EW 버전 · startstop 뱃지 · 시작/종료/일시중지/재개 · 설정 ─────────────┐
+├─ 사이드 (setup_complete 전에는 마법사만) ──────────────────────────────────────────┤
+│  초기 설정 마법사 (디렉터리 · 설치 ID · 링 구성/크기)  ← setup_complete 전 필수     │
+│  기반 설정 (마법사 재진입: 링·경로, 기동 중 잠금)                                    │
+│  대시보드                                                                            │
+│  모듈 설정 (토글·복제)                                                               │
+│  통합 변수                                                                           │
+│  파일 편집 (params / environment)                                                    │
+│  로그                                                                                │
+│  링 모니터 (sniffwave / sniffring)                                                   │
+│  진단 (락파일 · IPC)                                                                 │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-| 화면 | 요구 | 내용 |
-|------|------|------|
-| **대시보드** | 7, 6 | 링 카드(이름·키·크기). 모듈 테이블: 이름, pid, Status, CPU, 인자, 활성, 정상/장애. 행 메뉴: 재시작 / 중지. 상단 전체 제어 버튼 |
-| **모듈 설정** | 3, 4 | `bin`×`params` 리스트. 토글. 복제 다이얼로그(새 이름). 바이너리 없음 비활성. 클릭 시 `.d` 폼+원문 |
-| **통합 변수** | 5 | 공통 키 폼. 저장 시 영향받는 파일 미리보기 후 적용 |
-| **파일 편집** | 2 | 좌: `params/` · `environment/` 트리. 우: 텍스트 에디터, 저장 전 diff. `ew_linux.bash` 경로 폼은 설정에도 있음 |
-| **로그** | 8, 9 | 설정: 로그 디렉터리, 보관 일수. 모듈 선택 → 날짜 파일 → 뷰어(팔로우) |
-| **링 모니터** | 10 | 도구 탭 sniffwave / sniffring. 링·옵션 폼. 시작/중지. 스크롤 로그. CSV 다운로드(현재 버퍼) |
-| **설정** | 1, 8, 9 | `ew_linux.bash` 핵심 변수, API 동작(상태 주기, sniff 상한), 로그 경로·보관 |
+| 화면 | 단계 | 요구 | 내용 |
+|------|------|------|------|
+| **초기 설정 마법사** | 초기 | 신규 11–12 | 디렉터리, Inst ID, 링 표(이름·키·크기·순서), 검증. [4절](#4-초기-설정과-이후-설정) |
+| **기반 설정** | 이후 | 1, 링 | 같은 폼 재진입. Alive 면 링 크기/순서 잠금 |
+| **대시보드** | 이후 | 6, 7 | 링 카드, 프로세스+하트비트, 디스크, 행별 restart/stop(pid) |
+| **모듈 설정** | 이후 | 3, 4 | 토글, 복제, `.d`+`.desc`. 바이너리 없음 비활성 |
+| **통합 변수** | 이후 | 5 | 공통 키. HeartbeatInt→tsec. 적용 미리보기 |
+| **파일 편집** | 이후 | 2 | params/environment 트리 |
+| **로그** | 이후 | 8, 9 | 경로·보관. lock/data 제외 |
+| **링 모니터** | 이후 | 10 | sniffwave / sniffring |
+| **진단** | 이후 | P0 | `*.lock`, ipcs 요약, 강제 해제 확인 |
+| **설정** | 이후 | 1, 8, 9 | 상태 주기, sniff 상한, NTP 표시(P2) |
 
-### 6.2 프론트 모듈 구조
+### 7.2 프론트 모듈 구조
 
 ```
 frontend/src/
@@ -426,6 +630,8 @@ frontend/src/
   ws/status.ts
   ws/logs.ts
   ws/sniff.ts
+  pages/SetupWizard.tsx
+  pages/Foundation.tsx
   pages/Dashboard.tsx
   pages/Modules.tsx
   pages/Variables.tsx
@@ -443,36 +649,52 @@ frontend/src/
 
 제어 버튼은 확인 모달 후 `POST /api/control/{action}`. 응답 전까지 비활성.
 
-### 6.3 UX 규칙
+### 7.3 UX 규칙
 
-- 토글 on 이 기동 중 `reconfigure` 를 부르면 토스트로 결과 status 를 보여 준다.
+- `setup_complete === false` 이면 마법사 외 메뉴는 비활성.
+- 링 크기/순서 저장은 startstop Alive 이면 막고 pau 를 안내한다.
+- 토글 on 이 기동 중 `reconfigure` 를 부르면 statmgr 재시작 토스트를 보여 준다.
 - 통합 변수 저장은 항상 “변경될 파일 N개” 목록을 먼저 보여 준다.
 - sniff `y`(샘플 덤프) 는 경고.
 - `earthworm_global.d` 저장은 “전역 ID 파일” 경고.
 
 ---
 
-## 7. 요구사항 매핑
+## 8. 요구사항 매핑
 
 | # | 요구 | 백엔드 | 프론트 |
 |---|------|--------|--------|
-| 1 | `ew_linux.bash` 로 운영 | 매 CLI 소스. 핵심 변수 읽기/쓰기 | 설정 폼 |
+| 1 | `ew_linux.bash` 로 운영 | 매 CLI 소스. 핵심 변수 읽기/쓰기 | 초기 마법사 + 기반 설정 |
+| 1b | 디렉터리·링 초기 구성 | `/api/setup/*`, 테이블 복사, 링 프리셋 | 초기 설정 마법사 |
 | 2 | params · environment 웹 편집 | 트리 + 읽기/쓰기, 경로 샌드박스 | 파일 트리 에디터 |
-| 3 | 모듈 토글 | `startstop_unix.d` 주석 + stopmodule/reconfigure | 설정 메뉴 토글 |
-| 4 | 모듈 복제 | bin 복사, `.d`/Module ID/`Process`/app.json | 복제 다이얼로그 |
-| 5 | 통합 변수 → 각 params | commonvars + module_fields.yaml 치환 | 통합 입력 페이지 |
-| 6 | 시작/종료/일시중지 | startstop / pau / stopmodule+restart | 탑바 버튼 |
-| 7 | 상태 대시보드 | `status` 파싱, `/ws/status` | 대시보드 표 |
-| 8 | 로그 경로·조회 | EW_LOG 변경, 파일 목록, tail WS | 설정 + 로그 화면 |
+| 3 | 모듈 토글 | `startstop_unix.d` 주석 + stopmodule/reconfigure | 이후 · 모듈 설정 |
+| 4 | 모듈 복제 | bin+`.d`+Module ID+`.desc`+Descriptor | 이후 · 복제 다이얼로그 |
+| 5 | 통합 변수 → 각 params | commonvars + tsec 연동 | 이후 · 통합 입력 |
+| 6 | 시작/종료/일시중지 | startstop / pau / stopmodule(pid) | 탑바 (setup 완료 후) |
+| 7 | 상태 대시보드 | status + 하트비트 + 디스크 | 대시보드 |
+| 8 | 로그 경로·조회 | EW_LOG, tail WS, lock 제외 | 이후 · 로그 |
 | 9 | 로그 보관 기간 | retention 태스크 | 설정 숫자 입력 |
-| 10 | 링 실시간 | sniffwave/sniffring argv + WS | 옵션 폼 + 스트림 |
+| 10 | 링 실시간 | sniffwave/sniffring argv + WS | 이후 · 링 모니터 |
 | 11 | BE/FE 분리 | FastAPI only I/O·프로세스 | React only UI |
 
 ---
 
-## 8. API 계약 (초안)
+## 9. API 계약 (초안)
 
-베이스: `/api`. 헤더 `X-API-Key`. WS 는 쿼리 `?key=`.
+베이스: `/api`. 헤더 `X-API-Key`. WS 는 쿼리 `?key=`. `setup_complete` 가 false 이면 `/api/setup/*` 와 `/health` 외의 쓰기·제어는 409.
+
+### 초기 설정
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/setup/status` | `setup_complete`, 탐지된 `EW_HOME`/`EW_VERSION`, 기존 params 여부 |
+| GET | `/setup/defaults` | 링 프리셋, Inst 목록, 디렉터리 기본값 |
+| PUT | `/setup/directories` | `EW_*` 기록, `params`/`log`/`data` mkdir |
+| PUT | `/setup/installation` | Inst ID, 테이블 파일 복사 |
+| PUT | `/setup/rings` | 링 행 배열 → earthworm.d + startstop_unix.d |
+| POST | `/setup/validate` | 바이너리·테이블·링·권한 검사 |
+| POST | `/setup/complete` | validate 통과 시에만 `setup_complete=true` |
+| POST | `/setup/import-existing` | 이미 있는 params 를 마법사 값으로 로드 |
 
 ### 환경·파일
 
@@ -523,27 +745,24 @@ frontend/src/
 | DELETE | `/sniff/sessions/{id}` | 종료 |
 | WS | `/ws/sniff?session=` | 줄 단위 |
 
-에러: 400 검증, 403 키, 409 제어 잠금/이미 기동, 422 `.d` 파서, 503 EW env 미설정.
+| GET | `/diagnostics/lock` | `startstop_unix.d.lock` 존재·pid |
+| POST | `/diagnostics/lock/unlock` | 운영자 확인 후 락 해제 |
+| GET | `/diagnostics/ipc` | 해당 유저 shm/세마포어 요약 (자동 삭제 없음) |
+
+에러: 400 검증, 403 키, 409 제어 잠금/이미 기동/`setup_complete` 아님, 422 `.d` 파서, 503 EW env 미설정.
 
 ---
 
-## 9. `app.json` 스키마
+## 10. `app.json` 스키마
 
 ```json
 {
   "version": 1,
+  "setup_complete": false,
+  "setup_at": null,
   "log_retention_days": 14,
   "status_interval_sec": 2,
-  "clones": [
-    {
-      "id": "export_generic_picks",
-      "clone_of": "export_generic",
-      "binary": "export_generic_picks",
-      "param_file": "export_generic_picks.d",
-      "module_id": "MOD_EXPORT_GENERIC_PICKS",
-      "module_id_num": 201
-    }
-  ],
+  "clones": [],
   "disabled_process_names": [],
   "startstop_pid": null
 }
@@ -555,9 +774,9 @@ frontend/src/
 
 ---
 
-## 10. 런타임 시퀀스
+## 11. 런타임 시퀀스
 
-### 10.1 전체 시작
+### 11.1 전체 시작
 
 ```mermaid
 sequenceDiagram
@@ -577,7 +796,7 @@ sequenceDiagram
   FE-->>U: 대시보드 Alive
 ```
 
-### 10.2 토글 후 복제 모듈 기동
+### 11.2 토글 후 복제 모듈 기동
 
 ```mermaid
 sequenceDiagram
@@ -594,7 +813,7 @@ sequenceDiagram
   BE-->>U: status 에 pick_ew_b Alive
 ```
 
-### 10.3 sniffwave
+### 11.3 sniffwave
 
 ```mermaid
 sequenceDiagram
@@ -615,48 +834,53 @@ sequenceDiagram
 
 ---
 
-## 11. 구현 단계
+## 12. 구현 단계
 
-Earthworm 을 실제로 기동하지 않고도 1단계는 파일 파서·UI 로 진행할 수 있다. 제어·스니프는 같은 호스트의 공유 메모리가 필요하다.
+Earthworm 을 실제로 기동하지 않고도 1단계는 마법사·파일 파서·UI 로 진행할 수 있다. 제어·스니프는 같은 호스트의 공유 메모리가 필요하다. [17.12](#1712-웹-기능으로-승격할-항목-요구-110-밖-구현-시-포함) 의 P0 는 1–2단계에 포함한다.
 
-### 1단계 — 기반
+### 1단계 — 초기 설정 마법사와 파일 기반
 
-- `ew_linux.bash` 로드, `/api/health`, `/api/environment`
-- params/environment 파일 트리 CRUD
-- `startstop_unix.d` · `earthworm.d` 파서
-- 모듈 카탈로그 + 토글(파일만, 프로세스 없음)
-- 프론트: 설정, 파일 편집, 모듈 토글 뼈대
+- `ew_linux.bash` 로드, `/api/health`, `/api/setup/*`
+- `params`/`log`/`data` 생성, 테이블 파일 복사, Inst 검증
+- 링 편집(이름·키·크기·순서), `STATUS_RING` 첫 줄, `FLAG_RING` 제외
+- `startstop_unix.d` · `earthworm.d` 파서/기록
+- 모듈 카탈로그 + 토글(파일만)
+- 프론트: SetupWizard, 이후 메뉴 잠금
 
-### 2단계 — 제어와 대시보드
+### 2단계 — 제어와 대시보드 (P0)
 
-- start / pau / status 파싱
-- `/ws/status`, 대시보드
+- setup_complete 후에만 start / pau / status
+- CLI 는 pid 만. 일시중지는 stopmodule 만
+- 락파일·IPC 진단
+- `/ws/status`, 프로세스 + 하트비트 열
 - 기동 중 토글 ↔ stopmodule / reconfigure
-- 일시중지 / 재개
+- KillDelay 폴링
 
-### 3단계 — 복제와 통합 변수
+### 3단계 — 복제와 통합 변수 (P1)
 
-- clone API, Module ID 할당, bin 복사
-- `earthworm_commonvars.d` + `module_fields.yaml`
-- 통합 변수 페이지, 적용 미리보기
+- clone: bin + `.d` + Module ID + `.desc` + Descriptor
+- Process 길이·MAX_CHILD·MAX_RING UI 한도
+- `earthworm_commonvars.d` + HeartbeatInt↔tsec
+- 링 토폴로지 경고 (CheckAllRings / copystatus)
 
-### 4단계 — 로그와 링
+### 4단계 — 로그와 링 모니터
 
-- 로그 디렉터리·보관·뷰어·follow
+- 로그 디렉터리·보관·뷰어·follow. lock/data 제외
 - sniffwave / sniffring 세션 + WS
-- 링 목록, 옵션 폼, overflow 처리
+- 기반 설정 재진입 (링 크기 변경은 pau 후)
 
-### 5단계 — 다듬기
+### 5단계 — 다듬기 (P2)
 
-- API 키, 백업, 감사 로그(누가 토글/pau 했는지)
+- API 키, 백업, 감사 로그
+- 포트/IP 인벤토리, tankplayer 시험 프로파일, NTP·디스크 위젯
 - WEB_DOC 정적 제공 (`/docs/ew/`)
-- README, systemd 유닛 예시 (`ew-web.service` + Earthworm 은 웹에서만 기동)
+- README, systemd 유닛 예시
 
 각 단계마다 백엔드 pytest (파서·argv 생성·경로 샌드박스) 와 프론트 타입체크를 둔다.
 
 ---
 
-## 12. 백엔드 / 프론트엔드 책임 요약
+## 13. 백엔드 / 프론트엔드 책임 요약
 
 ```mermaid
 flowchart TB
@@ -693,13 +917,18 @@ flowchart TB
 
 ---
 
-## 13. 위험과 완화
+## 14. 위험과 완화
 
 | 위험 | 완화 |
 |------|------|
 | tarball v8.0b8 vs 소스 v8.0b17 | 카탈로그가 bin 존재 여부를 강제. 없는 모듈은 활성화 불가 |
 | 잘못된 `.d` 로 startstop 기동 실패 | 저장 시 구문 검사, 저장 전 백업, 시작 실패 시 `web_startstop.out` 표시 |
-| `reconfigure` 가 이미 도는 모듈의 `.d` 변경을 안 읽음 | UI: “기동 중 모듈은 restart 필요”. 통합 변수 적용 후 해당 모듈 restart 옵션 |
+| `environment/` 만 수정 | 초기 마법사가 `EW_PARAMS` 로 테이블 복사·검증 |
+| Alive 인데 하트비트 없음 | Descriptor + CheckAllRings, 대시보드 하트비트 열 |
+| 락파일·잔류 shm | 진단 화면. 자동 ipcrm 없음 |
+| status 가 WAVE_RING 에서 유실 | 초기 설정에서 STATUS_RING 을 첫 줄 |
+| `reconfigure` 가 이미 도는 모듈의 `.d` 변경을 안 읽음 | UI: “기동 중 모듈은 restart 필요” |
+| 이름/`pidpau` 로 중지 | CLI 는 pid, 일시중지는 stopmodule 만 |
 | sniff 가 링을 느리게 함 | 세션 2개, 기본 헤더만, 서버측 줄 상한 |
 | 로그 삭제 오동작 | 삭제 패턴 `*_YYYYMMDD.log` 만. 미리보기 API |
 | 여러 startstop | `status` 로 기존 인스턴스 거부. 링 키 충돌 방지 |
@@ -708,23 +937,25 @@ flowchart TB
 
 ---
 
-## 14. 운영 시 웹이 만지는 파일
+## 15. 운영 시 웹이 만지는 파일
 
 | 파일 | 읽기 | 쓰기 | 조건 |
 |------|------|------|------|
-| `environment/ew_linux.bash` | ○ | ○ | 경로·설치 ID·`EW_LOG` |
-| `EW_PARAMS/startstop_unix.d` | ○ | ○ | 토글·복제·링 |
+| `environment/ew_linux.bash` | ○ | ○ | 초기 마법사·기반 설정 |
+| `EW_RUN_DIR/params,log,data` | ○ | 생성 | 초기 마법사 mkdir |
+| `EW_PARAMS/startstop_unix.d` | ○ | ○ | 링 순서, 토글·복제 |
 | `EW_PARAMS/*.d`, `*.desc` | ○ | ○ | 편집·복제·변수 전파 |
-| `EW_PARAMS/earthworm.d` | ○ | ○ | Module/Ring 추가 |
+| `EW_PARAMS/earthworm.d` | ○ | ○ | Ring 키, Module ID |
 | `EW_PARAMS/earthworm_commonvars.d` | ○ | ○ | 통합 변수 |
-| `EW_PARAMS/earthworm_global.d` | ○ | △ | 기본 읽기 전용 |
+| `EW_PARAMS/earthworm_global.d` | ○ | △ | 복사(초기), 이후 읽기 전용 |
 | `$EW_HOME/$EW_VERSION/bin/*` | ○ | 복제 시 `cp` 만 | 원본 삭제 없음 |
-| `EW_LOG/*` | ○ | 보관 청소 시 삭제 | 패턴 제한 |
-| `backend/data/app.json` | ○ | ○ | 웹 메타 |
+| `EW_LOG/*` | ○ | 보관 청소 시 삭제 | `*_YYYYMMDD.log` 만. `*.lock` 제외 |
+| `EW_LOG/startstop_unix.d.lock` | ○ | 확인 후 해제 | 진단 |
+| `backend/data/app.json` | ○ | ○ | setup_complete, 웹 메타 |
 
 ---
 
-## 15. 참고
+## 16. 참고
 
 - 설치·`EW_*`·run/params/log: `doc/WEB_DOC/USER_GUIDE/Inst_config_guide.htm`
 - 시작·status·pau: `doc/WEB_DOC/USER_GUIDE/start-stop-status.html`
@@ -739,11 +970,11 @@ flowchart TB
 
 ---
 
-## 16. 소스·매뉴얼 분석 후 보완 (필수)
+## 17. 소스·매뉴얼 분석 근거
 
-1차 계획(요구 1–10)만으로는 운영 콘솔이 깨지거나, “Alive인데 실제로는 죽은” 상태를 놓친다. 아래는 v8.0b17 소스와 `doc/WEB_DOC` 를 읽고 확정한 **빠진 내용**이다.
+1차 요구(1–10)만으로는 기동이 안 되거나 Alive 오탐이 난다. 아래는 v8.0b17 소스와 `doc/WEB_DOC` 근거이며, **화면·API 로는 4절(초기/이후)과 6–9절에 이미 넣었다.** 구현 시 이 절을 스펙의 출전으로 쓴다.
 
-### 16.1 부트스트랩 — `environment/` 만 고쳐서는 안 돌아간다
+### 17.1 부트스트랩 — `environment/` 만 고쳐서는 안 돌아간다
 
 `GetUtil_LoadTable` (`src/libsrc/util/getutil.c`) 은 **`EW_PARAMS` 아래** `earthworm_global.d` 와 `earthworm.d` 만 읽는다. 배포 `environment/` 원본을 웹에서 고쳐도, 런타임 사본이 `params/` 에 없으면 모든 모듈이 Inst/Module/Ring lookup 에 실패한다.
 
@@ -760,7 +991,7 @@ flowchart TB
 
 Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를 **params 로 복사한 뒤** 소스한다. 본 계획은 사용자가 지정한 `environment/ew_linux.bash` 를 소스로 쓰되, 웹은 “지금 소싱되는 파일 경로” 를 명시한다.
 
-### 16.2 프로세스 Alive ≠ 모듈 생존 — statmgr / `.desc` 가 본 감시
+### 17.2 프로세스 Alive ≠ 모듈 생존 — statmgr / `.desc` 가 본 감시
 
 `status` 는 OS 프로세스가 있는지만 본다 (`Alive` / `Dead` / `Stop`).  
 실제 “하트비트가 끊김” 은 **statmgr** 이다 (`doc/WEB_DOC` statmgr overview, `src/reporting/statmgr`).
@@ -793,7 +1024,7 @@ Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를
 - 하트비트 상태 (statmgr.log 또는 Descriptor 등록 여부)
 - `restartMe` on/off
 
-### 16.3 CLI 는 PID 만 받는다 (이름은 startstop 콘솔 전용)
+### 17.3 CLI 는 PID 만 받는다 (이름은 startstop 콘솔 전용)
 
 | 경로 | 재시작 | 중지 |
 |------|--------|------|
@@ -807,7 +1038,7 @@ Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를
 
 `stopmodule` 직후 바로 `status` 하면 아직 Alive 일 수 있다. 소스 메시지도 “30초 정도 status 로 확인” 이다. 웹은 `KillDelay` 동안 폴링한다.
 
-### 16.4 startstop 하드 리밋 (v8.0b17 `startstop_lib.h` / `startstop_unix_generic.c`)
+### 17.4 startstop 하드 리밋 (v8.0b17 `startstop_lib.h` / `startstop_unix_generic.c`)
 
 | 한도 | 값 | 웹 동작 |
 |------|-----|---------|
@@ -824,13 +1055,13 @@ Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를
 
 `reconfigure` 성공 후 startstop 은 **statmgr 을 다시 시작한다** (`Final reconfigure step: Restart statmgr`). 토글 on 은 하트비트 감시가 잠깐 끊길 수 있음을 UI 에 표시한다. 이미 도는 모듈의 `.d` 는 그대로다. 링 삭제·축소는 reconfigure 로 안 되고 **전체 재시작**이다. 중복 링/모듈 이름은 reject.
 
-### 16.5 락파일 · 유령 공유메모리 — 시작 실패의 실제 원인
+### 17.5 락파일 · 유령 공유메모리 — 시작 실패의 실제 원인
 
 - 락: `EW_LOG/startstop_unix.d.lock` (`ew_lockfile_path`). startstop 은 **한 인스턴스만**. 비정상 종료 후 락이 남으면 시작이 거절된다. 웹 시작 실패 화면에 락 경로·pid·“강제 해제(운영자 확인)” 를 둔다.
 - `pau` 후 `KillDelay`/`HardKillDelay` 가 지나도 안 죽는 모듈(예: `wave_serverV` 가 SIGTERM 을 자체 처리)은 좀비 + **링 shm/세마포어 잔류**. 다음 `startstop` 이 같은 키로 `tport_create` 에 실패한다.
 - 웹에 **진단** 화면: `ipcs` (또는 POSIX shm) 요약, `status` 실패 시 “잔류 IPC 가능성”, 정리는 **해당 사용자 소유 세그먼트만** 명시적 확인 후. 자동 `ipcrm` 전부 삭제는 하지 않는다.
 
-### 16.6 첫 번째 Ring 에 제어 메시지가 실린다
+### 17.6 첫 번째 Ring 에 제어 메시지가 실린다
 
 `status` / `stopmodule` / `pau` 계열은 `startstop_unix.d` 의 **첫 `Ring`** 에 붙는다 (`ReadRingName`). `restart` 는 statmgr 링을 찾고, 없으면 첫 링.
 
@@ -838,7 +1069,7 @@ Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를
 
 권장: 웹 링 설정에서 **STATUS_RING 을 첫 줄로** 두거나, 제어 전용 작은 링을 첫 번째로. 변경은 전체 재시작.
 
-### 16.7 `${VAR}` 확장 규칙 (`kom.c`) — 통합 변수 함정
+### 17.7 `${VAR}` 확장 규칙 (`kom.c`) — 통합 변수 함정
 
 1. 셸 환경(`getenv`)을 먼저 본다.
 2. 그다음 `earthworm_commonvars.d` 의 `SetEnvVariable`.
@@ -846,7 +1077,7 @@ Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를
 4. `EW_HOME`, `EW_VERSION`, `EW_LOG`, `EW_PARAMS` 는 commonvars 에 넣지 말 것 (공식 Best practice).
 5. `@include` (`@ncal_model.d`) 는 `EW_PARAMS` 상대 경로. 통합 편집기가 follow 해야 한다.
 
-### 16.8 로그 파일명 · 지우면 안 되는 것 (`logit_common.c`)
+### 17.8 로그 파일명 · 지우면 안 되는 것 (`logit_common.c`)
 
 - 경로: `EW_LOG` (없으면 logit_init 실패)
 - 이름: `{설정파일basename}_{YYYYMMDD}.log` (UTC 날짜 롤)
@@ -854,7 +1085,7 @@ Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를
 - 락파일 `*.lock` 은 로그 보관 청소에서 **제외**
 - `EW_DATA_DIR` 의 wave tank / tankplayer 파일은 로그가 아니다. 보관 정책 대상 아님
 
-### 16.9 복제 시 메시지 로고가 겹치면 안 된다
+### 17.9 복제 시 메시지 로고가 겹치면 안 된다
 
 모든 EW 메시지는 `(Installation, Module, Type)` 로고를 단다. 같은 `MyModuleId` 로 두 인스턴스를 돌리면 pick/export 수신 측이 구분하지 못한다.
 
@@ -863,7 +1094,7 @@ Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를
 - `instId` 는 `${EW_INST_ID}` 유지
 - 바이너리 파일명만 바꾸고 Module ID 를 안 바꾸면 **로고 충돌**
 
-### 16.10 대시보드에 더 넣을 운영 신호
+### 17.10 대시보드에 더 넣을 운영 신호
 
 `status` 헤더에는 Hostname-OS, UTC 시작/현재, **Disk space**, 링 name/key/size, Log/Params/Bin Dir, startstop 버전이 있다. 디스크는 `diskmgr` 모듈과도 겹친다.
 
@@ -873,7 +1104,7 @@ Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를
 - `dumpwave` / `file2ring` — 파일↔링 (운영보다 시험)
 - `tankplayer` — 라이브 없이 재생. 웹 콘솔 자체 시험에 필요
 
-### 16.11 네트워크·권한·시간 (설정 화면 2차)
+### 17.11 네트워크·권한·시간 (설정 화면 2차)
 
 매뉴얼/스크립트 주석에서 웹이 빠뜨리기 쉬운 것:
 
@@ -883,7 +1114,7 @@ Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를
 - 시계: sniffwave 출력의 `D:`(지연) `F:` 는 호스트 UTC 에 의존. NTP 상태를 설정/대시보드에 표시하면 좋다.
 - `EW_DATA_DIR` 경로·용량 (tank, waveserver)
 
-### 16.12 웹 기능으로 승격할 항목 (요구 1–10 밖, 구현 시 포함)
+### 17.12 웹 기능으로 승격할 항목 (요구 1–10 밖, 구현 시 포함)
 
 | 우선 | 항목 | 이유 |
 |------|------|------|
@@ -899,5 +1130,5 @@ Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를
 | P2 | tankplayer 시험 프로파일 | 라이브 망 없이 콘솔 검증 |
 | P2 | NTP·디스크·락 위젯 | 운영 장애 3대장 |
 
-이 절의 P0 는 1–2단계 구현에 넣고, P1 은 3–4단계, P2 는 5단계로 잡는다.
+이 절의 P0 는 [12절](#12-구현-단계) 1–2단계(초기 마법사 포함), P1 은 3–4단계, P2 는 5단계로 잡는다.
 
