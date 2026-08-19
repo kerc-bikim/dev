@@ -1,24 +1,36 @@
 # Earthworm Web Control
 
-Earthworm **v8.0b17** 를 웹에서 설정·기동·감시하기 위한 콘솔 계획입니다. 구현은 아직 없고, 계획서만 있습니다.
+Earthworm **v8.0b17** 를 웹에서 설정·기동·감시하는 콘솔입니다. 백엔드(FastAPI)와 프론트엔드(React + Vite)는 분리되어 있고, Earthworm 바이너리는 프론트가 직접 호출하지 않습니다.
 
-- 계획: [`plan.md`](plan.md) · HTML [`plan.html`](plan.html)
-- 웹 흐름: **초기 설정**(디렉터리·링) → **이후 설정**(모듈·제어·로그·스니프)
-- 대상 바이너리: [earthworm_v8-0b8_rockylinux9_4.tar.gz](http://www.earthwormcentral.org/distribution/earthworm_v8-0b8_rockylinux9_4.tar.gz) (공식 배포는 HTTP. 크기 130927698 bytes 확인, SHA-256 대조 후 압축 해제)
-- 소스: [gitlab.com/seismic-software/earthworm](https://gitlab.com/seismic-software/earthworm.git) 태그 `v8.0b17`
-- 매뉴얼: 소스 `doc/WEB_DOC`
+계획서: [`plan.md`](plan.md) · HTML [`plan.html`](plan.html)
 
-백엔드(FastAPI)와 프론트엔드(React + Vite)를 분리합니다. 상세 API·화면·파일 규칙은 계획서를 따릅니다.
+## 개발 실행
 
-미리보기 (백엔드 없이 목 데이터):
+기본값은 저장소 `fixtures/` 의 **CLI 스텁**을 `earthworm_web/.ew_home` 에 심습니다. 실제 Rocky Linux 바이너리가 있으면 `EW_WEB_BASH` 와 `EW_WEB_AUTO_SEED=0` 으로 가리키면 됩니다.
 
 ```bash
-cd frontend/preview
-python3 -m http.server 8765
-# 브라우저에서 http://127.0.0.1:8765
+# 백엔드 :8010
+cd backend
+pip install -r requirements.txt
+EW_WEB_API_KEY=dev uvicorn app.main:app --host 0.0.0.0 --port 8010
+
+# 프론트 :5174  (/api · /ws 프록시)
+cd frontend
+npm install
+npm run dev -- --host 0.0.0.0 --port 5174
 ```
 
+브라우저: http://127.0.0.1:5174  
+API 키 헤더: `X-API-Key: dev` (`VITE_API_KEY` 로 변경 가능)
+
 ```bash
-pip install markdown
-python scripts/build_plan_html.py
+cd backend && pytest
+cd frontend && npm run build
 ```
+
+## 동작 요약
+
+1. **초기 설정 마법사** — `EW_HOME` / `EW_RUN_DIR`(params, log, data), Inst ID, 링 이름·키·크기·순서. 완료 전 제어 API 는 409.
+2. **이후 설정** — 모듈 토글·복제, 통합 변수, 파일 편집, 시작(`startstop`)/종료(`pau`)/일시중지(`stopmodule` pid)/재개(`restart` pid), 대시보드, 로그, sniffwave/sniffring.
+3. 첫 startstop 링은 `STATUS_RING`. `FLAG_RING` 은 startstop 목록에 넣지 않습니다.
+4. 목 미리보기(백엔드 없음): `frontend/preview/` 에서 `python3 -m http.server 8765`

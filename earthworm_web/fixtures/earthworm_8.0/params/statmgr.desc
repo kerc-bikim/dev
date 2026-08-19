@@ -1,0 +1,5 @@
+modName statmgr
+modId   MOD_STATMGR
+instId  INST_WILDCARD
+tsec    90
+restartMe
