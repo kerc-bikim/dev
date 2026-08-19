@@ -591,6 +591,8 @@ WS 종료 시 프로세스에 SIGTERM, 수 초 후 SIGKILL.
 
 프로젝트 경로: `earthworm_web/frontend/`
 
+목 데이터 미리보기(백엔드 없음): `earthworm_web/frontend/preview/` 에서 `python3 -m http.server 8765` 후 `http://127.0.0.1:8765` .
+
 기존 `PPSD_v1/frontend` 와 같이 React 18 + Vite + TypeScript. 상태: 간단한 Context + fetch/WS. 1차에 Redux 없음.
 
 ### 7.1 화면 구성

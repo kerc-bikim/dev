@@ -1054,6 +1054,7 @@ sniffring [-n] &lt;ringname&gt; &lt;instid&gt; &lt;mod&gt; &lt;type&gt; verbose
 <hr />
 <h2 id="7">7. 프론트엔드 설계</h2>
 <p>프로젝트 경로: <code>earthworm_web/frontend/</code></p>
+<p>목 데이터 미리보기(백엔드 없음): <code>earthworm_web/frontend/preview/</code> 에서 <code>python3 -m http.server 8765</code> 후 <code>http://127.0.0.1:8765</code> .</p>
 <p>기존 <code>PPSD_v1/frontend</code> 와 같이 React 18 + Vite + TypeScript. 상태: 간단한 Context + fetch/WS. 1차에 Redux 없음.</p>
 <h3 id="71">7.1 화면 구성</h3>
 <pre><code>┌─ 탑바: 로고 · EW 버전 · startstop 뱃지 · 시작/종료/일시중지/재개 · 설정 ─────────────┐
