@@ -5,7 +5,8 @@
 	  cannot be honored the program exits with an error instead of writing the
 	  original record.
 	- Increment miniSEED 2 sequence numbers when -B splits one record into many.
-	  Sequences are rewritten per SourceID in write (time) order, starting at 1.
+	  Sequences are rewritten per SourceID in each output file, starting at 1.
+	  A new archive file (e.g. a new SDS day) starts again at 1.
 	- Keep the -B implementation in src/local.c so EarthScope updates can be
 	  merged by re-applying the LOCAL hooks in dataselect.c (see UPSTREAM.md).
 

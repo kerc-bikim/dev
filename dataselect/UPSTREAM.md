@@ -3,7 +3,7 @@
 이 트리는 [EarthScope/dataselect](https://github.com/EarthScope/dataselect) 에 **출력 레코드/블록 크기 `-B`** 를 더한 로컬 확장입니다.
 
 - **로컬 로직**: `src/local.c`, `src/local.h` (상태, 파싱, pack 실패 처리, v2 시퀀스, 카운트)
-- **원본에 가까운 파일**: `src/dataselect.c` — `/* >>> LOCAL */` … `/* <<< LOCAL */` 훅만 추가
+- **원본에 가까운 파일**: `src/dataselect.c`, `src/dsarchive.c` — `/* >>> LOCAL */` … `/* <<< LOCAL */` 훅만 추가
 - **버전 문자열**: `dataselect.c` 의 upstream `VERSION` 을 `local.h` 가 `4.4.0` 으로 덮어씀
 
 원본이 버전업되면 **원본 `dataselect.c`를 가져온 뒤 훅을 다시 붙이면** `-B` 가 동작합니다. `local.c` / `local.h` 는 그대로 두면 됩니다.
@@ -33,7 +33,8 @@ SRCS = dataselect.c dsarchive.c local.c
 | `rv == -2` | `-B` 이면 trimrecord 가 `-3` 을 돌려 원본 fallback 금지 |
 | 레코드 카운트 루프 | `if (!local_write_counted ()) { totalrecsout++; … }` |
 | `trimrecord()` | `do_trim` ( `-B` 만 있을 때 `newrange == NULL` 가능 ), 인코딩 거부, `local_prepare_pack`, pack 실패 시 `local_discard_original` |
-| `writerecord()` | `local_stamp_v2_sequence`, packed 레코드 `msr3_parse` 후 archive/`-out` 에 사용, `local_note_write` |
+| `writerecord()` | `-o` 경로에서 `local_stamp_v2_sequence` (파일 키 = outputfile), packed 레코드 `msr3_parse` 후 archive/`-out` 에 사용, `local_note_write` |
+| `dsarchive.c` `ds_streamproc()` | write 직전 `local_stamp_v2_sequence` (파일 키 = archive filename) |
 | `processparam()` | `-A` 다음 `-B` → `local_set_blocksize` |
 | `usage()` | `LOCAL_USAGE_B` 매크로 ( `-A` 와 `-Pr` 사이 ) |
 
@@ -43,7 +44,7 @@ SRCS = dataselect.c dsarchive.c local.c
 
 - `-B` 없음 + trim 만: unpack/pack 불가면 **원본 레코드를 그대로 쓰고 경고** (기존과 동일)
 - `-B` 지정: pack 불가·부분 실패·헤더가 블록보다 크면 **원본을 섞지 않고 종료 코드 1**
-- v2 를 여러 장으로 나눌 때 시퀀스는 **fwrite 전** packed 버퍼 앞 6바이트에 기록하며, 채널(SourceID)마다 출력 순으로 1부터 증가
+- v2 시퀀스는 **각 출력 파일**에서 채널마다 1부터 증가. 아카이브 파일이 바뀌면 이어지지 않음
 - 샘플 시각·값은 원본과 동일 (`make test` 의 `compare-series`)
 
 ## 4. 확인

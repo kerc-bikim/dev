@@ -10,8 +10,10 @@
  * requested length, partial pack) are fatal: the original record is
  * not written mixed with re-packed output.
  *
- * miniSEED 2 sequence numbers are rewritten per SourceID in write
- * (time) order, starting at 1 and wrapping at 1000000.
+ * miniSEED 2 sequence numbers are rewritten per output file and
+ * SourceID in write (time) order, starting at 1 and wrapping at
+ * 1000000.  A new archive file (for example a new SDS day) starts
+ * again at 1.
  ***************************************************************************/
 
 #include <inttypes.h>
@@ -28,15 +30,34 @@ static int wrote_this_pack = 0;
 static uint64_t *totalrecsoutp = NULL;
 static uint64_t *totalbytesoutp = NULL;
 
-/* Per-SourceID miniSEED 2 sequence, assigned in write (time) order from 1. */
+/* Per output-file + SourceID miniSEED 2 sequence, from 1. */
 typedef struct SidSeq_s
 {
+  char *filekey;
   char *sid;
   int64_t next;
   struct SidSeq_s *nextsid;
 } SidSeq;
 
 static SidSeq *sidseqs = NULL;
+
+static char *
+local_dupstr (const char *s)
+{
+  size_t n;
+  char *d;
+
+  if (!s)
+    s = "";
+
+  n = strlen (s) + 1;
+  d = (char *)malloc (n);
+  if (!d)
+    return NULL;
+
+  memcpy (d, s, n);
+  return d;
+}
 
 static void
 local_seq_reset (void)
@@ -47,20 +68,22 @@ local_seq_reset (void)
   {
     p = sidseqs;
     sidseqs = p->nextsid;
+    free (p->filekey);
     free (p->sid);
     free (p);
   }
 }
 
 static int64_t
-local_take_v2seq (const char *sid)
+local_take_v2seq (const char *sid, const char *filekey)
 {
   SidSeq *p;
-  const char *key = (sid && sid[0]) ? sid : "";
+  const char *sidkey = (sid && sid[0]) ? sid : "";
+  const char *fkey = (filekey && filekey[0]) ? filekey : "";
 
   for (p = sidseqs; p; p = p->nextsid)
   {
-    if (strcmp (p->sid, key) == 0)
+    if (strcmp (p->sid, sidkey) == 0 && strcmp (p->filekey, fkey) == 0)
     {
       int64_t seq = p->next;
       p->next = (p->next + 1) % 1000000;
@@ -72,13 +95,15 @@ local_take_v2seq (const char *sid)
   if (!p)
     return -1;
 
-  p->sid = (char *)malloc (strlen (key) + 1);
-  if (!p->sid)
+  p->filekey = local_dupstr (fkey);
+  p->sid = local_dupstr (sidkey);
+  if (!p->filekey || !p->sid)
   {
+    free (p->filekey);
+    free (p->sid);
     free (p);
     return -1;
   }
-  memcpy (p->sid, key, strlen (key) + 1);
 
   p->next = 2;
   p->nextsid = sidseqs;
@@ -237,7 +262,7 @@ local_should_parse_packed (void)
 
 void
 local_stamp_v2_sequence (uint8_t *record, int reclen, uint8_t formatversion,
-                         const char *sid)
+                         const char *sid, const char *filekey)
 {
   char seqstr[7];
   int64_t seq;
@@ -245,7 +270,7 @@ local_stamp_v2_sequence (uint8_t *record, int reclen, uint8_t formatversion,
   if (outputreclen <= 0 || formatversion != 2 || reclen < 6 || !record)
     return;
 
-  seq = local_take_v2seq (sid);
+  seq = local_take_v2seq (sid, filekey);
   if (seq < 0)
     return;
 
