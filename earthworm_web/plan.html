@@ -247,17 +247,17 @@ footer {
 </tr>
 <tr>
 <td>모듈 재시작</td>
-<td><code>restart &lt;pid\|name&gt;</code></td>
-<td>TYPE_RESTART</td>
+<td><code>restart &lt;pid&gt;</code></td>
+<td>외부 CLI 는 <strong>PID 만</strong>. 이름은 startstop 콘솔 전용</td>
 </tr>
 <tr>
 <td>모듈 일시중지</td>
-<td><code>stopmodule &lt;pid\|name&gt;</code></td>
-<td>종료 후 Status=<code>Stop</code>. statmgr 가 다시 올리지 않음</td>
+<td><code>stopmodule &lt;pid&gt;</code></td>
+<td>Status=<code>Stop</code>. <strong><code>pidpau</code> 금지</strong> (statmgr 가 다시 올림)</td>
 </tr>
 <tr>
 <td>모듈 재개</td>
-<td><code>restart &lt;pid\|name&gt;</code></td>
+<td><code>restart &lt;pid&gt;</code></td>
 <td>Stop 된 모듈을 다시 기동</td>
 </tr>
 <tr>
@@ -277,7 +277,7 @@ footer {
 </tr>
 </tbody>
 </table>
-<p>Earthworm 에는 <strong>시스템 전체 pause</strong> 가 없다. 웹의 “일시중지” 는 기본값으로 <strong>모든 업무 모듈 <code>stopmodule</code></strong> (startstop · statmgr 는 유지) 이다. 개별 모듈 중지는 대시보드의 행 액션으로 둔다.</p>
+<p>Earthworm 에는 <strong>시스템 전체 pause</strong> 가 없다. 웹의 “일시중지” 는 기본값으로 <strong>모든 업무 모듈 <code>stopmodule</code></strong> (startstop · statmgr 는 유지) 이다. 개별 모듈 중지는 대시보드의 행 액션으로 둔다. 소스·매뉴얼에서 드러난 추가 제약은 <a href="#16-소스매뉴얼-분석-후-보완-필수">16절</a> 에 모았다.</p>
 <hr />
 <h2 id="3">3. 확정 결정</h2>
 <table>
@@ -521,6 +521,7 @@ Process          &quot;pick_ew pick_ew.d&quot;
 <li><code>foo.desc</code> 가 있으면 복사하고 내부 모듈명을 갱신. <code>statmgr.d</code> 가 desc 목록을 나열하면 한 줄 추가.</li>
 <li><code>startstop_unix.d</code> 에 <code>Process "foo_bar foo_bar.d"</code> 를 주석으로 추가.</li>
 <li><code>app.json.clones</code> 에 <code>{ id, clone_of, binary, param_file, module_id }</code> 기록.</li>
+<li><code>.desc</code> 의 <code>modId</code>/<code>modName</code> 과 <code>statmgr.d</code> <code>Descriptor</code> 줄을 빼먹으면 하트비트 감시와 <code>restartMe</code> 가 동작하지 않는다 (<a href="#162-프로세스-alive--모듈-생존--statmgr--desc-가-본-감시">16.2</a>).</li>
 </ol>
 <p>복제 삭제: 기동 중이면 <code>stopmodule</code> → 주석/블록 제거 → 복사한 bin·d·desc 삭제. 원본은 건드리지 않는다. <code>earthworm.d</code> 의 Module 줄은 주석 처리(숫자 재사용 혼란 방지).</p>
 <h3 id="55-variablespy-commonvarspy">5.5 통합 변수 (<code>variables.py</code> + <code>commonvars.py</code>)</h3>
@@ -1300,6 +1301,270 @@ flowchart TB
 <li>모듈 목록·명령: <code>doc/WEB_DOC/modules.html</code>, <code>doc/WEB_DOC/cmd/</code>, <code>doc/WEB_DOC/ovr/</code></li>
 </ul>
 <p>동일 저장소의 분리 웹 앱 선례: <code>PPSD_v1/</code> (FastAPI + React), <code>stationxml_manager/</code> (FastAPI <code>app/</code> + React).</p>
+<hr />
+<h2 id="16">16. 소스·매뉴얼 분석 후 보완 (필수)</h2>
+<p>1차 계획(요구 1–10)만으로는 운영 콘솔이 깨지거나, “Alive인데 실제로는 죽은” 상태를 놓친다. 아래는 v8.0b17 소스와 <code>doc/WEB_DOC</code> 를 읽고 확정한 <strong>빠진 내용</strong>이다.</p>
+<h3 id="161-environment">16.1 부트스트랩 — <code>environment/</code> 만 고쳐서는 안 돌아간다</h3>
+<p><code>GetUtil_LoadTable</code> (<code>src/libsrc/util/getutil.c</code>) 은 <strong><code>EW_PARAMS</code> 아래</strong> <code>earthworm_global.d</code> 와 <code>earthworm.d</code> 만 읽는다. 배포 <code>environment/</code> 원본을 웹에서 고쳐도, 런타임 사본이 <code>params/</code> 에 없으면 모든 모듈이 Inst/Module/Ring lookup 에 실패한다.</p>
+<p><code>kom.c</code> 의 <code>${VAR}</code> 도 <code>EW_PARAMS/earthworm_commonvars.d</code> 만 로드한다.</p>
+<p>웹 앱 최초 기동 체크리스트:</p>
+<ol>
+<li><code>run_working/{params,log,data}</code> 생성</li>
+<li><code>environment/{earthworm.d,earthworm_global.d,earthworm_commonvars.d}</code> → <code>EW_PARAMS</code> 복사 (없을 때만)</li>
+<li>배포 <code>params/*.d</code> 템플릿 복사 (없을 때만)</li>
+<li><code>source environment/ew_linux.bash</code> 로 <code>EW_*</code> 가 실제 경로와 일치하는지 검증</li>
+<li><code>EW_INSTALLATION</code> 값이 <code>earthworm_global.d</code> 의 <code>Inst</code> 목록에 있는지 검증 (<code>GetLocalInst</code>)</li>
+<li><code>SYS_NAME</code> (<code>ew_linux.bash</code> 에서 <code>hostname</code>) — statmgr 가 요구</li>
+</ol>
+<p>Linux autostart 예제(<code>USER_GUIDE/linux_autostart.html</code>)는 <code>ew_linux.bash</code> 를 <strong>params 로 복사한 뒤</strong> 소스한다. 본 계획은 사용자가 지정한 <code>environment/ew_linux.bash</code> 를 소스로 쓰되, 웹은 “지금 소싱되는 파일 경로” 를 명시한다.</p>
+<h3 id="162-alive-statmgr-desc">16.2 프로세스 Alive ≠ 모듈 생존 — statmgr / <code>.desc</code> 가 본 감시</h3>
+<p><code>status</code> 는 OS 프로세스가 있는지만 본다 (<code>Alive</code> / <code>Dead</code> / <code>Stop</code>).<br />
+실제 “하트비트가 끊김” 은 <strong>statmgr</strong> 이다 (<code>doc/WEB_DOC</code> statmgr overview, <code>src/reporting/statmgr</code>).</p>
+<ul>
+<li>모듈은 자신이 붙은 링에만 heartbeat 를 쓴다.</li>
+<li><code>statmgr.d</code> 의 <code>RingName</code> (샘플은 <code>STATUS_RING</code>) + <code>CheckAllRings 0</code> 이면, 다른 링의 heartbeat 는 <strong>보이지 않는다</strong>.</li>
+<li>그때 필요한 것이 <code>copystatus &lt;원본링&gt; &lt;statmgr링&gt;</code> 또는 <code>CheckAllRings 1</code>.</li>
+<li>배포 <code>startstop_unix.d</code> 샘플은 <code>copystatus</code> 를 <code>HYPO_RING</code> 으로 보내고 statmgr 는 <code>STATUS_RING</code> 을 본다. <strong>샘플 그대로면 하트비트 감시가 비어 있을 수 있다.</strong> 웹은 활성 모듈의 <code>RingName</code> 이 statmgr 감시 경로에 있는지 경고한다.</li>
+</ul>
+<p><code>.desc</code> 파일 (예: <code>params/pick_ew.desc</code>):</p>
+<table>
+<thead>
+<tr>
+<th>키</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>modName</code> / <code>modId</code> / <code>instId</code></td>
+<td>알람에 찍히는 신원. 복제 시 <strong>반드시 새 <code>modId</code></strong></td>
+</tr>
+<tr>
+<td><code>tsec</code></td>
+<td>이 초 안에 heartbeat 가 없으면 dead</td>
+</tr>
+<tr>
+<td><code>restartMe</code></td>
+<td>dead 시 statmgr 가 <code>TYPE_RESTART</code> → startstop 이 모듈만 재기동</td>
+</tr>
+<tr>
+<td><code>err:</code></td>
+<td>모듈 에러 번호별 메일/페이저</td>
+</tr>
+</tbody>
+</table>
+<p><code>statmgr.d</code> 의 <code>Descriptor xxx.desc</code> 에 없는 모듈은 <strong>에러·하트비트 감시 대상이 아니다.</strong></p>
+<p>복제 절차에 추가 (기존 4절 보완):</p>
+<ul>
+<li><code>.desc</code> 복사 + <code>modName</code>/<code>modId</code> 변경</li>
+<li><code>statmgr.d</code> 에 <code>Descriptor</code> 한 줄 추가</li>
+<li>통합 변수로 <code>HeartbeatInt</code> 를 바꾸면 해당 <code>.desc</code> 의 <code>tsec</code> 도 같이 올린다 (<code>tsec</code> ≥ 2–4× <code>HeartbeatInt</code> 권장)</li>
+</ul>
+<p>대시보드 열 추가:</p>
+<ul>
+<li>프로세스 상태 (<code>status</code>)</li>
+<li>하트비트 상태 (statmgr.log 또는 Descriptor 등록 여부)</li>
+<li><code>restartMe</code> on/off</li>
+</ul>
+<h3 id="163-cli-pid-startstop">16.3 CLI 는 PID 만 받는다 (이름은 startstop 콘솔 전용)</h3>
+<table>
+<thead>
+<tr>
+<th>경로</th>
+<th>재시작</th>
+<th>중지</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>startstop stdin (<code>Interactive</code>)</td>
+<td><code>restart &lt;pid\|이름&gt;</code></td>
+<td><code>stopmodule &lt;pid\|이름&gt;</code></td>
+</tr>
+<tr>
+<td>외부 CLI</td>
+<td><code>restart [-c file] &lt;pid&gt; [...]</code></td>
+<td><code>stopmodule [file] &lt;pid&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<p>메시지 payload 는 <strong>PID 문자열</strong> 이다 (<code>restart.c</code>, <code>stopmodule.c</code>).<br />
+웹은 <code>status</code> 로 pid 를 얻은 뒤 CLI 에 숫자만 넘긴다. 이름을 넘기면 실패한다.</p>
+<p><code>pidpau &lt;pid&gt;</code> 는 링에 terminate flag 만 세운다. <strong>Status 가 <code>Stop</code> 이 되지 않아 <code>restartMe</code> 모듈은 statmgr 가 다시 올린다.</strong> 웹 일시중지는 반드시 <code>stopmodule</code> 만 사용한다.</p>
+<p><code>stopmodule</code> 직후 바로 <code>status</code> 하면 아직 Alive 일 수 있다. 소스 메시지도 “30초 정도 status 로 확인” 이다. 웹은 <code>KillDelay</code> 동안 폴링한다.</p>
+<h3 id="164-startstop-v80b17-startstop_libh-startstop_unix_genericc">16.4 startstop 하드 리밋 (v8.0b17 <code>startstop_lib.h</code> / <code>startstop_unix_generic.c</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>한도</th>
+<th>값</th>
+<th>웹 동작</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>링</td>
+<td><code>MAX_RING</code> <strong>50</strong></td>
+<td>초과 생성 거부</td>
+</tr>
+<tr>
+<td>자식</td>
+<td><code>MAX_CHILD</code> <strong>256</strong></td>
+<td>복제·토글 거부</td>
+</tr>
+<tr>
+<td>Process 명령 문자열</td>
+<td><code>MAXLINE-1</code> (<strong>199</strong>)</td>
+<td><code>foo_bar foo_bar.d</code> 길이 검사</td>
+</tr>
+<tr>
+<td>argv 개수</td>
+<td><code>MAX_ARG</code> 50</td>
+<td></td>
+</tr>
+<tr>
+<td>Module ID</td>
+<td><strong>0–255</strong> (<code>MAXMODID</code> 256)</td>
+<td><code>MOD_WILDCARD=0</code> 사용 금지</td>
+</tr>
+<tr>
+<td>Ring/Module 이름</td>
+<td><code>MAX_*_STR</code> <strong>32</strong></td>
+<td></td>
+</tr>
+<tr>
+<td><code>SetEnvVariable</code> 이름/값</td>
+<td>255자, 이름 <code>[A-Za-z0-9_]</code></td>
+<td></td>
+</tr>
+<tr>
+<td>동일 <code>Process</code> 문자열</td>
+<td><strong>중복 spawn 안 함</strong> (조용히 skip)</td>
+<td>복제 시 명령줄이 원본과 달라야 함</td>
+</tr>
+</tbody>
+</table>
+<p><code>statmgr</code> 는 자식 목록에서 <strong>맨 먼저 기동</strong>한다 (<code>statmgr_location</code>). 끄면 자동 재시작이 사라지므로 기본 강제 유지.</p>
+<p><code>reconfigure</code> 성공 후 startstop 은 <strong>statmgr 을 다시 시작한다</strong> (<code>Final reconfigure step: Restart statmgr</code>). 토글 on 은 하트비트 감시가 잠깐 끊길 수 있음을 UI 에 표시한다. 이미 도는 모듈의 <code>.d</code> 는 그대로다. 링 삭제·축소는 reconfigure 로 안 되고 <strong>전체 재시작</strong>이다. 중복 링/모듈 이름은 reject.</p>
+<h3 id="165">16.5 락파일 · 유령 공유메모리 — 시작 실패의 실제 원인</h3>
+<ul>
+<li>락: <code>EW_LOG/startstop_unix.d.lock</code> (<code>ew_lockfile_path</code>). startstop 은 <strong>한 인스턴스만</strong>. 비정상 종료 후 락이 남으면 시작이 거절된다. 웹 시작 실패 화면에 락 경로·pid·“강제 해제(운영자 확인)” 를 둔다.</li>
+<li><code>pau</code> 후 <code>KillDelay</code>/<code>HardKillDelay</code> 가 지나도 안 죽는 모듈(예: <code>wave_serverV</code> 가 SIGTERM 을 자체 처리)은 좀비 + <strong>링 shm/세마포어 잔류</strong>. 다음 <code>startstop</code> 이 같은 키로 <code>tport_create</code> 에 실패한다.</li>
+<li>웹에 <strong>진단</strong> 화면: <code>ipcs</code> (또는 POSIX shm) 요약, <code>status</code> 실패 시 “잔류 IPC 가능성”, 정리는 <strong>해당 사용자 소유 세그먼트만</strong> 명시적 확인 후. 자동 <code>ipcrm</code> 전부 삭제는 하지 않는다.</li>
+</ul>
+<h3 id="166-ring">16.6 첫 번째 Ring 에 제어 메시지가 실린다</h3>
+<p><code>status</code> / <code>stopmodule</code> / <code>pau</code> 계열은 <code>startstop_unix.d</code> 의 <strong>첫 <code>Ring</code></strong> 에 붙는다 (<code>ReadRingName</code>). <code>restart</code> 는 statmgr 링을 찾고, 없으면 첫 링.</p>
+<p>배포 샘플의 첫 링은 <code>WAVE_RING</code> 이다. 파형이 바쁜 시스템에서 <code>TYPE_STATUS</code> 가 <code>ERR_LAPPED</code>(덮어쓰기) 되면 대시보드가 빈다.</p>
+<p>권장: 웹 링 설정에서 <strong>STATUS_RING 을 첫 줄로</strong> 두거나, 제어 전용 작은 링을 첫 번째로. 변경은 전체 재시작.</p>
+<h3 id="167-var-komc">16.7 <code>${VAR}</code> 확장 규칙 (<code>kom.c</code>) — 통합 변수 함정</h3>
+<ol>
+<li>셸 환경(<code>getenv</code>)을 먼저 본다.</li>
+<li>그다음 <code>earthworm_commonvars.d</code> 의 <code>SetEnvVariable</code>.</li>
+<li>같은 파일 안의 다른 <code>SetEnvVariable</code> 로 <strong>재귀 확장하지 않는다</strong> (파일 헤더 주석).</li>
+<li><code>EW_HOME</code>, <code>EW_VERSION</code>, <code>EW_LOG</code>, <code>EW_PARAMS</code> 는 commonvars 에 넣지 말 것 (공식 Best practice).</li>
+<li><code>@include</code> (<code>@ncal_model.d</code>) 는 <code>EW_PARAMS</code> 상대 경로. 통합 편집기가 follow 해야 한다.</li>
+</ol>
+<h3 id="168-logit_commonc">16.8 로그 파일명 · 지우면 안 되는 것 (<code>logit_common.c</code>)</h3>
+<ul>
+<li>경로: <code>EW_LOG</code> (없으면 logit_init 실패)</li>
+<li>이름: <code>{설정파일basename}_{YYYYMMDD}.log</code> (UTC 날짜 롤)</li>
+<li><code>Stderr File</code> → 같은 basename 의 <code>.err</code></li>
+<li>락파일 <code>*.lock</code> 은 로그 보관 청소에서 <strong>제외</strong></li>
+<li><code>EW_DATA_DIR</code> 의 wave tank / tankplayer 파일은 로그가 아니다. 보관 정책 대상 아님</li>
+</ul>
+<h3 id="169">16.9 복제 시 메시지 로고가 겹치면 안 된다</h3>
+<p>모든 EW 메시지는 <code>(Installation, Module, Type)</code> 로고를 단다. 같은 <code>MyModuleId</code> 로 두 인스턴스를 돌리면 pick/export 수신 측이 구분하지 못한다.</p>
+<ul>
+<li><code>earthworm.d</code> 에 새 <code>Module MOD_… n</code> (1–255, 미사용)</li>
+<li><code>.d</code> 의 <code>MyModuleId</code> 와 <code>.desc</code> 의 <code>modId</code> 를 그 문자열로</li>
+<li><code>instId</code> 는 <code>${EW_INST_ID}</code> 유지</li>
+<li>바이너리 파일명만 바꾸고 Module ID 를 안 바꾸면 <strong>로고 충돌</strong></li>
+</ul>
+<h3 id="1610">16.10 대시보드에 더 넣을 운영 신호</h3>
+<p><code>status</code> 헤더에는 Hostname-OS, UTC 시작/현재, <strong>Disk space</strong>, 링 name/key/size, Log/Params/Bin Dir, startstop 버전이 있다. 디스크는 <code>diskmgr</code> 모듈과도 겹친다.</p>
+<p>추가 진단 도구 (1차 sniff 외에 선택):</p>
+<ul>
+<li><code>sniffrings</code> — 여러 링</li>
+<li><code>dumpwave</code> / <code>file2ring</code> — 파일↔링 (운영보다 시험)</li>
+<li><code>tankplayer</code> — 라이브 없이 재생. 웹 콘솔 자체 시험에 필요</li>
+</ul>
+<h3 id="1611-2">16.11 네트워크·권한·시간 (설정 화면 2차)</h3>
+<p>매뉴얼/스크립트 주석에서 웹이 빠뜨리기 쉬운 것:</p>
+<ul>
+<li><code>export_generic</code> / <code>import_generic</code> / <code>wave_serverV</code> / <code>slink2ew</code> 의 <strong>IP·포트</strong>. <code>ew_linux.bash</code> 는 커널 <code>ip_local_port_range</code> 보다 <strong>낮은 포트</strong> 를 쓰라고 한다.</li>
+<li>백엔드 유저는 Earthworm 유저와 <strong>동일</strong> (shm·락·로그 권한). root 로 startstop 하지 않음. <code>Agent</code> 에 root 불가.</li>
+<li>64비트 tarball 과 32비트 모듈을 한 startstop 에 섞지 않음.</li>
+<li>시계: sniffwave 출력의 <code>D:</code>(지연) <code>F:</code> 는 호스트 UTC 에 의존. NTP 상태를 설정/대시보드에 표시하면 좋다.</li>
+<li><code>EW_DATA_DIR</code> 경로·용량 (tank, waveserver)</li>
+</ul>
+<h3 id="1612-110">16.12 웹 기능으로 승격할 항목 (요구 1–10 밖, 구현 시 포함)</h3>
+<table>
+<thead>
+<tr>
+<th>우선</th>
+<th>항목</th>
+<th>이유</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0</td>
+<td>params 부트스트랩 + Inst/테이블 검증</td>
+<td>없으면 기동 자체가 안 됨</td>
+</tr>
+<tr>
+<td>P0</td>
+<td><code>.desc</code> + <code>Descriptor</code> + heartbeat 열</td>
+<td>Alive만 보면 장애를 놓침</td>
+</tr>
+<tr>
+<td>P0</td>
+<td>CLI 는 pid, 일시중지는 stopmodule 만</td>
+<td>이름/<code>pidpau</code> 는 오동작</td>
+</tr>
+<tr>
+<td>P0</td>
+<td>락파일·잔류 IPC 진단</td>
+<td>재시작 실패 1순위</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>링 토폴로지 (모듈→RingName, copystatus, CheckAllRings)</td>
+<td>샘플 설정이 비어 있을 수 있음</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>첫 링을 제어용으로 권고</td>
+<td>status 유실 방지</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>HeartbeatInt ↔ desc <code>tsec</code> 연동</td>
+<td>통합 변수 변경 시 오탐</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Process 길이·Module ID 한도 UI</td>
+<td>복제 실패를 파일 저장 전에 차단</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>포트/IP 인벤토리</td>
+<td>데이터 수집·송신 모듈</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>tankplayer 시험 프로파일</td>
+<td>라이브 망 없이 콘솔 검증</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>NTP·디스크·락 위젯</td>
+<td>운영 장애 3대장</td>
+</tr>
+</tbody>
+</table>
+<p>이 절의 P0 는 1–2단계 구현에 넣고, P1 은 3–4단계, P2 는 5단계로 잡는다.</p>
     </article>
     <footer>
       Generated from <code>plan.md</code>.

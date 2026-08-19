@@ -69,14 +69,14 @@ ${EW_HOME}                          # 기본 /opt/earthworm
 | 전체 시작 | `startstop` | `EW_PARAMS/startstop_unix.d` 를 읽고 링 생성 후 자식 기동 |
 | 전체 종료 | `pau` | TERMINATE 메시지. `quit` 과 동등 |
 | 상태 | `status` | startstop 콘솔에서 Enter 친 것과 동일 표 |
-| 모듈 재시작 | `restart <pid\|name>` | TYPE_RESTART |
-| 모듈 일시중지 | `stopmodule <pid\|name>` | 종료 후 Status=`Stop`. statmgr 가 다시 올리지 않음 |
-| 모듈 재개 | `restart <pid\|name>` | Stop 된 모듈을 다시 기동 |
+| 모듈 재시작 | `restart <pid>` | 외부 CLI 는 **PID 만**. 이름은 startstop 콘솔 전용 |
+| 모듈 일시중지 | `stopmodule <pid>` | Status=`Stop`. **`pidpau` 금지** (statmgr 가 다시 올림) |
+| 모듈 재개 | `restart <pid>` | Stop 된 모듈을 다시 기동 |
 | 설정 반영(기동 중) | `reconfigure` | `startstop_unix.d` · `earthworm.d` 재독. **이미 도는 모듈은 안 죽임**. 새 링/모듈만 추가 |
 | 파형 링 | `sniffwave` | TRACEBUF / TRACEBUF2 |
 | 임의 메시지 링 | `sniffring` | 사용자가 말한 “sniffing” 은 공식 이름 **sniffring** 으로 매핑 |
 
-Earthworm 에는 **시스템 전체 pause** 가 없다. 웹의 “일시중지” 는 기본값으로 **모든 업무 모듈 `stopmodule`** (startstop · statmgr 는 유지) 이다. 개별 모듈 중지는 대시보드의 행 액션으로 둔다.
+Earthworm 에는 **시스템 전체 pause** 가 없다. 웹의 “일시중지” 는 기본값으로 **모든 업무 모듈 `stopmodule`** (startstop · statmgr 는 유지) 이다. 개별 모듈 중지는 대시보드의 행 액션으로 둔다. 소스·매뉴얼에서 드러난 추가 제약은 [16절](#16-소스매뉴얼-분석-후-보완-필수) 에 모았다.
 
 ---
 
@@ -265,6 +265,7 @@ Process          "pick_ew pick_ew.d"
 6. `foo.desc` 가 있으면 복사하고 내부 모듈명을 갱신. `statmgr.d` 가 desc 목록을 나열하면 한 줄 추가.
 7. `startstop_unix.d` 에 `Process "foo_bar foo_bar.d"` 를 주석으로 추가.
 8. `app.json.clones` 에 `{ id, clone_of, binary, param_file, module_id }` 기록.
+9. `.desc` 의 `modId`/`modName` 과 `statmgr.d` `Descriptor` 줄을 빼먹으면 하트비트 감시와 `restartMe` 가 동작하지 않는다 ([16.2](#162-프로세스-alive--모듈-생존--statmgr--desc-가-본-감시)).
 
 복제 삭제: 기동 중이면 `stopmodule` → 주석/블록 제거 → 복사한 bin·d·desc 삭제. 원본은 건드리지 않는다. `earthworm.d` 의 Module 줄은 주석 처리(숫자 재사용 혼란 방지).
 
@@ -735,3 +736,168 @@ flowchart TB
 - 모듈 목록·명령: `doc/WEB_DOC/modules.html`, `doc/WEB_DOC/cmd/`, `doc/WEB_DOC/ovr/`
 
 동일 저장소의 분리 웹 앱 선례: `PPSD_v1/` (FastAPI + React), `stationxml_manager/` (FastAPI `app/` + React).
+
+---
+
+## 16. 소스·매뉴얼 분석 후 보완 (필수)
+
+1차 계획(요구 1–10)만으로는 운영 콘솔이 깨지거나, “Alive인데 실제로는 죽은” 상태를 놓친다. 아래는 v8.0b17 소스와 `doc/WEB_DOC` 를 읽고 확정한 **빠진 내용**이다.
+
+### 16.1 부트스트랩 — `environment/` 만 고쳐서는 안 돌아간다
+
+`GetUtil_LoadTable` (`src/libsrc/util/getutil.c`) 은 **`EW_PARAMS` 아래** `earthworm_global.d` 와 `earthworm.d` 만 읽는다. 배포 `environment/` 원본을 웹에서 고쳐도, 런타임 사본이 `params/` 에 없으면 모든 모듈이 Inst/Module/Ring lookup 에 실패한다.
+
+`kom.c` 의 `${VAR}` 도 `EW_PARAMS/earthworm_commonvars.d` 만 로드한다.
+
+웹 앱 최초 기동 체크리스트:
+
+1. `run_working/{params,log,data}` 생성
+2. `environment/{earthworm.d,earthworm_global.d,earthworm_commonvars.d}` → `EW_PARAMS` 복사 (없을 때만)
+3. 배포 `params/*.d` 템플릿 복사 (없을 때만)
+4. `source environment/ew_linux.bash` 로 `EW_*` 가 실제 경로와 일치하는지 검증
+5. `EW_INSTALLATION` 값이 `earthworm_global.d` 의 `Inst` 목록에 있는지 검증 (`GetLocalInst`)
+6. `SYS_NAME` (`ew_linux.bash` 에서 `hostname`) — statmgr 가 요구
+
+Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를 **params 로 복사한 뒤** 소스한다. 본 계획은 사용자가 지정한 `environment/ew_linux.bash` 를 소스로 쓰되, 웹은 “지금 소싱되는 파일 경로” 를 명시한다.
+
+### 16.2 프로세스 Alive ≠ 모듈 생존 — statmgr / `.desc` 가 본 감시
+
+`status` 는 OS 프로세스가 있는지만 본다 (`Alive` / `Dead` / `Stop`).  
+실제 “하트비트가 끊김” 은 **statmgr** 이다 (`doc/WEB_DOC` statmgr overview, `src/reporting/statmgr`).
+
+- 모듈은 자신이 붙은 링에만 heartbeat 를 쓴다.
+- `statmgr.d` 의 `RingName` (샘플은 `STATUS_RING`) + `CheckAllRings 0` 이면, 다른 링의 heartbeat 는 **보이지 않는다**.
+- 그때 필요한 것이 `copystatus <원본링> <statmgr링>` 또는 `CheckAllRings 1`.
+- 배포 `startstop_unix.d` 샘플은 `copystatus` 를 `HYPO_RING` 으로 보내고 statmgr 는 `STATUS_RING` 을 본다. **샘플 그대로면 하트비트 감시가 비어 있을 수 있다.** 웹은 활성 모듈의 `RingName` 이 statmgr 감시 경로에 있는지 경고한다.
+
+`.desc` 파일 (예: `params/pick_ew.desc`):
+
+| 키 | 의미 |
+|----|------|
+| `modName` / `modId` / `instId` | 알람에 찍히는 신원. 복제 시 **반드시 새 `modId`** |
+| `tsec` | 이 초 안에 heartbeat 가 없으면 dead |
+| `restartMe` | dead 시 statmgr 가 `TYPE_RESTART` → startstop 이 모듈만 재기동 |
+| `err:` | 모듈 에러 번호별 메일/페이저 |
+
+`statmgr.d` 의 `Descriptor xxx.desc` 에 없는 모듈은 **에러·하트비트 감시 대상이 아니다.**
+
+복제 절차에 추가 (기존 4절 보완):
+
+- `.desc` 복사 + `modName`/`modId` 변경
+- `statmgr.d` 에 `Descriptor` 한 줄 추가
+- 통합 변수로 `HeartbeatInt` 를 바꾸면 해당 `.desc` 의 `tsec` 도 같이 올린다 (`tsec` ≥ 2–4× `HeartbeatInt` 권장)
+
+대시보드 열 추가:
+
+- 프로세스 상태 (`status`)
+- 하트비트 상태 (statmgr.log 또는 Descriptor 등록 여부)
+- `restartMe` on/off
+
+### 16.3 CLI 는 PID 만 받는다 (이름은 startstop 콘솔 전용)
+
+| 경로 | 재시작 | 중지 |
+|------|--------|------|
+| startstop stdin (`Interactive`) | `restart <pid\|이름>` | `stopmodule <pid\|이름>` |
+| 외부 CLI | `restart [-c file] <pid> [...]` | `stopmodule [file] <pid>` |
+
+메시지 payload 는 **PID 문자열** 이다 (`restart.c`, `stopmodule.c`).  
+웹은 `status` 로 pid 를 얻은 뒤 CLI 에 숫자만 넘긴다. 이름을 넘기면 실패한다.
+
+`pidpau <pid>` 는 링에 terminate flag 만 세운다. **Status 가 `Stop` 이 되지 않아 `restartMe` 모듈은 statmgr 가 다시 올린다.** 웹 일시중지는 반드시 `stopmodule` 만 사용한다.
+
+`stopmodule` 직후 바로 `status` 하면 아직 Alive 일 수 있다. 소스 메시지도 “30초 정도 status 로 확인” 이다. 웹은 `KillDelay` 동안 폴링한다.
+
+### 16.4 startstop 하드 리밋 (v8.0b17 `startstop_lib.h` / `startstop_unix_generic.c`)
+
+| 한도 | 값 | 웹 동작 |
+|------|-----|---------|
+| 링 | `MAX_RING` **50** | 초과 생성 거부 |
+| 자식 | `MAX_CHILD` **256** | 복제·토글 거부 |
+| Process 명령 문자열 | `MAXLINE-1` (**199**) | `foo_bar foo_bar.d` 길이 검사 |
+| argv 개수 | `MAX_ARG` 50 | |
+| Module ID | **0–255** (`MAXMODID` 256) | `MOD_WILDCARD=0` 사용 금지 |
+| Ring/Module 이름 | `MAX_*_STR` **32** | |
+| `SetEnvVariable` 이름/값 | 255자, 이름 `[A-Za-z0-9_]` | |
+| 동일 `Process` 문자열 | **중복 spawn 안 함** (조용히 skip) | 복제 시 명령줄이 원본과 달라야 함 |
+
+`statmgr` 는 자식 목록에서 **맨 먼저 기동**한다 (`statmgr_location`). 끄면 자동 재시작이 사라지므로 기본 강제 유지.
+
+`reconfigure` 성공 후 startstop 은 **statmgr 을 다시 시작한다** (`Final reconfigure step: Restart statmgr`). 토글 on 은 하트비트 감시가 잠깐 끊길 수 있음을 UI 에 표시한다. 이미 도는 모듈의 `.d` 는 그대로다. 링 삭제·축소는 reconfigure 로 안 되고 **전체 재시작**이다. 중복 링/모듈 이름은 reject.
+
+### 16.5 락파일 · 유령 공유메모리 — 시작 실패의 실제 원인
+
+- 락: `EW_LOG/startstop_unix.d.lock` (`ew_lockfile_path`). startstop 은 **한 인스턴스만**. 비정상 종료 후 락이 남으면 시작이 거절된다. 웹 시작 실패 화면에 락 경로·pid·“강제 해제(운영자 확인)” 를 둔다.
+- `pau` 후 `KillDelay`/`HardKillDelay` 가 지나도 안 죽는 모듈(예: `wave_serverV` 가 SIGTERM 을 자체 처리)은 좀비 + **링 shm/세마포어 잔류**. 다음 `startstop` 이 같은 키로 `tport_create` 에 실패한다.
+- 웹에 **진단** 화면: `ipcs` (또는 POSIX shm) 요약, `status` 실패 시 “잔류 IPC 가능성”, 정리는 **해당 사용자 소유 세그먼트만** 명시적 확인 후. 자동 `ipcrm` 전부 삭제는 하지 않는다.
+
+### 16.6 첫 번째 Ring 에 제어 메시지가 실린다
+
+`status` / `stopmodule` / `pau` 계열은 `startstop_unix.d` 의 **첫 `Ring`** 에 붙는다 (`ReadRingName`). `restart` 는 statmgr 링을 찾고, 없으면 첫 링.
+
+배포 샘플의 첫 링은 `WAVE_RING` 이다. 파형이 바쁜 시스템에서 `TYPE_STATUS` 가 `ERR_LAPPED`(덮어쓰기) 되면 대시보드가 빈다.
+
+권장: 웹 링 설정에서 **STATUS_RING 을 첫 줄로** 두거나, 제어 전용 작은 링을 첫 번째로. 변경은 전체 재시작.
+
+### 16.7 `${VAR}` 확장 규칙 (`kom.c`) — 통합 변수 함정
+
+1. 셸 환경(`getenv`)을 먼저 본다.
+2. 그다음 `earthworm_commonvars.d` 의 `SetEnvVariable`.
+3. 같은 파일 안의 다른 `SetEnvVariable` 로 **재귀 확장하지 않는다** (파일 헤더 주석).
+4. `EW_HOME`, `EW_VERSION`, `EW_LOG`, `EW_PARAMS` 는 commonvars 에 넣지 말 것 (공식 Best practice).
+5. `@include` (`@ncal_model.d`) 는 `EW_PARAMS` 상대 경로. 통합 편집기가 follow 해야 한다.
+
+### 16.8 로그 파일명 · 지우면 안 되는 것 (`logit_common.c`)
+
+- 경로: `EW_LOG` (없으면 logit_init 실패)
+- 이름: `{설정파일basename}_{YYYYMMDD}.log` (UTC 날짜 롤)
+- `Stderr File` → 같은 basename 의 `.err`
+- 락파일 `*.lock` 은 로그 보관 청소에서 **제외**
+- `EW_DATA_DIR` 의 wave tank / tankplayer 파일은 로그가 아니다. 보관 정책 대상 아님
+
+### 16.9 복제 시 메시지 로고가 겹치면 안 된다
+
+모든 EW 메시지는 `(Installation, Module, Type)` 로고를 단다. 같은 `MyModuleId` 로 두 인스턴스를 돌리면 pick/export 수신 측이 구분하지 못한다.
+
+- `earthworm.d` 에 새 `Module MOD_… n` (1–255, 미사용)
+- `.d` 의 `MyModuleId` 와 `.desc` 의 `modId` 를 그 문자열로
+- `instId` 는 `${EW_INST_ID}` 유지
+- 바이너리 파일명만 바꾸고 Module ID 를 안 바꾸면 **로고 충돌**
+
+### 16.10 대시보드에 더 넣을 운영 신호
+
+`status` 헤더에는 Hostname-OS, UTC 시작/현재, **Disk space**, 링 name/key/size, Log/Params/Bin Dir, startstop 버전이 있다. 디스크는 `diskmgr` 모듈과도 겹친다.
+
+추가 진단 도구 (1차 sniff 외에 선택):
+
+- `sniffrings` — 여러 링
+- `dumpwave` / `file2ring` — 파일↔링 (운영보다 시험)
+- `tankplayer` — 라이브 없이 재생. 웹 콘솔 자체 시험에 필요
+
+### 16.11 네트워크·권한·시간 (설정 화면 2차)
+
+매뉴얼/스크립트 주석에서 웹이 빠뜨리기 쉬운 것:
+
+- `export_generic` / `import_generic` / `wave_serverV` / `slink2ew` 의 **IP·포트**. `ew_linux.bash` 는 커널 `ip_local_port_range` 보다 **낮은 포트** 를 쓰라고 한다.
+- 백엔드 유저는 Earthworm 유저와 **동일** (shm·락·로그 권한). root 로 startstop 하지 않음. `Agent` 에 root 불가.
+- 64비트 tarball 과 32비트 모듈을 한 startstop 에 섞지 않음.
+- 시계: sniffwave 출력의 `D:`(지연) `F:` 는 호스트 UTC 에 의존. NTP 상태를 설정/대시보드에 표시하면 좋다.
+- `EW_DATA_DIR` 경로·용량 (tank, waveserver)
+
+### 16.12 웹 기능으로 승격할 항목 (요구 1–10 밖, 구현 시 포함)
+
+| 우선 | 항목 | 이유 |
+|------|------|------|
+| P0 | params 부트스트랩 + Inst/테이블 검증 | 없으면 기동 자체가 안 됨 |
+| P0 | `.desc` + `Descriptor` + heartbeat 열 | Alive만 보면 장애를 놓침 |
+| P0 | CLI 는 pid, 일시중지는 stopmodule 만 | 이름/`pidpau` 는 오동작 |
+| P0 | 락파일·잔류 IPC 진단 | 재시작 실패 1순위 |
+| P1 | 링 토폴로지 (모듈→RingName, copystatus, CheckAllRings) | 샘플 설정이 비어 있을 수 있음 |
+| P1 | 첫 링을 제어용으로 권고 | status 유실 방지 |
+| P1 | HeartbeatInt ↔ desc `tsec` 연동 | 통합 변수 변경 시 오탐 |
+| P1 | Process 길이·Module ID 한도 UI | 복제 실패를 파일 저장 전에 차단 |
+| P2 | 포트/IP 인벤토리 | 데이터 수집·송신 모듈 |
+| P2 | tankplayer 시험 프로파일 | 라이브 망 없이 콘솔 검증 |
+| P2 | NTP·디스크·락 위젯 | 운영 장애 3대장 |
+
+이 절의 P0 는 1–2단계 구현에 넣고, P1 은 3–4단계, P2 는 5단계로 잡는다.
+
