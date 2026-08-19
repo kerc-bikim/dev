@@ -623,7 +623,37 @@ class BlockSize(DataselectTest):
         recs = v2_records(out)
         self.assertGreater(len(recs), 1)
         seqs = [int(rec[:6]) for rec in recs]
-        self.assertEqual(seqs, list(range(seqs[0], seqs[0] + len(seqs))))
+        self.assertEqual(seqs[0], 1)
+        self.assertEqual(seqs, list(range(1, len(seqs) + 1)))
+
+    def test_v2_sequence_is_contiguous_across_input_records(self):
+        """-B assigns sequences in write order, not from each input record."""
+        out = tmp("seq_multi.mseed")
+        code, _, err = run("-B", "512", V2, "-o", out)
+        self.assertEqual(code, 0, err.decode())
+        recs = v2_records(out)
+        self.assertGreater(len(recs), 1)
+        seqs = [int(rec[:6]) for rec in recs]
+        self.assertEqual(seqs, list(range(1, len(recs) + 1)))
+
+    def test_v2_sequence_restarts_per_channel(self):
+        """Each SourceID gets its own 000001, 000002, ... sequence."""
+        source = os.path.join(DATA, "testdata-3channel-signal.mseed2")
+        out = tmp("seq_3ch.mseed")
+        code, _, err = run("-B", "512", source, "-o", out)
+        self.assertEqual(code, 0, err.decode())
+        recs = v2_records(out)
+        by_channel = {}
+        for rec in recs:
+            channel = rec[15:18]
+            by_channel.setdefault(channel, []).append(int(rec[:6]))
+        self.assertGreaterEqual(len(by_channel), 2)
+        for channel, seqs in by_channel.items():
+            self.assertEqual(
+                seqs,
+                list(range(1, len(seqs) + 1)),
+                "channel %s sequences were %s" % (channel, seqs),
+            )
 
     def test_summary_samples_match_when_repacked(self):
         orig_sum = tmp("sum_orig.txt")

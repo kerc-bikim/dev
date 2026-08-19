@@ -161,7 +161,10 @@ records are exactly \fIbytes\fP long; for miniSEED 3 \fIbytes\fP is the
 maximum record length.  Input records are not merged when a larger
 size is requested.  If a record cannot be re-packed to the requested
 size the program exits with an error rather than writing the original
-record.
+record.  For miniSEED 2, sequence numbers are rewritten per channel
+in output order starting at 1 (wrapping at 999999); miniSEED 3 has no
+fixed-header sequence number.  Sequence numbers are not rewritten
+when \fB-B\fP is omitted, so a copy stays byte-identical.
 
 .IP "-CHAN \fIdirectory\fP"
 .IP "-VCHAN \fIdirectory\fP"

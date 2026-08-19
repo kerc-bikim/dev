@@ -43,7 +43,7 @@ SRCS = dataselect.c dsarchive.c local.c
 
 - `-B` 없음 + trim 만: unpack/pack 불가면 **원본 레코드를 그대로 쓰고 경고** (기존과 동일)
 - `-B` 지정: pack 불가·부분 실패·헤더가 블록보다 크면 **원본을 섞지 않고 종료 코드 1**
-- v2 를 여러 장으로 나눌 때 시퀀스는 **fwrite 전** packed 버퍼 앞 6바이트에 기록하며 증가
+- v2 를 여러 장으로 나눌 때 시퀀스는 **fwrite 전** packed 버퍼 앞 6바이트에 기록하며, 채널(SourceID)마다 출력 순으로 1부터 증가
 - 샘플 시각·값은 원본과 동일 (`make test` 의 `compare-series`)
 
 ## 4. 확인
