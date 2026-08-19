@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from ..models.schemas import SettingsIn
 from ..security import api_key_header
 from ..services.app_store import load_app, save_app
+from ..services.control import last_snapshot
 from ..services.env import parsed_core
 from ..services.ipc_diag import lock_info
 
