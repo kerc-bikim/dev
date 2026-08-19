@@ -31,7 +31,7 @@ const FILES = {
   "params/startstop_unix.d": `# 미리보기 목 파일\nRing   STATUS_RING  128\nRing   WAVE_RING    1024\nProcess          "statmgr statmgr.d"\n Class/Priority    OTHER 0\n# Process          "pick_ew pick_ew.d"\n`,
   "params/earthworm.d": `Ring   WAVE_RING        1000\nRing   PICK_RING        1005\nRing   HYPO_RING        1015\nRing   STATUS_RING      1040\nRing   FLAG_RING        2000\nModule   MOD_STATMGR        10\nModule   MOD_PICK_EW        20\n`,
   "params/earthworm_commonvars.d": `SetEnvVariable EW_INST_ID INST_UNKNOWN\nSetEnvVariable HEARTBEAT_INT 30\n`,
-  "environment/ew_linux.bash": `export EW_HOME=/opt/earthworm\nexport EW_VERSION=earthworm_8.0\nEW_RUN_DIR=/opt/earthworm/run_working\nexport EW_PARAMS="${EW_RUN_DIR}/params/"\nexport EW_LOG="${EW_RUN_DIR}/log/"\n`,
+  "environment/ew_linux.bash": `export EW_HOME=/opt/earthworm\nexport EW_VERSION=earthworm_8.0\nexport EW_RUN_DIR=/opt/earthworm/run_working\nexport EW_PARAMS="\${EW_RUN_DIR}/params/"\nexport EW_LOG="\${EW_RUN_DIR}/log/"\n`,
 };
 
 const state = {
