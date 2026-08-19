@@ -5,7 +5,7 @@ Earthworm **v8.0b17** 기준으로, 이미 컴파일된 Rocky Linux 9 바이너�
 | 항목 | 내용 |
 |------|------|
 | 대상 소스 | [seismic-software/earthworm](https://gitlab.com/seismic-software/earthworm.git) 태그 `v8.0b17` |
-| 바이너리 | [earthworm_v8-0b8_rockylinux9_4.tar.gz](http://www.earthwormcentral.org/distribution/earthworm_v8-0b8_rockylinux9_4.tar.gz) (컴파일 완료본) |
+| 바이너리 | [earthworm_v8-0b8_rockylinux9_4.tar.gz](http://www.earthwormcentral.org/distribution/earthworm_v8-0b8_rockylinux9_4.tar.gz) (HTTP 전용. 크기 130927698 bytes, SHA-256 대조 후 사용) |
 | 매뉴얼 | 소스 `doc/WEB_DOC` ([raw](https://gitlab.com/seismic-software/earthworm/-/raw/master/doc/WEB_DOC), 시작점 `index.html` / `modules.html`) |
 | 환경 스크립트 | `environment/ew_linux.bash` 만 사용 |
 | UI 언어 | 한국어 |
@@ -58,6 +58,7 @@ ${EW_HOME}                          # 기본 /opt/earthworm
 배포 tarball 은 **v8.0b8**, Git 태그는 **v8.0b17** 이다. 계획은 다음과 같이 고정한다.
 
 - 실행 파일: tarball `bin/` 을 그대로 쓴다. 이 호스트에서 재컴파일하지 않는다.
+- 배포 URL 은 현재 **HTTP 전용**이다 (`https://www.earthwormcentral.org/...` 는 HTTP 로 리다이렉트). 받은 파일은 크기(130927698 bytes, Last-Modified 2025-08-04)와 **SHA-256** 을 기록·대조한 뒤에만 푼다. 체크섬이 배포 사이트에 없으면 첫 신뢰 경로에서 한 번 계산해 `earthworm_web/checksums.txt` 에 보관하는 것을 운영 절차로 둔다.
 - 설정 템플릿·매뉴얼: v8.0b17 `params/`, `environment/`, `doc/WEB_DOC` 를 기준으로 파서·카탈로그를 만든다.
 - v8.0b17 에만 있는 모듈은 `bin` 에 실행 파일이 없으면 UI 에서 **바이너리 없음** 으로 표시하고 활성화를 막는다.
 - `ew_linux.bash` 의 `EW_VERSION` 은 tarball 을 푼 실제 디렉터리명으로 맞춘다.
@@ -538,7 +539,7 @@ WebSocket `/ws/status` 가 스냅샷 JSON 을 푸시한다. REST `GET /api/statu
 - 경로: `EW_LOG`. 설정 창에서 바꾸면 `ew_linux.bash` 의 `EW_LOG` 를 쓰고 디렉터리를 만든다. **기동 중 변경은 재시작 후 유효** 함을 UI 에 표시.
 - 파일명 관례: `{config}_YYYYMMDD.log`, stderr 는 `.err`.
 - `GET /api/logs` : 모듈(설정 파일 basename)별 파일 목록, 날짜, 크기.
-- `GET /api/logs/{name}?date=&tail=` : 본문. 큰 파일은 tail.
+- `GET /api/logs/content?file=&date=&tail=` : 본문. 큰 파일은 tail. `file` 은 basename 만 (경로 구분자 거부).
 - `WS /ws/logs?file=` : `tail -F` 와 동일한 폴링 append.
 - **보관 기간**: `app.json.log_retention_days` (기본 14). UTC 날짜 스탬프가 기간 밖인 `*_YYYYMMDD.log` / `.err` 만 삭제. **`*.lock` 과 `EW_DATA_DIR` 아래 tank/waveserver 파일은 삭제하지 않음.** `web_startstop.out` 은 크기 상한으로 로테이트.
 
@@ -738,13 +739,17 @@ frontend/src/
 |--------|------|------|
 | GET/PUT | `/logs/settings` | `{ directory, retention_days }` |
 | GET | `/logs` | 모듈별 파일 |
-| GET | `/logs/content` | `file`, `tail` |
+| GET | `/logs/content` | `file`, `date`, `tail` (basename 만) |
 | WS | `/ws/logs` | follow |
 | GET | `/rings` | 링 목록 |
 | POST | `/sniff/sessions` | `{ tool: sniffwave\|sniffring, args }` → `session_id` |
 | DELETE | `/sniff/sessions/{id}` | 종료 |
 | WS | `/ws/sniff?session=` | 줄 단위 |
 
+### 진단
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
 | GET | `/diagnostics/lock` | `startstop_unix.d.lock` 존재·pid |
 | POST | `/diagnostics/lock/unlock` | 운영자 확인 후 락 해제 |
 | GET | `/diagnostics/ipc` | 해당 유저 shm/세마포어 요약 (자동 삭제 없음) |
@@ -921,7 +926,7 @@ flowchart TB
 
 | 위험 | 완화 |
 |------|------|
-| tarball v8.0b8 vs 소스 v8.0b17 | 카탈로그가 bin 존재 여부를 강제. 없는 모듈은 활성화 불가 |
+| HTTP 로 바이너리 tarball 다운로드 | HTTPS 가 HTTP 로 리다이렉트됨. 크기+SHA-256 대조 후 압축 해제 |
 | 잘못된 `.d` 로 startstop 기동 실패 | 저장 시 구문 검사, 저장 전 백업, 시작 실패 시 `web_startstop.out` 표시 |
 | `environment/` 만 수정 | 초기 마법사가 `EW_PARAMS` 로 테이블 복사·검증 |
 | Alive 인데 하트비트 없음 | Descriptor + CheckAllRings, 대시보드 하트비트 열 |

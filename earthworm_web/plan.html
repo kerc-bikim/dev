@@ -161,7 +161,7 @@ footer {
 </tr>
 <tr>
 <td>바이너리</td>
-<td><a href="http://www.earthwormcentral.org/distribution/earthworm_v8-0b8_rockylinux9_4.tar.gz">earthworm_v8-0b8_rockylinux9_4.tar.gz</a> (컴파일 완료본)</td>
+<td><a href="http://www.earthwormcentral.org/distribution/earthworm_v8-0b8_rockylinux9_4.tar.gz">earthworm_v8-0b8_rockylinux9_4.tar.gz</a> (HTTP 전용. 크기 130927698 bytes, SHA-256 대조 후 사용)</td>
 </tr>
 <tr>
 <td>매뉴얼</td>
@@ -217,6 +217,7 @@ footer {
 <p>배포 tarball 은 <strong>v8.0b8</strong>, Git 태그는 <strong>v8.0b17</strong> 이다. 계획은 다음과 같이 고정한다.</p>
 <ul>
 <li>실행 파일: tarball <code>bin/</code> 을 그대로 쓴다. 이 호스트에서 재컴파일하지 않는다.</li>
+<li>배포 URL 은 현재 <strong>HTTP 전용</strong>이다 (<code>https://www.earthwormcentral.org/...</code> 는 HTTP 로 리다이렉트). 받은 파일은 크기(130927698 bytes, Last-Modified 2025-08-04)와 <strong>SHA-256</strong> 을 기록·대조한 뒤에만 푼다. 체크섬이 배포 사이트에 없으면 첫 신뢰 경로에서 한 번 계산해 <code>earthworm_web/checksums.txt</code> 에 보관하는 것을 운영 절차로 둔다.</li>
 <li>설정 템플릿·매뉴얼: v8.0b17 <code>params/</code>, <code>environment/</code>, <code>doc/WEB_DOC</code> 를 기준으로 파서·카탈로그를 만든다.</li>
 <li>v8.0b17 에만 있는 모듈은 <code>bin</code> 에 실행 파일이 없으면 UI 에서 <strong>바이너리 없음</strong> 으로 표시하고 활성화를 막는다.</li>
 <li><code>ew_linux.bash</code> 의 <code>EW_VERSION</code> 은 tarball 을 푼 실제 디렉터리명으로 맞춘다.</li>
@@ -1016,7 +1017,7 @@ rows: name, pid, status, class/priority, cpu, argument
 <li>경로: <code>EW_LOG</code>. 설정 창에서 바꾸면 <code>ew_linux.bash</code> 의 <code>EW_LOG</code> 를 쓰고 디렉터리를 만든다. <strong>기동 중 변경은 재시작 후 유효</strong> 함을 UI 에 표시.</li>
 <li>파일명 관례: <code>{config}_YYYYMMDD.log</code>, stderr 는 <code>.err</code>.</li>
 <li><code>GET /api/logs</code> : 모듈(설정 파일 basename)별 파일 목록, 날짜, 크기.</li>
-<li><code>GET /api/logs/{name}?date=&amp;tail=</code> : 본문. 큰 파일은 tail.</li>
+<li><code>GET /api/logs/content?file=&amp;date=&amp;tail=</code> : 본문. 큰 파일은 tail. <code>file</code> 은 basename 만 (경로 구분자 거부).</li>
 <li><code>WS /ws/logs?file=</code> : <code>tail -F</code> 와 동일한 폴링 append.</li>
 <li><strong>보관 기간</strong>: <code>app.json.log_retention_days</code> (기본 14). UTC 날짜 스탬프가 기간 밖인 <code>*_YYYYMMDD.log</code> / <code>.err</code> 만 삭제. <strong><code>*.lock</code> 과 <code>EW_DATA_DIR</code> 아래 tank/waveserver 파일은 삭제하지 않음.</strong> <code>web_startstop.out</code> 은 크기 상한으로 로테이트.</li>
 </ul>
@@ -1476,7 +1477,7 @@ sniffring [-n] &lt;ringname&gt; &lt;instid&gt; &lt;mod&gt; &lt;type&gt; verbose
 <tr>
 <td>GET</td>
 <td><code>/logs/content</code></td>
-<td><code>file</code>, <code>tail</code></td>
+<td><code>file</code>, <code>date</code>, <code>tail</code> (basename 만)</td>
 </tr>
 <tr>
 <td>WS</td>
@@ -1505,9 +1506,33 @@ sniffring [-n] &lt;ringname&gt; &lt;instid&gt; &lt;mod&gt; &lt;type&gt; verbose
 </tr>
 </tbody>
 </table>
-<p>| GET | <code>/diagnostics/lock</code> | <code>startstop_unix.d.lock</code> 존재·pid |<br />
-| POST | <code>/diagnostics/lock/unlock</code> | 운영자 확인 후 락 해제 |<br />
-| GET | <code>/diagnostics/ipc</code> | 해당 유저 shm/세마포어 요약 (자동 삭제 없음) |</p>
+<h3 id="_6">진단</h3>
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>경로</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/diagnostics/lock</code></td>
+<td><code>startstop_unix.d.lock</code> 존재·pid</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/diagnostics/lock/unlock</code></td>
+<td>운영자 확인 후 락 해제</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/diagnostics/ipc</code></td>
+<td>해당 유저 shm/세마포어 요약 (자동 삭제 없음)</td>
+</tr>
+</tbody>
+</table>
 <p>에러: 400 검증, 403 키, 409 제어 잠금/이미 기동/<code>setup_complete</code> 아님, 422 <code>.d</code> 파서, 503 EW env 미설정.</p>
 <hr />
 <h2 id="10-appjson">10. <code>app.json</code> 스키마</h2>
@@ -1666,8 +1691,8 @@ flowchart TB
 </thead>
 <tbody>
 <tr>
-<td>tarball v8.0b8 vs 소스 v8.0b17</td>
-<td>카탈로그가 bin 존재 여부를 강제. 없는 모듈은 활성화 불가</td>
+<td>HTTP 로 바이너리 tarball 다운로드</td>
+<td>HTTPS 가 HTTP 로 리다이렉트됨. 크기+SHA-256 대조 후 압축 해제</td>
 </tr>
 <tr>
 <td>잘못된 <code>.d</code> 로 startstop 기동 실패</td>
