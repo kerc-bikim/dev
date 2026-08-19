@@ -62,6 +62,20 @@ def save_app(meta: AppMeta) -> None:
         tmp.replace(p)
 
 
+def status_interval_sec() -> float:
+    try:
+        return max(0.5, min(float(load_app().status_interval_sec), 60.0))
+    except Exception:
+        return float(settings.STATUS_INTERVAL_SEC)
+
+
+def sniff_session_limit() -> int:
+    try:
+        return max(1, min(int(load_app().sniff_session_limit), 8))
+    except Exception:
+        return int(settings.SNIFF_MAX_SESSIONS)
+
+
 def mark_setup_complete() -> AppMeta:
     meta = load_app()
     meta.setup_complete = True

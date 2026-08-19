@@ -4,13 +4,13 @@ from fastapi import Header, HTTPException, Query, WebSocket
 
 from .config import settings
 
-OPEN_PATHS = {"/api/health", "/api/openapi.json", "/docs", "/redoc", "/openapi.json"}
+OPEN_PATHS = {"/api/health"}
 
 
 def check_key(key: str | None) -> None:
-    expected = settings.API_KEY
+    expected = (settings.API_KEY or "").strip()
     if not expected:
-        return
+        raise HTTPException(status_code=503, detail="API 키가 설정되지 않았습니다")
     if key != expected:
         raise HTTPException(status_code=403, detail="API 키가 올바르지 않습니다")
 

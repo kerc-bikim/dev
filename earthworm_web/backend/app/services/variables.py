@@ -4,6 +4,7 @@ from pathlib import Path
 
 from .commonvars import parse_commonvars, parse_key_values, replace_command_value, upsert_commonvars
 from .env import bash_path, parsed_core, rewrite_bash
+from .ipc_diag import require_stopped
 from .module_catalog import catalog
 from .setup_wizard import backup_params
 
@@ -84,6 +85,11 @@ def apply_variables(updates: dict[str, str]) -> dict:
         log = updates["EW_LOG"]
         if not log.endswith("/"):
             log += "/"
+        current = env.get("EW_LOG") or ""
+        if not current.endswith("/"):
+            current += "/"
+        if log != current:
+            require_stopped("로그 경로를 바꿀 수 없습니다")
         Path(log).mkdir(parents=True, exist_ok=True)
         rewrite_bash(bash_path(), {"EW_LOG": log})
         changed.append("ew_linux.bash")

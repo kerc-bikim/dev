@@ -17,6 +17,19 @@ class CloneError(ValueError):
     pass
 
 
+def _contained(base: Path, name: str) -> Path:
+    ident = name
+    if name.endswith(".d") or name.endswith(".desc"):
+        ident = name.rsplit(".", 1)[0]
+    if not SAFE_NAME.match(ident) or "/" in name or "\\" in name or ".." in name:
+        raise CloneError("이름은 영문·숫자·밑줄만, 32자 이하입니다")
+    base_r = base.resolve()
+    path = (base_r / name).resolve()
+    if path.parent != base_r:
+        raise CloneError("경로가 허용 범위를 벗어났습니다")
+    return path
+
+
 def clone_module(source_id: str, new_name: str) -> dict:
     if not SAFE_NAME.match(new_name):
         raise CloneError("이름은 영문·숫자·밑줄만, 32자 이하입니다")
@@ -25,16 +38,14 @@ def clone_module(source_id: str, new_name: str) -> dict:
     ver = env["EW_VERSION"]
     bindir = home / ver / "bin"
     params = Path(env["EW_PARAMS"])
-    src_bin = bindir / source_id
-    if not src_bin.is_file():
-        # cloned source may already be a renamed binary
-        src_bin = bindir / source_id
+    src_bin = _contained(bindir, source_id)
     if not src_bin.is_file():
         raise CloneError(f"바이너리가 없습니다: {source_id}")
-    dest_bin = bindir / new_name
-    if dest_bin.exists() or (params / f"{new_name}.d").exists():
+    dest_bin = _contained(bindir, new_name)
+    dest_d = _contained(params, f"{new_name}.d")
+    if dest_bin.exists() or dest_d.exists():
         raise CloneError("이미 같은 이름의 모듈이 있습니다")
-    src_d = params / f"{source_id}.d"
+    src_d = _contained(params, f"{source_id}.d")
     if not src_d.is_file():
         raise CloneError(f"{source_id}.d 가 없습니다")
     cmd = f"{new_name} {new_name}.d"
@@ -54,16 +65,15 @@ def clone_module(source_id: str, new_name: str) -> dict:
 
     d_text = src_d.read_text(encoding="utf-8", errors="replace")
     d_text, _ = replace_command_value(d_text, "MyModuleId", mod_const)
-    dest_d = params / f"{new_name}.d"
     dest_d.write_text(d_text, encoding="utf-8")
 
     desc_name = None
-    src_desc = params / f"{source_id}.desc"
+    src_desc = _contained(params, f"{source_id}.desc")
     if src_desc.is_file():
         desc_text = src_desc.read_text(encoding="utf-8", errors="replace")
         desc_text, _ = replace_command_value(desc_text, "modName", new_name)
         desc_text, _ = replace_command_value(desc_text, "modId", mod_const)
-        dest_desc = params / f"{new_name}.desc"
+        dest_desc = _contained(params, f"{new_name}.desc")
         dest_desc.write_text(desc_text, encoding="utf-8")
         desc_name = dest_desc.name
         sm = params / "statmgr.d"
@@ -96,6 +106,8 @@ def clone_module(source_id: str, new_name: str) -> dict:
 
 
 def delete_clone(module_id: str) -> None:
+    if not SAFE_NAME.match(module_id):
+        raise CloneError("이름은 영문·숫자·밑줄만, 32자 이하입니다")
     meta = load_app()
     rec = next((c for c in meta.clones if c["id"] == module_id), None)
     if rec is None:
@@ -108,10 +120,10 @@ def delete_clone(module_id: str) -> None:
     ss.processes = [p for p in ss.processes if p.name != module_id]
     ss_path.write_text(serialize_startstop(ss), encoding="utf-8")
     for name in (f"{module_id}.d", f"{module_id}.desc"):
-        p = params / name
+        p = _contained(params, name)
         if p.is_file():
             p.unlink()
-    b = bindir / module_id
+    b = _contained(bindir, module_id)
     if b.is_file():
         b.unlink()
     ew_path = params / "earthworm.d"
@@ -121,11 +133,13 @@ def delete_clone(module_id: str) -> None:
         ew_path.write_text(ew.text(), encoding="utf-8")
     sm = params / "statmgr.d"
     if sm.is_file() and rec.get("desc_file"):
-        lines = [
-            ln
-            for ln in sm.read_text(encoding="utf-8", errors="replace").splitlines()
-            if rec["desc_file"] not in ln
-        ]
-        sm.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        want = rec["desc_file"]
+        kept = []
+        for ln in sm.read_text(encoding="utf-8", errors="replace").splitlines():
+            parts = ln.strip().lstrip("#").split()
+            if len(parts) >= 2 and parts[0] == "Descriptor" and parts[1] == want:
+                continue
+            kept.append(ln)
+        sm.write_text("\n".join(kept).rstrip() + "\n", encoding="utf-8")
     meta.clones = [c for c in meta.clones if c["id"] != module_id]
     save_app(meta)

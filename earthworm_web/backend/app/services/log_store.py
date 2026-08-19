@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .app_store import load_app, save_app
 from .env import bash_path, parsed_core, rewrite_bash
+from .ipc_diag import require_stopped
 
 LOG_DATE_RE = re.compile(r"^(.+)_(\d{8})\.(log|err)$")
 
@@ -74,6 +75,11 @@ def update_log_settings(directory: str | None, retention_days: int | None) -> di
         save_app(meta)
     if directory:
         directory = directory if directory.endswith("/") else directory + "/"
+        current = env.get("EW_LOG") or ""
+        if not current.endswith("/"):
+            current += "/"
+        if directory != current:
+            require_stopped("로그 디렉터리를 바꿀 수 없습니다")
         Path(directory).mkdir(parents=True, exist_ok=True)
         rewrite_bash(bash_path(), {"EW_LOG": directory})
         env = parsed_core()

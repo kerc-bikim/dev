@@ -20,8 +20,15 @@ npm install
 npm run dev -- --host 0.0.0.0 --port 5174
 ```
 
-브라우저: http://127.0.0.1:5174  
-API 키 헤더: `X-API-Key: dev` (`VITE_API_KEY` 로 변경 가능)
+브라우저: http://127.0.0.1:5174
+
+인증:
+
+- HTTP API 는 `X-API-Key` 헤더만 인정합니다. `?key=` 쿼리는 거부합니다.
+- WebSocket 은 브라우저가 커스텀 헤더를 보낼 수 없어 `/ws/*?key=` 를 씁니다.
+- `EW_WEB_API_KEY` 가 비어 있으면 API 는 503 입니다. 배포 시 `dev` 기본값을 바꾸세요.
+- 프론트는 `VITE_API_KEY` (없으면 로컬 기본 `dev`).
+- Swagger 는 기본 비활성. 켤 때만 `EW_WEB_OPEN_DOCS=1`.
 
 ```bash
 cd backend && pytest

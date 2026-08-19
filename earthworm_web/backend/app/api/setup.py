@@ -31,6 +31,8 @@ def setup_defaults() -> dict:
 def put_directories(body: DirectoriesIn) -> dict:
     try:
         return wiz.set_directories(body.EW_HOME, body.EW_VERSION, body.EW_RUN_DIR, body.retention_days)
+    except RuntimeError as exc:
+        _http(exc, 409)
     except Exception as exc:
         _http(exc)
 

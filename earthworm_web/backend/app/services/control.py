@@ -210,8 +210,8 @@ def _pid_for(module_id: str, snap: StatusSnapshot) -> int:
 
 
 async def module_stop(module_id: str) -> dict:
-    if module_id == "statmgr":
-        raise RuntimeError("statmgr 은 개별 중지하지 않습니다")
+    if module_id in PROTECTED:
+        raise RuntimeError("startstop/statmgr 은 개별 중지하지 않습니다")
     async with control_lock():
         snap = await read_status()
         pid = _pid_for(module_id, snap)
@@ -227,6 +227,8 @@ async def module_stop(module_id: str) -> dict:
 
 
 async def module_restart(module_id: str) -> dict:
+    if module_id == "startstop":
+        raise RuntimeError("startstop 은 개별 재시작하지 않습니다")
     async with control_lock():
         snap = await read_status()
         pid = _pid_for(module_id, snap)

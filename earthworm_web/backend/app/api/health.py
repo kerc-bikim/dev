@@ -14,6 +14,11 @@ router = APIRouter(prefix="/api", tags=["health"])
 
 @router.get("/health")
 def health() -> dict:
+    return {"status": "ok"}
+
+
+@router.get("/health/detail", dependencies=[Depends(api_key_header)])
+def health_detail() -> dict:
     meta = load_app()
     try:
         env = parsed_core()

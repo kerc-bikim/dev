@@ -7,6 +7,7 @@ import uuid
 from dataclasses import dataclass, field
 
 from ..config import settings
+from .app_store import sniff_session_limit
 from .env import bash_path, parsed_core, source_env
 from .seed import SAFE_TOKEN
 
@@ -68,8 +69,9 @@ def sniff_argv(payload: dict) -> list[str]:
 
 async def start_session(payload: dict) -> SniffSession:
     live = [s for s in _sessions.values() if s.proc and s.proc.returncode is None]
-    if len(live) >= settings.SNIFF_MAX_SESSIONS:
-        raise RuntimeError(f"sniff 세션 상한 {settings.SNIFF_MAX_SESSIONS}")
+    limit = sniff_session_limit()
+    if len(live) >= limit:
+        raise RuntimeError(f"sniff 세션 상한 {limit}")
     argv = sniff_argv(payload)
     env = source_env(bash_path())
     proc = await asyncio.create_subprocess_exec(

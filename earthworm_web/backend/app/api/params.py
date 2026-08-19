@@ -7,6 +7,7 @@ from ..security import api_key_header
 from ..services.app_store import load_app
 from ..services.env import parsed_core, rewrite_bash, bash_path
 from ..services.files import PathDenied, list_tree, read_file, write_file
+from ..services.ipc_diag import require_stopped
 
 router = APIRouter(prefix="/api", tags=["files"], dependencies=[Depends(api_key_header)])
 
@@ -16,13 +17,23 @@ def require_setup() -> None:
         raise HTTPException(409, "초기 설정을 먼저 완료하세요")
 
 
+_PATH_KEYS = {"EW_HOME", "EW_VERSION", "EW_RUN_DIR", "EW_LOG", "EW_DATA_DIR"}
+
+
 @router.put("/environment")
 def put_environment(body: EnvironmentIn, _: None = Depends(require_setup)) -> dict:
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if not updates:
         return parsed_core()
-    rewrite_bash(bash_path(), updates)
-    return parsed_core()
+    try:
+        if _PATH_KEYS & set(updates):
+            require_stopped("경로·버전을 바꿀 수 없습니다")
+        rewrite_bash(bash_path(), updates)
+        return parsed_core()
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @router.get("/files")

@@ -19,6 +19,7 @@ from .api.params import router as params_router
 from .api.setup import router as setup_router
 from .config import settings
 from .security import OPEN_PATHS, check_key
+from .services.app_store import status_interval_sec
 from .services.control import dashboard_payload, read_status
 from .services.log_store import read_log, sweep_logs
 from .services.seed import ensure_default_home
@@ -33,6 +34,10 @@ log = logging.getLogger("earthworm_web")
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    if not (settings.API_KEY or "").strip():
+        log.error("EW_WEB_API_KEY 가 비어 있습니다. HTTP API 는 503 을 반환합니다.")
+    elif settings.API_KEY.strip() == "dev":
+        log.warning("EW_WEB_API_KEY 가 기본값 'dev' 입니다. 배포 시 변경하세요.")
     if settings.AUTO_SEED:
         try:
             ensure_default_home()
@@ -43,11 +48,18 @@ async def lifespan(_app: FastAPI):
     task.cancel()
 
 
+_docs = "/docs" if settings.OPEN_DOCS else None
+_redoc = "/redoc" if settings.OPEN_DOCS else None
+_openapi = "/openapi.json" if settings.OPEN_DOCS else None
+
 app = FastAPI(
     title="Earthworm Web Control",
     version="0.1.0",
     description="Earthworm v8 웹 콘솔 (FastAPI). 프론트엔드는 /api 와 /ws 만 사용합니다.",
     lifespan=lifespan,
+    docs_url=_docs,
+    redoc_url=_redoc,
+    openapi_url=_openapi,
 )
 
 app.add_middleware(
@@ -66,19 +78,26 @@ app.include_router(control_router)
 app.include_router(logs_router)
 
 
+def _docs_open(path: str) -> bool:
+    if not settings.OPEN_DOCS:
+        return False
+    return path.startswith("/docs") or path.startswith("/redoc") or path.startswith("/openapi")
+
+
 @app.middleware("http")
 async def api_key_middleware(request: Request, call_next):
     path = request.url.path
-    if path in OPEN_PATHS or path.startswith("/docs") or path.startswith("/redoc"):
+    if path in OPEN_PATHS or _docs_open(path):
         return await call_next(request)
-    if path.startswith("/api/") or path.startswith("/ws/"):
-        # routers also check; this covers anything missed. GET /api/health is open.
-        if path != "/api/health":
-            key = request.headers.get("X-API-Key") or request.query_params.get("key")
-            try:
-                check_key(key)
-            except Exception as exc:
-                return JSONResponse({"detail": getattr(exc, "detail", str(exc))}, status_code=403)
+    # WebSocket 은 브라우저가 커스텀 헤더를 못 보내므로 엔드포인트에서 ?key= 를 검사한다.
+    if path.startswith("/ws/"):
+        return await call_next(request)
+    if path.startswith("/api/"):
+        key = request.headers.get("X-API-Key")
+        try:
+            check_key(key)
+        except Exception as exc:
+            return JSONResponse({"detail": getattr(exc, "detail", str(exc))}, status_code=getattr(exc, "status_code", 403))
     return await call_next(request)
 
 
@@ -103,7 +122,7 @@ async def ws_status(ws: WebSocket, key: str | None = None):
         while True:
             snap = await read_status()
             await ws.send_json(dashboard_payload(snap))
-            await asyncio.sleep(max(0.5, settings.STATUS_INTERVAL_SEC))
+            await asyncio.sleep(status_interval_sec())
     except WebSocketDisconnect:
         return
 

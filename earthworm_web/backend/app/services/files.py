@@ -11,6 +11,11 @@ class PathDenied(ValueError):
     pass
 
 
+def is_shell_script(path: Path) -> bool:
+    name = path.name.lower()
+    return name.endswith(".bash") or name.endswith(".sh") or name == "ew_linux.bash"
+
+
 def _roots() -> dict[str, Path]:
     env = parsed_core()
     tree = Path(env["EW_HOME"]) / env["EW_VERSION"]
@@ -35,6 +40,12 @@ def resolve_file(root: str, rel: str) -> Path:
     return path
 
 
+def _readonly(path: Path, root: str) -> bool:
+    if is_shell_script(path):
+        return True
+    return path.name == READONLY_GLOBAL and root == "params"
+
+
 def list_tree(root: str) -> list[dict]:
     base = _roots()[root]
     if not base.is_dir():
@@ -44,13 +55,7 @@ def list_tree(root: str) -> list[dict]:
         if not p.is_file():
             continue
         rel = str(p.relative_to(base))
-        items.append(
-            {
-                "path": rel,
-                "size": p.stat().st_size,
-                "readonly": p.name == READONLY_GLOBAL and root == "params",
-            }
-        )
+        items.append({"path": rel, "size": p.stat().st_size, "readonly": _readonly(p, root)})
     return items
 
 
@@ -62,12 +67,14 @@ def read_file(root: str, rel: str) -> dict:
         "root": root,
         "path": rel,
         "content": path.read_text(encoding="utf-8", errors="replace"),
-        "readonly": path.name == READONLY_GLOBAL,
+        "readonly": _readonly(path, root),
     }
 
 
 def write_file(root: str, rel: str, content: str, *, allow_global: bool = False) -> dict:
     path = resolve_file(root, rel)
+    if is_shell_script(path):
+        raise PathDenied("셸 스크립트는 파일 편집으로 저장할 수 없습니다")
     if path.name == READONLY_GLOBAL and not allow_global:
         raise PathDenied("earthworm_global.d 는 기본 읽기 전용입니다")
     path.parent.mkdir(parents=True, exist_ok=True)

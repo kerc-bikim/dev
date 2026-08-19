@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     SNIFF_LINE_LIMIT: int = 2000
     CONTROL_TIMEOUT_SEC: float = 20.0
     KILL_DELAY_SEC: float = 10.0
+    OPEN_DOCS: bool = False
 
     model_config = SettingsConfigDict(
         env_prefix="EW_WEB_",

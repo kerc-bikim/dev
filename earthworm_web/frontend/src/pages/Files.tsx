@@ -26,7 +26,16 @@ export function FilesPage({ toast }: { toast: (m: string) => void }) {
     setReadonly(data.readonly);
   }
 
+  const shellLocked =
+    /\.(bash|sh)$/i.test(file) || file === "ew_linux.bash" || file.endsWith("/ew_linux.bash");
+  const isGlobal = file === "earthworm_global.d" || file.endsWith("/earthworm_global.d");
+  const locked = readonly && !isGlobal;
+
   async function save() {
+    if (shellLocked || locked) {
+      toast("이 파일은 웹에서 저장할 수 없습니다");
+      return;
+    }
     try {
       await api("/api/files/content", {
         method: "PUT",
@@ -34,7 +43,7 @@ export function FilesPage({ toast }: { toast: (m: string) => void }) {
           root,
           path: file,
           content,
-          allow_global: readonly ? window.confirm("전역 ID 파일입니다. 저장할까요?") : false,
+          allow_global: isGlobal ? window.confirm("전역 ID 파일입니다. 저장할까요?") : false,
         }),
       });
       toast("저장됨 (백업 *.bak.<ts>)");
@@ -71,9 +80,18 @@ export function FilesPage({ toast }: { toast: (m: string) => void }) {
           ))}
         </div>
         <div className="card">
-          <textarea value={content} onChange={(e) => setContent(e.target.value)} />
-          <button className="primary" style={{ marginTop: 8 }} onClick={() => void save()}>
-            저장
+          <textarea
+            value={content}
+            disabled={shellLocked || locked}
+            onChange={(e) => setContent(e.target.value)}
+          />
+          <button
+            className="primary"
+            style={{ marginTop: 8 }}
+            disabled={shellLocked || locked || !file}
+            onClick={() => void save()}
+          >
+            {shellLocked ? "셸 스크립트는 읽기 전용" : "저장"}
           </button>
         </div>
       </div>

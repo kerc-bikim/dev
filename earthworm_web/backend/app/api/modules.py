@@ -58,4 +58,9 @@ def get_variables() -> dict:
 
 @router.put("/variables")
 def put_variables(body: VariablesIn, _: None = Depends(require_setup)) -> dict:
-    return apply_variables(body.values)
+    try:
+        return apply_variables(body.values)
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(400, str(exc)) from exc

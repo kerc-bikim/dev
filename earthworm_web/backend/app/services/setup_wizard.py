@@ -14,6 +14,7 @@ from .earthworm_d import (
     replace_startstop_rings,
 )
 from .env import apply_directories, bash_path, parsed_core, rewrite_bash
+from .ipc_diag import require_stopped
 from .seed import SAFE_NAME, fixtures_dir
 from .startstop_file import parse_startstop, serialize_startstop, set_rings as write_ss_rings
 
@@ -52,6 +53,7 @@ def backup_params(params: Path) -> Path | None:
 
 
 def set_directories(ew_home: str, ew_version: str, ew_run_dir: str, retention_days: int = 14) -> dict:
+    require_stopped("디렉터리·경로를 바꿀 수 없습니다")
     startstop = Path(ew_home) / ew_version / "bin" / "startstop"
     if not startstop.is_file():
         raise FileNotFoundError(f"startstop 이 없습니다: {startstop}")
@@ -240,7 +242,9 @@ def validate() -> list[dict]:
 
 
 def complete_setup() -> dict:
-    enable_min_modules()
+    already = load_app().setup_complete
+    if not already:
+        enable_min_modules()
     checks = validate()
     if not all(c["ok"] for c in checks):
         failed = [c["name"] for c in checks if not c["ok"]]

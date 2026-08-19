@@ -1,3 +1,4 @@
+/** 로컬 기본값. 배포 시 VITE_API_KEY 를 백엔드 EW_WEB_API_KEY 와 같게 설정하세요. HTTP 는 헤더만, WS 는 ?key= 입니다. */
 export const API_KEY = import.meta.env.VITE_API_KEY ?? "dev";
 
 async function parseError(res: Response): Promise<string> {

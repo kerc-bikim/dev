@@ -23,6 +23,18 @@ def lock_info() -> dict:
     return info
 
 
+def startstop_is_alive() -> bool:
+    try:
+        return bool(lock_info().get("alive"))
+    except Exception:
+        return False
+
+
+def require_stopped(action: str) -> None:
+    if startstop_is_alive():
+        raise RuntimeError(f"startstop 실행 중에는 {action}. 종료 후 수정하세요.")
+
+
 def unlock(force: bool = False) -> dict:
     info = lock_info()
     if not info["exists"]:

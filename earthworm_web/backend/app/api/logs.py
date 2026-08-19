@@ -31,6 +31,8 @@ def get_log_settings() -> dict:
 def put_log_settings(body: LogSettingsIn, _: None = Depends(require_setup)) -> dict:
     try:
         return update_log_settings(body.directory, body.retention_days)
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
     except Exception as exc:
         raise HTTPException(400, str(exc)) from exc
 

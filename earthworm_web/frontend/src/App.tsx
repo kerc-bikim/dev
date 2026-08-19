@@ -51,11 +51,6 @@ export default function App() {
         setPage(s.setup_complete ? "dashboard" : "setup");
       })
       .catch((e: Error) => showToast(e.message));
-    api<{ ew_version?: string }>("/api/health")
-      .then((h) => {
-        if (h.ew_version) setVersion(h.ew_version);
-      })
-      .catch(() => undefined);
   }, [showToast]);
 
   useEffect(() => {
