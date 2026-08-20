@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>recvQSCD20 — GUI 문서 (v3.8)</title>
+  <title>recvQSCD20 — GUI 문서 (v3.10)</title>
   <style>
     :root {
       --bg: #f1f5f9;
@@ -125,7 +125,7 @@
     <p>
       KIGAM QSCD20 패킷(120바이트) 수신·기록·시각화 —
       <strong>PyQt5 + pyqtgraph</strong> 기반 GUI
-      <span class="badge">현재 v3.8</span>
+      <span class="badge">현재 v3.10</span>
     </p>
   </header>
 
@@ -155,7 +155,7 @@
           <tr><th>파일</th><th>역할</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>recvQSCD20_gui.py</code></td><td>GUI 메인 (v3.8)</td></tr>
+          <tr><td><code>recvQSCD20_gui.py</code></td><td>GUI 메인 (v3.10)</td></tr>
           <tr><td><code>gui_settings.py</code></td><td>설정 로드·검증·UI 메타(한글 툴팁)</td></tr>
           <tr><td><code>recvQSCD20_gui_settings.json</code></td><td>사용자 기본 설정 (메뉴에서 편집)</td></tr>
           <tr><td><code>requirements.txt</code></td><td>PyQt5, PyQtWebEngine, pyqtgraph, numpy</td></tr>
@@ -195,7 +195,7 @@ python recvQSCD20_gui.py</pre>
         </thead>
         <tbody>
           <tr><td><code>{prefix}.QSCD.log</code></td><td>텍스트 로그 (모든 관측소)</td></tr>
-          <tr><td><code>{prefix}.QSCD20.bin</code></td><td>GUI 확장 바이너리 (QCDX, 아래 참고)</td></tr>
+          <tr><td><code>{prefix}.QSCD20.replay</code></td><td>GUI 확장 재생 파일 (QCDX, 아래 참고)</td></tr>
         </tbody>
       </table>
       <p>
@@ -219,12 +219,12 @@ python recvQSCD20_gui.py</pre>
           <span class="badge-new">10초 이상 지연 시 빨간색 깜빡임</span></li>
         <li><strong>Quality / Station / Location</strong> — Quality Flag, 5B Station 코드, Location(<code>myqscd[34]</code>)</li>
         <li><strong>표시 차트</strong> — Diff, Maximum, PGA, WMMA(3축), TMM(3축) 패널별 체크</li>
-        <li><strong>로그</strong> (하단, 어두운 톤) — 선택 관측소만; <code>LIVE_LOG_VERBOSE=False</code> 시 패킷당 1줄 요약</li>
+        <li><strong>로그</strong> — Live 탭 상단 우측 로그 뷰어 아이콘 (Ctrl+L); 하단 <strong>상세 로그 표시</strong> 체크로 화면을 요약/상세로 다시 그림. 파일은 항상 상세 저장</li>
       </ul>
 
       <h3>File Viewer 탭</h3>
       <ul>
-        <li><code>.QSCD20.bin</code> 열기 — Live와 동일 패널·시간 창</li>
+        <li><code>QSCD20.replay</code> 열기 — Live와 동일 패널·시간 창 (이전 <code>.bin</code> 도 가능)</li>
         <li><span class="badge-new">관측소 콤보박스</span> — 파일 내 관측소 선택 후 해당 데이터만 차트 표시</li>
         <li><strong>QCDX</strong> 파일 — Live에서 저장한 <strong>TimeDiff</strong>를 Diff 차트에 그대로 표시</li>
         <li>구형 120B-only 파일 — Diff는 파일 열기 시각 기준 근사 (라벨 안내)</li>
@@ -388,7 +388,7 @@ python recvQSCD20_gui.py</pre>
           </ul>
         </dd>
 
-        <dt>v3.8 <span class="badge-new">현재</span></dt>
+        <dt>v3.8</dt>
         <dd>
           <ul>
             <li>큐 포화 시 <strong>새 패킷을 폐기</strong>(먼저 받은 기록 보존)하고 폐기 건수 로그</li>
@@ -397,6 +397,22 @@ python recvQSCD20_gui.py</pre>
             <li>덮어쓰기 승인 시 로그도 새로 기록(append 아님), bin 열기 실패 시 핸들 정리</li>
             <li>prefix에 Windows 예약 이름·끝 점/공백 차단, 즉시 반영되지 않는 설정 항목 안내</li>
             <li>수신 오류·unpack 오류 로그 폭주 방지, 단위 테스트 추가(<code>test_recv_core.py</code>)</li>
+          </ul>
+        </dd>
+
+        <dt>v3.9</dt>
+        <dd>
+          <ul>
+            <li>저장 파일 확장자를 <code>.QSCD20.bin</code> → <code>.QSCD20.replay</code> 로 변경, File Viewer 열기 대화 갱신</li>
+            <li>Live / File Viewer 탭 선택 시 이름 잘림 방지 (탭 폭·말줄임 해제)</li>
+            <li>로그 뷰어를 메뉴에서 Live 탭 상단 우측 아이콘으로 이동 (Ctrl+L 유지)</li>
+          </ul>
+        </dd>
+
+        <dt>v3.10 <span class="badge-new">현재</span></dt>
+        <dd>
+          <ul>
+            <li>TimeDiff: Linux 커널 수신 시각(<code>SO_TIMESTAMPNS</code>), Windows는 <code>time.time_ns()</code> + 1ms 타이머, 수신 스레드 우선순위 상향</li>
           </ul>
         </dd>
       </dl>
@@ -417,9 +433,9 @@ python recvQSCD20_gui.py</pre>
         <li>성능: 큐·200ms 타이머·활성 패널 격자 캐시</li>
       </ul>
       <h3>데이터 흐름 (개요)</h3>
-      <pre>UDP Thread: recvfrom → TimeDiff 확정 → queue.Queue (가득 차면 새 패킷 폐기)
+      <pre>UDP Thread: recv (Linux 커널 ts / 그 외 time.time_ns) → TimeDiff 확정 → queue.Queue
          ↓ (QTimer, 패킷당 시그널 없음)
-    drain(최대 packet_drain_max) → QCDX.bin / StationBuffer / 로그
+    drain(최대 packet_drain_max) → QCDX.replay / StationBuffer / 로그
          ↓
     차트 갱신 (선택 관측소)
 
@@ -437,7 +453,7 @@ File Viewer: read_qscd20_bin → 관측소 필터 → set_static_from_records</p
 default_port, default_time_window_sec, time_window_choices
 default_panels, default_show_legend, log_max_lines
 chart_refresh_ms, packet_drain_max, packet_queue_max, bin_flush_every
-live_log_verbose, recv_delay_alert_sec, recv_alert_blink_ms
+recv_delay_alert_sec, recv_alert_blink_ms
 sock_timeout_sec, sock_timeout_count</pre>
       <p>
         <code>default_panels</code>·<code>default_show_legend</code> 는 프로그램을 다시 시작해야,

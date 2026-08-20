@@ -35,7 +35,7 @@ SETTING_UI_SPECS: Dict[str, Tuple[str, str, str, Optional[float], Optional[float
     ),
     "bin_save_dir": (
         "바이너리 저장 디렉터리",
-        "QCDX 바이너리(.QSCD20.bin)가 저장되는 폴더입니다. "
+        "QCDX 재생 파일(.QSCD20.replay)이 저장되는 폴더입니다. "
         "상대 경로이면 프로그램(작업) 디렉터리 기준입니다. 기본: bin",
         "path",
         None,
@@ -116,13 +116,6 @@ SETTING_UI_SPECS: Dict[str, Tuple[str, str, str, Optional[float], Optional[float
         "int",
         1,
         500,
-    ),
-    "live_log_verbose": (
-        "Live 상세 로그",
-        "켜면 패킷마다 여러 줄 상세 로그, 끄면 한 줄 요약 로그를 기록합니다.",
-        "bool",
-        None,
-        None,
     ),
     "recv_delay_alert_sec": (
         "수신 지연 경고(초)",

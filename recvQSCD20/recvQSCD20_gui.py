@@ -7,7 +7,7 @@ QSCD20 UDP 수신 GUI (PyQt5 + pyqtgraph) — 설정: recvQSCD20_gui_settings.js
     pip install -r requirements.txt
     python recvQSCD20_gui.py
 
-메뉴: 기본 설정 / 로그 뷰어 — 팝업. 수신(UDP·Start/Stop)은 메인 우측 패널.
+메뉴: 기본 설정. 로그 뷰어는 Live 탭 상단 아이콘. 수신(UDP·Start/Stop)은 메인 우측 패널.
 """
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ from gui_settings import (
     work_directory,
 )
 
-FALLBACK_VERSION = "3.8"
+FALLBACK_VERSION = "3.10"
 
 
 def _load_gui_version() -> str:
@@ -78,6 +78,7 @@ QSCD20_FMT = ">Lccc2s3sIfffffffffffffffffffffffffcc2s"
 BIN_FILE_MAGIC = b"QCDX\x01"
 QSCD_BIN_REC_LEN = QSCD_LEN + 8
 DIFF_PACK_FMT = ">d"
+REPLAY_SUFFIX = ".QSCD20.replay"
 
 KST_OFFSET = 9 * 3600
 
@@ -92,6 +93,7 @@ PACKET_DRAIN_MAX = 800
 PACKET_QUEUE_MAX = 20000
 BIN_FLUSH_EVERY = 32
 LIVE_LOG_VERBOSE = False
+GUI_LOG_VERBOSE = False
 RECV_DELAY_ALERT_SEC = 10
 RECV_ALERT_BLINK_MS = 500
 SockTimeOut = 0.5
@@ -118,15 +120,30 @@ QTabWidget::pane {
 QTabBar::tab {
     background: #cbd5e1;
     color: #334155;
-    padding: 8px 20px;
-    margin-right: 2px;
+    font-weight: 600;
+    min-width: 140px;
+    padding: 10px 32px;
+    margin-right: 4px;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
 }
 QTabBar::tab:selected {
     background: #ffffff;
     color: #0f172a;
-    font-weight: bold;
+    font-weight: 600;
+}
+QToolButton#BtnLogViewer {
+    background: #ffffff;
+    border: 1px solid #94a3b8;
+    border-radius: 6px;
+    padding: 3px;
+}
+QToolButton#BtnLogViewer:hover {
+    background: #e0f2fe;
+    border-color: #0284c7;
+}
+QToolButton#BtnLogViewer:pressed {
+    background: #bae6fd;
 }
 QFrame#MetaBar, QFrame#FileMetaBar {
     background: #ffffff;
@@ -451,6 +468,41 @@ def format_kst_dt(epoch_sec: float) -> str:
     return t.strftime("%Y-%m-%d %H:%M:%S KST")
 
 
+def make_log_viewer_icon(px: int = 22) -> QtGui.QIcon:
+    """로그 뷰어용 아이콘 — 문서·줄 목록 + 돋보기."""
+    dpr = 2
+    size = px * dpr
+    img = QtGui.QImage(size, size, QtGui.QImage.Format_ARGB32)
+    img.fill(QtCore.Qt.transparent)
+    p = QtGui.QPainter(img)
+    p.setRenderHint(QtGui.QPainter.Antialiasing, True)
+    p.scale(dpr, dpr)
+
+    # 종이
+    paper = QtCore.QRectF(1.5, 1.8, 13.2, 17.6)
+    p.setPen(QtGui.QPen(QtGui.QColor("#0369a1"), 1.15))
+    p.setBrush(QtGui.QColor("#f8fafc"))
+    p.drawRoundedRect(paper, 2.2, 2.2)
+    p.setPen(QtGui.QPen(QtGui.QColor("#bae6fd"), 0.9))
+    p.drawLine(QtCore.QPointF(3.4, 5.4), QtCore.QPointF(12.6, 5.4))
+    p.setPen(QtGui.QPen(QtGui.QColor("#0ea5e9"), 1.15))
+    for y in (8.2, 10.8, 13.4, 16.0):
+        p.drawLine(QtCore.QPointF(3.6, y), QtCore.QPointF(12.4, y))
+
+    # 돋보기
+    lens = QtCore.QRectF(11.2, 11.0, 7.4, 7.4)
+    p.setPen(QtGui.QPen(QtGui.QColor("#0f766e"), 1.6))
+    p.setBrush(QtGui.QColor(224, 242, 254, 210))
+    p.drawEllipse(lens)
+    p.setPen(QtGui.QPen(QtGui.QColor("#0f766e"), 2.1, QtCore.Qt.SolidLine, QtCore.Qt.RoundCap))
+    p.drawLine(QtCore.QPointF(16.8, 17.0), QtCore.QPointF(20.2, 20.4))
+    p.end()
+
+    pix = QtGui.QPixmap.fromImage(img)
+    pix.setDevicePixelRatio(dpr)
+    return QtGui.QIcon(pix)
+
+
 def build_second_grid(
     buckets: Dict[int, Dict[str, float]],
     field: str,
@@ -479,8 +531,113 @@ def pack_qscd20_bin_record(pmyqscd: bytes, recv_diff_sec: float) -> bytes:
 
 
 def compute_recv_time_diff(recv_wall: float, myqscd: Tuple[Any, ...]) -> float:
-    """UDP 수신 시각 − data time. recv_wall 은 recvfrom 직후 캡처 값."""
+    """UDP 수신 시각 − data time. recv_wall 은 커널/수신 직후 캡처 값."""
     return float(recv_wall) - float(myqscd[6])
+
+
+def capture_recv_wall() -> float:
+    """프로세스 시각(초). GUI 부하와 무관하게 ns 해상도로 찍는다."""
+    return time.time_ns() / 1e9
+
+
+def _cmsg_buf_size() -> int:
+    if not hasattr(socket, "CMSG_SPACE"):
+        return 256
+    try:
+        return max(256, int(socket.CMSG_SPACE(16)), int(socket.CMSG_SPACE(32)))
+    except (OSError, OverflowError, TypeError, ValueError):
+        return 256
+
+
+def enable_kernel_recv_timestamp(sock: socket.socket) -> bool:
+    """Linux 등 POSIX: 커널 수신 시각. Windows는 False (recvfrom + capture_recv_wall)."""
+    if os.name == "nt" or not hasattr(sock, "recvmsg"):
+        return False
+    for opt in (
+        getattr(socket, "SO_TIMESTAMPNS", None),
+        getattr(socket, "SO_TIMESTAMP", None),
+    ):
+        if opt is None:
+            continue
+        try:
+            sock.setsockopt(socket.SOL_SOCKET, int(opt), 1)
+            return True
+        except OSError:
+            continue
+    return False
+
+
+def _parse_kernel_timestamp(ancdata: Any) -> Optional[float]:
+    ns_types = {
+        getattr(socket, "SCM_TIMESTAMPNS", None),
+        getattr(socket, "SO_TIMESTAMPNS", None),
+    }
+    us_types = {
+        getattr(socket, "SCM_TIMESTAMP", None),
+        getattr(socket, "SO_TIMESTAMP", None),
+    }
+    ns_types.discard(None)
+    us_types.discard(None)
+    for level, typ, data in ancdata or ():
+        if level != socket.SOL_SOCKET or not data:
+            continue
+        raw = bytes(data)
+        if typ in ns_types and len(raw) >= 8:
+            try:
+                if len(raw) >= 16:
+                    sec, nsec = struct.unpack_from("@ll", raw)
+                else:
+                    sec, nsec = struct.unpack_from("@ii", raw)
+                return float(sec) + float(nsec) * 1e-9
+            except struct.error:
+                continue
+        if typ in us_types and len(raw) >= 8:
+            try:
+                if len(raw) >= 16:
+                    sec, usec = struct.unpack_from("@ll", raw)
+                else:
+                    sec, usec = struct.unpack_from("@ii", raw)
+                return float(sec) + float(usec) * 1e-6
+            except struct.error:
+                continue
+    return None
+
+
+def recv_udp_datagram(
+    sock: socket.socket, kernel_ts: bool
+) -> Tuple[bytes, Any, float]:
+    """데이터그램 + 수신 시각. kernel_ts면 커널 타임스탬프를 우선한다."""
+    if kernel_ts:
+        data, ancdata, _flags, addr = sock.recvmsg(QSCD_LEN, _cmsg_buf_size())
+        wall = _parse_kernel_timestamp(ancdata)
+        if wall is None:
+            wall = capture_recv_wall()
+        return data, addr, wall
+    data, addr = sock.recvfrom(QSCD_LEN)
+    return data, addr, capture_recv_wall()
+
+
+def _boost_os_timer() -> Any:
+    """Windows 기본 ~15ms 타이머를 1ms로. Linux는 손대지 않음."""
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+
+        winmm = ctypes.windll.winmm
+        winmm.timeBeginPeriod(1)
+        return winmm
+    except Exception:
+        return None
+
+
+def _restore_os_timer(token: Any) -> None:
+    if token is None:
+        return
+    try:
+        token.timeEndPeriod(1)
+    except Exception:
+        pass
 
 
 def write_qscd20_bin_header(fp: Any) -> None:
@@ -547,52 +704,11 @@ def filter_records_by_station(
     return filtered, diffs_out
 
 
-def log_qscd_packet_summary(
-    logger: logging.Logger,
+def _packet_recv_times(
     myqscd: Tuple[Any, ...],
-    station: str,
-    *,
-    recv_wall: Optional[float] = None,
-    recv_diff: Optional[float] = None,
-) -> None:
-    """Live 수신용 1줄 요약(파일·화면 부하 감소)."""
-    if recv_diff is not None:
-        diff = float(recv_diff)
-    elif recv_wall is not None:
-        diff = compute_recv_time_diff(recv_wall, myqscd)
-    else:
-        diff = time.time() - float(myqscd[6])
-    extra = {"station": station}
-    logger.info(
-        "[{}] Q={} st={} loc={} | data={} diff={:.3f}s | Zmax={:.6g} Hpga={:.6g}".format(
-            station,
-            describe_quality_flag(byte_to_u8(myqscd[1])),
-            station_code_str(myqscd),
-            location_str(myqscd) or "—",
-            format_kst_dt(float(myqscd[6])),
-            diff,
-            float(myqscd[22]),
-            float(myqscd[25]),
-        ),
-        extra=extra,
-    )
-
-
-def log_qscd_packet(
-    logger: logging.Logger,
-    pmyqscd: bytes,
-    myqscd: Tuple[Any, ...],
-    station: str,
-    *,
-    recv_wall: Optional[float] = None,
-    recv_diff: Optional[float] = None,
-) -> None:
-    if not LIVE_LOG_VERBOSE:
-        log_qscd_packet_summary(
-            logger, myqscd, station, recv_wall=recv_wall, recv_diff=recv_diff
-        )
-        return
-
+    recv_wall: Optional[float],
+    recv_diff: Optional[float],
+) -> Tuple[datetime.datetime, datetime.datetime, float]:
     if recv_wall is not None:
         rtime = datetime.datetime.utcfromtimestamp(recv_wall)
     else:
@@ -604,12 +720,50 @@ def log_qscd_packet(
         diff = compute_recv_time_diff(recv_wall, myqscd)
     else:
         diff = rtime.timestamp() - float(myqscd[6])
-    extra = {"station": station}
+    return rtime, dtime, diff
 
-    logger.info("#########################################################################", extra=extra)
-    logger.info("Quality Flag: {}".format(format_quality_flag_line(myqscd)), extra=extra)
-    logger.info("Station Code (5B): {}".format(format_station_code_line(myqscd)), extra=extra)
-    logger.info(
+
+def format_qscd_packet_summary_line(
+    myqscd: Tuple[Any, ...],
+    station: str,
+    *,
+    recv_wall: Optional[float] = None,
+    recv_diff: Optional[float] = None,
+) -> str:
+    _rtime, _dtime, diff = _packet_recv_times(myqscd, recv_wall, recv_diff)
+    return (
+        "[{}] Q={} st={} loc={} | data={} diff={:.3f}s | Zmax={:.6g} Hpga={:.6g}".format(
+            station,
+            describe_quality_flag(byte_to_u8(myqscd[1])),
+            station_code_str(myqscd),
+            location_str(myqscd) or "—",
+            format_kst_dt(float(myqscd[6])),
+            diff,
+            float(myqscd[22]),
+            float(myqscd[25]),
+        )
+    )
+
+
+def format_qscd_packet_detail_lines(
+    pmyqscd: bytes,
+    myqscd: Tuple[Any, ...],
+    *,
+    recv_wall: Optional[float] = None,
+    recv_diff: Optional[float] = None,
+) -> List[str]:
+    rtime, dtime, diff = _packet_recv_times(myqscd, recv_wall, recv_diff)
+    buf_4_crc = pmyqscd[4:]
+    mycrc = zlib.crc32(buf_4_crc) & 0xFFFFFFFF
+    crc_recv = myqscd[0] & 0xFFFFFFFF
+    if mycrc != crc_recv:
+        crc_line = "     CRC : received {} calculated {} :::: Un-matched ".format(crc_recv, mycrc)
+    else:
+        crc_line = "     CRC : received {} calculated {}".format(crc_recv, mycrc)
+    return [
+        "#########################################################################",
+        "Quality Flag: {}".format(format_quality_flag_line(myqscd)),
+        "Station Code (5B): {}".format(format_station_code_line(myqscd)),
         "{:2s}/{:3s}/{} Recv : {} : Now : {} : Diff : {:.4f} s".format(
             _decode_bytes(myqscd[4]),
             _decode_bytes(myqscd[5]),
@@ -618,64 +772,60 @@ def log_qscd_packet(
             rtime,
             diff,
         ),
-        extra=extra,
-    )
-
-    buf_4_crc = pmyqscd[4:]
-    mycrc = zlib.crc32(buf_4_crc) & 0xFFFFFFFF
-    crc_recv = myqscd[0] & 0xFFFFFFFF
-    if mycrc != crc_recv:
-        logger.info(
-            "     CRC : received {} calculated {} :::: Un-matched ".format(crc_recv, mycrc),
-            extra=extra,
-        )
-    else:
-        logger.info("     CRC : received {} calculated {}".format(crc_recv, mycrc), extra=extra)
-
-    logger.info("Data Type / Reserved: {} / {}".format(myqscd[2], myqscd[3]), extra=extra)
-    logger.info(
+        crc_line,
+        "Data Type / Reserved: {} / {}".format(myqscd[2], myqscd[3]),
         "U-D WMMA : m {:.10f} M {:10f} A {:10f}".format(myqscd[7], myqscd[8], myqscd[9]),
-        extra=extra,
-    )
-    logger.info(
         "N-S WMMA : m {:.10f} M {:10f} A {:10f}".format(myqscd[10], myqscd[11], myqscd[12]),
-        extra=extra,
-    )
-    logger.info(
         "E-W WMMA : m {:.10f} M {:10f} A {:10f}".format(myqscd[13], myqscd[14], myqscd[15]),
-        extra=extra,
-    )
-    logger.info("U-D TMM  : m {:.10f} M {:10f}".format(myqscd[16], myqscd[17]), extra=extra)
-    logger.info("N-S TMM  : m {:.10f} M {:10f}".format(myqscd[18], myqscd[19]), extra=extra)
-    logger.info("E-W TMM  : m {:.10f} M {:10f}".format(myqscd[20], myqscd[21]), extra=extra)
-    logger.info(
+        "U-D TMM  : m {:.10f} M {:10f}".format(myqscd[16], myqscd[17]),
+        "N-S TMM  : m {:.10f} M {:10f}".format(myqscd[18], myqscd[19]),
+        "E-W TMM  : m {:.10f} M {:10f}".format(myqscd[20], myqscd[21]),
         "Maximum  : Z {:.10f} N {:10f} E {:10f}".format(myqscd[22], myqscd[23], myqscd[24]),
-        extra=extra,
-    )
-    logger.info("    PGA  : H {:.10f} T {:10f}".format(myqscd[25], myqscd[26]), extra=extra)
-    logger.info(
+        "    PGA  : H {:.10f} T {:10f}".format(myqscd[25], myqscd[26]),
         " Each SI : Z {:.10f} N {:10f} E {:10f} H {}".format(
             myqscd[27], myqscd[28], myqscd[29], myqscd[30]
         ),
-        extra=extra,
-    )
-    logger.info(
         "Correlate: C {:.10f} Ch1 {} Ch2 {}".format(myqscd[31], myqscd[32], myqscd[33]),
-        extra=extra,
-    )
+    ]
 
 
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
+def log_qscd_packet(
+    logger: logging.Logger,
+    pmyqscd: bytes,
+    myqscd: Tuple[Any, ...],
+    station: str,
+    *,
+    recv_wall: Optional[float] = None,
+    recv_diff: Optional[float] = None,
+) -> None:
+    """파일 로그는 항상 상세."""
+    extra = {"station": station, "log_kind": "detail"}
+    for line in format_qscd_packet_detail_lines(
+        pmyqscd, myqscd, recv_wall=recv_wall, recv_diff=recv_diff
+    ):
+        logger.info(line, extra=extra)
+
+
+class PacketLogKindFilter(logging.Filter):
+    """파일: 요약 패킷 로그는 버리고 상세만 남긴다."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return getattr(record, "log_kind", "") != "summary"
+
+
 class StationGuiLogFilter(logging.Filter):
-    """화면 로그: 시스템 메시지는 항상, 패킷 로그는 선택 관측소만."""
+    """화면 로그: 시스템 메시지는 항상, 패킷 로그는 선택 관측소만.
+
+    패킷(summary/detail)은 화면에서 _gui_log_packet 이 그리므로 여기서 제외한다.
+    """
 
     def __init__(self, window: "MainWindow") -> None:
         super().__init__()
         self._window = window
 
     def filter(self, record: logging.LogRecord) -> bool:
+        if getattr(record, "log_kind", "") in ("summary", "detail"):
+            return False
         rec_st = getattr(record, "station", "")
         if not rec_st:
             return True
@@ -789,9 +939,25 @@ class UdpReceiver(QtCore.QThread):
                 f"수신 큐 포화: 새 패킷 {self._drop_count}개 폐기(먼저 받은 기록 유지)"
             )
 
+    def _apply_recv_thread_priority(self) -> None:
+        """Windows에서는 실제로 오르고, Linux CFS는 root 없이 무시될 수 있다."""
+        for prio in (
+            QtCore.QThread.TimeCriticalPriority,
+            QtCore.QThread.HighestPriority,
+            QtCore.QThread.HighPriority,
+        ):
+            try:
+                self.setPriority(prio)
+            except Exception:
+                continue
+            if self.priority() >= QtCore.QThread.HighPriority:
+                return
+
     def run(self) -> None:
         self._stop = False
         timeout_cnt = 0
+        self._apply_recv_thread_priority()
+        timer_token = _boost_os_timer()
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self._sock = sock
@@ -804,51 +970,55 @@ class UdpReceiver(QtCore.QThread):
         except OSError as e:
             self.error_occurred.emit(f"UDP bind 실패 ({self._host}:{self._port}): {e}")
             self._sock = None
+            _restore_os_timer(timer_token)
             return
 
-        while not self._stop:
-            try:
-                if self._pending_timeout is not None:
-                    self._apply_pending_timeout(sock)
-                pmyqscd, _addr = sock.recvfrom(QSCD_LEN)
-                recv_wall = time.time()
-                timeout_cnt = 0
-                if len(pmyqscd) != QSCD_LEN:
-                    continue
-                try:
-                    myqscd = struct.unpack(QSCD20_FMT, pmyqscd)
-                except struct.error as e:
-                    self._unpack_error_count += 1
-                    if self._unpack_error_count <= 3 or self._unpack_error_count % 100 == 0:
-                        self.recv_issue.emit(
-                            f"struct unpack 오류: {e} (누적 {self._unpack_error_count}건)"
-                        )
-                    continue
-                recv_diff = compute_recv_time_diff(recv_wall, myqscd)
-                self._enqueue((pmyqscd, myqscd, recv_wall, recv_diff))
-            except socket.timeout:
-                if self._stop:
-                    break
-                timeout_cnt += 1
-                if timeout_cnt >= self._sock_timeout_count:
-                    self.timeout_warning.emit(
-                        "Could not receive data for last "
-                        + str(int(self._sock_timeout * self._sock_timeout_count))
-                        + " secs."
-                    )
-                    timeout_cnt = 0
-            except OSError as e:
-                if self._stop:
-                    break
-                self._report_loop_error(f"UDP 소켓 오류: {e}")
-            except Exception as e:
-                self._report_loop_error(f"UDP 수신 오류: {e}")
+        kernel_ts = enable_kernel_recv_timestamp(sock)
 
         try:
-            sock.close()
-        except OSError:
-            pass
-        self._sock = None
+            while not self._stop:
+                try:
+                    if self._pending_timeout is not None:
+                        self._apply_pending_timeout(sock)
+                    pmyqscd, _addr, recv_wall = recv_udp_datagram(sock, kernel_ts)
+                    timeout_cnt = 0
+                    if len(pmyqscd) != QSCD_LEN:
+                        continue
+                    try:
+                        myqscd = struct.unpack(QSCD20_FMT, pmyqscd)
+                    except struct.error as e:
+                        self._unpack_error_count += 1
+                        if self._unpack_error_count <= 3 or self._unpack_error_count % 100 == 0:
+                            self.recv_issue.emit(
+                                f"struct unpack 오류: {e} (누적 {self._unpack_error_count}건)"
+                            )
+                        continue
+                    recv_diff = compute_recv_time_diff(recv_wall, myqscd)
+                    self._enqueue((pmyqscd, myqscd, recv_wall, recv_diff))
+                except socket.timeout:
+                    if self._stop:
+                        break
+                    timeout_cnt += 1
+                    if timeout_cnt >= self._sock_timeout_count:
+                        self.timeout_warning.emit(
+                            "Could not receive data for last "
+                            + str(int(self._sock_timeout * self._sock_timeout_count))
+                            + " secs."
+                        )
+                        timeout_cnt = 0
+                except OSError as e:
+                    if self._stop:
+                        break
+                    self._report_loop_error(f"UDP 소켓 오류: {e}")
+                except Exception as e:
+                    self._report_loop_error(f"UDP 수신 오류: {e}")
+        finally:
+            try:
+                sock.close()
+            except OSError:
+                pass
+            self._sock = None
+            _restore_os_timer(timer_token)
 
 
 # ---------------------------------------------------------------------------
@@ -872,7 +1042,7 @@ class StationBuffer:
         recv_wall: Optional[float] = None,
         recv_diff: Optional[float] = None,
     ) -> None:
-        recv_wall = recv_wall if recv_wall is not None else time.time()
+        recv_wall = recv_wall if recv_wall is not None else capture_recv_wall()
         self.last_recv_wall = recv_wall
         sec = int(float(myqscd[6]))
         if recv_diff is None:
@@ -913,6 +1083,23 @@ class StationBuffer:
 class ChartHoverTooltip(QtCore.QObject):
     """마우스 위치 근처 시계열 값 팝업."""
 
+    _LEAVE_EVENTS = frozenset(
+        {
+            QtCore.QEvent.Leave,
+            QtCore.QEvent.HoverLeave,
+            QtCore.QEvent.Hide,
+            QtCore.QEvent.WindowDeactivate,
+        }
+    )
+    _ENTER_EVENTS = frozenset(
+        {
+            QtCore.QEvent.Enter,
+            QtCore.QEvent.HoverEnter,
+            QtCore.QEvent.HoverMove,
+            QtCore.QEvent.MouseMove,
+        }
+    )
+
     def __init__(
         self,
         plot: pg.PlotItem,
@@ -938,6 +1125,7 @@ class ChartHoverTooltip(QtCore.QObject):
         self._text.setZValue(1000)
         self._text.hide()
         plot.addItem(self._text, ignoreBounds=True)
+        self._pointer_over = False
         self._proxy = pg.SignalProxy(
             plot.scene().sigMouseMoved,
             rateLimit=30,
@@ -946,28 +1134,72 @@ class ChartHoverTooltip(QtCore.QObject):
         self._grid_x: np.ndarray = np.array([])
         self._grid_ys: Dict[str, np.ndarray] = {}
         self._install_leave_handlers(hover_target)
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.applicationStateChanged.connect(self._on_app_state)
 
     def _install_leave_handlers(self, hover_target: Optional[QtWidgets.QWidget]) -> None:
         """차트 밖으로 나가면 sigMouseMoved가 멈추므로 Leave로 툴팁 숨김."""
+        widgets: List[QtWidgets.QWidget] = []
         if hover_target is not None:
-            hover_target.installEventFilter(self)
-            hover_target.setMouseTracking(True)
+            widgets.append(hover_target)
         scene = self._plot.scene()
         if scene is not None:
             for view in scene.views():
-                view.viewport().installEventFilter(self)
+                widgets.append(view)
+                vp = view.viewport()
+                if vp is not None:
+                    widgets.append(vp)
+        seen: set = set()
+        for w in widgets:
+            if id(w) in seen:
+                continue
+            seen.add(id(w))
+            w.setAttribute(QtCore.Qt.WA_Hover, True)
+            w.setMouseTracking(True)
+            w.installEventFilter(self)
 
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
-        if event.type() in (
-            QtCore.QEvent.Leave,
-            QtCore.QEvent.HoverLeave,
-            QtCore.QEvent.WindowDeactivate,
-        ):
-            self._text.hide()
+        et = event.type()
+        if et in self._LEAVE_EVENTS:
+            self._hide_tip()
+            QtCore.QTimer.singleShot(50, self._hide_if_cursor_gone)
+        elif et in self._ENTER_EVENTS:
+            self._pointer_over = True
         return False
 
-    def hide(self) -> None:
+    def _on_app_state(self, state: QtCore.Qt.ApplicationState) -> None:
+        if state != QtCore.Qt.ApplicationActive:
+            self._hide_tip()
+
+    def _hide_tip(self) -> None:
+        self._pointer_over = False
         self._text.hide()
+
+    def _hide_if_cursor_gone(self) -> None:
+        if not self._cursor_over_plot():
+            self._hide_tip()
+
+    def hide(self) -> None:
+        self._hide_tip()
+
+    def _cursor_over_plot(self) -> bool:
+        """이벤트 좌표가 아니라 실제 커서 위치로 차트 위 여부를 본다."""
+        scene = self._plot.scene()
+        if scene is None:
+            return False
+        global_pos = QtGui.QCursor.pos()
+        for view in scene.views():
+            vp = view.viewport()
+            if vp is None or not vp.isVisible():
+                continue
+            local = vp.mapFromGlobal(global_pos)
+            if not vp.rect().contains(local):
+                continue
+            scene_pt = view.mapToScene(local)
+            if self._plot.sceneBoundingRect().contains(scene_pt):
+                return True
+        return False
 
     def set_grid_data(self, grid_x: np.ndarray, grid_ys: Dict[str, np.ndarray]) -> None:
         self._grid_x = grid_x
@@ -975,6 +1207,10 @@ class ChartHoverTooltip(QtCore.QObject):
 
     def _on_mouse(self, evt: Tuple[Any, ...]) -> None:
         pos = evt[0]
+        # Leave 이후에도 SignalProxy가 옛 좌표로 show 할 수 있어, 현재 커서로 재확인
+        if not self._cursor_over_plot():
+            self._text.hide()
+            return
         if not self._plot.sceneBoundingRect().contains(pos):
             self._text.hide()
             return
@@ -1065,6 +1301,25 @@ class QscdChartDashboard(QtWidgets.QWidget):
         self._last_buckets: Dict[int, Dict[str, float]] = {}
         self._panel_meta: Dict[str, Dict[str, Any]] = {}
         self._show_legend: bool = DEFAULT_SHOW_LEGEND
+        self._scroll.viewport().setMouseTracking(True)
+        self._scroll.viewport().setAttribute(QtCore.Qt.WA_Hover, True)
+        self._scroll.viewport().installEventFilter(self)
+
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        if watched is self._scroll.viewport() and event.type() in (
+            QtCore.QEvent.Leave,
+            QtCore.QEvent.HoverLeave,
+        ):
+            self._hide_all_hovers()
+        return super().eventFilter(watched, event)
+
+    def leaveEvent(self, event: QtGui.QEvent) -> None:
+        self._hide_all_hovers()
+        super().leaveEvent(event)
+
+    def _hide_all_hovers(self) -> None:
+        for h in self._hovers.values():
+            h.hide()
 
     def set_show_legend(self, show: bool) -> None:
         self._show_legend = bool(show)
@@ -1652,8 +1907,17 @@ class LogViewerDialog(QtWidgets.QDialog):
         hint.setStyleSheet("color: #64748b; font-size: 11px;")
         btn_row.addWidget(hint)
         btn_row.addStretch()
+        self._chk_verbose = QtWidgets.QCheckBox("상세 로그 표시")
+        self._chk_verbose.setChecked(GUI_LOG_VERBOSE)
+        self._chk_verbose.setToolTip(
+            "켜면 패킷마다 여러 줄 상세 로그, 끄면 한 줄 요약을 표시합니다.\n"
+            "체크를 바꾸면 화면에 있는 로그를 바로 다시 그립니다.\n"
+            "파일(.QSCD.log)은 항상 상세로 저장되며, 이 체크는 저장되지 않습니다."
+        )
+        self._chk_verbose.toggled.connect(main._on_gui_log_verbose_toggled)
+        btn_row.addWidget(self._chk_verbose)
         btn_clear = QtWidgets.QPushButton("로그 지우기")
-        btn_clear.clicked.connect(main._log_view.clear)
+        btn_clear.clicked.connect(main._clear_gui_log)
         btn_row.addWidget(btn_clear)
         layout.addLayout(btn_row)
 
@@ -1703,6 +1967,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._log_view.setObjectName("LogView")
         self._log_view.setReadOnly(True)
         self._log_view.setMaximumBlockCount(LOG_MAX_LINES)
+        self._gui_log_items: List[Any] = []
 
         self._dlg_log: Optional[LogViewerDialog] = None
         self._dlg_help: Optional[HelpManualDialog] = None
@@ -1772,9 +2037,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _build_menubar(self) -> None:
         menu = self.menuBar().addMenu("메뉴(&M)")
-        act_log = menu.addAction("로그 뷰어(&L)…")
-        act_log.setShortcut(QtGui.QKeySequence("Ctrl+L"))
-        act_log.triggered.connect(self._show_log_viewer)
         act_prefs = menu.addAction("기본 설정(&P)…")
         act_prefs.setShortcut(QtGui.QKeySequence("Ctrl+P"))
         act_prefs.triggered.connect(self._show_basic_settings)
@@ -1790,6 +2052,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         sb = self.statusBar()
         sb.showMessage("우측 패널에서 UDP 수신을 시작하세요. 저장 경로는 메뉴 → 기본 설정.")
+
+        act_log = QtWidgets.QAction("로그 뷰어", self)
+        act_log.setShortcut(QtGui.QKeySequence("Ctrl+L"))
+        act_log.setShortcutContext(QtCore.Qt.WindowShortcut)
+        act_log.triggered.connect(self._show_log_viewer)
+        self.addAction(act_log)
+        self._act_log_viewer = act_log
 
     def _set_status(self, text: str) -> None:
         self._lbl_status.setText(text)
@@ -1843,9 +2112,17 @@ class MainWindow(QtWidgets.QMainWindow):
     def _show_log_viewer(self) -> None:
         if self._dlg_log is None:
             self._dlg_log = LogViewerDialog(self)
+        self._dlg_log._chk_verbose.blockSignals(True)
+        self._dlg_log._chk_verbose.setChecked(GUI_LOG_VERBOSE)
+        self._dlg_log._chk_verbose.blockSignals(False)
         self._dlg_log.show()
         self._dlg_log.raise_()
         self._dlg_log.activateWindow()
+
+    def _on_gui_log_verbose_toggled(self, checked: bool) -> None:
+        global GUI_LOG_VERBOSE
+        GUI_LOG_VERBOSE = bool(checked)
+        self._rebuild_gui_log_view()
 
     def _show_help_manual(self) -> None:
         if self._dlg_help is None:
@@ -1882,6 +2159,9 @@ class MainWindow(QtWidgets.QMainWindow):
         content_row.setSpacing(8)
 
         tabs = QtWidgets.QTabWidget()
+        tabs.setElideMode(QtCore.Qt.ElideNone)
+        tabs.tabBar().setExpanding(False)
+        tabs.tabBar().setUsesScrollButtons(False)
         content_row.addWidget(tabs, stretch=1)
         content_row.addWidget(self._build_receive_sidebar())
         root_layout.addLayout(content_row, stretch=1)
@@ -1916,6 +2196,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self._lbl_live_location = QtWidgets.QLabel("—")
         self._lbl_live_location.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         meta_layout.addWidget(self._lbl_live_location, stretch=1)
+        self._btn_log_viewer = QtWidgets.QToolButton()
+        self._btn_log_viewer.setObjectName("BtnLogViewer")
+        self._btn_log_viewer.setIcon(make_log_viewer_icon(22))
+        self._btn_log_viewer.setIconSize(QtCore.QSize(22, 22))
+        self._btn_log_viewer.setFixedSize(32, 32)
+        self._btn_log_viewer.setAutoRaise(False)
+        self._btn_log_viewer.setCursor(QtCore.Qt.PointingHandCursor)
+        self._btn_log_viewer.setToolTip("로그 뷰어 열기 (Ctrl+L)")
+        self._btn_log_viewer.setAccessibleName("로그 뷰어")
+        self._btn_log_viewer.clicked.connect(self._show_log_viewer)
+        meta_layout.addWidget(self._btn_log_viewer)
         live_vbox.addWidget(meta)
 
         tw_row = QtWidgets.QHBoxLayout()
@@ -1971,7 +2262,7 @@ class MainWindow(QtWidgets.QMainWindow):
         file_widget = QtWidgets.QWidget()
         file_vbox = QtWidgets.QVBoxLayout(file_widget)
         file_top = QtWidgets.QHBoxLayout()
-        self._btn_open_bin = QtWidgets.QPushButton("QSCD20 .bin 열기…")
+        self._btn_open_bin = QtWidgets.QPushButton("QSCD20.replay 열기…")
         self._btn_open_bin.clicked.connect(self._open_bin_file)
         self._lbl_file_info = QtWidgets.QLabel("파일을 선택하세요.")
         self._lbl_file_info.setWordWrap(True)
@@ -2093,7 +2384,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _on_station_selected(self, text: str) -> None:
         self._selected_station = text if text != "(관측소 선택)" else ""
-        self._log_view.clear()
+        self._clear_gui_log()
         self._update_last_recv_label()
         for plot in self._live_charts._plot_items:
             vb = plot.getViewBox()
@@ -2220,6 +2511,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 recv_wall=recv_wall,
                 recv_diff=recv_diff,
             )
+            self._gui_log_packet(pmyqscd, myqscd, st, recv_wall, recv_diff)
 
             if self._selected_station == st:
                 last_selected = myqscd
@@ -2232,8 +2524,97 @@ class MainWindow(QtWidgets.QMainWindow):
             self._set_live_station_labels(last_selected)
             self._update_last_recv_label()
 
+    def _gui_log_stamp(self, ts: float) -> str:
+        t = datetime.datetime.fromtimestamp(ts)
+        return t.strftime("%Y-%m-%d %H:%M:%S,") + f"{int(t.microsecond / 1000):03d}"
+
+    def _gui_packet_body_lines(
+        self,
+        pmyqscd: bytes,
+        myqscd: Tuple[Any, ...],
+        station: str,
+        recv_wall: float,
+        recv_diff: float,
+    ) -> List[str]:
+        if GUI_LOG_VERBOSE:
+            return format_qscd_packet_detail_lines(
+                pmyqscd, myqscd, recv_wall=recv_wall, recv_diff=recv_diff
+            )
+        return [
+            format_qscd_packet_summary_line(
+                myqscd, station, recv_wall=recv_wall, recv_diff=recv_diff
+            )
+        ]
+
+    def _format_gui_packet_lines(
+        self,
+        pmyqscd: bytes,
+        myqscd: Tuple[Any, ...],
+        station: str,
+        recv_wall: float,
+        recv_diff: float,
+        log_time: float,
+    ) -> List[str]:
+        stamp = self._gui_log_stamp(log_time)
+        return [
+            f"[INFO] {stamp} > {line}"
+            for line in self._gui_packet_body_lines(
+                pmyqscd, myqscd, station, recv_wall, recv_diff
+            )
+        ]
+
+    def _trim_gui_log_items(self) -> None:
+        cap = max(200, int(LOG_MAX_LINES))
+        extra = len(self._gui_log_items) - cap
+        if extra > 0:
+            del self._gui_log_items[:extra]
+
+    def _gui_log_packet(
+        self,
+        pmyqscd: bytes,
+        myqscd: Tuple[Any, ...],
+        station: str,
+        recv_wall: float,
+        recv_diff: float,
+    ) -> None:
+        sel = self._selected_station
+        if not sel or station != sel:
+            return
+        item = ("pkt", pmyqscd, myqscd, station, recv_wall, recv_diff, time.time())
+        self._gui_log_items.append(item)
+        self._trim_gui_log_items()
+        for line in self._format_gui_packet_lines(
+            pmyqscd, myqscd, station, recv_wall, recv_diff, item[6]
+        ):
+            self._log_view.appendPlainText(line)
+
     def _append_log_line(self, line: str) -> None:
+        self._gui_log_items.append(("sys", line))
+        self._trim_gui_log_items()
         self._log_view.appendPlainText(line)
+
+    def _clear_gui_log(self) -> None:
+        self._gui_log_items.clear()
+        self._log_view.clear()
+
+    def _rebuild_gui_log_view(self) -> None:
+        lines: List[str] = []
+        for item in self._gui_log_items:
+            if item[0] == "sys":
+                lines.append(item[1])
+                continue
+            _kind, pmyqscd, myqscd, station, recv_wall, recv_diff, log_time = item
+            lines.extend(
+                self._format_gui_packet_lines(
+                    pmyqscd, myqscd, station, recv_wall, recv_diff, log_time
+                )
+            )
+        self._log_view.setUpdatesEnabled(False)
+        try:
+            self._log_view.setPlainText("\n".join(lines))
+            self._log_view.moveCursor(QtGui.QTextCursor.End)
+        finally:
+            self._log_view.setUpdatesEnabled(True)
 
     def _update_path_labels(self) -> None:
         pfx = self._edit_prefix.text().strip() or "QSCD"
@@ -2242,7 +2623,7 @@ class MainWindow(QtWidgets.QMainWindow):
             bin_dir = _runtime_settings.resolved_bin_dir()
             self._lbl_paths.setText(
                 f"로그: {os.path.join(log_dir, f'{pfx}.QSCD.log')}\n"
-                f"바이너리: {os.path.join(bin_dir, f'{pfx}.QSCD20.bin')}"
+                f"바이너리: {os.path.join(bin_dir, f'{pfx}{REPLAY_SUFFIX}')}"
             )
         except ValueError:
             self._lbl_paths.setText("저장 경로 오류 — 메뉴 → 기본 설정을 확인하세요.")
@@ -2279,7 +2660,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         log_path = os.path.join(log_dir, f"{prefix}.QSCD.log")
-        bin_path = os.path.join(bin_dir, f"{prefix}.QSCD20.bin")
+        bin_path = os.path.join(bin_dir, f"{prefix}{REPLAY_SUFFIX}")
         existing = [p for p in (log_path, bin_path) if os.path.exists(p)]
         if existing:
             ans = QtWidgets.QMessageBox.question(
@@ -2297,6 +2678,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # 덮어쓰기 확인을 받았으므로 로그도 bin과 같이 새로 쓴다(기본값 append 아님).
             fh = logging.FileHandler(log_path, mode="w", encoding="utf-8")
             fh.setFormatter(self._formatter)
+            fh.addFilter(PacketLogKindFilter())
             self._logger.addHandler(fh)
             self._file_handler = fh
         except OSError as e:
@@ -2324,7 +2706,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._bin_flush_pending = 0
         self._live_chart_dirty = False
         self._selected_station = ""
-        self._log_view.clear()
+        self._clear_gui_log()
         self._combo_station.blockSignals(True)
         self._combo_station.clear()
         self._combo_station.addItem("(관측소 선택)")
@@ -2344,6 +2726,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._receiver.recv_issue.connect(self._on_recv_issue)
         self._receiver.finished.connect(self._on_receiver_finished)
         self._receiver.start()
+        try:
+            self._receiver.setPriority(QtCore.QThread.HighestPriority)
+        except Exception:
+            pass
 
         self._btn_start.setEnabled(False)
         self._btn_stop.setEnabled(True)
@@ -2445,7 +2831,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if not os.path.isdir(start_dir):
             start_dir = work_directory()
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "QSCD20 바이너리 열기", start_dir, "QSCD20 (*.bin);;All (*.*)"
+            self,
+            "QSCD20.replay 열기",
+            start_dir,
+            "QSCD20.replay (*.QSCD20.replay);;이전 형식 (*.bin);;All (*.*)",
         )
         if not path:
             return

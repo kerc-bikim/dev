@@ -1,4 +1,4 @@
-# recvQSCD20 (GUI v3.8)
+# recvQSCD20 (GUI v3.10)
 
 KIGAM QSCD20 UDP 패킷(120바이트)을 수신·기록·시각화하는 PyQt5 GUI 프로그램입니다.
 
@@ -22,15 +22,16 @@ pip install -r requirements.txt
 python recvQSCD20_gui.py
 ```
 
-버전: **3.8** (`VERSION` · `GUI_VERSION`)
+버전: **3.10** (`VERSION` · `GUI_VERSION`)
 
 ### 메뉴
 
 | 메뉴 | 단축키 | 설명 |
 |------|--------|------|
-| **로그 뷰어** | Ctrl+L | 화면 로그 (팝업) |
 | **기본 설정** | Ctrl+P | [recvQSCD20_gui_settings.json](recvQSCD20_gui_settings.json) 편집 (팝업) |
 | **도움말** | F1 | [README.html](README.html) 매뉴얼 (QWebEngineView 팝업) |
+
+Live 탭 상단 우측 아이콘: **로그 뷰어** (Ctrl+L).
 
 메인 창: **Live / File Viewer** 탭 + **우측 수신 패널**(로그 파일명, UDP Port, Start/Stop, 상태).
 
@@ -50,7 +51,6 @@ python recvQSCD20_gui.py
 | `chart_refresh_ms` / `packet_drain_max` | Live 갱신 주기·1회 배치 처리량 |
 | `packet_queue_max` | 수신 큐 상한 (**다음 Start부터 반영**) |
 | `bin_flush_every` | 바이너리 flush 주기 (**패킷 수** 기준) |
-| `live_log_verbose` | Live 상세 로그 |
 | `recv_delay_alert_sec` / `recv_alert_blink_ms` | 수신 지연 경고 |
 | `sock_timeout_sec` / `sock_timeout_count` | UDP 수신 스레드 (timeout 최소 `0.05`초, 수신 중에도 반영) |
 
@@ -76,7 +76,7 @@ python recvQSCD20_gui.py
 | 파일 | 위치 |
 |------|------|
 | `{prefix}.QSCD.log` | `log_save_dir` |
-| `{prefix}.QSCD20.bin` | `bin_save_dir` |
+| `{prefix}.QSCD20.replay` | `bin_save_dir` |
 
 ### Live 탭
 
@@ -87,11 +87,11 @@ python recvQSCD20_gui.py
 5. **표시 차트** — Diff, Maximum, PGA, WMMA, TMM
 6. **차트** — KST x축, 1초 NaN 격자, 호버 팝업, 줌/⟲ 초기화
 7. **상단 최근값** — `— Z : 0.123456` 형식, **범례와 동일 색상**
-8. **로그** — 메뉴 **로그 뷰어** 팝업
+8. **로그** — Live 탭 상단 우측 **로그 뷰어** 아이콘 (Ctrl+L). 하단 **상세 로그 표시** 체크로 화면을 요약/상세로 다시 그림. 파일(`.QSCD.log`)은 항상 상세 저장.
 
 ### File Viewer 탭
 
-- `.QSCD20.bin` 열기, **관측소** 선택
+- `QSCD20.replay 열기`, **관측소** 선택 (이전 `.bin` 파일도 열 수 있음)
 - QCDX 파일: 저장된 **TimeDiff** 그대로 Diff 차트 표시
 - 구형 120B-only (QCDX 헤더 없음): Diff 근사
 
@@ -104,8 +104,9 @@ python recvQSCD20_gui.py
 
 ## TimeDiff 와 수신 부하
 
-TimeDiff(`recv − data time`)는 `recvfrom` 직후 UDP 스레드에서 바로 계산해 패킷과 함께 큐에 넣습니다.
-차트가 많거나 GUI가 밀려도 값이 흔들리지 않습니다.
+TimeDiff(`recv − data time`)는 UDP 수신 스레드에서 확정합니다.
+Linux에서는 커널 수신 시각(`SO_TIMESTAMPNS`)을 쓰고, 없거나 Windows이면 `recvfrom` 직후 `time.time_ns()`를 씁니다.
+차트·로그 부하와 계산을 분리하고, 수신 스레드 우선순위를 높입니다.
 
 큐가 `packet_queue_max` 까지 차면 **먼저 받은 기록을 지키기 위해 새로 들어온 패킷을 버리고**, 폐기 건수를 로그에 남깁니다.
 Stop 시에는 큐에 남은 패킷을 모두 기록한 뒤 파일을 닫습니다.
