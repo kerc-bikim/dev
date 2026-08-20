@@ -2,7 +2,7 @@
 
 Earthworm **v8.0b17** 를 웹에서 설정·기동·감시하는 콘솔입니다. 백엔드(FastAPI)와 프론트엔드(React + Vite)는 분리되어 있고, Earthworm 바이너리는 프론트가 직접 호출하지 않습니다.
 
-계획서: [`plan.md`](plan.md) · HTML [`plan.html`](plan.html)
+계획서: [`plan.md`](plan.md) · HTML [`plan.html`](plan.html) · 그림 [`diagrams/`](diagrams/) ([diagram-design](https://github.com/cathrynlavery/diagram-design))
 
 ## 개발 실행
 

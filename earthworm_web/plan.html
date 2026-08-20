@@ -107,12 +107,24 @@ pre {
   overflow-x: auto;
 }
 pre code { background: transparent; color: inherit; padding: 0; }
-.mermaid, pre.mermaid {
-  background: var(--surface);
-  color: var(--ink);
+.diagram {
+  margin: 1rem 0 1.4rem;
+}
+iframe.diagram {
+  display: block;
+  width: 100%;
+  height: 640px;
   border: 1px solid var(--line);
-  padding: 1rem;
-  border-radius: 10px;
+  border-radius: 8px;
+  background: #f5f5f5;
+}
+figure.diagram {
+  margin: 1rem 0 1.4rem;
+}
+figure.diagram figcaption {
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--muted);
 }
 blockquote {
   margin: 1rem 0;
@@ -132,10 +144,6 @@ footer {
   table { display: block; overflow-x: auto; }
 }
 </style>
-  <script type="module">
-    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-    mermaid.initialize({ startOnLoad: true, theme: "neutral" });
-  </script>
 </head>
 <body>
   <div class="wrap">
@@ -377,26 +385,7 @@ footer {
 <hr />
 <h2 id="4">4. 초기 설정과 이후 설정</h2>
 <p>Earthworm 은 <strong>한 번 기동하면 공유메모리 링이 고정</strong>되고, 모듈은 <code>EW_PARAMS</code> 의 테이블을 기동 시점에 읽는다. 웹도 이 경계를 그대로 따른다.</p>
-<pre class="mermaid">
-flowchart TB
-  subgraph init [초기 설정 마법사 setup_complete false]
-    D[디렉터리 EW_HOME RUN_DIR params log data]
-    I[설치 ID EW_INSTALLATION]
-    T[earthworm.d global commonvars 를 params 로 복사]
-    R[링 이름 키 크기 순서]
-    M[최소 모듈 statmgr]
-    D --> I --> T --> R --> M
-  end
-  subgraph later [이후 설정 setup_complete true]
-    Mod[모듈 토글 복제]
-    Var[통합 변수]
-    Run[시작 종료 일시중지]
-    Dash[대시보드 로그 sniff]
-    Mod --> Var --> Run --> Dash
-  end
-  M -->|검증 통과| later
-</pre>
-
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/setup-phases.html" title="초기 설정 → 이후 설정" loading="lazy" style="height:640px"></iframe><figcaption><a href="diagrams/setup-phases.html">초기 설정 → 이후 설정</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure> — <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a> HTML. <code>plan.html</code> 에서 임베드한다.</p>
 <h3 id="41">4.1 왜 나누는가</h3>
 <table>
 <thead>
@@ -697,53 +686,10 @@ flowchart TB
 <p>이후 설정에서 <strong>링 추가</strong>: earthworm.d 키 확인 → startstop 에 Ring 줄 → <code>reconfigure</code>.<br />
 <strong>링 삭제·크기 변경·순서(첫 링) 변경</strong>: 같은 폼을 열되, startstop 이 Alive 면 저장을 막고 pau 를 요구한다.</p>
 <h3 id="44">4.4 초기 설정 시퀀스</h3>
-<pre class="mermaid">
-sequenceDiagram
-  participant U as 브라우저
-  participant BE as FastAPI
-  participant FS as 파일시스템
-
-  U->>BE: GET /api/setup/status
-  BE-->>U: setup_complete false
-  U->>BE: PUT /api/setup/directories
-  BE->>FS: mkdir params log data, ew_linux.bash 치환
-  U->>BE: PUT /api/setup/installation
-  BE->>FS: 테이블 파일 복사, EW_INST_ID
-  U->>BE: PUT /api/setup/rings
-  BE->>FS: earthworm.d Ring, startstop_unix.d Ring 순서
-  U->>BE: POST /api/setup/validate
-  BE-->>U: ok
-  U->>BE: POST /api/setup/complete
-  BE->>FS: app.json.setup_complete true
-  Note over U: 이후 설정 메뉴 개방, startstop 은 수동 시작
-</pre>
-
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/setup-sequence.html" title="마법사 시퀀스" loading="lazy" style="height:700px"></iframe><figcaption><a href="diagrams/setup-sequence.html">마법사 시퀀스</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
 <hr />
 <h2 id="5">5. 아키텍처 (백엔드 / 프론트엔드 분리)</h2>
-<pre class="mermaid">
-flowchart LR
-  Browser["브라우저"]
-  FE["프론트엔드\nReact + Vite"]
-  BE["백엔드 FastAPI\n같은 호스트"]
-  AppJSON[("app.json\n웹 메타")]
-  EnvBash["environment/\new_linux.bash"]
-  Params["EW_PARAMS\nparams/*.d"]
-  Bin["EW bin/\nstartstop status pau\nsniffwave sniffring"]
-  Rings[("공유메모리 링")]
-  Logs["EW_LOG"]
-
-  Browser --> FE
-  FE -->|"REST /api/*"| BE
-  FE -->|"WS /ws/status /ws/logs /ws/sniff"| BE
-  BE --> AppJSON
-  BE --> EnvBash
-  BE --> Params
-  BE -->|"env sourced subprocess"| Bin
-  Bin --> Rings
-  Bin --> Logs
-  BE --> Logs
-</pre>
-
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/architecture.html" title="아키텍처" loading="lazy" style="height:620px"></iframe><figcaption><a href="diagrams/architecture.html">아키텍처</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
 <p>역할 경계:</p>
 <ul>
 <li><strong>프론트엔드</strong>: 화면, 토글, 폼, 대시보드 표, 로그 뷰어, sniff 옵션 UI. Earthworm 경로·프로세스를 모름.</li>
@@ -1553,58 +1499,11 @@ sniffring [-n] &lt;ringname&gt; &lt;instid&gt; &lt;mod&gt; &lt;type&gt; verbose
 <hr />
 <h2 id="11">11. 런타임 시퀀스</h2>
 <h3 id="111">11.1 전체 시작</h3>
-<pre class="mermaid">
-sequenceDiagram
-  participant U as 브라우저
-  participant FE as 프론트
-  participant BE as FastAPI
-  participant EW as startstop
-
-  U->>FE: 시작
-  FE->>BE: POST /api/control/start
-  BE->>BE: source ew_linux.bash
-  BE->>BE: status 로 중복 기동 검사
-  BE->>EW: startstop (cwd=EW_PARAMS)
-  EW->>EW: 링 생성, Process 기동
-  BE->>BE: status 파싱
-  BE-->>FE: 200 + snapshot
-  FE-->>U: 대시보드 Alive
-</pre>
-
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/start-sequence.html" title="시작 시퀀스" loading="lazy" style="height:640px"></iframe><figcaption><a href="diagrams/start-sequence.html">시작 시퀀스</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
 <h3 id="112">11.2 토글 후 복제 모듈 기동</h3>
-<pre class="mermaid">
-sequenceDiagram
-  participant U as 브라우저
-  participant BE as FastAPI
-  participant SS as startstop
-
-  U->>BE: POST clone new_name=pick_ew_b
-  BE->>BE: cp bin, cp d, Module ID, 주석 Process
-  U->>BE: PATCH enabled=true
-  BE->>BE: Process 주석 해제
-  BE->>SS: reconfigure
-  SS->>SS: 새 모듈만 spawn
-  BE-->>U: status 에 pick_ew_b Alive
-</pre>
-
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/clone-sequence.html" title="복제 기동 시퀀스" loading="lazy" style="height:660px"></iframe><figcaption><a href="diagrams/clone-sequence.html">복제 기동 시퀀스</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
 <h3 id="113-sniffwave">11.3 sniffwave</h3>
-<pre class="mermaid">
-sequenceDiagram
-  participant U as 브라우저
-  participant BE as FastAPI
-  participant SW as sniffwave
-
-  U->>BE: POST /sniff/sessions {tool, ring, wildcards, flag:n}
-  BE->>SW: Popen argv
-  U->>BE: WS /ws/sniff
-  loop 패킷
-    SW-->>BE: stdout 줄
-    BE-->>U: text frame
-  end
-  U->>BE: WS close 또는 DELETE
-  BE->>SW: SIGTERM
-</pre>
-
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/sniff-sequence.html" title="sniffwave 시퀀스" loading="lazy" style="height:700px"></iframe><figcaption><a href="diagrams/sniff-sequence.html">sniffwave 시퀀스</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
 <hr />
 <h2 id="12">12. 구현 단계</h2>
 <p>Earthworm 을 실제로 기동하지 않고도 1단계는 마법사·파일 파서·UI 로 진행할 수 있다. 제어·스니프는 같은 호스트의 공유 메모리가 필요하다. <a href="#1712-웹-기능으로-승격할-항목-요구-110-밖-구현-시-포함">17.12</a> 의 P0 는 1–2단계에 포함한다.</p>
@@ -1649,37 +1548,7 @@ sequenceDiagram
 <p>각 단계마다 백엔드 pytest (파서·argv 생성·경로 샌드박스) 와 프론트 타입체크를 둔다.</p>
 <hr />
 <h2 id="13">13. 백엔드 / 프론트엔드 책임 요약</h2>
-<pre class="mermaid">
-flowchart TB
-  subgraph fe [프론트엔드]
-    UI[페이지와 토글]
-    Forms[변수·sniff 폼]
-    Tables[상태·로그 뷰]
-  end
-  subgraph be [백엔드]
-    API[REST JSON]
-    WS[WebSocket]
-    Parse[d 파일 파서]
-    Proc[EW CLI]
-    Sweep[로그 보관]
-  end
-  subgraph ew [Earthworm 런타임]
-    Bash[ew_linux.bash]
-    SS[startstop]
-    SHM[transport rings]
-  end
-  UI --> API
-  Forms --> API
-  Tables --> WS
-  API --> Parse
-  API --> Proc
-  WS --> Proc
-  Proc --> Bash
-  Proc --> SS
-  SS --> SHM
-  Sweep --> Bash
-</pre>
-
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/stack-layers.html" title="책임 계층" loading="lazy" style="height:500px"></iframe><figcaption><a href="diagrams/stack-layers.html">책임 계층</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
 <p>프론트는 JSON/WS 만 다룬다. 백엔드는 파일과 프로세스만 다룬다. 공유 타입은 OpenAPI(<code>/api/openapi.json</code>)로 맞춘다.</p>
 <hr />
 <h2 id="14">14. 위험과 완화</h2>

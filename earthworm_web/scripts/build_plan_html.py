@@ -1,6 +1,7 @@
 """Convert plan.md to plan.html."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import markdown
@@ -112,12 +113,24 @@ pre {
   overflow-x: auto;
 }
 pre code { background: transparent; color: inherit; padding: 0; }
-.mermaid, pre.mermaid {
-  background: var(--surface);
-  color: var(--ink);
+.diagram {
+  margin: 1rem 0 1.4rem;
+}
+iframe.diagram {
+  display: block;
+  width: 100%;
+  height: 640px;
   border: 1px solid var(--line);
-  padding: 1rem;
-  border-radius: 10px;
+  border-radius: 8px;
+  background: #f5f5f5;
+}
+figure.diagram {
+  margin: 1rem 0 1.4rem;
+}
+figure.diagram figcaption {
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--muted);
 }
 blockquote {
   margin: 1rem 0;
@@ -145,10 +158,6 @@ TEMPLATE = """<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Earthworm Web Control — 계획서</title>
   <style>{css}</style>
-  <script type="module">
-    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-    mermaid.initialize({{ startOnLoad: true, theme: "neutral" }});
-  </script>
 </head>
 <body>
   <div class="wrap">
@@ -170,29 +179,49 @@ TEMPLATE = """<!DOCTYPE html>
 
 
 def md_to_html(text: str) -> str:
-    parts: list[str] = []
-    chunks = text.split("```")
-    for i, chunk in enumerate(chunks):
-        if i % 2 == 1:
-            lang, _, content = chunk.partition("\n")
-            lang = lang.strip().lower()
-            if lang == "mermaid":
-                parts.append(f'<pre class="mermaid">\n{content.strip()}\n</pre>')
-            else:
-                parts.append(f"```{lang}\n{content}```")
-        else:
-            parts.append(chunk)
-    processed = "".join(parts)
-    return markdown.markdown(
-        processed,
+    html = markdown.markdown(
+        text,
         extensions=["tables", "fenced_code", "nl2br", "sane_lists", "toc"],
+    )
+    return embed_diagrams(html)
+
+
+DIAGRAM_HEIGHTS = {
+    "setup-phases": 640,
+    "setup-sequence": 700,
+    "architecture": 620,
+    "start-sequence": 640,
+    "clone-sequence": 660,
+    "sniff-sequence": 700,
+    "stack-layers": 500,
+}
+
+
+def embed_diagrams(html: str) -> str:
+    def repl(match: re.Match[str]) -> str:
+        href, title = match.group(1), match.group(2)
+        slug = Path(href).stem
+        height = DIAGRAM_HEIGHTS.get(slug, 600)
+        return (
+            f'<figure class="diagram">'
+            f'<iframe class="diagram" src="{href}" title="{title}" loading="lazy" '
+            f'style="height:{height}px"></iframe>'
+            f'<figcaption><a href="{href}">{title}</a> · '
+            f'<a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption>'
+            f"</figure>"
+        )
+
+    return re.sub(
+        r'<a href="(diagrams/[^"]+\.html)">([^<]+)</a>',
+        repl,
+        html,
     )
 
 
 def main() -> None:
     md = MD_PATH.read_text(encoding="utf-8")
     body = md_to_html(md)
-    html = TEMPLATE.format(css=CSS, body=body)
+    html = TEMPLATE.replace("{css}", CSS).replace("{body}", body)
     HTML_PATH.write_text(html, encoding="utf-8")
     print(f"Wrote {HTML_PATH}")
 

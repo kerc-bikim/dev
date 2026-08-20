@@ -110,25 +110,7 @@ Earthworm 에는 **시스템 전체 pause** 가 없다. 웹의 “일시중지�
 
 Earthworm 은 **한 번 기동하면 공유메모리 링이 고정**되고, 모듈은 `EW_PARAMS` 의 테이블을 기동 시점에 읽는다. 웹도 이 경계를 그대로 따른다.
 
-```mermaid
-flowchart TB
-  subgraph init [초기 설정 마법사 setup_complete false]
-    D[디렉터리 EW_HOME RUN_DIR params log data]
-    I[설치 ID EW_INSTALLATION]
-    T[earthworm.d global commonvars 를 params 로 복사]
-    R[링 이름 키 크기 순서]
-    M[최소 모듈 statmgr]
-    D --> I --> T --> R --> M
-  end
-  subgraph later [이후 설정 setup_complete true]
-    Mod[모듈 토글 복제]
-    Var[통합 변수]
-    Run[시작 종료 일시중지]
-    Dash[대시보드 로그 sniff]
-    Mod --> Var --> Run --> Dash
-  end
-  M -->|검증 통과| later
-```
+[초기 설정 → 이후 설정](diagrams/setup-phases.html) — [diagram-design](https://github.com/cathrynlavery/diagram-design) HTML. `plan.html` 에서 임베드한다.
 
 ### 4.1 왜 나누는가
 
@@ -265,54 +247,13 @@ ${EW_RUN_DIR}/
 
 ### 4.4 초기 설정 시퀀스
 
-```mermaid
-sequenceDiagram
-  participant U as 브라우저
-  participant BE as FastAPI
-  participant FS as 파일시스템
-
-  U->>BE: GET /api/setup/status
-  BE-->>U: setup_complete false
-  U->>BE: PUT /api/setup/directories
-  BE->>FS: mkdir params log data, ew_linux.bash 치환
-  U->>BE: PUT /api/setup/installation
-  BE->>FS: 테이블 파일 복사, EW_INST_ID
-  U->>BE: PUT /api/setup/rings
-  BE->>FS: earthworm.d Ring, startstop_unix.d Ring 순서
-  U->>BE: POST /api/setup/validate
-  BE-->>U: ok
-  U->>BE: POST /api/setup/complete
-  BE->>FS: app.json.setup_complete true
-  Note over U: 이후 설정 메뉴 개방, startstop 은 수동 시작
-```
+[마법사 시퀀스](diagrams/setup-sequence.html)
 
 ---
 
 ## 5. 아키텍처 (백엔드 / 프론트엔드 분리)
 
-```mermaid
-flowchart LR
-  Browser["브라우저"]
-  FE["프론트엔드\nReact + Vite"]
-  BE["백엔드 FastAPI\n같은 호스트"]
-  AppJSON[("app.json\n웹 메타")]
-  EnvBash["environment/\new_linux.bash"]
-  Params["EW_PARAMS\nparams/*.d"]
-  Bin["EW bin/\nstartstop status pau\nsniffwave sniffring"]
-  Rings[("공유메모리 링")]
-  Logs["EW_LOG"]
-
-  Browser --> FE
-  FE -->|"REST /api/*"| BE
-  FE -->|"WS /ws/status /ws/logs /ws/sniff"| BE
-  BE --> AppJSON
-  BE --> EnvBash
-  BE --> Params
-  BE -->|"env sourced subprocess"| Bin
-  Bin --> Rings
-  Bin --> Logs
-  BE --> Logs
-```
+[아키텍처](diagrams/architecture.html)
 
 역할 경계:
 
@@ -785,59 +726,15 @@ frontend/src/
 
 ### 11.1 전체 시작
 
-```mermaid
-sequenceDiagram
-  participant U as 브라우저
-  participant FE as 프론트
-  participant BE as FastAPI
-  participant EW as startstop
-
-  U->>FE: 시작
-  FE->>BE: POST /api/control/start
-  BE->>BE: source ew_linux.bash
-  BE->>BE: status 로 중복 기동 검사
-  BE->>EW: startstop (cwd=EW_PARAMS)
-  EW->>EW: 링 생성, Process 기동
-  BE->>BE: status 파싱
-  BE-->>FE: 200 + snapshot
-  FE-->>U: 대시보드 Alive
-```
+[시작 시퀀스](diagrams/start-sequence.html)
 
 ### 11.2 토글 후 복제 모듈 기동
 
-```mermaid
-sequenceDiagram
-  participant U as 브라우저
-  participant BE as FastAPI
-  participant SS as startstop
-
-  U->>BE: POST clone new_name=pick_ew_b
-  BE->>BE: cp bin, cp d, Module ID, 주석 Process
-  U->>BE: PATCH enabled=true
-  BE->>BE: Process 주석 해제
-  BE->>SS: reconfigure
-  SS->>SS: 새 모듈만 spawn
-  BE-->>U: status 에 pick_ew_b Alive
-```
+[복제 기동 시퀀스](diagrams/clone-sequence.html)
 
 ### 11.3 sniffwave
 
-```mermaid
-sequenceDiagram
-  participant U as 브라우저
-  participant BE as FastAPI
-  participant SW as sniffwave
-
-  U->>BE: POST /sniff/sessions {tool, ring, wildcards, flag:n}
-  BE->>SW: Popen argv
-  U->>BE: WS /ws/sniff
-  loop 패킷
-    SW-->>BE: stdout 줄
-    BE-->>U: text frame
-  end
-  U->>BE: WS close 또는 DELETE
-  BE->>SW: SIGTERM
-```
+[sniffwave 시퀀스](diagrams/sniff-sequence.html)
 
 ---
 
@@ -889,36 +786,7 @@ Earthworm 을 실제로 기동하지 않고도 1단계는 마법사·파일 파�
 
 ## 13. 백엔드 / 프론트엔드 책임 요약
 
-```mermaid
-flowchart TB
-  subgraph fe [프론트엔드]
-    UI[페이지와 토글]
-    Forms[변수·sniff 폼]
-    Tables[상태·로그 뷰]
-  end
-  subgraph be [백엔드]
-    API[REST JSON]
-    WS[WebSocket]
-    Parse[d 파일 파서]
-    Proc[EW CLI]
-    Sweep[로그 보관]
-  end
-  subgraph ew [Earthworm 런타임]
-    Bash[ew_linux.bash]
-    SS[startstop]
-    SHM[transport rings]
-  end
-  UI --> API
-  Forms --> API
-  Tables --> WS
-  API --> Parse
-  API --> Proc
-  WS --> Proc
-  Proc --> Bash
-  Proc --> SS
-  SS --> SHM
-  Sweep --> Bash
-```
+[책임 계층](diagrams/stack-layers.html)
 
 프론트는 JSON/WS 만 다룬다. 백엔드는 파일과 프로세스만 다룬다. 공유 타입은 OpenAPI(`/api/openapi.json`)로 맞춘다.
 
