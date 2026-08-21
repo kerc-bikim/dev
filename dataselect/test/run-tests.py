@@ -214,11 +214,9 @@ def mseed2_with_start(record, start):
     return bytes(rec)
 
 
-def mseed2_next_start(record):
-    """Start time of the sample after the last sample in a miniSEED 2 record."""
-    nsamp = struct.unpack_from(">H", record, 30)[0]
-    rate = mseed2_samprate(record)
-    return mseed2_start(record) + datetime.timedelta(seconds=nsamp / rate)
+def mseed2_nsamp(record):
+    """Number of samples in a miniSEED 2 fixed header."""
+    return struct.unpack_from(">H", record, 30)[0]
 
 
 def series_identical(path_a, path_b):
@@ -798,42 +796,74 @@ class BlockSize(DataselectTest):
 
     def test_continuous_records_fill_512_across_input_records(self):
         """Two continuous 4096-byte records share 512-byte output records."""
-        source = open(self.V2_4096, "rb").read()
-        recs_in = v2_records(self.V2_4096)
-        self.assertEqual(len(recs_in), 1)
-        first = recs_in[0]
-        next_start = mseed2_next_start(first)
+        first = tmp("half1_4096.mseed")
+        second = tmp("half2_4096.mseed")
+        # 40 Hz: last sample of the first half at 00:00:06.0, first of the
+        # second half at 00:00:06.025.  -te/-ts are inclusive sample times.
+        code, _, err = run(
+            "-Pe",
+            "-te",
+            "2012-05-12T00:00:06.0",
+            "-B",
+            "4096",
+            self.V2_4096,
+            "-o",
+            first,
+        )
+        self.assertEqual(code, 0, err.decode())
+        code, _, err = run(
+            "-Pe",
+            "-ts",
+            "2012-05-12T00:00:06.025",
+            "-B",
+            "4096",
+            self.V2_4096,
+            "-o",
+            second,
+        )
+        self.assertEqual(code, 0, err.decode())
+
+        recs1 = v2_records(first)
+        recs2 = v2_records(second)
+        self.assertEqual(len(recs1), 1)
+        self.assertEqual(len(recs2), 1)
 
         continuous = tmp("two_continuous.mseed2")
         with open(continuous, "wb") as handle:
-            handle.write(source)
-            handle.write(mseed2_with_start(first, next_start))
+            handle.write(recs1[0])
+            handle.write(recs2[0])
 
         gapped = tmp("two_gapped.mseed2")
         with open(gapped, "wb") as handle:
-            handle.write(source)
+            handle.write(recs1[0])
             handle.write(
-                mseed2_with_start(first, next_start + datetime.timedelta(seconds=2))
+                mseed2_with_start(
+                    recs2[0],
+                    mseed2_start(recs2[0]) + datetime.timedelta(seconds=2),
+                )
             )
 
-        one = tmp("one_512.mseed")
-        self.assertEqual(run("-B", "512", self.V2_4096, "-o", one)[0], 0)
-        n_one = len(v2_records(one))
-        self.assertGreater(n_one, 1)
+        split_a = tmp("half1_512.mseed")
+        split_b = tmp("half2_512.mseed")
+        self.assertEqual(run("-B", "512", first, "-o", split_a)[0], 0)
+        self.assertEqual(run("-B", "512", second, "-o", split_b)[0], 0)
+        n_separate = len(v2_records(split_a)) + len(v2_records(split_b))
+        n_first_alone = mseed2_nsamp(v2_records(split_a)[0])
 
         out_cont = tmp("cont_512.mseed")
         code, _, err = run("-B", "512", continuous, "-o", out_cont)
         self.assertEqual(code, 0, err.decode())
-        n_cont = len(v2_records(out_cont))
-        self.assertLess(n_cont, 2 * n_one)
+        recs_cont = v2_records(out_cont)
+        self.assertGreater(mseed2_nsamp(recs_cont[0]), n_first_alone)
         ok, cerr = series_identical(continuous, out_cont)
         self.assertTrue(ok, cerr.decode())
 
         out_gap = tmp("gap_512.mseed")
         code, _, err = run("-B", "512", gapped, "-o", out_gap)
         self.assertEqual(code, 0, err.decode())
-        n_gap = len(v2_records(out_gap))
-        self.assertEqual(n_gap, 2 * n_one)
+        recs_gap = v2_records(out_gap)
+        self.assertEqual(len(recs_gap), n_separate)
+        self.assertEqual(mseed2_nsamp(recs_gap[0]), n_first_alone)
         ok, cerr = series_identical(gapped, out_gap)
         self.assertTrue(ok, cerr.decode())
 
