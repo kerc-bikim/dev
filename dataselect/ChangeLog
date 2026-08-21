@@ -1,3 +1,8 @@
+2026.233: v4.4.0
+	- When -B re-packs output, gather continuous samples of the same channel
+	  until a record fills, then write it.  Write a short record only at a
+	  time gap, stream change, or the end of output.
+
 2026.226: v4.4.0
 	- Add -B option to set the output miniSEED record/block size.  Records are
 	  unpacked and re-packed to the requested power-of-two length (e.g. -B 512).

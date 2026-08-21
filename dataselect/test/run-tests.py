@@ -12,6 +12,7 @@ import struct
 import subprocess
 import sys
 import unittest
+import datetime
 
 TESTDIR = os.path.dirname(os.path.abspath(__file__))
 DATASELECT = os.path.join(TESTDIR, os.pardir, "dataselect")
@@ -175,6 +176,47 @@ def v2_block_size(record):
     """Return the Blockette 1000 record length encoded in a miniSEED 2 record."""
     first_blockette = struct.unpack(">H", record[46:48])[0]
     return 1 << record[first_blockette + 6]
+
+
+def mseed2_samprate(record):
+    """Sample rate in Hz from a miniSEED 2 fixed header."""
+    factor, multiplier = struct.unpack_from(">hh", record, 32)
+    if factor > 0 and multiplier > 0:
+        return float(factor * multiplier)
+    if factor > 0 and multiplier < 0:
+        return -float(factor) / multiplier
+    if factor < 0 and multiplier > 0:
+        return -float(multiplier) / factor
+    if factor < 0 and multiplier < 0:
+        return 1.0 / (factor * multiplier)
+    return 0.0
+
+
+def mseed2_start(record):
+    """Start time of a miniSEED 2 record as datetime."""
+    year, yday = struct.unpack_from(">HH", record, 20)
+    fract = struct.unpack_from(">H", record, 28)[0]
+    return datetime.datetime(
+        year, 1, 1, record[24], record[25], record[26]
+    ) + datetime.timedelta(days=yday - 1, microseconds=fract * 100)
+
+
+def mseed2_with_start(record, start):
+    """Return a copy of a miniSEED 2 record with a new FSDH start time."""
+    rec = bytearray(record)
+    yday = start.timetuple().tm_yday
+    struct.pack_into(">H", rec, 20, start.year)
+    struct.pack_into(">H", rec, 22, yday)
+    rec[24] = start.hour
+    rec[25] = start.minute
+    rec[26] = start.second
+    struct.pack_into(">H", rec, 28, start.microsecond // 100)
+    return bytes(rec)
+
+
+def mseed2_nsamp(record):
+    """Number of samples in a miniSEED 2 fixed header."""
+    return struct.unpack_from(">H", record, 30)[0]
 
 
 def series_identical(path_a, path_b):
@@ -739,6 +781,90 @@ class BlockSize(DataselectTest):
                     handle.write(part.read())
 
         ok, cerr = series_identical(self.V2_4096, combined)
+        self.assertTrue(ok, cerr.decode())
+
+    def test_continuous_records_fill_larger_block(self):
+        """Several continuous 512-byte records fill one 4096-byte record."""
+        out = tmp("filled4096.mseed")
+        code, _, err = run("-B", "4096", V2, "-o", out)
+        self.assertEqual(code, 0, err.decode())
+        recs = v2_records(out)
+        self.assertEqual(len(recs), 1)
+        self.assertEqual(len(recs[0]), 4096)
+        ok, cerr = series_identical(V2, out)
+        self.assertTrue(ok, cerr.decode())
+
+    def test_continuous_records_fill_512_across_input_records(self):
+        """Two continuous 4096-byte records share 512-byte output records."""
+        first = tmp("half1_4096.mseed")
+        second = tmp("half2_4096.mseed")
+        # 40 Hz: last sample of the first half at 00:00:06.0, first of the
+        # second half at 00:00:06.025.  -te/-ts are inclusive sample times.
+        code, _, err = run(
+            "-Pe",
+            "-te",
+            "2012-05-12T00:00:06.0",
+            "-B",
+            "4096",
+            self.V2_4096,
+            "-o",
+            first,
+        )
+        self.assertEqual(code, 0, err.decode())
+        code, _, err = run(
+            "-Pe",
+            "-ts",
+            "2012-05-12T00:00:06.025",
+            "-B",
+            "4096",
+            self.V2_4096,
+            "-o",
+            second,
+        )
+        self.assertEqual(code, 0, err.decode())
+
+        recs1 = v2_records(first)
+        recs2 = v2_records(second)
+        self.assertEqual(len(recs1), 1)
+        self.assertEqual(len(recs2), 1)
+
+        continuous = tmp("two_continuous.mseed2")
+        with open(continuous, "wb") as handle:
+            handle.write(recs1[0])
+            handle.write(recs2[0])
+
+        gapped = tmp("two_gapped.mseed2")
+        with open(gapped, "wb") as handle:
+            handle.write(recs1[0])
+            handle.write(
+                mseed2_with_start(
+                    recs2[0],
+                    mseed2_start(recs2[0]) + datetime.timedelta(seconds=2),
+                )
+            )
+
+        split_a = tmp("half1_512.mseed")
+        split_b = tmp("half2_512.mseed")
+        self.assertEqual(run("-B", "512", first, "-o", split_a)[0], 0)
+        self.assertEqual(run("-B", "512", second, "-o", split_b)[0], 0)
+        n_separate = len(v2_records(split_a)) + len(v2_records(split_b))
+        n_first_alone = mseed2_nsamp(v2_records(split_a)[0])
+
+        out_cont = tmp("cont_512.mseed")
+        code, _, err = run("-B", "512", continuous, "-o", out_cont)
+        self.assertEqual(code, 0, err.decode())
+        recs_cont = v2_records(out_cont)
+        self.assertGreater(mseed2_nsamp(recs_cont[0]), n_first_alone)
+        ok, cerr = series_identical(continuous, out_cont)
+        self.assertTrue(ok, cerr.decode())
+
+        out_gap = tmp("gap_512.mseed")
+        code, _, err = run("-B", "512", gapped, "-o", out_gap)
+        self.assertEqual(code, 0, err.decode())
+        recs_gap = v2_records(out_gap)
+        self.assertEqual(len(recs_gap), n_separate)
+        self.assertEqual(mseed2_nsamp(recs_gap[0]), n_first_alone)
+        ok, cerr = series_identical(gapped, out_gap)
         self.assertTrue(ok, cerr.decode())
 
     def test_archive_matches_single_file_when_repacked(self):
