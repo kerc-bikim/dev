@@ -23,6 +23,13 @@ import {
 import { useTheme } from "@/theme/ThemeProvider";
 import { THEME_OPTIONS, type ThemeId } from "@/theme/theme";
 import { cn } from "@/lib/utils";
+import {
+  DEFAULT_SPECTROGRAM,
+  SPECTROGRAM_HOP_OPTIONS,
+  SPECTROGRAM_NFFT_OPTIONS,
+  SPECTROGRAM_WINDOW_SEC_OPTIONS,
+  sanitizeSpectrogramSettings,
+} from "../../render/spectrogramSettings";
 
 const DURATION_OPTIONS = [15, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 3600, 7200];
 
@@ -54,7 +61,11 @@ export function SettingsPanel() {
 
   useEffect(() => {
     if (open) {
-      setDraft(settings);
+      setDraft(
+        settings
+          ? { ...settings, spectrogram: sanitizeSpectrogramSettings(settings.spectrogram) }
+          : settings,
+      );
       setPreviewTheme(theme);
       setPreviewMode(mode);
       setTestMsg("");
@@ -88,7 +99,11 @@ export function SettingsPanel() {
   const apply = async () => {
     try {
       commitTheme(previewTheme, previewMode);
-      await saveSettings({ ...draft, protocol: "datalink" });
+      await saveSettings({
+        ...draft,
+        protocol: "datalink",
+        spectrogram: sanitizeSpectrogramSettings(draft.spectrogram),
+      });
       close(true);
     } catch (e) {
       setTestOk(false);
@@ -258,6 +273,117 @@ export function SettingsPanel() {
               onChange={(e) => setDraft({ ...draft, maxPanels: Number(e.target.value) })}
             />
           </Label>
+
+          <h3>스펙트로그램</h3>
+          <p className="muted">
+            우클릭 스펙트로그램의 STFT 해상도입니다. 값을 올리면 더 선명하지만 채널이 많을 때
+            느려질 수 있습니다.
+          </p>
+          <Label>
+            창 길이 (초)
+            <Select
+              value={String(draft.spectrogram.windowSec)}
+              onValueChange={(value) =>
+                setDraft({
+                  ...draft,
+                  spectrogram: { ...draft.spectrogram, windowSec: Number(value) },
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {!SPECTROGRAM_WINDOW_SEC_OPTIONS.includes(
+                  draft.spectrogram.windowSec as (typeof SPECTROGRAM_WINDOW_SEC_OPTIONS)[number],
+                ) && (
+                  <SelectItem value={String(draft.spectrogram.windowSec)}>
+                    현재 {draft.spectrogram.windowSec}초
+                  </SelectItem>
+                )}
+                {SPECTROGRAM_WINDOW_SEC_OPTIONS.map((sec) => (
+                  <SelectItem key={sec} value={String(sec)}>
+                    {sec}초{sec === DEFAULT_SPECTROGRAM.windowSec ? " (기본)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Label>
+          <Label>
+            최대 FFT 크기
+            <Select
+              value={String(draft.spectrogram.nfftMax)}
+              onValueChange={(value) =>
+                setDraft({
+                  ...draft,
+                  spectrogram: { ...draft.spectrogram, nfftMax: Number(value) },
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SPECTROGRAM_NFFT_OPTIONS.map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    {n}
+                    {n === DEFAULT_SPECTROGRAM.nfftMax ? " (기본)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Label>
+          <Label>
+            최대 시간 프레임
+            <Input
+              type="number"
+              min={64}
+              max={1024}
+              step={16}
+              value={draft.spectrogram.maxFrames}
+              onChange={(e) =>
+                setDraft({
+                  ...draft,
+                  spectrogram: { ...draft.spectrogram, maxFrames: Number(e.target.value) },
+                })
+              }
+            />
+          </Label>
+          <Label>
+            창 겹침
+            <Select
+              value={String(draft.spectrogram.hopDivisor)}
+              onValueChange={(value) =>
+                setDraft({
+                  ...draft,
+                  spectrogram: {
+                    ...draft.spectrogram,
+                    hopDivisor: Number(value) as 2 | 4 | 8,
+                  },
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SPECTROGRAM_HOP_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={String(opt.value)}>
+                    {opt.label}
+                    {opt.value === DEFAULT_SPECTROGRAM.hopDivisor ? " (기본)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Label>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-fit"
+            onClick={() => setDraft({ ...draft, spectrogram: { ...DEFAULT_SPECTROGRAM } })}
+          >
+            스펙트로그램 기본값으로
+          </Button>
 
           <p className={warn ? "warn" : "muted"}>
             예상 버퍼 메모리 ≈ {(mem / (1024 * 1024)).toFixed(1)} MB

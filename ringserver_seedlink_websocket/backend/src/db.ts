@@ -2,6 +2,7 @@ import "./env.js";
 import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SETTINGS, mergeBandPassPresets, type AppSettings } from "./defaults.js";
+import { sanitizeSpectrogramSettings } from "./spectrogramSettings.js";
 
 type MetaRow = {
   scnl: string;
@@ -142,6 +143,7 @@ export function getSettings(): AppSettings {
     },
   };
   merged.bandPassPresets = mergeBandPassPresets(state.settings.bandPassPresets);
+  merged.spectrogram = sanitizeSpectrogramSettings(state.settings.spectrogram);
   if (merged.bandPassEnabled == null) merged.bandPassEnabled = false;
   if (merged.bandPassPresetId === undefined) merged.bandPassPresetId = null;
   if (
@@ -167,6 +169,11 @@ export function saveSettings(partial: Partial<AppSettings>): AppSettings {
       ? { ...state.settings.waveformColors, ...partial.waveformColors }
       : state.settings.waveformColors,
     bandPassPresets: nextPresets,
+    spectrogram: sanitizeSpectrogramSettings(
+      partial.spectrogram
+        ? { ...state.settings.spectrogram, ...partial.spectrogram }
+        : state.settings.spectrogram,
+    ),
   };
   persist();
   return getSettings();

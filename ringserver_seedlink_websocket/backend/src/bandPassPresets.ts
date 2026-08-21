@@ -1,6 +1,6 @@
 /** Canonical copy: keep in sync with shared/bandPassPresets.ts (backend tsc rootDir=src). */
 
-export type BandPassGroup = "seismic" | "infrasound" | "custom";
+export type BandPassGroup = "builtin" | "custom";
 
 export type BandPassPreset = {
   id: string;
@@ -17,7 +17,7 @@ export const BUILTIN_BANDPASS_PRESETS: BandPassPreset[] = [
     name: "BP 0.1–1 Hz",
     fminHz: 0.1,
     fmaxHz: 1.0,
-    group: "seismic",
+    group: "builtin",
     builtin: true,
   },
   {
@@ -25,7 +25,7 @@ export const BUILTIN_BANDPASS_PRESETS: BandPassPreset[] = [
     name: "BP 1–5 Hz",
     fminHz: 1.0,
     fmaxHz: 5.0,
-    group: "seismic",
+    group: "builtin",
     builtin: true,
   },
   {
@@ -33,7 +33,7 @@ export const BUILTIN_BANDPASS_PRESETS: BandPassPreset[] = [
     name: "BP 1–10 Hz",
     fminHz: 1.0,
     fmaxHz: 10.0,
-    group: "seismic",
+    group: "builtin",
     builtin: true,
   },
   {
@@ -41,7 +41,7 @@ export const BUILTIN_BANDPASS_PRESETS: BandPassPreset[] = [
     name: "BP 0.02–0.5 Hz",
     fminHz: 0.02,
     fmaxHz: 0.5,
-    group: "infrasound",
+    group: "builtin",
     builtin: true,
   },
   {
@@ -49,7 +49,7 @@ export const BUILTIN_BANDPASS_PRESETS: BandPassPreset[] = [
     name: "BP 0.5–5 Hz",
     fminHz: 0.5,
     fmaxHz: 5.0,
-    group: "infrasound",
+    group: "builtin",
     builtin: true,
   },
   {
@@ -57,7 +57,7 @@ export const BUILTIN_BANDPASS_PRESETS: BandPassPreset[] = [
     name: "BP 1–10 Hz",
     fminHz: 1.0,
     fmaxHz: 10.0,
-    group: "infrasound",
+    group: "builtin",
     builtin: true,
   },
 ];
@@ -95,10 +95,7 @@ export function sanitizeBandPassPresets(list: unknown): BandPassPreset[] | undef
     const p = raw as Record<string, unknown>;
     const id = typeof p.id === "string" ? p.id.trim() : "";
     if (!id) continue;
-    const group =
-      p.group === "seismic" || p.group === "infrasound" || p.group === "custom"
-        ? p.group
-        : "custom";
+    const group = p.group === "custom" ? "custom" : "builtin";
     const fmin = Number(p.fminHz);
     const fmax = Number(p.fmaxHz);
     if (!(fmin > 0) || !(fmax > fmin) || fmax > 1e6) continue;

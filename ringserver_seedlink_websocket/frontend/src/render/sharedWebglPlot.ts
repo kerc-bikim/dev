@@ -9,7 +9,7 @@ export const PANEL_ROW_MIN_PX = 100;
 
 export type PanelSpec = {
   scnl: SCNL;
-  /** FFT 모드일 때 웨이브폼 라인 숨김 */
+  /** FFT/Spectrogram 모드일 때 웨이브폼 라인 숨김 */
   hideWave?: boolean;
 };
 

@@ -3,6 +3,10 @@ import {
   mergeBandPassPresets,
   type BandPassPreset,
 } from "./bandPassPresets.js";
+import {
+  DEFAULT_SPECTROGRAM,
+  type SpectrogramSettings,
+} from "./spectrogramSettings.js";
 
 export type WaveformColors = {
   palette: string[];
@@ -28,6 +32,7 @@ export type AppSettings = {
   bandPassEnabled: boolean;
   bandPassPresetId: string | null;
   bandPassPresets: BandPassPreset[];
+  spectrogram: SpectrogramSettings;
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -58,6 +63,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   bandPassEnabled: false,
   bandPassPresetId: null,
   bandPassPresets: [...BUILTIN_BANDPASS_PRESETS],
+  spectrogram: { ...DEFAULT_SPECTROGRAM },
 };
 
 export { BUILTIN_BANDPASS_PRESETS, mergeBandPassPresets };

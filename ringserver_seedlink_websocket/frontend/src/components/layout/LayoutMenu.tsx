@@ -69,6 +69,7 @@ export function LayoutMenu() {
       bandPassEnabled: settings.bandPassEnabled,
       bandPassPresetId: settings.bandPassPresetId,
       bandPassPresets: settings.bandPassPresets,
+      spectrogram: settings.spectrogram,
     };
   };
 
