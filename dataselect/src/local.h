@@ -24,7 +24,8 @@
 #define LOCAL_USAGE_B                                                              \
   " -B bytes     Re-pack output to this miniSEED record/block size\n"              \
   "                Power of 2 (e.g. 512, 4096); sample times and values are unchanged\n" \
-  "                miniSEED 2: exact length; miniSEED 3: maximum length\n"
+  "                miniSEED 2: exact length; miniSEED 3: maximum length\n" \
+  "                Continuous traces fill records before writing; a short record is written at a gap or end\n"
 
 /* Parse -B argument.  Returns 0 on success, -1 on invalid value. */
 int local_set_blocksize (const char *arg);
@@ -55,6 +56,16 @@ void local_pack_begin (const uint8_t *srcbuf, uint8_t formatversion);
 
 /* Apply -B record length to the unpacked record before msr3_pack(). */
 void local_prepare_pack (MS3Record *msr);
+
+/* Feed unpacked samples into the -B packer.  Continuous traces are
+ * buffered until a record fills.  Returns 0 on success, -1 on error. */
+int local_pack_feed (MS3Record *msr, nstime_t nstimetol,
+                     void (*handler) (char *, int, void *), void *handlerdata,
+                     MS3Record **msrslot, int8_t verbose);
+
+/* Flush any samples still buffered by local_pack_feed(). */
+int local_pack_flush (void (*handler) (char *, int, void *), void *handlerdata,
+                      MS3Record **msrslot, int8_t verbose);
 
 /* 1 if packing did not emit every sample. */
 int local_incomplete_pack (int packedrecords, int64_t packedsamples,

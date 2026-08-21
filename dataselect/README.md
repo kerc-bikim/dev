@@ -5,9 +5,10 @@ miniSEED format.
 
 This copy includes a local extension: **`-B bytes`** sets the output miniSEED
 record/block size (power of 2, e.g. `-B 512`).  Sample times and values are
-unchanged.  Without `-B` the original record length is preserved.  miniSEED 2
-sequence numbers are rewritten per channel in each output file starting at 1;
-a new archive file starts again at 1.
+unchanged.  Without `-B` the original record length is preserved.  Continuous
+traces fill each record before it is written; a short record is written at a
+gap or at the end.  miniSEED 2 sequence numbers are rewritten per channel in
+each output file starting at 1; a new archive file starts again at 1.
 The extension lives in `src/local.c`; see [UPSTREAM.md](UPSTREAM.md) when merging
 a newer EarthScope dataselect.
 
