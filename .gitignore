@@ -18,3 +18,10 @@ earthworm_web/.ew_home/
 earthworm_web/backend/data/app.json
 earthworm_web/backend/.env
 
+# PDCC web
+pdcc_web/.env
+pdcc_web/apps/web/node_modules/
+pdcc_web/apps/web/dist/
+pdcc_web/apps/api/.pytest_cache/
+pdcc_web/apps/api/.venv/
+
