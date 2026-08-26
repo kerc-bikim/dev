@@ -89,6 +89,7 @@ body {
   border-radius: 10px;
   padding: 16px 18px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   min-width: 0;
   align-content: start;
@@ -96,16 +97,20 @@ body {
 .nrl-card h3 { margin: 0; font-size: 15px; }
 .nrl-card label, .login label {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   color: var(--muted);
   font-size: 12px;
   min-width: 0;
 }
 .nrl-card select {
+  display: block;
+  box-sizing: border-box;
   width: 100%;
   min-width: 0;
   max-width: 100%;
   height: 38px;
+  field-sizing: fixed;
   background: var(--input-bg);
   color: var(--fg);
   border: 1px solid var(--border);
