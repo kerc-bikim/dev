@@ -10,4 +10,5 @@
 3. 위저드 질문은 모델 `configuration.parameters` 중 **고유값이 2개 이상**인 키만 묻는다. 값이 하나면 잠금(자동 선택)이다.
 4. 기준 모델은 센서 **Guralp CMG-3T**, 기록계 **Quanterra Q330HR**.
 5. `combine`은 단일 instconfig 또는 `sensor:datalogger` 캐스케이드만 허용한다. `full_NRL_v2_zip`과 쉼표 목록은 거절한다.
-6. catalog·prefix-lookup 응답은 Redis에 TTL 캐시한다.
+6. catalog·prefix-lookup·combine 응답은 Redis에 TTL 캐시한다.
+7. 응답 곡선은 브라우저가 XML을 그리지 않는다. API가 StationXML-Response를 최소 Inventory로 감싼 뒤 ObsPy evalresp로 계산해 JSON(`frequencies`, `amplitude`, `phase_deg`)을 준다. 출력 단위는 DIS/VEL/ACC.

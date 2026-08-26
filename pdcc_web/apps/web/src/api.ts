@@ -16,6 +16,19 @@ export type WizardResult = {
   matches: WizardMatch[];
   match_count: number;
 };
+export type ResponseCurve = {
+  instconfig: string | null;
+  output: string;
+  input_units: string | null;
+  output_units: string | null;
+  sample_rate: number;
+  frequencies: number[];
+  amplitude: number[];
+  phase_deg: number[];
+  min_freq: number;
+  max_freq: number;
+  npts: number;
+};
 
 export async function readError(response: Response): Promise<string> {
   try {

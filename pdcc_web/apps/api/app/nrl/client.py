@@ -116,12 +116,23 @@ class NrlClient:
     def combine(self, instconfig: str, fmt: str) -> tuple[bytes, str]:
         instconfig = validate_instconfig(instconfig)
         fmt = validate_format(fmt)
-        response = self._get(
-            "/combine",
-            {"nodata": "404", "format": fmt, "instconfig": instconfig},
-        )
-        content_type = response.headers.get("content-type", "application/octet-stream")
-        return response.content, content_type
+        digest = hashlib.sha256(f"{fmt}|{instconfig}".encode()).hexdigest()[:16]
+        cache_key = f"pdcc:nrl:combine:{digest}"
+
+        def load() -> dict:
+            response = self._get(
+                "/combine",
+                {"nodata": "404", "format": fmt, "instconfig": instconfig},
+            )
+            return {
+                "body": response.content.decode("utf-8"),
+                "content_type": response.headers.get(
+                    "content-type", "application/octet-stream"
+                ),
+            }
+
+        data = self._cached_json(cache_key, load)
+        return data["body"].encode("utf-8"), data["content_type"]
 
 
 _client: NrlClient | None = None

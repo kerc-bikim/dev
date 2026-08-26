@@ -19,7 +19,7 @@ class FakeNrl(NrlClient):
         self.manufacturers = json.loads((FIXTURES / "sensor-manufacturers.json").read_text())
         self.models = json.loads((FIXTURES / "guralp-models.json").read_text())
         self.prefixes = json.loads((FIXTURES / "prefix-lookup.json").read_text())
-        self.combine_body = b"<Response>ok</Response>"
+        self.combine_body = (FIXTURES / "stationxml-resp.xml").read_bytes()
 
     def catalog(self, *, level, element=None, manufacturer=None, model=None):
         self.calls.append(("catalog", level, element, manufacturer, model))
@@ -135,6 +135,40 @@ def test_combine_and_reject_full_zip(authed, fake_nrl):
         params={"instconfig": "sensor_Guralp_CMG-3T_LP30_HF50_SG1500_STgroundVel"},
     )
     assert ok.status_code == 200
-    assert ok.content == b"<Response>ok</Response>"
+    assert b"<Response" in ok.content
+    assert b"InstrumentSensitivity" in ok.content
     bad = authed.get("/api/nrl/combine", params={"instconfig": "full_NRL_v2_zip"})
     assert bad.status_code == 400
+
+
+def test_curve_requires_login(client, fake_nrl):
+    assert client.get(
+        "/api/nrl/curve",
+        params={"instconfig": "sensor_Guralp_CMG-3T_LP30_HF50_SG1500_STgroundVel"},
+    ).status_code == 401
+
+
+def test_curve_from_combined_response(authed, fake_nrl):
+    cascade = (
+        "sensor_Guralp_CMG-3T_LP30_HF50_SG1500_STgroundVel:"
+        "datalogger_Quanterra_Q330HR_PG1_FR100_ADHR_LRbelow20_DENone"
+    )
+    ok = authed.get("/api/nrl/curve", params={"instconfig": cascade, "npts": 50})
+    assert ok.status_code == 200
+    body = ok.json()
+    assert body["output"] == "VEL"
+    assert body["npts"] == 50
+    assert body["sample_rate"] == 100.0
+    assert body["instconfig"] == cascade
+    assert len(body["frequencies"]) == 50
+    assert all(amp > 0 for amp in body["amplitude"])
+    assert ("combine", cascade, "stationxml-resp") in fake_nrl.calls
+
+    bad_out = authed.get("/api/nrl/curve", params={"instconfig": cascade, "output": "RAW"})
+    assert bad_out.status_code == 400
+
+    over = authed.get(
+        "/api/nrl/curve", params={"instconfig": cascade, "max_freq": 80, "npts": 50}
+    )
+    assert over.status_code == 400
+    assert "Nyquist" in over.json()["detail"]

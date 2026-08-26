@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from ..models import User
 from ..nrl.client import NrlError, get_nrl_client, validate_format, validate_instconfig
+from ..nrl.curve import CurveError, eval_response_curve, sample_rate_from_instconfig
 from ..nrl.questions import as_list, build_wizard
 from ..routers.auth import current_user
 
@@ -133,3 +134,30 @@ def nrl_combine(
     except NrlError as exc:
         _http(exc)
     return Response(content=payload, media_type=content_type)
+
+
+@router.get("/curve")
+def nrl_curve(
+    instconfig: str = Query(min_length=1),
+    output: str = Query(default="VEL"),
+    min_freq: float = Query(default=0.001, gt=0),
+    max_freq: float | None = Query(default=None, gt=0),
+    npts: int = Query(default=200, ge=50, le=1000),
+    _user: User = Depends(current_user),
+) -> dict:
+    try:
+        inst = validate_instconfig(instconfig)
+        payload, _content_type = get_nrl_client().combine(inst, "stationxml-resp")
+        return eval_response_curve(
+            payload,
+            output=output,
+            min_freq=min_freq,
+            max_freq=max_freq,
+            npts=npts,
+            sample_rate=sample_rate_from_instconfig(inst),
+            instconfig=inst,
+        )
+    except CurveError as exc:
+        _http(exc)
+    except NrlError as exc:
+        _http(exc)
