@@ -25,3 +25,6 @@ pdcc_web/apps/web/dist/
 pdcc_web/apps/api/.pytest_cache/
 pdcc_web/apps/api/.venv/
 
+
+# redis dumps
+*.rdb

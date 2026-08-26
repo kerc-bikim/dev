@@ -1,0 +1,130 @@
+{
+  "NRLCatalog": {
+    "formatversion": 1.0,
+    "detail": "In 2006, the IRIS DMC began to collect an \"authoritative\" set of manufacturers' recommended nominal instrument responses in SEED RESP format and publish these on the web. The goal behind the Library is to make it easier for the seismological community to both share and create metadata for common instrumentation, and to improve response accuracy for users of the data.  All links to responses are queries to the [NRL web service](http://service.iris.edu/irisws/nrl/1/). \n\nTo cite the the IRIS Nominal Response Library, please use\n- Mary E. Templeton (2017): IRIS Library of Nominal Response for Seismic Instruments.  \nIncorporated Research Institutions for Seismology. Dataset. \n[https://doi.org/10.17611/S7159Q](https://doi.org/10.17611/S7159Q)\n\nDownload the full Library as [RESP](http://service.iris.edu/irisws/nrl/1/combine?instconfig=full_NRL_v2_zip&format=resp.zip&nodata=404) or [StationXML](http://service.iris.edu/irisws/nrl/1/combine?instconfig=full_NRL_v2_zip&format=stationxml.zip&nodata=404) files.",
+    "element": [
+      {
+        "name": "sensor",
+        "manufacturer": [
+          {
+            "name": "ASIR"
+          },
+          {
+            "name": "CEADASE"
+          },
+          {
+            "name": "Chaparral"
+          },
+          {
+            "name": "DTCC"
+          },
+          {
+            "name": "EQMet"
+          },
+          {
+            "name": "Eentec"
+          },
+          {
+            "name": "GEObit"
+          },
+          {
+            "name": "GaiaCode"
+          },
+          {
+            "name": "GenericUnity"
+          },
+          {
+            "name": "GeoDevice"
+          },
+          {
+            "name": "GeoSIG"
+          },
+          {
+            "name": "GeoSpace"
+          },
+          {
+            "name": "Geotech"
+          },
+          {
+            "name": "Guralp"
+          },
+          {
+            "name": "HGSProducts"
+          },
+          {
+            "name": "HighTech"
+          },
+          {
+            "name": "Hyperion"
+          },
+          {
+            "name": "IESE"
+          },
+          {
+            "name": "JeffreyBJohnson"
+          },
+          {
+            "name": "KUTECAG"
+          },
+          {
+            "name": "Kinemetrics"
+          },
+          {
+            "name": "LaHusen"
+          },
+          {
+            "name": "Lennartz"
+          },
+          {
+            "name": "Lunitek"
+          },
+          {
+            "name": "MagseisFairfield"
+          },
+          {
+            "name": "Nanometrics"
+          },
+          {
+            "name": "REFTEK"
+          },
+          {
+            "name": "RSensors"
+          },
+          {
+            "name": "RTClark"
+          },
+          {
+            "name": "SARA"
+          },
+          {
+            "name": "SeismoWave"
+          },
+          {
+            "name": "SensorNederland"
+          },
+          {
+            "name": "Sercel"
+          },
+          {
+            "name": "SiliconAudio"
+          },
+          {
+            "name": "SolGeo"
+          },
+          {
+            "name": "Sprengnether"
+          },
+          {
+            "name": "Streckeisen"
+          },
+          {
+            "name": "Sunfull"
+          },
+          {
+            "name": "iTem"
+          }
+        ]
+      }
+    ]
+  }
+}

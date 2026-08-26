@@ -61,9 +61,60 @@ body {
 
 .panel h2 { margin: 0 0 8px; font-size: 18px; }
 .hint { color: var(--muted); }
-.hint code, .panel code {
+.hint code, .panel code, .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
+}
+
+.main {
+  padding: 20px 24px 32px;
+  overflow: auto;
+}
+
+.workbench { max-width: 1100px; margin: 0 auto; }
+.nrl-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 16px 0;
+}
+@media (max-width: 900px) {
+  .nrl-grid { grid-template-columns: 1fr; }
+}
+
+.nrl-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: grid;
+  gap: 10px;
+}
+.nrl-card h3 { margin: 0; font-size: 15px; }
+.nrl-card label, .login label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.nrl-card select, .login input {
+  background: var(--input-bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+.mono { word-break: break-all; color: var(--fg); }
+.xml {
+  max-height: 320px;
+  overflow: auto;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 11px;
+  white-space: pre-wrap;
 }
 
 .login { display: grid; gap: 12px; margin-top: 16px; }

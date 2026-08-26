@@ -9,8 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from .cache import get_redis, set_redis
 from .config import settings
 from .db import Base, SessionLocal, configure_engine, get_engine
+from .nrl.client import set_nrl_client
 from .routers.auth import router as auth_router
 from .routers.health import router as health_router
+from .routers.nrl import router as nrl_router
 from .seed import seed_users
 
 log = logging.getLogger("pdcc.api")
@@ -39,12 +41,13 @@ async def lifespan(_app: FastAPI):
         log.exception("redis ping failed at startup; /health will report redis=false")
     yield
     set_redis(None)
+    set_nrl_client(None)
 
 
 app = FastAPI(
     title="PDCC Web API",
     version="0.1.0",
-    description="PDCC 웹 편집기 API. M0는 health·로그인 스텁만 제공합니다.",
+    description="PDCC 웹 편집기 API. NRL은 서버 프록시로만 호출합니다.",
     lifespan=lifespan,
 )
 
@@ -58,3 +61,4 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(nrl_router)

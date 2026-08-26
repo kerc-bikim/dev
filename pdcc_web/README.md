@@ -41,7 +41,17 @@ cd pdcc_web/apps/web && npm install && npm run dev -- --host 0.0.0.0 --port 3000
 | `REDIS_URL` | `redis://redis:6379/0` | 세션·헬스 |
 | `DEV_BOOTSTRAP_ADMIN` | `false` | `admin`/`admin` 허용 |
 
-`.env` 는 커밋하지 않습니다. 예시는 [`infra/env.example`](infra/env.example).
+## M1 NRL
+
+로그인 후 센서·기록계를 고르면 서버가 NRL catalog를 프록시하고, 고유값이 2개 이상인 설정만 질문합니다. `GET /api/nrl/combine` 으로 StationXML-Response를 미리 봅니다. 브라우저는 EarthScope에 직접 붙지 않습니다. 자세한 내용: [`docs/adr/0003-nrl-proxy.md`](docs/adr/0003-nrl-proxy.md).
+
+| 이름 | 기본 | 설명 |
+|------|------|------|
+| `NRL_BASE_URL` | `https://service.earthscope.org/irisws/nrl/1` | NRL 서비스 |
+| `NRL_TIMEOUT_SEC` | `30` | 업스트림 제한 |
+| `NRL_CACHE_TTL_SEC` | `3600` | catalog·prefix Redis TTL |
+
+NRL은 API 기동 시 호출하지 않습니다.
 
 ## 테스트
 

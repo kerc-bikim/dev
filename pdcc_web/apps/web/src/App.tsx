@@ -1,17 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
-
-type Health = { ok: boolean; db: boolean; redis: boolean };
-type Me = { username: string; role: string };
-
-async function readError(response: Response): Promise<string> {
-  try {
-    const body = (await response.json()) as { detail?: string };
-    if (typeof body.detail === "string") return body.detail;
-  } catch {
-    /* ignore */
-  }
-  return `요청 실패 (${response.status})`;
-}
+import { readError, type Health, type Me } from "./api";
+import { NrlWorkbench } from "./nrl/NrlWorkbench";
 
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null);
@@ -97,7 +86,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <h1>PDCC Web</h1>
-          <small>M0 골격 · StationXML 편집기</small>
+          <small>NRL 위저드 · StationXML 편집기</small>
         </div>
         {me ? (
           <div className="controls">
@@ -111,49 +100,43 @@ export default function App() {
         ) : null}
       </header>
 
-      <main className="panel">
-        {me ? (
-          <>
-            <h2>세션</h2>
-            <p>
-              <strong>{me.username}</strong> ({me.role}) 으로 로그인되어 있습니다.
-              NRL·위저드·SEED 변환은 이후 마일스톤입니다.
-            </p>
-          </>
-        ) : (
-          <>
-            <h2>로그인</h2>
-            <p className="hint">
-              스텁 계정은 <code>stub</code> / <code>stub</code> 입니다.{" "}
-              <code>admin</code> / <code>admin</code> 은{" "}
-              <code>DEV_BOOTSTRAP_ADMIN=true</code> 일 때만 됩니다.
-            </p>
-            <form onSubmit={onLogin} className="login">
-              <label>
-                아이디
-                <input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  autoComplete="username"
-                />
-              </label>
-              <label>
-                비밀번호
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                />
-              </label>
-              <button type="submit" className="primary" disabled={busy}>
-                로그인
-              </button>
-            </form>
-          </>
-        )}
-        {message ? <p className="error">{message}</p> : null}
-      </main>
+      {me ? (
+        <main className="main">
+          <NrlWorkbench />
+        </main>
+      ) : (
+        <main className="panel">
+          <h2>로그인</h2>
+          <p className="hint">
+            스텁 계정은 <code>stub</code> / <code>stub</code> 입니다.{" "}
+            <code>admin</code> / <code>admin</code> 은{" "}
+            <code>DEV_BOOTSTRAP_ADMIN=true</code> 일 때만 됩니다.
+          </p>
+          <form onSubmit={onLogin} className="login">
+            <label>
+              아이디
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+              />
+            </label>
+            <label>
+              비밀번호
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </label>
+            <button type="submit" className="primary" disabled={busy}>
+              로그인
+            </button>
+          </form>
+          {message ? <p className="error">{message}</p> : null}
+        </main>
+      )}
 
       <footer className="status-bar">
         <span className={apiReachable ? "ok" : "bad"}>{apiLabel}</span>
