@@ -18,6 +18,7 @@ import { StationForm } from "./StationForm";
 import { StationWizard } from "./StationWizard";
 import { ChannelForm } from "./ChannelForm";
 import { CloneTable } from "./CloneTable";
+import { SeedLossDialog } from "./SeedLossDialog";
 import { ValidationPanel } from "./ValidationPanel";
 import { VersionPanel } from "./VersionPanel";
 
@@ -46,6 +47,7 @@ export function EditorPage({
   const [validateJob, setValidateJob] = useState<Job | null>(null);
   const [canSeed, setCanSeed] = useState(false);
   const [xmlName, setXmlName] = useState<string | null>(null);
+  const [seedLossOpen, setSeedLossOpen] = useState(false);
   const issueModeRef = useRef(issueMode);
   issueModeRef.current = issueMode;
 
@@ -239,13 +241,9 @@ export function EditorPage({
     }
   }
 
-  async function exportSeed() {
+  function exportSeed() {
     setError(null);
-    try {
-      await apiPost(`/api/projects/${projectId}/export/seed`);
-    } catch (err) {
-      setError((err as Error).message);
-    }
+    setSeedLossOpen(true);
   }
 
   async function resumeDraft() {
@@ -346,13 +344,13 @@ export function EditorPage({
         <button
           type="button"
           id="export-seed-btn"
-          disabled={!canSeed || readOnly}
+          disabled={readOnly}
           title={
             readOnly
               ? "조회자는 StationXML만 받을 수 있습니다"
               : canSeed
-                ? "dataless SEED"
-                : "오류가 있으면 SEED를 만들 수 없습니다. 먼저 검증하세요."
+                ? "손실 목록을 본 뒤에 dataless SEED"
+                : "손실 목록을 먼저 보세요. 오류가 있으면 SEED는 막힙니다."
           }
           onClick={() => exportSeed()}
         >
@@ -395,6 +393,9 @@ export function EditorPage({
             setSelectedNslc(next.stations[0]?.channels[0]?.nslc ?? null);
           }}
         />
+      ) : null}
+      {seedLossOpen ? (
+        <SeedLossDialog projectId={projectId} onCancel={() => setSeedLossOpen(false)} />
       ) : null}
       {cloneOpen && selected ? (
         <CloneTable

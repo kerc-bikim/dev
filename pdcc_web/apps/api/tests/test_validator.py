@@ -232,7 +232,11 @@ def test_clean_xml_filename_when_only_warnings(stub):
     xml = stub.get(f"/api/projects/{project['id']}/xml")
     assert xml.status_code == 200
     assert 'filename="YZ.xml"' in xml.headers.get("content-disposition", "")
-    seed = stub.post(f"/api/projects/{project['id']}/export/seed")
+    blocked = stub.post(f"/api/projects/{project['id']}/export/seed")
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"]["code"] == "E_LOSS_ACK"
+    ack = stub.get(f"/api/projects/{project['id']}/export/seed-loss").json()["ack"]
+    seed = stub.post(f"/api/projects/{project['id']}/export/seed?loss_ack={ack}")
     assert seed.status_code == 501
 
 

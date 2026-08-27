@@ -110,6 +110,30 @@ export type VersionInfo = {
   created_at: string | null;
 };
 export type FieldDiff = { path: string; a?: string; b?: string; server?: string; mine?: string };
+export type SeedLossRow = {
+  kind: "truncate" | "drop" | string;
+  code: string;
+  path: string;
+  field: string;
+  original: string;
+  seed_value: string;
+  limit: number | null;
+  message: string;
+  nslc?: string | null;
+  station?: string | null;
+};
+export type SeedLossReport = {
+  notices: string[];
+  rows: SeedLossRow[];
+  trunc_count: number;
+  drop_count: number;
+  ack: string;
+  can_export_seed: boolean;
+  error_count: number;
+  filename: string;
+  comment_max: number;
+  fir_name_max: number;
+};
 export type ValidationIssue = {
   code: string;
   message: string;
