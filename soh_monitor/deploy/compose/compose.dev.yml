@@ -1,0 +1,135 @@
+# 개발 환경. 실제 기록계 없이 Direct 와 Edge 흐름을 모두 시험할 수 있게 한다.
+#
+#   docker compose -f deploy/compose/compose.dev.yml up -d
+#
+# 운영과 달리 포트를 열고 Secret 대신 환경변수를 쓴다. 이 파일을 운영에 쓰지 않는다.
+
+name: soh-dev
+
+x-backend-env: &backend-env
+  SOH_APP_ENV: development
+  SOH_LOG_LEVEL: DEBUG
+  SOH_POSTGRES_HOST: postgres
+  SOH_POSTGRES_DB: soh_monitor
+  SOH_POSTGRES_USER: soh
+  SOH_POSTGRES_PASSWORD: devpassword
+  SOH_INFLUX_URL: http://influxdb:8086
+  SOH_INFLUX_ORG: observatory
+  SOH_INFLUX_BUCKET: soh
+  SOH_INFLUX_TOKEN: dev-influx-token
+  SOH_SESSION_SECRET: dev-session-secret
+  SOH_DEVICE_CREDENTIAL_KEY: dev-credential-key
+  # 개발에서는 mock 기록계가 컨테이너 네트워크에 있으므로 대역 제한을 넓힌다.
+  SOH_ALLOWED_DEVICE_NETWORKS: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8
+
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.backend
+      target: runtime-api
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    environment: *backend-env
+    ports: ["8000:8000"]
+
+  collector:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.backend
+      target: runtime-collector
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    environment: *backend-env
+
+  edge-agent:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.edge
+    depends_on: [api]
+    environment:
+      <<: *backend-env
+      SOH_EDGE_ID: edge-dev-01
+      SOH_CENTRAL_URL: http://api:8000
+    volumes:
+      - edge-spool:/var/lib/soh-edge
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.backend
+      target: runtime-migrate
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      <<: *backend-env
+      SOH_BOOTSTRAP_ADMIN_USER: admin
+      SOH_BOOTSTRAP_ADMIN_PASSWORD: devadmin
+
+  web:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.web
+    depends_on: [api]
+    ports: ["8080:8080"]
+
+  centaur-mock:
+    # M2 에서 구현된다. 기록계 없이 정상·GPS 오류·저전압·SD 미장착 등 시나리오를 제공한다.
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.backend
+      target: runtime-common
+    command: ["python", "-m", "mock.centaur_mock"]
+    environment:
+      MOCK_SCENARIO: NORMAL
+    profiles: ["mock"]
+    ports: ["8090:8090"]
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: soh_monitor
+      POSTGRES_USER: soh
+      POSTGRES_PASSWORD: devpassword
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soh -d soh_monitor"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  influxdb:
+    image: influxdb:2.7-alpine
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: soh
+      DOCKER_INFLUXDB_INIT_PASSWORD: devpassword
+      DOCKER_INFLUXDB_INIT_ORG: observatory
+      DOCKER_INFLUXDB_INIT_BUCKET: soh
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: dev-influx-token
+    ports: ["8086:8086"]
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    depends_on:
+      influxdb: { condition: service_healthy }
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: devadmin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      SOH_INFLUX_ORG: observatory
+      SOH_INFLUX_BUCKET: soh
+      SOH_INFLUX_TOKEN: dev-influx-token
+    ports: ["3000:3000"]
+    volumes:
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+volumes:
+  edge-spool:
