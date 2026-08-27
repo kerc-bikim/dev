@@ -1,11 +1,12 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { readError, type Health, type Me } from "./api";
+import { readError, type Health, type Me, type NrlStatus } from "./api";
 import { EditorPage } from "./editor/EditorPage";
 import { ProjectHome } from "./editor/ProjectHome";
 
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null);
   const [apiReachable, setApiReachable] = useState(false);
+  const [nrlStatus, setNrlStatus] = useState<NrlStatus | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [username, setUsername] = useState("stub");
   const [password, setPassword] = useState("stub");
@@ -44,6 +45,24 @@ export default function App() {
     const id = window.setInterval(refreshHealth, 5000);
     return () => window.clearInterval(id);
   }, [refreshHealth, refreshMe]);
+
+  useEffect(() => {
+    if (!me) {
+      setNrlStatus(null);
+      return;
+    }
+    const load = () => {
+      fetch("/api/nrl/status", { credentials: "include" })
+        .then(async (response) => {
+          if (!response.ok) return;
+          setNrlStatus((await response.json()) as NrlStatus);
+        })
+        .catch(() => undefined);
+    };
+    load();
+    const id = window.setInterval(load, 10000);
+    return () => window.clearInterval(id);
+  }, [me]);
 
   async function onLogin(event: FormEvent) {
     event.preventDefault();
@@ -152,6 +171,15 @@ export default function App() {
         <span className={health?.redis ? "ok" : "muted"}>
           Redis {health?.redis ? "OK" : "—"}
         </span>
+        {me && nrlStatus ? (
+          <span
+            className={
+              nrlStatus.source === "online" ? "ok" : nrlStatus.source === "cache" ? "warn" : "bad"
+            }
+          >
+            NRL {nrlStatus.badge || nrlStatus.mode}
+          </span>
+        ) : null}
       </footer>
     </div>
   );
