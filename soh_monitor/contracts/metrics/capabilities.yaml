@@ -1,0 +1,114 @@
+# 장비 기능(Capability) 정의.
+#
+# 목적은 하나다. "장비가 그 기능이 없다"와 "수집에 실패해서 모른다"와 "정상"을
+# 절대 섞지 않는 것. 지원하지 않는 기능이 장애로 집계되면 알림 신뢰도가 무너진다.
+#
+# support_states
+#   SUPPORTED_ENABLED  : 기능이 있고 활성화되어 값이 와야 한다
+#   SUPPORTED_DISABLED : 기능은 있으나 운영자가 껐다 → 장애 판정 제외
+#   UNSUPPORTED        : 장비에 그 기능이 없다 → 화면에서 "미지원", 장애 판정 제외
+#   UNKNOWN            : 아직 탐지하지 못했다 → 화면에서 "확인 불가"
+#   ERROR              : 기능 확인 자체가 실패했다 → 조사 대상
+
+version: 1
+
+support_states:
+  - SUPPORTED_ENABLED
+  - SUPPORTED_DISABLED
+  - UNSUPPORTED
+  - UNKNOWN
+  - ERROR
+
+capabilities:
+  - key: device.overall_status
+    display_name: 장비 종합 상태 보고
+    detectable: true
+    description: 기록계가 자체 종합 상태를 보고하는지 여부.
+
+  - key: device.configuration_status
+    display_name: 설정 반영 상태 보고
+    detectable: true
+
+  - key: device.firmware_status
+    display_name: 펌웨어 상태 보고
+    detectable: true
+
+  - key: device.temperature
+    display_name: 내부 온도 측정
+    detectable: true
+
+  - key: power.input_voltage
+    display_name: 입력 전압 측정
+    detectable: true
+
+  - key: power.current
+    display_name: 전류 측정
+    detectable: true
+
+  - key: timing.status
+    display_name: 시각 상태 보고
+    detectable: true
+
+  - key: timing.quality
+    display_name: 시각 품질·오차 보고
+    detectable: true
+
+  - key: gnss.receiver
+    display_name: GNSS 수신기
+    detectable: true
+    description: GNSS 수신기 탑재 여부. Duty cycle 운용이면 위성 수 판정을 완화한다.
+
+  - key: sensor.status
+    display_name: 센서 상태 보고
+    detectable: true
+    dimension: sensor_port
+    description: 포트 단위로 판정한다. 3채널 모델은 Sensor B 가 UNSUPPORTED 다.
+
+  - key: sensor.control_lines
+    display_name: 센서 제어선 상태
+    detectable: true
+    dimension: sensor_port
+
+  - key: sensor.mass_position
+    display_name: Mass Position 측정
+    detectable: true
+    dimension: sensor_port
+
+  - key: storage.internal
+    display_name: 내부 저장소
+    detectable: true
+
+  - key: storage.removable
+    display_name: 외장 SD카드
+    detectable: true
+    description: 슬롯 자체가 없는 모델과 카드 미장착 상태를 구분해야 한다.
+
+  - key: archive.continuous
+    display_name: 연속 아카이브
+    detectable: true
+
+  - key: archive.event
+    display_name: 이벤트 아카이브
+    detectable: true
+
+  - key: external_soh.analog
+    display_name: 외부 SOH 아날로그 입력
+    detectable: true
+    dimension: channel
+    description: Centaur 는 CTR2 이상에서 3채널 제공. 없는 모델은 UNSUPPORTED.
+
+  - key: acquisition.data_check
+    display_name: 데이터 연속성 검사
+    detectable: false
+    description: >
+      기록계 기능이 아니라 SeedLink/FDSN 접근 가능 여부에 달려 있다.
+      관측소 설정에서 데이터 서버가 지정되면 활성화된다.
+
+  - key: environment.weather_station
+    display_name: 기상 센서 연동
+    detectable: true
+
+  - key: vendor.nanometrics.centaur
+    display_name: Centaur 전용 정보
+    detectable: false
+    description: 해당 Adapter 로 수집되는 장비에서만 활성화된다.
