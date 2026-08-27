@@ -73,17 +73,39 @@ services:
     depends_on: [api]
     ports: ["8080:8080"]
 
+  # 가상 기록계. 기록계마다 IP 가 다르다는 점이 등록·수집 경로의 핵심이므로,
+  # 장비마다 네트워크 별칭을 따로 주어 서로 다른 주소로 접근하게 한다.
+  # 관측소 등록 화면에 아래 호스트명을 그대로 넣어 시험할 수 있다.
   centaur-mock:
-    # M2 에서 구현된다. 기록계 없이 정상·GPS 오류·저전압·SD 미장착 등 시나리오를 제공한다.
     build:
       context: ../..
-      dockerfile: deploy/docker/Dockerfile.backend
-      target: runtime-common
-    command: ["python", "-m", "mock.centaur_mock"]
+      dockerfile: deploy/docker/Dockerfile.mock
     environment:
-      MOCK_SCENARIO: NORMAL
+      MOCK_PORT: 8090
+      MOCK_FLEET: fleet
     profiles: ["mock"]
     ports: ["8090:8090"]
+    networks:
+      default:
+        aliases:
+          - ctr-a01
+          - ctr-a02
+          - ctr-b01
+          - ctr-b02
+          - ctr-c01
+          - ctr-c02
+
+  # 부하 시험용. 100대를 한 프로세스로 흉내내고 20%를 느린 장비로 만든다 (M10.3).
+  centaur-mock-fleet:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.mock
+    environment:
+      MOCK_PORT: 8091
+      MOCK_FLEET_SIZE: 100
+      MOCK_SLOW_RATIO: 0.2
+    profiles: ["load"]
+    ports: ["8091:8091"]
 
   postgres:
     image: postgres:16-alpine
