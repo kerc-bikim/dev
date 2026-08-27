@@ -6,7 +6,7 @@ import os
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -160,6 +160,18 @@ class NrlExcluded(Base):
     query: Mapped[str] = mapped_column(String(64), nullable=False)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     message: Mapped[str] = mapped_column(String(512), nullable=False)
+
+
+class FileAsset(Base):
+    __tablename__ = "file_assets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, default="original")
+    filename: Mapped[str] = mapped_column(String(256), nullable=False)
+    media_type: Mapped[str] = mapped_column(String(128), nullable=False, default="application/xml")
+    content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 def new_session_token() -> str:

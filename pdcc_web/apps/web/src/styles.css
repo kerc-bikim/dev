@@ -210,6 +210,10 @@ body {
   padding: 14px;
   background: var(--panel);
 }
+.empty-hints {
+  color: var(--muted);
+  padding-left: 20px;
+}
 .editor-top {
   display: flex;
   flex-wrap: wrap;

@@ -78,6 +78,7 @@ export type Project = {
   lock?: LockInfo | null;
   can_undo?: boolean;
   draft?: { updated_at: string | null; base_updated_at: string; conflict: boolean } | null;
+  has_original?: boolean;
 };
 export type EquipmentSet = {
   id: number;

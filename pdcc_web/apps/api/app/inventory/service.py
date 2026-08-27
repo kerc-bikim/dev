@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import AuditLog, Project, User, utcnow
+from ..models import AuditLog, FileAsset, Project, User, utcnow
 from .collab import get_draft, latest_undo, record_edit
+from .importers import inspect_stationxml
 from ..nrl.client import get_nrl_client, validate_instconfig
 from ..nrl.curve import sample_rate_from_instconfig
 from .locks import acquire_lock, lock_snapshot, require_lock
@@ -76,6 +78,7 @@ def project_out(
         ),
         "can_undo": False,
         "draft": None,
+        "has_original": False,
     }
     if db is not None:
         data["can_undo"] = latest_undo(db, project.id, user.id) is not None
@@ -86,6 +89,7 @@ def project_out(
                 "base_updated_at": draft.base_updated_at,
                 "conflict": draft.base_updated_at != data["updated_at"],
             }
+        data["has_original"] = original_asset(db, project.id) is not None
     if top_lock is not None:
         data["lock"] = top_lock
     return data
@@ -115,6 +119,66 @@ def create_project(db: Session, user: User, *, name: str, network_code: str, ope
         summary="프로젝트 생성",
     )
     return project
+
+
+def import_project(
+    db: Session,
+    user: User,
+    *,
+    filename: str,
+    raw: bytes,
+    name: str | None = None,
+    operator: str | None = None,
+) -> Project:
+    info = inspect_stationxml(raw)
+    code = info["network_code"]
+    title = (name or "").strip() or f"{code} 가져오기"
+    project = Project(
+        name=title,
+        network_code=code,
+        operator=(operator or "").strip() or None,
+        xml_text=info["xml_text"],
+        owner_id=user.id,
+        status="draft",
+    )
+    db.add(project)
+    db.flush()
+    db.add(
+        FileAsset(
+            project_id=project.id,
+            kind="original",
+            filename=(filename or "station.xml")[:256],
+            media_type="application/xml",
+            content=raw,
+        )
+    )
+    record_edit(
+        db,
+        project,
+        user,
+        before=info["xml_text"],
+        after=info["xml_text"],
+        action="import",
+        summary=f"{filename} 가져오기",
+        undo=False,
+    )
+    write_audit(
+        db,
+        project_id=project.id,
+        actor=user.username,
+        action="import",
+        target=code,
+        summary=f"{filename} 가져오기",
+    )
+    return project
+
+
+def original_asset(db: Session, project_id: int) -> FileAsset | None:
+    return db.scalars(
+        select(FileAsset)
+        .where(FileAsset.project_id == project_id, FileAsset.kind == "original")
+        .order_by(FileAsset.id.desc())
+    ).first()
 
 
 def _response_element(instconfig: str) -> tuple[etree._Element, bytes]:
