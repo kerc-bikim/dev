@@ -2,7 +2,7 @@
 
 Nanometrics **Centaur CTR** 계열 기록계의 SOH를 설정한 분 주기로 수집해 InfluxDB에 적재하고, Grafana로 관측소를 통합 감시하는 시스템이다. Centaur Gen5와 타 제조사 기록계는 Adapter 추가만으로 편입한다.
 
-진행 상태: **M0(저장소 골격) · M1(계약 확정) 완료.** 수집기·관리 화면은 아직 골격만 있다. 작업별 상태는 [`docs/progress.md`](docs/progress.md) 에 있다.
+진행 상태: **M0(저장소 골격) · M1(계약 확정) · M2(Centaur CTR Adapter) 완료.** 가상 기록계로 Adapter 를 실장비 없이 시험할 수 있다. 수집 스케줄러(M3)와 관리 화면(M6)은 아직 골격만 있다. 작업별 상태는 [`docs/progress.md`](docs/progress.md) 에 있다.
 
 ## 문서
 
@@ -11,7 +11,8 @@ Nanometrics **Centaur CTR** 계열 기록계의 SOH를 설정한 분 주기로 �
 | [`plan.md`](plan.md) | 확정 계획서. 아키텍처 · 표준 Metric · 데이터 모델 · Edge 설계 · 화면 · 세부 작업 마일스톤 |
 | `plan.html` | `plan.md` 를 브라우저용으로 변환한 문서 |
 | [`docs/progress.md`](docs/progress.md) | 마일스톤별 실제 진행 상태와 계약에서 못 박은 규칙 |
-| [`docs/inventory.md`](docs/inventory.md) | M-1 장비·환경 조사표 양식 (M2 착수 조건) |
+| [`docs/inventory.md`](docs/inventory.md) | M-1 장비·환경 조사표 양식 |
+| [`docs/adapter-development.md`](docs/adapter-development.md) | 새 기록계 Adapter 를 붙이는 절차와 지켜야 할 규칙 |
 
 ## 구조
 
@@ -31,8 +32,9 @@ soh_monitor/
 │  ├─ metrics/           카탈로그 로더 · 상태 변환
 │  └─ db/                스키마 · Seed
 ├─ frontend/             관리 Web (React + Vite + TS)
+├─ mock/centaur_mock/    시험용 가상 Centaur CTR 서버 (런타임 이미지에 넣지 않는다)
 ├─ deploy/               Dockerfile · Compose · Grafana · InfluxDB · nginx
-├─ scripts/              계약 생성기 · 명명 검사 · 문서 변환
+├─ scripts/              계약 생성기 · 명명 검사 · Fixture 생성 · 문서 변환
 └─ docs/
 ```
 
@@ -68,6 +70,20 @@ make web            # http://127.0.0.1:5173
 
 `make migrate` 는 초기 관리자 비밀번호를 한 번 출력한다. `SOH_BOOTSTRAP_ADMIN_PASSWORD` 를
 주면 그 값을 쓴다.
+
+## 실장비 없이 시험하기
+
+가상 Centaur CTR 서버가 있다. 본문 이상 15종과 통신 오작동 12종을 스위치로 걸 수 있다.
+
+```bash
+make mock                                    # http://127.0.0.1:8090
+curl -s http://127.0.0.1:8090/_mock/devices  # 가상 장비 목록과 현재 시나리오
+make mock-load                               # 부하 시험용 100대 (20% 느린 장비)
+```
+
+시나리오 전환과 값 고정 방법은 [`docs/adapter-development.md`](docs/adapter-development.md) 에 있다.
+가상 서버는 계약이 아니다. 응답 형식의 권위는 `backend/app/adapters/centaur_ctr/testdata/real-*.json`
+이며, 실장비 Fixture 가 들어오면 가상 서버 기준선과 대조하는 시험이 켜진다.
 
 ## Docker 실행
 

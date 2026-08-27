@@ -7,8 +7,8 @@
 | M-1 장비·환경 조사 | 대기 | 양식만 준비됨 ([`inventory.md`](inventory.md)). 실장비 접근이 필요하다 |
 | M0 저장소 골격·개발환경 | 완료 | Docker 빌드는 이 환경에 Docker 가 없어 미검증 |
 | M1 계약 확정 | 완료 | 카탈로그·상태 Mapping·Capability·Adapter/Edge Schema·DB 스키마 |
-| M2 Centaur CTR Adapter | 착수 전 | M-1.2 / M-1.3 결과가 선행 조건 |
-| M3 Direct Collector | 착수 전 | |
+| M2 Centaur CTR Adapter | 완료(실장비 미검증) | 가상 서버 + Adapter. 응답 형태는 실응답으로 확정해야 한다 |
+| M3 Direct Collector | 착수 전 | Adapter 가 준비됐으므로 실장비 없이 진행 가능 |
 | M4 상태 판정 엔진 | 착수 전 | |
 | M5 관리 API | 착수 전 | 계약 조회 API 만 존재 |
 | M6 관리 Frontend | 착수 전 | 화면 골격과 표준 Metric 화면만 존재 |
@@ -73,6 +73,37 @@ Docker 가 있는 환경에서 `make images` 와 `make dev` 로 확인해야 한
 
 ---
 
+## M2 Centaur CTR Adapter
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M2.1 | 가상 Centaur CTR 서버 | 완료 | `mock/centaur_mock/`. 본문 시나리오 15종 + 통신 시나리오 12종, 제어 API |
+| M2.2 | HTTP Client 와 실패 분류 | 완료 | DNS·연결거부·연결/응답 Timeout·HTTP·인증·본문 오류를 서로 다른 코드로 |
+| M2.3 | SOH Parser | 완료 | 응답 형태 3종(channels 배열 / soh 객체 / 평평한 객체) 관용 처리 |
+| M2.4 | 표준 Metric Mapper | 완료 | 단위 인식 변환(µV·mV·m°C), SD 미장착 −1 → 값 없음, 축 W/V/U 매핑 |
+| M2.5 | 펌웨어별 Mapping | 부분 | 수치 코드(예전 형태) 처리. `adapter_metric_mappings` 표 활용은 실응답 확보 후 |
+| M2.6 | Capability 자동 탐지 | 완료 | 3채널 Sensor B → UNSUPPORTED, 슬롯 없음/카드 없음 구분 |
+| M2.7 | Probe | 완료 | Instrument ID 로 채널 수·시리얼 추정. 모델명은 SOH API 에 없어 비워 둔다 |
+| M2.8 | 민감정보 제거 | 완료 | `redact()` 재귀 처리. 수집 결과에 비밀값 없음을 시험으로 확인 |
+| M2.9 | Manifest 등록 | 완료 | 파일 원본으로 검증해 Registry 에 등록. 화면 선택 목록에 노출 |
+| M2.10 | Fixture 회귀 시험 | 완료 | synthetic 10종. `real-` 파일이 들어오면 기준선 대조 시험이 켜진다 |
+| M2.11 | 데이터 연속성 Adapter | 착수 전 | 가상 서버에 availability 응답만 준비 |
+
+### 응답 형식이 아직 추측인 부분
+
+매뉴얼 17935R10 7.4절은 URI·파라미터·SOH 채널 이름까지만 명시하고 **응답 본문 예시가 없다.**
+그래서 다음 두 가지가 추측이며, 각각 한 곳에 갇혀 있다.
+
+| 항목 | 갇혀 있는 위치 | 확정 방법 |
+|------|----------------|-----------|
+| JSON 응답 봉투 형태 | `mock/centaur_mock/envelope.py` | M-1.2 실응답 |
+| Mass Position 채널 이름 | 같은 파일의 `UNITS` 주석 + `mapper.py` | M-1.3 실응답 |
+
+파서가 세 형태를 모두 읽으므로 실제 형태가 그 중 하나면 수정이 필요 없고, 변형이면
+`envelope.py` 와 `parser.py` 만 고친다.
+
+---
+
 ## 검증 방법
 
 ```bash
@@ -82,14 +113,19 @@ make test              # 백엔드 테스트
 make typecheck         # 프론트 타입
 make build-web         # 프론트 빌드
 make verify            # 위 전부
+
+make mock              # 가상 Centaur CTR 서버 (http://127.0.0.1:8090)
+make fixtures          # 가상 응답 Fixture 재생성
 ```
 
-현재 결과: 백엔드 테스트 128개 통과, 프론트 타입 검사·빌드 통과.
+현재 결과: 백엔드 테스트 267개 통과(1개 skip — 실장비 Fixture 대조 시험), 프론트 타입 검사·빌드 통과.
 
 ---
 
 ## 다음 착수 지점
 
-1. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 이것이 M2 의 유일한 차단 요소다.
-2. **M2.1** — 가상 Centaur CTR 서버(`mock/centaur_mock/`). 실장비 없이 M3 까지 진행할 수 있게 한다.
-3. **M2.2~M2.10** — CTR Adapter 구현과 Fixture 회귀 시험.
+1. **M3 Direct Collector** — 스케줄러·재시도·Lease·InfluxDB 적재. Adapter 와 가상 서버가
+   준비됐으므로 실장비 없이 진행할 수 있다.
+2. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 `envelope.py`·`parser.py` 를 실제
+   형태로 맞추고 기준선 대조 시험을 켠다.
+3. **M2.11** — SeedLink/FDSN 기반 데이터 연속성 검사. 센서 상태만으로는 파형 정지를 잡지 못한다.
