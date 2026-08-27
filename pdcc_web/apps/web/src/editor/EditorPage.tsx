@@ -17,6 +17,7 @@ import { MergeDialog } from "./MergeDialog";
 import { StationForm } from "./StationForm";
 import { StationWizard } from "./StationWizard";
 import { ChannelForm } from "./ChannelForm";
+import { CloneTable } from "./CloneTable";
 import { ValidationPanel } from "./ValidationPanel";
 import { VersionPanel } from "./VersionPanel";
 
@@ -29,6 +30,7 @@ export function EditorPage({
 }) {
   const [project, setProject] = useState<Project | null>(null);
   const [wizard, setWizard] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [selectedNslc, setSelectedNslc] = useState<string | null>(null);
@@ -258,6 +260,14 @@ export function EditorPage({
         </button>
         <button
           type="button"
+          id="clone-open-btn"
+          disabled={!selected || readOnly}
+          onClick={() => setCloneOpen(true)}
+        >
+          관측소 복제
+        </button>
+        <button
+          type="button"
           disabled={!project.can_undo || readOnly}
           onClick={() =>
             apiPost<{ project: Project }>(`/api/projects/${projectId}/undo`)
@@ -317,6 +327,21 @@ export function EditorPage({
             setProject(next);
             setSelectedPath(next.stations[0]?.station_path ?? null);
             setSelectedNslc(next.stations[0]?.channels[0]?.nslc ?? null);
+          }}
+        />
+      ) : null}
+      {cloneOpen && selected ? (
+        <CloneTable
+          project={project}
+          source={selected}
+          onCancel={() => setCloneOpen(false)}
+          onDone={(next) => {
+            setCloneOpen(false);
+            setProject(next);
+            setViewStations(null);
+            const created = next.stations.find((row) => row.code !== selected.code);
+            setSelectedPath(created?.station_path ?? next.stations[0]?.station_path ?? null);
+            setSelectedNslc(created?.channels[0]?.nslc ?? next.stations[0]?.channels[0]?.nslc ?? null);
           }}
         />
       ) : null}

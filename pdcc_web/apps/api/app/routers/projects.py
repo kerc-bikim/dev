@@ -10,7 +10,15 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..inventory.collab import get_draft
 from ..inventory.locks import LockError, acquire_lock
-from ..inventory.service import apply_nrl, create_project, import_project, original_asset, project_out, run_wizard
+from ..inventory.service import (
+    apply_nrl,
+    create_project,
+    import_project,
+    original_asset,
+    project_out,
+    run_clone,
+    run_wizard,
+)
 from ..inventory.validator import has_errors, validate_project, xml_filename
 from ..inventory.xmlbuild import InventoryError
 from ..models import Project, User
@@ -73,6 +81,25 @@ class ImportIn(BaseModel):
     xml_text: str = Field(min_length=1)
     name: str | None = Field(default=None, max_length=128)
     operator: str | None = Field(default=None, max_length=128)
+
+
+class CloneRowIn(BaseModel):
+    code: str | None = None
+    site_name: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    elevation: float | None = None
+    start: str | None = None
+    end: str | None = None
+    comment: str | None = None
+    serial: str | None = None
+
+
+class CloneIn(BaseModel):
+    source_station: str = Field(min_length=1, max_length=5)
+    source_start: str = Field(min_length=1, max_length=40)
+    rows: list[CloneRowIn] = Field(default_factory=list)
+    paste: str | None = None
 
 
 @router.get("")
@@ -203,6 +230,26 @@ def post_wizard(
     project = _owned(db, project_id, user)
     try:
         result = run_wizard(db, user, project, body.model_dump())
+        db.commit()
+    except InventoryError as exc:
+        db.rollback()
+        _http_inv(exc)
+    except LockError as exc:
+        db.rollback()
+        _http_lock(exc)
+    return result
+
+
+@router.post("/{project_id}/clone-stations")
+def post_clone_stations(
+    project_id: int,
+    body: CloneIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> dict:
+    project = _owned(db, project_id, user)
+    try:
+        result = run_clone(db, user, project, body.model_dump())
         db.commit()
     except InventoryError as exc:
         db.rollback()

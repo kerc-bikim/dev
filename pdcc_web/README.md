@@ -62,6 +62,10 @@ NRL은 API 기동 시 호출하지 않습니다. 업스트림이 죽거나 URL�
 |------|------|------|
 | `LOCK_TTL_SEC` | `300` | 관측소 epoch 잠금 TTL |
 
+## M3 복제
+
+편집기 **관측소 복제** 표에 엑셀 행을 붙여넣으면 원본 채널·응답을 복사해 관측소를 만듭니다. 코드가 비어 있는 행은 무시합니다. API는 `POST /api/projects/{id}/clone-stations` (`docs/adr/0013-station-clone.md`, S7).
+
 ## 테스트
 
 ```bash

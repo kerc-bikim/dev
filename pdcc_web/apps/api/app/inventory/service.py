@@ -16,8 +16,10 @@ from .xmlbuild import (
     NETWORK_CODE_RE,
     add_station,
     apply_response,
+    clone_stations,
     empty_inventory,
     list_inventory,
+    parse_clone_paste,
     station_path,
 )
 from .xmlutil import local
@@ -270,6 +272,62 @@ def run_wizard(
     )
     db.flush()
     return {"project": project_out(project, user, lock, db), "station_path": path, "lock": lock}
+
+
+def run_clone(
+    db: Session,
+    user: User,
+    project: Project,
+    body: dict[str, Any],
+) -> dict[str, Any]:
+    source_station = str(body.get("source_station") or "").strip().upper()
+    source_start = str(body.get("source_start") or "").strip()
+    if not source_station or not source_start:
+        raise InventoryError("원본 관측소와 시작 시각이 필요합니다", 400, "E_REQ")
+    rows = [row for row in (body.get("rows") or [])]
+    paste = str(body.get("paste") or "")
+    if paste and not any(str(row.get("code") or "").strip() for row in rows):
+        rows = parse_clone_paste(paste)
+    before = project.xml_text
+    xml, created, skipped = clone_stations(
+        project.xml_text,
+        network=project.network_code,
+        source_station=source_station,
+        source_start=source_start,
+        rows=rows,
+    )
+    if not created:
+        raise InventoryError("코드가 있는 행이 없습니다", 400, "E_REQ")
+    project.xml_text = xml
+    project.updated_at = utcnow()
+    codes = [row["code"] for row in created]
+    lock = None
+    for row in created:
+        path = station_path(project.network_code, row["code"], row["start"], project.id)
+        lock = acquire_lock(db, project_id=project.id, station_path=path, user=user)
+    record_edit(
+        db,
+        project,
+        user,
+        before=before,
+        after=xml,
+        action="clone",
+        summary=f"관측소 복제 {', '.join(codes)}",
+    )
+    write_audit(
+        db,
+        project_id=project.id,
+        actor=user.username,
+        action="clone",
+        target=f"{project.network_code}/{source_station}",
+        summary=f"관측소 복제 {', '.join(codes)} (빈 코드 {sum(1 for row in skipped if row.get('reason') == 'empty_code')}개 무시)",
+    )
+    db.flush()
+    return {
+        "project": project_out(project, user, lock, db),
+        "created": created,
+        "skipped": skipped,
+    }
 
 
 def apply_nrl(
