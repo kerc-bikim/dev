@@ -17,6 +17,9 @@ services:
     volumes:
       - earthworm-data:/app/backend/data
       - earthworm-home:/app/.ew_home
+    env_file:
+      - path: .env
+        required: false
     ports:
       - "8081:80"
     healthcheck:

@@ -50,5 +50,5 @@ cd frontend && npm run build
 
 1. **초기 설정 마법사** — `EW_HOME` / `EW_RUN_DIR`(params, log, data), Inst ID, 링 이름·키·크기·순서. 완료 전 제어 API 는 409.
 2. **이후 설정** — 우선 모듈 팔레트·구성 보드, 작업자·이력, 모듈 토글·복제, 통합 변수, 파일 편집, 시작(`startstop`)/종료(`pau`)/일시중지(`stopmodule` pid)/재개(`restart` pid), 대시보드, 로그, sniffwave/sniffring. 복제 다발 후보는 `q3302ew` · `slink2ew` · `export_scnl` · `export_generic` · `wave_serverV`.
-3. 첫 startstop 링은 `STATUS_RING`. `FLAG_RING` 은 startstop 목록에 넣지 않습니다.
+3. 첫 startstop 링은 `STATUS_RING`. `FLAG_RING` 은 startstop 목록에 넣지 않습니다. 마법사 완료 후 **구성 보드**가 열립니다. 기존 토글 목록은 **모듈 토글**입니다.
 4. 목 미리보기(백엔드 없음): `frontend/preview/` 에서 `python3 -m http.server 8765`

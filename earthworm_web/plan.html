@@ -1990,7 +1990,7 @@ sniffring [-n] &lt;ringname&gt; &lt;instid&gt; &lt;mod&gt; &lt;type&gt; verbose
 <p>우선 모듈 화이트리스트, 구성 보드 UX, 인스턴스 스키마, 모노레포 배포 규약은 다음 문서에 이어진다.</p>
 <p>이 문서는 <a href="plan.md">plan.md</a> 를 보완한다. Earthworm <strong>v8.0b17</strong> 웹 콘솔이 <strong>실제로 먼저 돌릴 모듈</strong>, <strong>한 창에서 인스턴스를 등록·채우고 일괄 적용하는 방법</strong>, <strong>배포 가능한 모노레포 형태</strong>를 확정한다.</p>
 <p>대상 바이너리·매뉴얼·제어 규칙(<code>startstop</code> / <code>pau</code> / <code>stopmodule</code> pid / <code>restart</code> pid, <code>pidpau</code> 웹 금지, 첫 링 <code>STATUS_RING</code>)은 본 계획서와 같다. 여기서는 <strong>무엇을 팔레트에 둘지</strong>와 <strong>여러 대를 어떻게 한 번에 운영할지</strong>만 더 좁힌다.</p>
-<p>상태: 계획. 현재 앱은 <code>bin</code> 전체 스캔 + 토글 + prompt 복제다. 이 문서의 구성 보드·화이트리스트·일괄 적용은 <strong>이후 구현 단계</strong>다.</p>
+<p>상태: 2b·3·4단계는 코드에 있다. 이 문서의 구성 보드·화이트리스트·일괄 적용은 <strong>구현됨</strong>. Docker 배포는 <code>earthworm_web/compose.yaml</code> 만 쓴다.</p>
 <hr />
 <h2 id="18">18. 왜 우선 목록이 필요한가</h2>
 <p>Earthworm <code>bin</code> 에는 픽커·로케이터·hypoinverse·tankplayer 등 수십 개가 있다. 관측망 수집·중계·아카이브 콘솔은 그 전부를 첫 화면에 펼치면 안 된다.</p>
@@ -3090,37 +3090,37 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process &quot;q3302ew_st
 <thead>
 <tr>
 <th>위치</th>
-<th>갭</th>
+<th>상태</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>module_catalog.py</code></td>
-<td>화이트리스트·role·fleet 없음</td>
+<td><code>module_fields.yaml</code> + <code>/api/modules/schema</code></td>
+<td>있음. <code>priority</code> / <code>role</code> / <code>fleet</code></td>
+</tr>
+<tr>
+<td>구성 보드 <code>Compose.tsx</code> + <code>/api/compose*</code></td>
+<td>있음. 팔레트·검토·적용·시작</td>
 </tr>
 <tr>
 <td><code>Modules.tsx</code></td>
-<td>토글 + prompt 복제</td>
+<td>우회 토글·prompt 복제. 기본 화면은 보드</td>
 </tr>
 <tr>
 <td><code>Variables.tsx</code></td>
-<td>공통키만, I/O 필드 없음</td>
+<td>사이트 공통은 보드. 이 페이지는 잔여</td>
 </tr>
 <tr>
-<td><code>seed.py</code> <code>CONTROL_BINS</code></td>
-<td>I/O 12개·getmenu 없음</td>
+<td>시드 I/O 12</td>
+<td>있음</td>
 </tr>
 <tr>
-<td><code>module_fields.yaml</code></td>
-<td>없음</td>
+<td><code>earthworm_web/compose.yaml</code></td>
+<td>있음. 다른 앱 디렉터리는 안 옮김</td>
 </tr>
 <tr>
-<td><code>/api/compose*</code></td>
-<td>없음</td>
-</tr>
-<tr>
-<td><code>deploy/</code></td>
-<td>없음</td>
+<td>기타 bin 등록 API</td>
+<td>이후. 파일 편집 우회</td>
 </tr>
 </tbody>
 </table>
@@ -3176,19 +3176,19 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process &quot;q3302ew_st
 <tr>
 <td><strong>2b</strong></td>
 <td><strong>작업자·이력</strong></td>
-<td>없음</td>
+<td>있음</td>
 <td><strong>MVP에 포함</strong>. <a href="plan_ops.md">plan_ops.md</a></td>
 </tr>
 <tr>
 <td>3</td>
 <td>우선 카탈로그·스키마</td>
-<td>없음</td>
+<td>있음</td>
 <td><strong>MVP에 포함</strong></td>
 </tr>
 <tr>
 <td>4</td>
 <td>구성 보드·일괄 적용</td>
-<td>없음</td>
+<td>있음</td>
 <td><strong>MVP에 포함</strong>. apply에 작업자 필수</td>
 </tr>
 <tr>
@@ -3200,8 +3200,8 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process &quot;q3302ew_st
 <tr>
 <td>6</td>
 <td>다듬기·배포</td>
-<td>없음</td>
-<td>SSO·systemd. 이력 자체는 6에 미루지 않음</td>
+<td><code>earthworm_web/compose.yaml</code></td>
+<td>이 앱만 Docker. SSO·WEB_DOC는 이후</td>
 </tr>
 </tbody>
 </table>

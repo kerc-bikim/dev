@@ -4,7 +4,7 @@
 
 대상 바이너리·매뉴얼·제어 규칙(`startstop` / `pau` / `stopmodule` pid / `restart` pid, `pidpau` 웹 금지, 첫 링 `STATUS_RING`)은 본 계획서와 같다. 여기서는 **무엇을 팔레트에 둘지**와 **여러 대를 어떻게 한 번에 운영할지**만 더 좁힌다.
 
-상태: 계획. 현재 앱은 `bin` 전체 스캔 + 토글 + prompt 복제다. 이 문서의 구성 보드·화이트리스트·일괄 적용은 **이후 구현 단계**다.
+상태: 2b·3·4단계는 코드에 있다. 이 문서의 구성 보드·화이트리스트·일괄 적용은 **구현됨**. Docker 배포는 `earthworm_web/compose.yaml` 만 쓴다.
 
 ---
 
@@ -567,14 +567,14 @@ UI nginx 는 API 와 같은 네트워크 네임스페이스에서 `/api`·`/ws` 
 
 ## 29. 현재 코드 갭 (구현 착수 시 체크)
 
-| 위치 | 갭 |
-|------|-----|
-| `module_catalog.py` | 화이트리스트·role·fleet 없음 |
-| `Modules.tsx` | 토글 + prompt 복제 |
-| `Variables.tsx` | 공통키만, I/O 필드 없음 |
-| `seed.py` `CONTROL_BINS` | I/O 12개·getmenu 없음 |
-| `module_fields.yaml` | 없음 |
-| `/api/compose*` | 없음 |
-| `deploy/` | 없음 |
+| 위치 | 상태 |
+|------|------|
+| `module_fields.yaml` + `/api/modules/schema` | 있음. `priority` / `role` / `fleet` |
+| 구성 보드 `Compose.tsx` + `/api/compose*` | 있음. 팔레트·검토·적용·시작 |
+| `Modules.tsx` | 우회 토글·prompt 복제. 기본 화면은 보드 |
+| `Variables.tsx` | 사이트 공통은 보드. 이 페이지는 잔여 |
+| 시드 I/O 12 | 있음 |
+| `earthworm_web/compose.yaml` | 있음. 다른 앱 디렉터리는 안 옮김 |
+| 기타 bin 등록 API | 이후. 파일 편집 우회 |
 
 이 파일이 닫히는 조건: 3–4단계가 머지되어 우선 12 Process 를 한 창에서 여러 인스턴스로 적용하고, 시드만으로 pytest 가 검증·apply 를 통과하는 것. 그 시점이 **MVP** 다 ([30절](plan_mvp.md)).

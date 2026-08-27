@@ -190,7 +190,7 @@ export function ComposePage({
 
   return (
     <>
-      <h2>모듈 설정</h2>
+      <h2>구성 보드</h2>
       <p className="lead">
         우선 I/O 모듈을 한 창에서 채운 뒤 검토 → 적용 → 시작합니다. 적용과 시작은 분리되어 있습니다.
         {running ? " startstop 이 살아 있으면 적용은 파일만 기록합니다." : ""}
