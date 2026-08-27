@@ -39,8 +39,8 @@ def orientation(code: str) -> tuple[float, float]:
     return 0.0, 0.0
 
 
-def station_path(network: str, station: str, start: str) -> str:
-    return f"sta:{network}.{station}#{start}"
+def station_path(network: str, station: str, start: str, project_id: int) -> str:
+    return f"sta:{project_id}:{network}.{station}#{start}"
 
 
 def empty_inventory(network: str, *, operator: str | None = None) -> str:
@@ -215,7 +215,7 @@ def find_channel(
     raise InventoryError("채널을 찾을 수 없습니다", 404)
 
 
-def list_inventory(xml: str, network: str) -> list[dict]:
+def list_inventory(xml: str, network: str, project_id: int) -> list[dict]:
     stations: list[dict] = []
     for sta in iter_stations(xml, network):
         channels = []
@@ -244,7 +244,9 @@ def list_inventory(xml: str, network: str) -> list[dict]:
                 "latitude": _float(child_text(sta, "Latitude")),
                 "longitude": _float(child_text(sta, "Longitude")),
                 "elevation": _float(child_text(sta, "Elevation")),
-                "station_path": station_path(network, sta.get("code") or "", sta.get("startDate") or ""),
+                "station_path": station_path(
+                    network, sta.get("code") or "", sta.get("startDate") or "", project_id
+                ),
                 "channels": channels,
             }
         )

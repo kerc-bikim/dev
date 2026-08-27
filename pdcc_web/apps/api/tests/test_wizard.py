@@ -155,3 +155,30 @@ def test_second_user_is_read_only_while_locked(stub, redis_client):
     )
     assert after.status_code == 200
     assert after.json()["username"] == "stub2"
+
+
+def test_locks_are_per_project(stub):
+    later = dict(WIZARD)
+    later["nrl_later"] = True
+    later["sensor_instconfig"] = None
+    later["datalogger_instconfig"] = None
+    p1 = _project(stub)
+    first = stub.post(f"/api/projects/{p1['id']}/wizard", json=later)
+    assert first.status_code == 200
+    _ensure_stub2()
+    _login(stub, "stub2", "stub2")
+    p2 = _project(stub)
+    second = stub.post(f"/api/projects/{p2['id']}/wizard", json=later)
+    assert second.status_code == 200, second.text
+    assert first.json()["station_path"] != second.json()["station_path"]
+    blocked = stub.post(
+        f"/api/projects/{p1['id']}/lock",
+        params={"station_path": first.json()["station_path"]},
+    )
+    assert blocked.status_code == 409
+    own = stub.post(
+        f"/api/projects/{p2['id']}/lock",
+        params={"station_path": second.json()["station_path"]},
+    )
+    assert own.status_code == 200
+    assert own.json()["username"] == "stub2"

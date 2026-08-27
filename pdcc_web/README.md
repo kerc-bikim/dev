@@ -55,7 +55,7 @@ NRL은 API 기동 시 호출하지 않습니다.
 
 ## M2 위저드·잠금
 
-로그인 후 프로젝트를 만들고 **관측소 위저드**로 TEST1 같은 3성분 채널을 만듭니다. NRL 응답은 원문 StationXML에 붙입니다. 같은 관측소 epoch는 한 사람만 고칩니다 (5분 잠금). 자세한 내용: [`docs/adr/0004-wizard-lock.md`](docs/adr/0004-wizard-lock.md).
+로그인 후 프로젝트를 만들고 **관측소 위저드**로 TEST1 같은 3성분 채널을 만듭니다. NRL 응답은 원문 StationXML에 붙입니다. 같은 프로젝트의 관측소 epoch는 한 사람만 고칩니다 (5분 잠금). 자세한 내용: [`docs/adr/0004-wizard-lock.md`](docs/adr/0004-wizard-lock.md).
 
 | 이름 | 기본 | 설명 |
 |------|------|------|

@@ -36,14 +36,14 @@ def test_add_station_three_components():
         channels=["BHZ", "BHN", "BHE"],
         sample_rate=20,
     )
-    stations = list_inventory(xml, "YZ")
+    stations = list_inventory(xml, "YZ", 1)
     assert len(stations) == 1
     chans = {c["code"]: c for c in stations[0]["channels"]}
     assert chans["BHZ"]["azimuth"] == 0
     assert chans["BHZ"]["dip"] == -90
     assert chans["BHE"]["azimuth"] == 90
     assert chans["BHN"]["dip"] == 0
-    assert stations[0]["station_path"] == station_path("YZ", "TEST1", "2009-04-10T00:00:00")
+    assert stations[0]["station_path"] == station_path("YZ", "TEST1", "2009-04-10T00:00:00", 1)
 
 
 def test_rejects_bad_station_and_overlap():
@@ -122,7 +122,7 @@ def test_apply_keeps_azimuth():
         sample_rate=20,
         replace_existing=True,
     )
-    stations = list_inventory(xml, "YZ")
+    stations = list_inventory(xml, "YZ", 1)
     chans = {c["code"]: c for c in stations[0]["channels"]}
     assert chans["BHE"]["azimuth"] == 90
     assert chans["BHE"]["has_response"] is True

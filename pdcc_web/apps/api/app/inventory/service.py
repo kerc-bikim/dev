@@ -48,7 +48,9 @@ def _with_mine(lock: dict, user: User) -> dict:
 
 
 def project_out(project: Project, user: User, lock: dict | None = None) -> dict[str, Any]:
-    stations = list_inventory(project.xml_text, project.network_code) if project.xml_text else []
+    stations = (
+        list_inventory(project.xml_text, project.network_code, project.id) if project.xml_text else []
+    )
     top_lock = _with_mine(lock, user) if lock is not None else None
     for sta in stations:
         snap = lock_snapshot(sta["station_path"])
@@ -146,6 +148,7 @@ def run_wizard(
         sample_rate = sample_rate or sample_rate_from_instconfig(cascade) or 20.0
     sample_rate = sample_rate or 20.0
 
+    path = station_path(project.network_code, station, start, project.id)
     xml = add_station(
         project.xml_text,
         network=project.network_code,
@@ -168,7 +171,6 @@ def run_wizard(
     )
     project.xml_text = xml
     project.updated_at = utcnow()
-    path = station_path(project.network_code, station, start)
     lock = acquire_lock(db, project_id=project.id, station_path=path, user=user)
     write_audit(
         db,
@@ -192,7 +194,7 @@ def apply_nrl(
     start = str(body.get("start_time") or "").strip()
     if not station or not start:
         raise InventoryError("관측소와 시작 시각이 필요합니다", 400, "E_REQ")
-    path = station_path(project.network_code, station, start)
+    path = station_path(project.network_code, station, start, project.id)
     require_lock(path, user)
     sensor = (body.get("sensor_instconfig") or "").strip() or None
     datalogger = (body.get("datalogger_instconfig") or "").strip() or None
