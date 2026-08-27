@@ -151,3 +151,33 @@ th { color: var(--muted); font-weight: 600; }
 .hb-off { color: var(--muted); }
 .kicker { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 .error { color: var(--danger); }
+
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.login-card { width: min(420px, 92vw); }
+.login-card .grid, .login-card > div { margin-bottom: 10px; }
+
+.compose-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.palette button { display: block; width: 100%; text-align: left; margin-bottom: 4px; }
+.instance-card { padding-bottom: 10px; }
+.span-2 { grid-column: 1 / -1; }
+.apply-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  position: sticky;
+  bottom: 8px;
+}
+label.row input[type="checkbox"] { width: auto; }
