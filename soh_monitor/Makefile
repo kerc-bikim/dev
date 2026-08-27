@@ -51,6 +51,18 @@ revision: ## 모델 변경으로부터 마이그레이션 생성 (m="설명")
 contracts: ## 카탈로그에서 백엔드 상수·프론트 타입 생성
 	$(PY) scripts/gen_metrics.py
 
+.PHONY: fixtures
+fixtures: ## 가상 서버 응답을 Fixture 로 다시 떠 놓기
+	$(PY) scripts/capture_fixtures.py
+
+.PHONY: mock
+mock: ## 가상 Centaur CTR 서버 실행 (http://127.0.0.1:8090)
+	PYTHONPATH=. $(PY) -m mock.centaur_mock
+
+.PHONY: mock-load
+mock-load: ## 부하 시험용 가상 기록계 100대 (20% 느린 장비)
+	PYTHONPATH=. MOCK_FLEET_SIZE=100 MOCK_SLOW_RATIO=0.2 MOCK_PORT=8091 $(PY) -m mock.centaur_mock
+
 .PHONY: contracts-check
 contracts-check: ## 생성물이 카탈로그와 일치하는지 검사 (CI 게이트)
 	$(PY) scripts/gen_metrics.py --check
@@ -86,6 +98,10 @@ dev: ## 개발 스택 기동 (Docker)
 .PHONY: dev-mock
 dev-mock: ## 개발 스택 + 가상 기록계 기동
 	docker compose -f $(COMPOSE_DEV) --profile mock up -d --build
+
+.PHONY: dev-load
+dev-load: ## 개발 스택 + 부하 시험용 가상 기록계 100대
+	docker compose -f $(COMPOSE_DEV) --profile load up -d --build
 
 .PHONY: dev-logs
 dev-logs: ## 개발 스택 로그

@@ -70,4 +70,24 @@ def test_capabilities_응답(client):
 
 def test_adapters_응답은_등록된_Adapter만_보여준다(client):
     body = client.get("/api/v1/adapters").json()
-    assert body["adapters"] == []
+    keys = {adapter["adapterKey"] for adapter in body["adapters"]}
+    assert keys == {"nanometrics.centaur.ctr"}
+
+
+def test_adapters_응답에_등록_화면이_필요한_정보가_들어_있다(client):
+    """등록 화면은 이 응답만으로 제조사별 입력 폼을 만든다."""
+    adapter = client.get("/api/v1/adapters").json()["adapters"][0]
+    assert adapter["manufacturer"] == "Nanometrics"
+    assert adapter["selectable"] is True
+    schema = adapter["configurationSchema"]
+    assert "hostname" in schema["properties"]
+    assert schema["required"] == ["hostname"]
+    assert schema["secretFields"] == ["password"]
+
+
+def test_adapters_응답에_비밀값이_들어_있지_않다(client):
+    """Manifest 는 비밀 필드의 '이름' 만 알려 준다. 값은 다루지 않는다."""
+    body = client.get("/api/v1/adapters").text
+    assert "secretFields" in body
+    for leaked in ("password=", "credentialReference", "device_credential_key"):
+        assert leaked not in body

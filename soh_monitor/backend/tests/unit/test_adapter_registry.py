@@ -155,10 +155,15 @@ class TestRegistry:
                 registry.register(최소Adapter(copy.deepcopy(VALID_MANIFEST)), manifest_path=path)
 
 
-def test_기본_Registry는_아직_비어_있다():
-    """M2 에서 Centaur CTR 이 등록된다. 지금 비어 있다는 사실이 화면에 그대로 드러난다."""
+def test_기본_Registry는_Manifest_파일_원본으로_검증한다():
+    """배포되는 실체가 파일이므로 파일을 검증한다.
+
+    계약과 어긋난 Adapter 가 등록되면 여기서 기동이 실패한다. 조용히 UNKNOWN 을 쌓는
+    것보다 뜨지 않는 편이 낫다.
+    """
     from app.adapters.registry import get_registry, reset_registry
 
     reset_registry()
-    assert len(get_registry()) == 0
+    registry = get_registry()
+    assert registry.keys() == ("nanometrics.centaur.ctr",)
     reset_registry()
