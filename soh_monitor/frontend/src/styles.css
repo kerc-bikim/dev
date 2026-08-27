@@ -1,0 +1,249 @@
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --ink: #17212b;
+  --muted: #5b6773;
+  --line: #d5dce3;
+  --accent: #0d5c63;
+  --accent-soft: #e2eeef;
+  --ok: #1f7a3d;
+  --warning: #a86a00;
+  --critical: #b3261e;
+  --unknown: #5b6773;
+  --disabled: #8a949e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  padding: 1.25rem 0;
+}
+
+.brand {
+  padding: 0 1.25rem 1rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 0.75rem;
+}
+
+.brand strong {
+  display: block;
+  font-size: 1.02rem;
+}
+
+.brand span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.nav a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.25rem;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.94rem;
+}
+
+.nav a:hover {
+  background: var(--accent-soft);
+}
+
+.nav a.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  border-left: 3px solid var(--accent);
+  padding-left: calc(1.25rem - 3px);
+}
+
+.nav .pending {
+  font-size: 0.72rem;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+}
+
+.content {
+  padding: 1.75rem 2rem 3rem;
+  max-width: 1180px;
+}
+
+.page-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.4rem;
+}
+
+.page-subtitle {
+  margin: 0 0 1.5rem;
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  color: var(--accent);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.9rem;
+}
+
+.stat {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+}
+
+.stat .label {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.stat .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: #eef3f5;
+  font-weight: 600;
+}
+
+code {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 0.84rem;
+  background: #eef2f4;
+  padding: 0.05em 0.35em;
+  border-radius: 4px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.74rem;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.badge.required {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.severity-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.severity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+}
+
+.severity::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.severity.ok {
+  color: var(--ok);
+}
+.severity.warning {
+  color: var(--warning);
+}
+.severity.critical {
+  color: var(--critical);
+}
+.severity.unknown {
+  color: var(--unknown);
+}
+.severity.disabled,
+.severity.maintenance {
+  color: var(--disabled);
+}
+
+.notice {
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 0.7rem 0.9rem;
+  border-radius: 0 8px 8px 0;
+  font-size: 0.92rem;
+}
+
+.notice.warn {
+  border-left-color: var(--warning);
+  background: #fbf3e3;
+}
+
+.filter-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 0.9rem;
+  flex-wrap: wrap;
+}
+
+select,
+input[type="search"] {
+  font: inherit;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
