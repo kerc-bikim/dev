@@ -156,7 +156,7 @@ def test_inspect_upload_converts_dataless():
     assert "<FDSNStationXML" in info["xml_text"]
 
 
-def test_inspect_upload_rejects_miniseed_and_zip_and_resp():
+def test_inspect_upload_rejects_miniseed_and_zip():
     miniseed = b"000001D " + b"\x00" * (4096 - 8)
     try:
         inspect_upload(miniseed, "wave.mseed")
@@ -168,11 +168,6 @@ def test_inspect_upload_rejects_miniseed_and_zip_and_resp():
         assert False
     except InventoryError as exc:
         assert "zip" in str(exc)
-    try:
-        inspect_upload(b"#\nB050F03     2\n", "chan.resp")
-        assert False
-    except InventoryError as exc:
-        assert "RESP" in str(exc)
 
 
 def test_import_api_stores_original(client):

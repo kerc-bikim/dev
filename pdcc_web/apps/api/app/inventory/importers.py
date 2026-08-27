@@ -1,4 +1,4 @@
-"""StationXML·dataless SEED 가져오기. 원문은 FileAsset 에 보관하고 편집 XML 과 덮어쓰지 않습니다."""
+"""StationXML·dataless SEED·RESP 가져오기. 원문은 FileAsset 에 보관하고 편집 XML 과 덮어쓰지 않습니다."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..models import FileAsset
+from .resp_convert import convert_resp_to_xml
 from .seed_convert import (
     SEED_MEDIA,
     convert_dataless_to_xml,
@@ -71,15 +72,24 @@ def inspect_upload(raw: bytes, filename: str = "") -> dict:
     if len(raw) > settings.max_upload_bytes:
         raise InventoryError("파일이 너무 큽니다", 400, "E_IMPORT")
     if raw[:2] == b"PK":
-        raise InventoryError("zip은 아직 열 수 없습니다. StationXML 또는 dataless SEED를 선택하세요", 400, "E_IMPORT")
+        raise InventoryError("zip은 아직 열 수 없습니다. StationXML, dataless SEED 또는 RESP를 선택하세요", 400, "E_IMPORT")
     stripped = raw.lstrip(b"\xef\xbb\xbf \t\r\n")
     name = (filename or "").lower()
     seed_name = name.endswith(".seed") or name.endswith(".dataless")
+    resp_name = name.endswith(".resp")
     if stripped.startswith(b"<"):
         info = inspect_stationxml(raw)
         return info
-    if looks_like_resp(raw) and not looks_like_seed(raw) and not seed_name:
-        raise InventoryError("RESP 가져오기는 아직 없습니다. dataless SEED 또는 StationXML을 선택하세요", 400, "E_IMPORT")
+    if looks_like_resp(raw) or resp_name:
+        if looks_like_seed(raw) and seed_name:
+            pass
+        else:
+            xml, notes = convert_resp_to_xml(raw)
+            info = inspect_stationxml(xml.encode("utf-8"))
+            info["kind"] = "resp"
+            info["media_type"] = "text/x-seed-resp"
+            info["warnings"] = notes
+            return info
     if looks_like_seed(raw) or seed_name:
         xml, notes = convert_dataless_to_xml(raw)
         info = inspect_stationxml(xml.encode("utf-8"))
@@ -88,7 +98,7 @@ def inspect_upload(raw: bytes, filename: str = "") -> dict:
         info["warnings"] = notes
         return info
     raise InventoryError(
-        "StationXML이 아닙니다. dataless SEED 또는 StationXML을 선택하세요",
+        "StationXML이 아닙니다. dataless SEED, RESP 또는 StationXML을 선택하세요",
         400,
         "E_IMPORT",
     )
@@ -101,6 +111,8 @@ def original_kind_of(asset: FileAsset | None) -> str | None:
     name = (asset.filename or "").lower()
     if "seed" in media or name.endswith(".seed") or name.endswith(".dataless"):
         return "dataless"
+    if "resp" in media or name.endswith(".resp") or name.startswith("resp."):
+        return "resp"
     return "stationxml"
 
 
