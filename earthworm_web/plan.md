@@ -13,7 +13,7 @@ Earthworm **v8.0b17** 기준으로, 이미 컴파일된 Rocky Linux 9 바이너�
 
 상태: 계획만. 구현 체크리스트는 [구현 단계](#12-구현-단계)에 둔다. 웹 흐름은 **초기 설정**(디렉터리·링)과 **이후 설정**(모듈·운영)으로 나눈다. 근거는 [17절](#17-소스매뉴얼-분석-근거).
 
-우선 운영 모듈·한 창 일괄 구성·모노레포 배포는 [plan_priority.md](plan_priority.md) ([18절 이하](#18)). 단계별 세부·MVP는 [plan_mvp.md](plan_mvp.md) ([30절](#30-mvp)).
+우선 운영 모듈·한 창 일괄 구성·모노레포 배포는 [plan_priority.md](plan_priority.md) ([18절 이하](#18)). 단계별 세부·MVP는 [plan_mvp.md](plan_mvp.md) ([30절](#30-mvp)). 작업자·이력은 [plan_ops.md](plan_ops.md) ([41절](#41_1)).
 
 ---
 
@@ -762,6 +762,14 @@ Earthworm 을 실제로 기동하지 않고도 1단계는 마법사·파일 파�
 - 기동 중 토글 ↔ stopmodule / reconfigure
 - KillDelay 폴링
 
+### 2b단계 — 작업자·이력 (MVP)
+
+[plan_ops.md](plan_ops.md). 로그인·3역할·변경 이력. 구성 보드 적용보다 먼저.
+
+- `control.sqlite` 작업자·세션·audit_event
+- 최초 admin 부트스트랩, 사람 UI는 세션 (공유 키는 service만)
+- 네비 작업자(admin) · 이력. 줄 삭제 없음
+
 ### 3단계 — 우선 카탈로그와 스키마 (P1)
 
 우선 목록·스키마·시드는 [plan_priority.md 27절](plan_priority.md).
@@ -784,7 +792,7 @@ Earthworm 을 실제로 기동하지 않고도 1단계는 마법사·파일 파�
 
 ### 6단계 — 다듬기와 모노레포 배포 (P2)
 
-- API 키, 백업, 감사 로그, NTP·디스크 위젯
+- API 키 서비스 계정, 백업, NTP·디스크 위젯
 - WEB_DOC 정적 제공 (`/docs/ew/`)
 - `deploy/earthworm-web.service`, 태그 `earthworm-web-v0.x`. 디렉터리 rename 없음
 - tankplayer 는 기타 등록

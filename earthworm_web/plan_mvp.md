@@ -12,18 +12,18 @@
 
 ## 30. MVP 한 줄
 
-**MVP**는 운영자가 SSH 없이, 우선 I/O 모듈을 **한 창에서 여러 인스턴스로 등록·입력·검증·적용**한 뒤, 같은 `startstop`으로 **함께 기동·정지·일시중지**하고, 대시보드·로그·스니프로 확인하는 최소 제품이다.
+**MVP**는 작업자가 로그인한 뒤, 우선 I/O 모듈을 **한 창에서 여러 인스턴스로 등록·입력·검증·적용**하고, 같은 `startstop`으로 **함께 기동·정지**하며, **누가 무엇을 했는지 이력**으로 확인하는 최소 제품이다.
 
-MVP가 **새로 닫는 갭**은 3단계(화이트리스트·스키마·시드)와 4단계(구성 보드·일괄 적용)다. 1·2단계와 로그·스니프는 이미 코드에 있으므로 **재구현하지 않고 전제로 쓴다.**
+MVP가 **새로 닫는 갭**은 **2b 작업자·이력**, 3단계(화이트리스트·스키마·시드), 4단계(구성 보드·일괄 적용)다. 1·2단계와 로그·스니프는 이미 코드에 있으므로 **재구현하지 않고 전제로 쓴다.** 공유 `EW_WEB_API_KEY`만으로는 작업자를 구분할 수 없으므로, 4단계 적용보다 **2b를 먼저** 머지한다.
 
 MVP가 **성공한 장면** (시드 홈만으로도, 실제 `EW_HOME`이 있으면 더 좋음):
 
-1. 초기 설정 마법사를 끝낸다.
-2. 구성 보드에서 `q3302ew` 두 장, `slink2ew` 한 장, `export_scnl` 한 장, `wave_serverV` 한 장을 추가한다.
-3. 1차 필드만 채운다 (IP·시리얼·UDP, SeedLink 호스트, 리슨 포트·`Send_scnl`, Tank 경로).
-4. 검토가 포트/이름 충돌을 잡고, 고친 뒤 적용이 `.d` · Module ID · 복사 bin · Process 줄을 만든다.
-5. 시작을 누르면 대시보드에 인스턴스 이름이 뜬다. 한 행 일시중지(`stopmodule`), 전체 종료(`pau`)가 동작한다.
-6. 로그와 sniffwave/sniffring은 기존 화면으로 본다.
+1. 최초 관리자를 만들고 로그인한다.
+2. 운영자 계정을 하나 등록한다.
+3. 운영자로 구성 보드에서 `q3302ew` 두 장 등을 적용하고 시작한다.
+4. 이력에 그 운영자 이름과 `compose_apply` / `control_start`가 남는다.
+5. 조회자 계정은 시작 버튼이 막히고, 이 거절도 이력에 남는다.
+6. 모듈 로그·스니프는 기존 화면으로 본다 (이력 화면과 별개).
 
 이 장면 밖(기타 `bin` 등록, `getmenu`, systemd 패키지, WEB_DOC, NTP 위젯)은 **MVP 이후**다. 파일 편집 화면이 우회 경로로 남는다.
 
@@ -34,14 +34,15 @@ MVP가 **성공한 장면** (시드 홈만으로도, 실제 `EW_HOME`이 있으�
 | 단계 | 이름 | 코드 상태 | MVP |
 |------|------|-----------|-----|
 | 0 | 기반(이미 있음) | 마법사·제어·대시보드·파일·로그·스니프·clone API | **전제**. 손대지 않거나 보드가 호출만 함 |
-| 1 | 초기 설정 마법사 | 있음 | 전제. 회귀만 |
-| 2 | 제어와 대시보드 | 있음 | 전제. 회귀만 |
+| 1 | 초기 설정 마법사 | 있음 | 전제. 2b와 함께 최초 admin 칸 |
+| 2 | 제어와 대시보드 | 있음 | 전제. 2b 이후 actor 필수 |
+| **2b** | **작업자·이력** | 없음 | **MVP에 포함**. [plan_ops.md](plan_ops.md) |
 | 3 | 우선 카탈로그·스키마 | 없음 | **MVP에 포함** |
-| 4 | 구성 보드·일괄 적용 | 없음 | **MVP에 포함** (1차 스키마만) |
+| 4 | 구성 보드·일괄 적용 | 없음 | **MVP에 포함**. apply에 작업자 필수 |
 | 5 | 로그·링 모니터 | 대부분 있음. `getmenu` 없음 | 기존 화면은 MVP에 포함. `getmenu`는 이후 |
-| 6 | 다듬기·배포 | 없음 | MVP 밖. README 배포 문장만 최소 |
+| 6 | 다듬기·배포 | 없음 | SSO·systemd. 이력 자체는 6에 미루지 않음 |
 
-구현 순서는 **3 → 4**. 3이 없으면 보드가 필드를 그릴 수 없다. 4의 적용이 없으면 한 창 일괄 운영이 성립하지 않는다.
+구현 순서는 **2b → 3 → 4** (3과 2b는 병렬 가능, **4는 2b 이후**). 작업자 없는 적용은 이력이 아니다.
 
 ---
 
@@ -98,6 +99,37 @@ MVP가 **성공한 장면** (시드 홈만으로도, 실제 `EW_HOME`이 있으�
 
 - 시드 스텁에서 start → status 파싱 → pau
 - 한 모듈 pause/resume이 pid 인자인지 argv 테스트로 확인
+
+---
+
+## 33b. 2b단계 — 작업자·이력 (MVP)
+
+상세 모델·API는 [plan_ops.md](plan_ops.md). 요약만 둔다.
+
+### 목표
+
+사람마다 로그인하고, 변경 API마다 작업자 이름을 이력에 남긴다. 관리자는 작업자를 등록·정지한다. 모듈 `*_YYYYMMDD.log`와 이력 화면은 분리한다.
+
+### 넣을 것
+
+- SQLite `control.sqlite`: operators, sessions, audit_event
+- 역할 `admin` / `operator` / `viewer`
+- 최초 admin 부트스트랩 (마법사 마지막 칸)
+- 로그인 세션 쿠키. WS는 짧은 ticket
+- 네비 **작업자**(admin) · **이력**(전원 조회)
+- 변경 성공/실패/403을 append-only로 기록. 비밀번호·AuthCode 마스킹
+
+### 빼는 것
+
+SSO, 리눅스 계정 동기화, 이력 삭제 UI, 사람 UI의 공유 API 키
+
+### 수락
+
+viewer의 start는 403+이력 `denied`. operator pau는 이력에 표시 이름. 마지막 admin 정지 거부.
+
+### 순서
+
+**4단계 apply 전에 머지.** actor 없는 적용은 거부한다.
 
 ---
 
@@ -173,7 +205,8 @@ MVP가 **성공한 장면** (시드 홈만으로도, 실제 `EW_HOME`이 있으�
 | 1차 필드 | 22절 표. 고급은 원문 `.d` |
 | 검증 | `dup_process`, `dup_module_id`, `dup_listen`, `dup_tank`, `missing_ring`, `missing_bin`, `max_child`, `cmd_len`, `bad_name`, `empty_required`, `ephemeral_port`(경고) |
 | 롤백 | `backend/data/backups/compose-<ts>/` |
-| AuthCode | password 입력, 서버 로그 마스킹 |
+| AuthCode | password 입력, 서버 로그·이력 마스킹 |
+| actor | 세션 작업자 필수. 없으면 apply 500 |
 
 적용은 내부에서 기존 `clone_module`을 여러 번 호출한다. 중간 실패 시 그 apply가 만든 파일만 되돌린다.
 
@@ -248,9 +281,10 @@ MVP가 **성공한 장면** (시드 홈만으로도, 실제 `EW_HOME`이 있으�
 - `earthworm_web/deploy/earthworm-web.service`
 - `DEPLOY.md`, 태그 `earthworm-web-v0.x`
 - WEB_DOC 정적 `/docs/ew/`
-- NTP·디스크 위젯, 감사 로그 강화
+- NTP·디스크 위젯
 - 기타 모듈 등록 API
 - tankplayer는 등록으로만
+- SSO (작업자 모델은 2b에서 끝냄)
 
 ### MVP에서 허용하는 최소
 
@@ -271,6 +305,8 @@ README에 “배포 시 `EW_WEB_AUTO_SEED=0`, `EW_WEB_BASH`, 키를 `dev`에서 
 | 대시보드 + `/ws/status` | ○ 기존 | |
 | 파일 편집 (우회) | ○ 기존 | |
 | 로그·sniff | ○ 기존 | getmenu |
+| 로그인·역할·작업자 CRUD | ○ 신규 2b | SSO |
+| 변경 이력 화면 | ○ 신규 2b | 이력 삭제(하지 않음) |
 | 우선 12 스키마·시드 | ○ 신규 | 필드 확장 |
 | 구성 보드 한 창 | ○ 신규 | |
 | 복제 다발 5종 인스턴스 추가 | ○ 신규 | |
@@ -287,25 +323,34 @@ README에 “배포 시 `EW_WEB_AUTO_SEED=0`, `EW_WEB_BASH`, 키를 `dev`에서 
 
 자동화 (시드, Earthworm 실기동 불필요):
 
-1. setup complete
-2. schema에 fleet 5 + process 12
-3. compose 모델에 `q3302ew` 두 인스턴스(포트 다름) apply → Process 두 줄
-4. 같은 `ServerPort` 두 `export_scnl` → validate 실패, 파일 없음
-5. 같은 Tank 두 `wave_serverV` → 실패
-6. 잘못된 이름 → 400
-7. 기존 start/pau argv 테스트 회귀
+1. 부트스트랩 admin → login
+2. viewer로 start → 403, 이력 `denied`
+3. operator로 compose apply(포트 다른 q3302ew 두 장) → Process 두 줄 + 이력 `compose_apply`
+4. schema에 fleet 5 + process 12
+5. 같은 `ServerPort` 두 `export_scnl` → validate 실패, 파일 없음
+6. 같은 Tank 두 `wave_serverV` → 실패
+7. 잘못된 이름 → 400
+8. 기존 start/pau argv 테스트 회귀
+9. audit detail에 password 없음
 
 수동 (스텁 또는 실기):
 
-1. 보드에서 인스턴스 추가·입력·적용·시작
-2. 대시보드 이름 확인, 한 행 일시중지, 전체 종료
-3. 로그 한 파일, sniffwave 헤더 몇 줄
+1. 관리자가 운영자를 등록
+2. 운영자로 보드 적용·시작
+3. 이력에서 이름·동작 확인
+4. 대시보드 일시중지, 로그·sniff
 
-실기 Rocky 바이너리가 없는 환경에서는 자동화가 MVP 통과 기준이고, 수동은 스텁 status로 이름을 확인하는 수준이다.
+실기 Rocky 바이너리가 없는 환경에서는 자동화가 MVP 통과 기준이다.
 
 ---
 
 ## 40. 작업 쪼개기 (구현 착수 시)
+
+2b 티켓 (4보다 먼저):
+
+1. SQLite operators + bootstrap + login/session
+2. 역할 가드 + 프론트 Login · 헤더
+3. audit_event 미들웨어 + 이력 UI + 작업자 CRUD
 
 3단계 티켓:
 

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>작업자 역할</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #eb6c36;
+      --font-sans:     'Geist', 'Noto Sans KR', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem 2rem;
+    }
+    .frame { max-width: 1200px; width: 100%; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 720px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Operators · Diagram Design</p>
+    <h1>공유 키가 아니라 사람마다 로그인하고 역할로 막는다</h1>
+    <svg viewBox="0 0 1000 460" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="operator-roles-title operator-roles-desc">
+      <title id="operator-roles-title">작업자 역할</title>
+      <desc id="operator-roles-desc">관리자는 작업자를 등록하고 구성과 기동을 한다. 운영자는 구성과 기동만, 조회자는 대시보드와 이력만 본다. 공유 API 키는 사람 UI에서 쓰지 않는다.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+      </defs>
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+      <rect x="40" y="24" width="200" height="280" rx="8" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
+      <text x="140" y="56" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LOGIN</text>
+      <text x="140" y="88" text-anchor="middle" fill="#2d3142" font-size="16" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">작업자</text>
+      <text x="140" y="124" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">username</text>
+      <text x="140" y="152" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">표시 이름</text>
+      <text x="140" y="180" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">argon2 비밀번호</text>
+      <text x="140" y="220" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">정지해도 이력은 남음</text>
+      <text x="140" y="256" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">하드 삭제 없음</text>
+
+      <line x1="240" y1="164" x2="300" y2="164" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+      <rect x="300" y="24" width="220" height="280" rx="8" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
+      <text x="410" y="56" text-anchor="middle" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em" font-weight="600">ADMIN</text>
+      <text x="410" y="88" text-anchor="middle" fill="#2d3142" font-size="16" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">관리자</text>
+      <text x="410" y="128" text-anchor="middle" fill="#2d3142" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">작업자 등록·정지</text>
+      <text x="410" y="156" text-anchor="middle" fill="#2d3142" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">구성 보드 · 기동</text>
+      <text x="410" y="184" text-anchor="middle" fill="#2d3142" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">락 해제 · 마법사</text>
+      <text x="410" y="228" text-anchor="middle" fill="#eb6c36" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">이력은 못 지움</text>
+      <text x="410" y="264" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">마지막 admin 정지 거부</text>
+
+      <rect x="540" y="24" width="200" height="280" rx="8" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
+      <text x="640" y="56" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">OPERATOR</text>
+      <text x="640" y="88" text-anchor="middle" fill="#2d3142" font-size="16" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">운영자</text>
+      <text x="640" y="128" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">적용 · startstop</text>
+      <text x="640" y="156" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">파일 · 스니프</text>
+      <text x="640" y="184" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">이력 조회</text>
+      <text x="640" y="240" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">작업자 메뉴 없음</text>
+
+      <rect x="760" y="24" width="200" height="280" rx="8" fill="#ececec"/>
+      <text x="860" y="56" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">VIEWER</text>
+      <text x="860" y="88" text-anchor="middle" fill="#2d3142" font-size="16" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">조회자</text>
+      <text x="860" y="128" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">대시보드 · 로그</text>
+      <text x="860" y="156" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">이력 읽기</text>
+      <text x="860" y="200" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">POST 전부 403</text>
+      <text x="860" y="256" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">자기 비밀번호만 변경</text>
+
+      <text x="40" y="356" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">IDENTITY</text>
+      <text x="40" y="388" fill="#2d3142" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">웹 작업자는 콘솔 신원이다. 호스트 ew 리눅스 계정·startstop uid 와 동기화하지 않는다.</text>
+      <text x="40" y="416" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">사람 UI는 세션 쿠키. EW_WEB_API_KEY 는 pytest·service 합성 작업자만.</text>
+    </svg>
+  </div>
+</body>
+</html>
