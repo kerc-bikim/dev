@@ -38,11 +38,6 @@ logging.basicConfig(
 )
 log = logging.getLogger("earthworm_web")
 
-SKIP_AUDIT = {
-    ("GET",),
-    ("HEAD",),
-    ("OPTIONS",),
-}
 SKIP_AUDIT_PATHS = {
     "/api/health",
     "/api/auth/status",
@@ -92,8 +87,6 @@ def _map_action(method: str, path: str) -> tuple[str, str] | None:
         return "operator_create", "operators"
     if method == "PATCH" and path.startswith("/api/operators/"):
         return "operator_update", path.rsplit("/", 1)[-1]
-    if method in {"POST", "PUT", "PATCH", "DELETE"} and path.startswith("/api/"):
-        return path.strip("/").replace("/", "_"), path
     return None
 
 
