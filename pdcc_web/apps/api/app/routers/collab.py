@@ -26,7 +26,9 @@ from ..inventory.xmlbuild import (
     diff_fields,
     field_snapshot,
     list_inventory,
+    update_channel,
     update_station,
+    validate_inventory,
 )
 from ..models import EquipmentSet, Project, ProjectVersion, User, utcnow
 from ..nrl.client import get_nrl_client, validate_instconfig
@@ -54,13 +56,24 @@ class EquipmentIn(BaseModel):
     channels: list[str] = Field(default_factory=lambda: ["BHZ", "BHN", "BHE"])
 
 
-class DraftStationIn(BaseModel):
+class DraftIn(BaseModel):
     station: str
     start_time: str
     latitude: float | None = None
     longitude: float | None = None
     elevation: float | None = None
     site_name: str | None = None
+    end: str | None = None
+    set_end: bool = False
+    propagate: bool = True
+    channel: str | None = None
+    location: str | None = None
+    new_code: str | None = None
+    new_location: str | None = None
+    depth: float | None = None
+    azimuth: float | None = None
+    dip: float | None = None
+    sample_rate: float | None = None
 
 
 class MergeIn(BaseModel):
@@ -205,7 +218,7 @@ def restore_version(
 @router.put("/api/projects/{project_id}/draft")
 def put_draft(
     project_id: int,
-    body: DraftStationIn,
+    body: DraftIn,
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> dict:
@@ -213,16 +226,40 @@ def put_draft(
     source = get_draft(db, project.id, user.id)
     xml = source.xml_text if source is not None else project.xml_text
     try:
-        xml = update_station(
-            xml,
-            network=project.network_code,
-            station=body.station.strip().upper(),
-            start=body.start_time,
-            latitude=body.latitude,
-            longitude=body.longitude,
-            elevation=body.elevation,
-            site_name=body.site_name,
-        )
+        if body.channel:
+            xml = update_channel(
+                xml,
+                network=project.network_code,
+                station=body.station.strip().upper(),
+                start=body.start_time,
+                location=body.location or "",
+                channel=body.channel.strip().upper(),
+                new_location=body.new_location,
+                new_code=body.new_code,
+                depth=body.depth,
+                azimuth=body.azimuth,
+                dip=body.dip,
+                sample_rate=body.sample_rate,
+                latitude=body.latitude,
+                longitude=body.longitude,
+                elevation=body.elevation,
+                end=body.end,
+                set_end=body.set_end,
+            )
+        else:
+            xml = update_station(
+                xml,
+                network=project.network_code,
+                station=body.station.strip().upper(),
+                start=body.start_time,
+                latitude=body.latitude,
+                longitude=body.longitude,
+                elevation=body.elevation,
+                site_name=body.site_name,
+                end=body.end,
+                set_end=body.set_end,
+                propagate=body.propagate,
+            )
     except InventoryError as exc:
         _http_inv(exc)
     row = upsert_draft(db, project, user, xml)
@@ -253,6 +290,19 @@ def read_draft(
             "stations": stations,
             "xml_text": row.xml_text,
         }
+    }
+
+
+@router.get("/api/projects/{project_id}/issues")
+def list_issues(
+    project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
+) -> dict:
+    project = _owned(db, project_id, user)
+    row = get_draft(db, project.id, user.id)
+    xml = row.xml_text if row is not None else project.xml_text
+    return {
+        "issues": validate_inventory(xml, project.network_code, project.id),
+        "source": "draft" if row is not None else "project",
     }
 
 

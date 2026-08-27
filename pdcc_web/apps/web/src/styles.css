@@ -243,6 +243,23 @@ body {
   color: var(--muted);
 }
 .lock-banner.mine { color: var(--success); border-color: #24532d; }
+.field-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  text-decoration: none;
+  color: var(--muted);
+  cursor: help;
+}
+.issue-list { list-style: none; padding: 0; margin: 0; }
+.issue-list li { margin: 4px 0; }
+.issue-list code { color: var(--danger); margin-right: 6px; }
 .wizard-nav, .pattern-row, .set-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .version-list { list-style: none; padding: 0; margin: 0; }
 .version-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
