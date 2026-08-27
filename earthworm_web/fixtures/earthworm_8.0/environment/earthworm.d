@@ -14,3 +14,14 @@ Module   MOD_BINDER_EW       30
 Module   MOD_EQPROC          40
 Module   MOD_SLINK2EW        50
 Module   MOD_TANKPLAYER      60
+Module   MOD_Q3302EW         70
+Module   MOD_EXPORT_GENERIC  80
+Module   MOD_EXPORT_SCNL     81
+Module   MOD_IMPORT_GENERIC  82
+Module   MOD_IMPORT_PASV     83
+Module   MOD_TBUF2MSEED      84
+Module   MOD_MSEED2TBUF      85
+Module   MOD_EW2RINGSERVER   86
+Module   MOD_WAVE_SERVERV    87
+Module   MOD_EW2MSEED        88
+Module   MOD_EWMSEEDARCHIVER 89

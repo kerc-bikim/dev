@@ -1,0 +1,5 @@
+modName ew2ringserver
+modId   MOD_EW2RINGSERVER
+instId  ${EW_INST_ID}
+tsec    90
+restartMe

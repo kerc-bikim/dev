@@ -1,12 +1,13 @@
 """Convert plan.md to plan.html."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import markdown
 
 ROOT = Path(__file__).resolve().parents[1]
-MD_PATH = ROOT / "plan.md"
+MD_PATHS = (ROOT / "plan.md", ROOT / "plan_priority.md", ROOT / "plan_mvp.md", ROOT / "plan_ops.md")
 HTML_PATH = ROOT / "plan.html"
 
 CSS = """
@@ -112,12 +113,24 @@ pre {
   overflow-x: auto;
 }
 pre code { background: transparent; color: inherit; padding: 0; }
-.mermaid, pre.mermaid {
-  background: var(--surface);
-  color: var(--ink);
+.diagram {
+  margin: 1rem 0 1.4rem;
+}
+iframe.diagram {
+  display: block;
+  width: 100%;
+  height: 640px;
   border: 1px solid var(--line);
-  padding: 1rem;
-  border-radius: 10px;
+  border-radius: 8px;
+  background: #f5f5f5;
+}
+figure.diagram {
+  margin: 1rem 0 1.4rem;
+}
+figure.diagram figcaption {
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--muted);
 }
 blockquote {
   margin: 1rem 0;
@@ -145,23 +158,19 @@ TEMPLATE = """<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Earthworm Web Control — 계획서</title>
   <style>{css}</style>
-  <script type="module">
-    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-    mermaid.initialize({{ startOnLoad: true, theme: "neutral" }});
-  </script>
 </head>
 <body>
   <div class="wrap">
     <header class="doc-header">
       <p class="eyebrow">Earthworm · Web Control Plan</p>
       <h1>Earthworm Web Control — 계획서</h1>
-      <p class="meta">v8.0b17 · FastAPI 백엔드 + React 프론트엔드 · 구현 전 확정 계획</p>
+      <p class="meta">v8.0b17 · FastAPI 백엔드 + React 프론트엔드 · 우선 모듈 · 구성 보드 · 모노레포</p>
     </header>
     <article>
 {body}
     </article>
     <footer>
-      Generated from <code>plan.md</code>.
+      Generated from <code>plan.md</code> + <code>plan_priority.md</code> + <code>plan_mvp.md</code> + <code>plan_ops.md</code>.
     </footer>
   </div>
 </body>
@@ -170,29 +179,68 @@ TEMPLATE = """<!DOCTYPE html>
 
 
 def md_to_html(text: str) -> str:
-    parts: list[str] = []
-    chunks = text.split("```")
-    for i, chunk in enumerate(chunks):
-        if i % 2 == 1:
-            lang, _, content = chunk.partition("\n")
-            lang = lang.strip().lower()
-            if lang == "mermaid":
-                parts.append(f'<pre class="mermaid">\n{content.strip()}\n</pre>')
-            else:
-                parts.append(f"```{lang}\n{content}```")
-        else:
-            parts.append(chunk)
-    processed = "".join(parts)
-    return markdown.markdown(
-        processed,
+    html = markdown.markdown(
+        text,
         extensions=["tables", "fenced_code", "nl2br", "sane_lists", "toc"],
+    )
+    return embed_diagrams(html)
+
+
+DIAGRAM_HEIGHTS = {
+    "setup-phases": 640,
+    "setup-sequence": 700,
+    "architecture": 620,
+    "start-sequence": 640,
+    "clone-sequence": 660,
+    "sniff-sequence": 700,
+    "stack-layers": 500,
+    "module-families": 640,
+    "compose-board": 680,
+    "instance-fleet": 620,
+    "monorepo": 600,
+    "compose-apply": 660,
+    "phase-roadmap": 600,
+    "mvp-scope": 620,
+    "operator-roles": 580,
+    "audit-flow": 620,
+}
+
+
+def embed_diagrams(html: str) -> str:
+    def repl(match: re.Match[str]) -> str:
+        href, title = match.group(1), match.group(2)
+        slug = Path(href).stem
+        height = DIAGRAM_HEIGHTS.get(slug, 600)
+        return (
+            f'<figure class="diagram">'
+            f'<iframe class="diagram" src="{href}" title="{title}" loading="lazy" '
+            f'style="height:{height}px"></iframe>'
+            f'<figcaption><a href="{href}">{title}</a> · '
+            f'<a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption>'
+            f"</figure>"
+        )
+
+    return re.sub(
+        r'<a href="(diagrams/[^"]+\.html)">([^<]+)</a>',
+        repl,
+        html,
     )
 
 
+def load_markdown() -> str:
+    chunks: list[str] = []
+    for i, path in enumerate(MD_PATHS):
+        text = path.read_text(encoding="utf-8")
+        if i > 0:
+            text = re.sub(r"^# .+\n+", "", text, count=1)
+        chunks.append(text.rstrip())
+    return "\n\n".join(chunks) + "\n"
+
+
 def main() -> None:
-    md = MD_PATH.read_text(encoding="utf-8")
+    md = load_markdown()
     body = md_to_html(md)
-    html = TEMPLATE.format(css=CSS, body=body)
+    html = TEMPLATE.replace("{css}", CSS).replace("{body}", body)
     HTML_PATH.write_text(html, encoding="utf-8")
     print(f"Wrote {HTML_PATH}")
 

@@ -13,6 +13,8 @@ Earthworm **v8.0b17** 기준으로, 이미 컴파일된 Rocky Linux 9 바이너�
 
 상태: 계획만. 구현 체크리스트는 [구현 단계](#12-구현-단계)에 둔다. 웹 흐름은 **초기 설정**(디렉터리·링)과 **이후 설정**(모듈·운영)으로 나눈다. 근거는 [17절](#17-소스매뉴얼-분석-근거).
 
+우선 운영 모듈·한 창 일괄 구성·모노레포 배포는 [plan_priority.md](plan_priority.md) ([18절 이하](#18)). 단계별 세부·MVP는 [plan_mvp.md](plan_mvp.md) ([30절](#30-mvp)). 작업자·이력은 [plan_ops.md](plan_ops.md) ([41절](#41_1)).
+
 ---
 
 ## 1. 목표
@@ -21,9 +23,9 @@ Earthworm **v8.0b17** 기준으로, 이미 컴파일된 Rocky Linux 9 바이너�
 
 1. `ew_linux.bash` 로 런타임 환경을 고정한다.
 2. `params/` · `environment/` 파일을 웹에서 읽고 고친다.
-3. `bin` 모듈과 대응하는 `params` 를 토글로 켜고 끈다.
-4. 켜 둔 모듈을 복제해 **같은 기능, 다른 이름**으로 돌린다.
-5. 공통 변수를 한 화면에서 넣고, 각 `.d` 에 자동 반영한다.
+3. **우선 모듈**만 팔레트에 두고, 나머지는 필요 시 등록한다.
+4. `q3302ew` · `slink2ew` · `export_scnl` · `export_generic` · `wave_serverV` 는 복제 다발로 **같은 기능, 다른 이름** 인스턴스를 여러 대 돌린다.
+5. **구성 보드 한 창**에서 인스턴스 파라미터를 채우고 일괄 적용한 뒤, 전체가 같은 `startstop` 아래 운영되게 한다.
 6. Earthworm 전체를 시작 / 종료 / 일시중지한다.
 7. 실행 중 모듈 상태를 대시보드로 본다.
 8. 로그 디렉터리를 설정하고 모듈별 로그를 본다.
@@ -110,25 +112,7 @@ Earthworm 에는 **시스템 전체 pause** 가 없다. 웹의 “일시중지�
 
 Earthworm 은 **한 번 기동하면 공유메모리 링이 고정**되고, 모듈은 `EW_PARAMS` 의 테이블을 기동 시점에 읽는다. 웹도 이 경계를 그대로 따른다.
 
-```mermaid
-flowchart TB
-  subgraph init [초기 설정 마법사 setup_complete false]
-    D[디렉터리 EW_HOME RUN_DIR params log data]
-    I[설치 ID EW_INSTALLATION]
-    T[earthworm.d global commonvars 를 params 로 복사]
-    R[링 이름 키 크기 순서]
-    M[최소 모듈 statmgr]
-    D --> I --> T --> R --> M
-  end
-  subgraph later [이후 설정 setup_complete true]
-    Mod[모듈 토글 복제]
-    Var[통합 변수]
-    Run[시작 종료 일시중지]
-    Dash[대시보드 로그 sniff]
-    Mod --> Var --> Run --> Dash
-  end
-  M -->|검증 통과| later
-```
+[초기 설정 → 이후 설정](diagrams/setup-phases.html) — [diagram-design](https://github.com/cathrynlavery/diagram-design) HTML. `plan.html` 에서 임베드한다.
 
 ### 4.1 왜 나누는가
 
@@ -265,54 +249,13 @@ ${EW_RUN_DIR}/
 
 ### 4.4 초기 설정 시퀀스
 
-```mermaid
-sequenceDiagram
-  participant U as 브라우저
-  participant BE as FastAPI
-  participant FS as 파일시스템
-
-  U->>BE: GET /api/setup/status
-  BE-->>U: setup_complete false
-  U->>BE: PUT /api/setup/directories
-  BE->>FS: mkdir params log data, ew_linux.bash 치환
-  U->>BE: PUT /api/setup/installation
-  BE->>FS: 테이블 파일 복사, EW_INST_ID
-  U->>BE: PUT /api/setup/rings
-  BE->>FS: earthworm.d Ring, startstop_unix.d Ring 순서
-  U->>BE: POST /api/setup/validate
-  BE-->>U: ok
-  U->>BE: POST /api/setup/complete
-  BE->>FS: app.json.setup_complete true
-  Note over U: 이후 설정 메뉴 개방, startstop 은 수동 시작
-```
+[마법사 시퀀스](diagrams/setup-sequence.html)
 
 ---
 
 ## 5. 아키텍처 (백엔드 / 프론트엔드 분리)
 
-```mermaid
-flowchart LR
-  Browser["브라우저"]
-  FE["프론트엔드\nReact + Vite"]
-  BE["백엔드 FastAPI\n같은 호스트"]
-  AppJSON[("app.json\n웹 메타")]
-  EnvBash["environment/\new_linux.bash"]
-  Params["EW_PARAMS\nparams/*.d"]
-  Bin["EW bin/\nstartstop status pau\nsniffwave sniffring"]
-  Rings[("공유메모리 링")]
-  Logs["EW_LOG"]
-
-  Browser --> FE
-  FE -->|"REST /api/*"| BE
-  FE -->|"WS /ws/status /ws/logs /ws/sniff"| BE
-  BE --> AppJSON
-  BE --> EnvBash
-  BE --> Params
-  BE -->|"env sourced subprocess"| Bin
-  Bin --> Rings
-  Bin --> Logs
-  BE --> Logs
-```
+[아키텍처](diagrams/architecture.html)
 
 역할 경계:
 
@@ -785,59 +728,15 @@ frontend/src/
 
 ### 11.1 전체 시작
 
-```mermaid
-sequenceDiagram
-  participant U as 브라우저
-  participant FE as 프론트
-  participant BE as FastAPI
-  participant EW as startstop
-
-  U->>FE: 시작
-  FE->>BE: POST /api/control/start
-  BE->>BE: source ew_linux.bash
-  BE->>BE: status 로 중복 기동 검사
-  BE->>EW: startstop (cwd=EW_PARAMS)
-  EW->>EW: 링 생성, Process 기동
-  BE->>BE: status 파싱
-  BE-->>FE: 200 + snapshot
-  FE-->>U: 대시보드 Alive
-```
+[시작 시퀀스](diagrams/start-sequence.html)
 
 ### 11.2 토글 후 복제 모듈 기동
 
-```mermaid
-sequenceDiagram
-  participant U as 브라우저
-  participant BE as FastAPI
-  participant SS as startstop
-
-  U->>BE: POST clone new_name=pick_ew_b
-  BE->>BE: cp bin, cp d, Module ID, 주석 Process
-  U->>BE: PATCH enabled=true
-  BE->>BE: Process 주석 해제
-  BE->>SS: reconfigure
-  SS->>SS: 새 모듈만 spawn
-  BE-->>U: status 에 pick_ew_b Alive
-```
+[복제 기동 시퀀스](diagrams/clone-sequence.html)
 
 ### 11.3 sniffwave
 
-```mermaid
-sequenceDiagram
-  participant U as 브라우저
-  participant BE as FastAPI
-  participant SW as sniffwave
-
-  U->>BE: POST /sniff/sessions {tool, ring, wildcards, flag:n}
-  BE->>SW: Popen argv
-  U->>BE: WS /ws/sniff
-  loop 패킷
-    SW-->>BE: stdout 줄
-    BE-->>U: text frame
-  end
-  U->>BE: WS close 또는 DELETE
-  BE->>SW: SIGTERM
-```
+[sniffwave 시퀀스](diagrams/sniff-sequence.html)
 
 ---
 
@@ -863,25 +762,42 @@ Earthworm 을 실제로 기동하지 않고도 1단계는 마법사·파일 파�
 - 기동 중 토글 ↔ stopmodule / reconfigure
 - KillDelay 폴링
 
-### 3단계 — 복제와 통합 변수 (P1)
+### 2b단계 — 작업자·이력 (MVP)
 
-- clone: bin + `.d` + Module ID + `.desc` + Descriptor
-- Process 길이·MAX_CHILD·MAX_RING UI 한도
-- `earthworm_commonvars.d` + HeartbeatInt↔tsec
-- 링 토폴로지 경고 (CheckAllRings / copystatus)
+[plan_ops.md](plan_ops.md). 로그인·3역할·변경 이력. 구성 보드 적용보다 먼저.
 
-### 4단계 — 로그와 링 모니터
+- `control.sqlite` 작업자·세션·audit_event
+- 최초 admin 부트스트랩, 사람 UI는 세션 (공유 키는 service만)
+- 네비 작업자(admin) · 이력. 줄 삭제 없음
+
+### 3단계 — 우선 카탈로그와 스키마 (P1)
+
+우선 목록·스키마·시드는 [plan_priority.md 27절](plan_priority.md).
+
+- `module_fields.yaml`, 카탈로그 `priority` / `role` / `fleet`
+- I/O 12개 스텁·샘플 `.d`
+- 기타 모듈 등록 API. 팔레트 UI
+
+### 4단계 — 구성 보드와 일괄 적용 (P1)
+
+- 한 창: 사이트 공통 + 인스턴스 카드 + 검토/적용/시작
+- clone 트랜잭션을 apply 가 묶음. 포트·탱크·Process 유일 검증
+- `Variables` 를 사이트 공통으로 흡수. 포트 인벤토리(구 P2) 흡수
+
+### 5단계 — 로그와 링 모니터
 
 - 로그 디렉터리·보관·뷰어·follow. lock/data 제외
-- sniffwave / sniffring 세션 + WS
+- sniffwave / sniffring 세션 + WS. `getmenu` ↔ wave_serverV 인스턴스
 - 기반 설정 재진입 (링 크기 변경은 pau 후)
 
-### 5단계 — 다듬기 (P2)
+### 6단계 — 다듬기와 모노레포 배포 (P2)
 
-- API 키, 백업, 감사 로그
-- 포트/IP 인벤토리, tankplayer 시험 프로파일, NTP·디스크 위젯
+- API 키 서비스 계정, 백업, NTP·디스크 위젯
 - WEB_DOC 정적 제공 (`/docs/ew/`)
-- README, systemd 유닛 예시
+- `deploy/earthworm-web.service`, 태그 `earthworm-web-v0.x`. 디렉터리 rename 없음
+- tankplayer 는 기타 등록
+
+각 단계의 넣을 것/빼는 것·API·수락 조건과 **MVP 경계**는 [plan_mvp.md](plan_mvp.md) ([30절](#30-mvp)). MVP는 3–4단계(카탈로그·구성 보드)를 닫는 것이다. 1–2단계와 로그·스니프는 기존 코드가 전제다.
 
 각 단계마다 백엔드 pytest (파서·argv 생성·경로 샌드박스) 와 프론트 타입체크를 둔다.
 
@@ -889,36 +805,7 @@ Earthworm 을 실제로 기동하지 않고도 1단계는 마법사·파일 파�
 
 ## 13. 백엔드 / 프론트엔드 책임 요약
 
-```mermaid
-flowchart TB
-  subgraph fe [프론트엔드]
-    UI[페이지와 토글]
-    Forms[변수·sniff 폼]
-    Tables[상태·로그 뷰]
-  end
-  subgraph be [백엔드]
-    API[REST JSON]
-    WS[WebSocket]
-    Parse[d 파일 파서]
-    Proc[EW CLI]
-    Sweep[로그 보관]
-  end
-  subgraph ew [Earthworm 런타임]
-    Bash[ew_linux.bash]
-    SS[startstop]
-    SHM[transport rings]
-  end
-  UI --> API
-  Forms --> API
-  Tables --> WS
-  API --> Parse
-  API --> Proc
-  WS --> Proc
-  Proc --> Bash
-  Proc --> SS
-  SS --> SHM
-  Sweep --> Bash
-```
+[책임 계층](diagrams/stack-layers.html)
 
 프론트는 JSON/WS 만 다룬다. 백엔드는 파일과 프로세스만 다룬다. 공유 타입은 OpenAPI(`/api/openapi.json`)로 맞춘다.
 
@@ -1137,5 +1024,9 @@ Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를
 | P2 | tankplayer 시험 프로파일 | 라이브 망 없이 콘솔 검증 |
 | P2 | NTP·디스크·락 위젯 | 운영 장애 3대장 |
 
-이 절의 P0 는 [12절](#12-구현-단계) 1–2단계(초기 마법사 포함), P1 은 3–4단계, P2 는 5단계로 잡는다.
+이 절의 P0 는 [12절](#12-구현-단계) 1–2단계(초기 마법사 포함), P1 은 3–4단계(우선 카탈로그·구성 보드), P2 는 6단계로 잡는다. 포트/IP 인벤토리는 구성 보드 검증이 대체한다.
+
+---
+
+우선 모듈 화이트리스트, 구성 보드 UX, 인스턴스 스키마, 모노레포 배포 규약은 다음 문서에 이어진다.
 

@@ -21,7 +21,23 @@ CONTROL_BINS = {
     "sniffring",
     "pidpau",
     "copystatus",
+    "getmenu",
 }
+
+PRIORITY_IO_BINS = (
+    "export_generic",
+    "export_scnl",
+    "import_generic",
+    "import_pasv",
+    "tbuf2mseed",
+    "mseed2tbuf",
+    "ew2ringserver",
+    "slink2ew",
+    "wave_serverV",
+    "ew2mseed",
+    "ewmseedarchiver",
+    "q3302ew",
+)
 
 
 def fixtures_dir() -> Path:
@@ -79,12 +95,14 @@ def seed_earthworm_home(dest: Path) -> Path:
         "reconfigure",
         "sniffwave",
         "sniffring",
+        "pidpau",
+        "getmenu",
         "statmgr",
         "pick_ew",
         "binder_ew",
         "eqproc",
-        "slink2ew",
         "tankplayer",
+        *PRIORITY_IO_BINS,
     ]
     bin_dir = tree / "bin"
     for name in names:

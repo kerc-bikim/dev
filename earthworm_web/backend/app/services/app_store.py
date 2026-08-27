@@ -30,8 +30,11 @@ class AppMeta:
     status_interval_sec: float = 2.0
     sniff_session_limit: int = 2
     clones: list[dict[str, Any]] = field(default_factory=list)
+    extra_families: list[str] = field(default_factory=list)
     disabled_process_names: list[str] = field(default_factory=list)
     startstop_pid: int | None = None
+    compose_revision: int = 0
+    audit_retention_days: int = 365
 
 
 _lock = threading.Lock()

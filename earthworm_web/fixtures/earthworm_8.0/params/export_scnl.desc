@@ -1,0 +1,5 @@
+modName export_scnl
+modId   MOD_EXPORT_SCNL
+instId  ${EW_INST_ID}
+tsec    90
+restartMe

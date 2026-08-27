@@ -7,6 +7,7 @@ from pathlib import Path
 from .app_store import load_app
 from .commonvars import parse_key_values
 from .env import bash_path, parsed_core
+from .schema import family_fleet, family_priority, family_role
 from .seed import CONTROL_BINS
 from .startstop_file import parse_startstop
 
@@ -28,6 +29,9 @@ class ModuleRow:
     restart_me: bool
     locked: bool
     has_descriptor: bool
+    priority: bool = False
+    role: str = "process"
+    fleet: bool = False
 
 
 def _is_exec(path: Path) -> bool:
@@ -80,6 +84,8 @@ def catalog(env: dict[str, str] | None = None) -> list[ModuleRow]:
             dkv = parse_key_values(desc.read_text(encoding="utf-8", errors="replace"))
             restart = "restartMe" in dkv
         clone = clones.get(stem)
+        clone_of = (clone or {}).get("clone_of")
+        family = clone_of or stem
         rows[stem] = ModuleRow(
             id=stem,
             binary=clone["binary"] if clone else stem,
@@ -89,11 +95,14 @@ def catalog(env: dict[str, str] | None = None) -> list[ModuleRow]:
             desc_file=desc.name if desc else None,
             module_id=kv.get("MyModuleId"),
             enabled=enabled.get(stem, False),
-            clone_of=(clone or {}).get("clone_of"),
+            clone_of=clone_of,
             display_name=stem,
             restart_me=restart,
             locked=stem == "statmgr",
             has_descriptor=has_desc_line(desc.name if desc else None),
+            priority=family_priority(stem, clone_of),
+            role=family_role(family),
+            fleet=family_fleet(family),
         )
 
     for name, _path in binaries.items():
@@ -113,6 +122,9 @@ def catalog(env: dict[str, str] | None = None) -> list[ModuleRow]:
                 restart_me=False,
                 locked=False,
                 has_descriptor=False,
+                priority=family_priority(name),
+                role=family_role(name),
+                fleet=family_fleet(name),
             )
 
     for name, on in enabled.items():
@@ -130,6 +142,9 @@ def catalog(env: dict[str, str] | None = None) -> list[ModuleRow]:
                 restart_me=False,
                 locked=name == "statmgr",
                 has_descriptor=False,
+                priority=family_priority(name),
+                role=family_role(name),
+                fleet=family_fleet(name),
             )
 
     order = list(enabled.keys()) + [k for k in rows if k not in enabled]
@@ -157,4 +172,7 @@ def as_dict(row: ModuleRow) -> dict:
         "restart_me": row.restart_me,
         "locked": row.locked,
         "has_descriptor": row.has_descriptor,
+        "priority": row.priority,
+        "role": row.role,
+        "fleet": row.fleet,
     }

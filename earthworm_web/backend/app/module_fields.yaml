@@ -1,0 +1,148 @@
+families:
+  q3302ew:
+    role: process
+    fleet: true
+    priority: true
+    default_ring: WAVE_RING
+    label: Q330 수집
+    fields:
+      - { key: IPAddress, label: Q330 IP, required: true, type: ip }
+      - { key: BasePort, label: BasePort, required: true, type: port }
+      - { key: SerialNumber, label: 시리얼, required: true, type: string }
+      - { key: AuthCode, label: AuthCode, required: true, type: secret }
+      - { key: SourcePortControl, label: 로컬 UDP Control, required: true, type: udp_port, unique: host }
+      - { key: SourcePortData, label: 로컬 UDP Data, required: true, type: udp_port, unique: host }
+      - { key: LC, label: 채널 맵, required: true, type: lines }
+  slink2ew:
+    role: process
+    fleet: true
+    priority: true
+    default_ring: WAVE_RING
+    label: SeedLink 수집
+    fields:
+      - { key: SLhost, label: SeedLink 호스트, required: true, type: host }
+      - { key: SLport, label: SeedLink 포트, required: true, type: port }
+      - { key: Stream, label: Stream, required: true, type: string }
+      - { key: Selectors, label: Selectors, required: true, type: string }
+  export_generic:
+    role: process
+    fleet: true
+    priority: true
+    default_ring: WAVE_RING
+    label: TCP 송신
+    fields:
+      - { key: ServerIPAdr, label: 리슨 IP, required: true, type: ip }
+      - { key: ServerPort, label: 리슨 포트, required: true, type: tcp_listen, unique: host }
+      - { key: MaxMsgSize, label: MaxMsgSize, required: false, type: int }
+  export_scnl:
+    role: process
+    fleet: true
+    priority: true
+    default_ring: WAVE_RING
+    label: SCNL TCP 송신
+    fields:
+      - { key: ServerIPAdr, label: 리슨 IP, required: true, type: ip }
+      - { key: ServerPort, label: 리슨 포트, required: true, type: tcp_listen, unique: host }
+      - { key: MaxMsgSize, label: MaxMsgSize, required: false, type: int }
+      - { key: Send_scnl, label: Send_scnl, required: true, type: lines }
+  import_generic:
+    role: process
+    fleet: false
+    priority: true
+    default_ring: WAVE_RING
+    label: TCP 수신
+    fields:
+      - { key: SenderIpAdr, label: 원격 IP, required: true, type: ip }
+      - { key: SenderPort, label: 원격 포트, required: true, type: port }
+  import_pasv:
+    role: process
+    fleet: false
+    priority: true
+    default_ring: WAVE_RING
+    label: 패시브 수신
+    fields:
+      - { key: ReceiverIpAdr, label: 리슨 IP, required: true, type: ip }
+      - { key: ReceiverPort, label: 리슨 포트, required: true, type: tcp_listen, unique: host }
+      - { key: SenderIpAdr, label: 허용 피어, required: true, type: ip }
+  tbuf2mseed:
+    role: process
+    fleet: false
+    priority: true
+    default_ring: WAVE_RING
+    label: TRACEBUF2 → MiniSEED
+    fields:
+      - { key: InRing, label: 입력 링, required: true, type: ring }
+      - { key: OutRing, label: 출력 링, required: true, type: ring }
+  mseed2tbuf:
+    role: process
+    fleet: false
+    priority: true
+    default_ring: WAVE_RING
+    label: MiniSEED → TRACEBUF2
+    fields:
+      - { key: InRing, label: 입력 링, required: true, type: ring }
+      - { key: OutRing, label: 출력 링, required: true, type: ring }
+  ew2ringserver:
+    role: process
+    fleet: false
+    priority: true
+    default_ring: WAVE_RING
+    label: ringserver 업스트림
+    fields:
+      - { key: RSAddress, label: ringserver 주소, required: true, type: host }
+      - { key: RSPort, label: ringserver 포트, required: true, type: port }
+  wave_serverV:
+    role: process
+    fleet: true
+    priority: true
+    default_ring: WAVE_RING
+    label: 웨이브 서버
+    fields:
+      - { key: ServerIPAdr, label: 리슨 IP, required: true, type: ip }
+      - { key: ServerPort, label: 리슨 포트, required: true, type: tcp_listen, unique: host }
+      - { key: Tank, label: Tank 경로, required: true, type: path, unique: host }
+      - { key: TankStructFile, label: TankStructFile, required: true, type: path, unique: host }
+  ew2mseed:
+    role: process
+    fleet: false
+    priority: true
+    default_ring: WAVE_RING
+    label: MiniSEED 파일
+    fields:
+      - { key: OutDir, label: 출력 디렉터리, required: true, type: path }
+  ewmseedarchiver:
+    role: process
+    fleet: false
+    priority: true
+    default_ring: WAVE_RING
+    label: MiniSEED 아카이브
+    fields:
+      - { key: ArchiveDir, label: 아카이브 루트, required: true, type: path }
+  statmgr:
+    role: control
+    fleet: false
+    priority: true
+    default_ring: STATUS_RING
+    label: 상태 감시
+    fields: []
+  startstop:
+    role: control
+    fleet: false
+    priority: true
+    label: 기동
+    fields: []
+  status:
+    role: diagnostic
+    fleet: false
+    priority: false
+    fields: []
+  sniffwave:
+    role: diagnostic
+    fleet: false
+    priority: false
+    fields: []
+  sniffring:
+    role: diagnostic
+    fleet: false
+    priority: false
+    fields: []

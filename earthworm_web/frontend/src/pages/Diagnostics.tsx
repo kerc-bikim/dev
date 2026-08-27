@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { ConfirmModal, Field } from "../components/Confirm";
 
-export function DiagnosticsPage({ toast }: { toast: (m: string) => void }) {
+export function DiagnosticsPage({ toast, canUnlock = true }: { toast: (m: string) => void; canUnlock?: boolean }) {
   const [lock, setLock] = useState<{ path: string; exists: boolean; pid: number | null; alive: boolean } | null>(
     null
   );
@@ -36,7 +36,7 @@ export function DiagnosticsPage({ toast }: { toast: (m: string) => void }) {
               ? `있음 pid=${lock.pid} ${lock.alive ? "(살아 있음)" : "(죽은 프로세스)"}`
               : "없음"}
           </p>
-          <button className="danger" disabled={!lock?.exists} onClick={() => setConfirm(true)}>
+          <button className="danger" disabled={!lock?.exists || !canUnlock} onClick={() => setConfirm(true)}>
             확인 후 강제 해제
           </button>
         </div>

@@ -9,3 +9,15 @@ Descriptor     pick_ew.desc
 Descriptor     binder_ew.desc
 Descriptor     eqproc.desc
 Descriptor     tankplayer.desc
+Descriptor     slink2ew.desc
+Descriptor     q3302ew.desc
+Descriptor     export_generic.desc
+Descriptor     export_scnl.desc
+Descriptor     import_generic.desc
+Descriptor     import_pasv.desc
+Descriptor     tbuf2mseed.desc
+Descriptor     mseed2tbuf.desc
+Descriptor     ew2ringserver.desc
+Descriptor     wave_serverV.desc
+Descriptor     ew2mseed.desc
+Descriptor     ewmseedarchiver.desc

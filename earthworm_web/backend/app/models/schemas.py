@@ -84,3 +84,61 @@ class EnvironmentIn(BaseModel):
     EW_INSTALLATION: str | None = None
     EW_LOG: str | None = None
     EW_DATA_DIR: str | None = None
+
+
+class BootstrapIn(BaseModel):
+    username: str
+    display_name: str = ""
+    password: str
+
+
+class LoginIn(BaseModel):
+    username: str
+    password: str
+
+
+class PasswordIn(BaseModel):
+    current: str
+    new: str
+
+
+class OperatorCreateIn(BaseModel):
+    username: str
+    display_name: str
+    password: str
+    role: str = "operator"
+
+
+class OperatorPatchIn(BaseModel):
+    display_name: str | None = None
+    role: str | None = None
+    enabled: bool | None = None
+    password: str | None = None
+
+
+class ComposeInstanceIn(BaseModel):
+    family: str
+    id: str
+    enabled: bool = False
+    values: dict[str, Any] = Field(default_factory=dict)
+    raw: str | None = None
+
+
+class ComposeSiteIn(BaseModel):
+    heartbeat_int: int | None = 30
+    default_wave_ring: str | None = "WAVE_RING"
+    log_file: str | None = "1"
+    installation: str | None = None
+    propagate_heartbeat: bool = False
+    statmgr_enabled: bool | None = True
+
+
+class ComposeBoardIn(BaseModel):
+    site: ComposeSiteIn = Field(default_factory=ComposeSiteIn)
+    instances: list[ComposeInstanceIn] = Field(default_factory=list)
+    reconfigure: bool = False
+
+
+class ComposeSuggestIn(BaseModel):
+    family: str
+    board: dict[str, Any] | None = None

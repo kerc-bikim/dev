@@ -15,9 +15,12 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5174",
         "http://localhost:4173",
         "http://127.0.0.1:4173",
+        "http://localhost:8010",
+        "http://127.0.0.1:8010",
     ]
     LOG_LEVEL: str = "INFO"
     APP_JSON: Path = Path(__file__).resolve().parent.parent / "data" / "app.json"
+    CONTROL_DB: Path = Path(__file__).resolve().parent.parent / "data" / "control.sqlite"
     FIXTURES_DIR: Path = ROOT / "fixtures"
     DEFAULT_EW_HOME: Path = ROOT / ".ew_home"
     BASH_PATH: Path | None = None
@@ -28,6 +31,11 @@ class Settings(BaseSettings):
     CONTROL_TIMEOUT_SEC: float = 20.0
     KILL_DELAY_SEC: float = 10.0
     OPEN_DOCS: bool = False
+    BOOTSTRAP_USERNAME: str = ""
+    BOOTSTRAP_PASSWORD: str = ""
+    COOKIE_SECURE: bool = False
+    SESSION_COOKIE: str = "ew_session"
+    AUDIT_RETENTION_DAYS: int = 365
 
     model_config = SettingsConfigDict(
         env_prefix="EW_WEB_",

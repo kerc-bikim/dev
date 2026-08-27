@@ -26,5 +26,8 @@ Process          "statmgr statmgr.d"
 # Process          "slink2ew slink2ew.d"
 #  Class/Priority    OTHER 0
 
+# Process          "q3302ew q3302ew.d"
+#  Class/Priority    OTHER 0
+
 # Process          "tankplayer tankplayer.d"
 #  Class/Priority    OTHER 0

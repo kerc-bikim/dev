@@ -66,7 +66,7 @@ def test_public_health_has_no_paths(ew_home):
         assert "ew_home" not in r.json()
         assert "lock" not in r.json()
         denied = client.get("/api/health/detail")
-        assert denied.status_code in {403, 503}
+        assert denied.status_code == 401
         ok = client.get("/api/health/detail", headers=HEADERS)
         assert ok.status_code == 200
         assert "setup_complete" in ok.json()
@@ -86,7 +86,7 @@ def test_empty_api_key_is_unavailable(ew_home, monkeypatch):
     monkeypatch.setattr(settings, "API_KEY", "")
     with TestClient(app) as client:
         r = client.get("/api/setup/status", headers={"X-API-Key": "anything"})
-        assert r.status_code == 503
+        assert r.status_code == 401
 
 
 def test_docs_closed_by_default(ew_home):
