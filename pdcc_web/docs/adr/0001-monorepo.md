@@ -18,7 +18,7 @@ IRIS PDCC 3.8.1(Java/JavaFX dataless SEED 편집기)을 웹으로 옮긴다. PDC
 4. **언어.** API·워커는 Python 3.12. 웹은 TypeScript. XML 파싱·패치는 서버에서만 한다.
 5. **저장 진실.** Inventory의 진실은 **StationXML 원문**이다. ObsPy Inventory는 편집·검증용 뷰다. 프로덕션 저장 경로에서 `Inventory.write()`로 전체 문서를 재생성하지 않는다.
 6. **인프라.** 로컬 기동은 `infra/docker-compose.yml` 로 web, api, postgres, redis 를 올린다. NRL은 기동 시 호출하지 않는다.
-7. **비밀.** `APP_SECRET`, `DATABASE_URL`, `REDIS_URL` 은 환경 변수. `DEV_BOOTSTRAP_ADMIN` 기본값은 꺼짐. `admin/admin` 로그인은 이 플래그가 켜진 개발 환경에서만 허용한다.
+7. **비밀.** `APP_SECRET`, `DATABASE_URL`, `REDIS_URL` 은 환경 변수. `DEV_BOOTSTRAP_ADMIN` 기본값은 꺼짐. `admin/admin` 로그인은 이 플래그가 켜진 개발 환경에서만 허용한다. 프로덕션 실패 폐쇄와 백업·감사는 ADR 0006.
 
 ## 결과
 

@@ -22,8 +22,11 @@ def _ensure_user(db: Session, username: str, password: str, role: str) -> User:
 
 
 def seed_users(db: Session) -> None:
-    _ensure_user(db, settings.stub_username, settings.stub_password, STUB_ROLE)
-    _ensure_user(db, "stub2", "stub2", STUB_ROLE)
+    from .runtime import stub_login_allowed
+
+    if stub_login_allowed():
+        _ensure_user(db, settings.stub_username, settings.stub_password, STUB_ROLE)
+        _ensure_user(db, "stub2", "stub2", STUB_ROLE)
     if settings.dev_bootstrap_admin:
         _ensure_user(db, "admin", "admin", ADMIN_ROLE)
     db.commit()
