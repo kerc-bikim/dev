@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiGet, apiPost, type Job } from "../api";
+import { apiDownload, apiGet, apiPost, type Job } from "../api";
 
 const LABELS: Record<string, string> = {
   queued: "대기",
@@ -14,6 +14,18 @@ function kindLabel(kind: string): string {
   if (kind === "dataless") return "SEED";
   if (kind === "resp") return "RESP";
   return kind;
+}
+
+async function saveDownload(job: Job) {
+  const { filename, blob } = await apiDownload(`/api/jobs/${job.id}/download`);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename || job.filename || "export.bin";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 export function JobBell() {
@@ -66,13 +78,23 @@ export function JobBell() {
                   </strong>
                   <span className="hint">
                     {" "}
-                    {job.result
+                    {job.kind === "validate" && job.result
                       ? `오류 ${job.result.error_count} · 경고 ${job.result.warning_count}`
-                      : job.message}
+                      : job.filename || job.message}
                   </span>
                 </div>
                 <progress max={100} value={job.progress} />
                 <p className="hint">{job.error || job.message}</p>
+                {job.downloadable ? (
+                  <button
+                    type="button"
+                    className="primary"
+                    id={`job-download-${job.id}`}
+                    onClick={() => saveDownload(job).catch((err: Error) => setError(err.message))}
+                  >
+                    받기
+                  </button>
+                ) : null}
                 {job.status === "failed" ? (
                   <button
                     type="button"

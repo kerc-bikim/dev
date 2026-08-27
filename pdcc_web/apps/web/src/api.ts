@@ -167,7 +167,9 @@ export type Job = {
   error: string | null;
   version_id: number | null;
   xml_source: string;
-  result: ValidateResult | null;
+  result: (ValidateResult & { engine?: string; sha256?: string; bytes?: number; asset_id?: number }) | null;
+  filename?: string | null;
+  downloadable?: boolean;
   created_at: string | null;
   started_at: string | null;
   finished_at: string | null;

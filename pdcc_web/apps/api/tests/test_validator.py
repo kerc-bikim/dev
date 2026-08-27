@@ -237,7 +237,9 @@ def test_clean_xml_filename_when_only_warnings(stub):
     assert blocked.json()["detail"]["code"] == "E_LOSS_ACK"
     ack = stub.get(f"/api/projects/{project['id']}/export/seed-loss").json()["ack"]
     seed = stub.post(f"/api/projects/{project['id']}/export/seed?loss_ack={ack}")
-    assert seed.status_code == 501
+    assert seed.status_code == 200, seed.text
+    assert seed.json()["kind"] == "dataless"
+    assert seed.json()["status"] == "queued"
 
 
 def test_sensitivity_listed_and_drafted(stub):

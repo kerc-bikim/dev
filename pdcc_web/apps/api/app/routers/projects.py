@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import NoReturn
+import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel, Field
@@ -32,6 +33,7 @@ from ..inventory.service import (
 from ..inventory.seed_loss import loss_ack_token, seed_loss_report
 from ..inventory.validator import has_errors, validate_project, xml_filename
 from ..inventory.xmlbuild import InventoryError
+from ..jobs.service import enqueue_seed_export, job_out
 from ..models import ProjectMember, User
 from ..routers.auth import current_user
 
@@ -283,19 +285,16 @@ def post_export_seed(
                 "ack": report["ack"],
             },
         )
-    write_audit(
+    job = enqueue_seed_export(
         db,
-        project_id=project.id,
-        actor=user.username,
-        action="export_seed",
-        target=project.network_code,
-        summary="SEED 변환 손실 확인",
+        user,
+        project,
+        job_id=str(uuid.uuid4()),
+        xml=xml,
     )
     db.commit()
-    raise HTTPException(
-        status_code=501,
-        detail="dataless SEED 변환기는 이 배포에 아직 없습니다",
-    )
+    db.refresh(job)
+    return job_out(job)
 
 
 @router.post("/{project_id}/wizard")

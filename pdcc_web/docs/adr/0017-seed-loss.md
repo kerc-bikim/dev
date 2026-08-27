@@ -13,4 +13,4 @@ dataless SEED는 코멘트 70자, FIR 이름 25자로 잘리고 Identifier·확�
 2. `POST /export/seed?loss_ack=` 는 같은 XML의 ack 토큰이 있을 때만 진행한다. 없으면 `409 E_LOSS_ACK` 와 표를 돌려준다. 검증 오류는 기존처럼 `409 E_UNVALIDATED` 가 먼저다.
 3. 편집기 `dataless SEED` 는 확인 창을 연다. `손실 목록 보기` 뒤에만 `확인 후 내보내기` 가 켜진다.
 
-통과 시나리오: **S6** (잘림 목록). 실제 SEED 파일은 M3-04.
+통과 시나리오: **S6** (잘림 목록). 실제 SEED 파일은 M3-04 (`ADR 0018`).
