@@ -63,6 +63,10 @@ mock: ## 가상 Centaur CTR 서버 실행 (http://127.0.0.1:8090)
 mock-load: ## 부하 시험용 가상 기록계 100대 (20% 느린 장비)
 	PYTHONPATH=. MOCK_FLEET_SIZE=100 MOCK_SLOW_RATIO=0.2 MOCK_PORT=8091 $(PY) -m mock.centaur_mock
 
+.PHONY: soak
+soak: ## 수집기 부하·안정성 시험 (기본 50대 5회)
+	$(PY) scripts/soak_collector.py --devices $(or $(devices),50) --ticks $(or $(ticks),5)
+
 .PHONY: contracts-check
 contracts-check: ## 생성물이 카탈로그와 일치하는지 검사 (CI 게이트)
 	$(PY) scripts/gen_metrics.py --check
