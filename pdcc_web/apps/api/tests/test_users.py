@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import uuid
+
 from app.config import settings
 from app.db import SessionLocal
 from app.seed import seed_users
 from tests.test_wizard import WIZARD, _project
+
+
+def _name(prefix: str) -> str:
+    return f"{prefix}{uuid.uuid4().hex[:8]}"
 
 
 def _enable_admin(client):
@@ -27,9 +33,11 @@ def test_editor_cannot_list_users(client):
 
 def test_admin_creates_editor_and_viewer(client):
     _enable_admin(client)
+    editor_name = _name("kim")
+    viewer_name = _name("lee")
     editor = client.post(
         "/api/admin/users",
-        json={"username": "kim", "password": "kim-pass", "role": "editor", "display_name": "김편집"},
+        json={"username": editor_name, "password": "kim-pass", "role": "editor", "display_name": "김편집"},
     )
     assert editor.status_code == 200, editor.text
     assert editor.json()["role"] == "editor"
@@ -37,49 +45,51 @@ def test_admin_creates_editor_and_viewer(client):
     assert editor.json()["active"] is True
     viewer = client.post(
         "/api/admin/users",
-        json={"username": "lee", "password": "lee-pass", "role": "조회자", "display_name": "이조회"},
+        json={"username": viewer_name, "password": "lee-pass", "role": "조회자", "display_name": "이조회"},
     )
     assert viewer.status_code == 200, viewer.text
     assert viewer.json()["role"] == "viewer"
     listed = client.get("/api/admin/users")
     names = {row["username"] for row in listed.json()["users"]}
-    assert {"kim", "lee", "admin", "stub"} <= names
+    assert {editor_name, viewer_name, "admin"} <= names
 
 
 def test_inactive_user_cannot_login_and_keeps_username(client):
     _enable_admin(client)
+    username = _name("park")
     created = client.post(
         "/api/admin/users",
-        json={"username": "park", "password": "park-pass", "role": "editor"},
+        json={"username": username, "password": "park-pass", "role": "editor"},
     )
     user_id = created.json()["id"]
     stopped = client.post(f"/api/admin/users/{user_id}/deactivate")
     assert stopped.status_code == 200
-    assert stopped.json()["username"] == "park"
-    assert stopped.json()["display_name"] == "park"
+    assert stopped.json()["username"] == username
+    assert stopped.json()["display_name"] == username
     assert stopped.json()["active"] is False
     client.post("/api/logout")
-    denied = client.post("/api/login", json={"username": "park", "password": "park-pass"})
+    denied = client.post("/api/login", json={"username": username, "password": "park-pass"})
     assert denied.status_code == 401
     assert "비활성" in denied.json()["detail"]
     _enable_admin(client)
     client.post(f"/api/admin/users/{user_id}/activate")
     client.post("/api/logout")
-    ok = client.post("/api/login", json={"username": "park", "password": "park-pass"})
+    ok = client.post("/api/login", json={"username": username, "password": "park-pass"})
     assert ok.status_code == 200
 
 
 def test_password_reset(client):
     _enable_admin(client)
+    username = _name("choi")
     created = client.post(
         "/api/admin/users",
-        json={"username": "choi", "password": "old-pass", "role": "editor"},
+        json={"username": username, "password": "old-pass", "role": "editor"},
     )
     client.post(f"/api/admin/users/{created.json()['id']}/password", json={"password": "new-pass"})
     client.post("/api/logout")
-    bad = client.post("/api/login", json={"username": "choi", "password": "old-pass"})
+    bad = client.post("/api/login", json={"username": username, "password": "old-pass"})
     assert bad.status_code == 401
-    ok = client.post("/api/login", json={"username": "choi", "password": "new-pass"})
+    ok = client.post("/api/login", json={"username": username, "password": "new-pass"})
     assert ok.status_code == 200
 
 
@@ -115,9 +125,10 @@ def test_viewer_is_read_only_xml_only(client):
     assert wizard.status_code == 200, wizard.text
     client.post("/api/logout")
     _enable_admin(client)
+    viewer_name = _name("view")
     viewer = client.post(
         "/api/admin/users",
-        json={"username": "view1", "password": "view1", "role": "viewer"},
+        json={"username": viewer_name, "password": "view1", "role": "viewer"},
     )
     assert viewer.status_code == 200, viewer.text
     client.put(
@@ -125,7 +136,7 @@ def test_viewer_is_read_only_xml_only(client):
         json={"user_id": viewer.json()["id"], "role": "viewer"},
     )
     client.post("/api/logout")
-    client.post("/api/login", json={"username": "view1", "password": "view1"})
+    client.post("/api/login", json={"username": viewer_name, "password": "view1"})
     me = client.get("/api/me")
     assert me.json()["role"] == "viewer"
     got = client.get(f"/api/projects/{project['id']}")
