@@ -5,11 +5,16 @@ from typing import NoReturn
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
-from ..models import User
+from ..db import get_db
+from ..models import ADMIN_ROLE, User
 from ..nrl.client import NrlError, get_nrl_client, validate_format, validate_instconfig
 from ..nrl.curve import CurveError, eval_response_curve, sample_rate_from_instconfig
 from ..nrl.questions import as_list, build_wizard
+from ..nrl.search import search_nrl
+from ..config import settings
+from ..cache import get_redis
 from ..routers.auth import current_user
 
 router = APIRouter(prefix="/api/nrl", tags=["nrl"])
@@ -78,6 +83,41 @@ def nrl_models(
         for mfr in as_list(el.get("manufacturer")):
             models.extend(_names(as_list(mfr.get("model"))))
     return {"element": element, "manufacturer": manufacturer, "models": models}
+
+
+@router.get("/search")
+def nrl_search(
+    q: str = Query(min_length=1, max_length=64),
+    element: str = Query(default="sensor"),
+    db: Session = Depends(get_db),
+    _user: User = Depends(current_user),
+) -> dict:
+    try:
+        return search_nrl(db, query=q, element=element)
+    except NrlError as exc:
+        _http(exc)
+
+
+@router.get("/status")
+def nrl_status(_user: User = Depends(current_user)) -> dict:
+    last_ok = False
+    try:
+        last_ok = bool(get_redis().get("pdcc:nrl:last_ok"))
+    except Exception:
+        last_ok = False
+    return {
+        "mode": settings.nrl_mode,
+        "base_url": settings.nrl_base_url,
+        "cache_ttl_sec": settings.nrl_cache_ttl_sec,
+        "last_ok": last_ok,
+    }
+
+
+@router.post("/test")
+def nrl_test(user: User = Depends(current_user)) -> dict:
+    if user.role != ADMIN_ROLE:
+        raise HTTPException(status_code=403, detail="관리자만 NRL 연결을 시험할 수 있습니다")
+    return get_nrl_client().probe()
 
 
 def _configurations(catalog: dict) -> list[dict]:

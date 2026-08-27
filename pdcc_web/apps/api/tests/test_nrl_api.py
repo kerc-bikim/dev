@@ -28,7 +28,18 @@ class FakeNrl(NrlClient):
         if level == "manufacturer":
             return self.manufacturers
         if level == "model":
-            return self.models
+            if manufacturer == "Guralp":
+                return self.models
+            return {
+                "NRLCatalog": {
+                    "element": [
+                        {
+                            "name": element or "sensor",
+                            "manufacturer": [{"name": manufacturer, "model": []}],
+                        }
+                    ]
+                }
+            }
         if level == "configuration":
             return {
                 "NRLCatalog": {
@@ -63,6 +74,22 @@ class FakeNrl(NrlClient):
         validate_instconfig(instconfig)
         validate_format(fmt)
         return self.combine_body, "application/xml"
+
+    def probe(self):
+        self.calls.append(("probe",))
+        data = self.catalog(level="element")
+        elements = []
+        for node in data.get("NRLCatalog", {}).get("element") or []:
+            if isinstance(node, dict) and node.get("name"):
+                elements.append(str(node["name"]))
+        return {
+            "ok": True,
+            "url": f"{self.base_url}/catalog",
+            "status_code": 200,
+            "elapsed_ms": 1,
+            "elements": elements,
+            "error": None,
+        }
 
 
 @pytest.fixture

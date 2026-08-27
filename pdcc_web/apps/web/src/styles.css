@@ -260,6 +260,15 @@ body {
 .issue-list { list-style: none; padding: 0; margin: 0; }
 .issue-list li { margin: 4px 0; }
 .issue-list code { color: var(--danger); margin-right: 6px; }
+.nrl-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+.search-hits { list-style: none; padding: 0; margin: 0; }
+.search-hits li { margin: 4px 0; }
+.search-hits button { width: 100%; text-align: left; }
 .wizard-nav, .pattern-row, .set-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .version-list { list-style: none; padding: 0; margin: 0; }
 .version-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }

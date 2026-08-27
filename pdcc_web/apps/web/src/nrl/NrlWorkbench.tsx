@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { apiGet, apiPost, apiText, type ChannelSummary, type ResponseCurve } from "../api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiGet, apiPost, apiText, type ChannelSummary, type Me, type NrlStatus, type ResponseCurve } from "../api";
 import { NrlPanel } from "./NrlPanel";
 import { ResponseCurveChart } from "./ResponseCurveChart";
 
@@ -38,9 +38,21 @@ export function NrlWorkbench({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [nrlStatus, setNrlStatus] = useState<NrlStatus | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   const onSensor = useCallback((value: string | null) => setSensor(value), []);
   const onDatalogger = useCallback((value: string | null) => setDatalogger(value), []);
+
+  useEffect(() => {
+    apiGet<NrlStatus>("/api/nrl/status")
+      .then(setNrlStatus)
+      .catch(() => undefined);
+    apiGet<Me>("/api/me")
+      .then(setMe)
+      .catch(() => undefined);
+  }, []);
 
   const cascade = [sensor, datalogger].filter(Boolean).join(":");
   const siblings = useMemo(() => {
@@ -125,7 +137,32 @@ export function NrlWorkbench({
       <p className="hint">
         NRL v2는 서버가 대신 조회합니다. 고유값이 하나뿐인 설정은 묻지 않습니다. 기준 모델은
         Guralp CMG-3T, Quanterra Q330HR 입니다.
+        {nrlStatus ? ` · 모드 ${nrlStatus.mode}${nrlStatus.last_ok ? " · 캐시 있음" : ""}` : null}
       </p>
+      {me?.role === "admin" ? (
+        <p className="wizard-nav">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              apiPost<{ ok: boolean; status_code: number; elapsed_ms: number; url: string; elements?: string[] }>(
+                "/api/nrl/test"
+              )
+                .then((data) =>
+                  setTestResult(
+                    `${data.ok ? "성공" : "실패"} HTTP ${data.status_code} · ${data.elapsed_ms} ms · ${data.url}`
+                  )
+                )
+                .catch((err: Error) => setTestResult(err.message))
+                .finally(() => setBusy(false));
+            }}
+          >
+            연결 테스트
+          </button>
+          {testResult ? <span className="hint">{testResult}</span> : null}
+        </p>
+      ) : null}
       <div className="nrl-grid">
         <NrlPanel element="sensor" onResolved={onSensor} disabled={disabled} />
         <NrlPanel element="datalogger" onResolved={onDatalogger} disabled={disabled} />

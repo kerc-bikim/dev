@@ -1,5 +1,5 @@
-import { ChangeEvent, useEffect, useState } from "react";
-import { apiGet, apiPost, type WizardResult } from "../api";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { apiGet, apiPost, type NrlSearchHit, type WizardResult } from "../api";
 
 const LABELS: Record<string, string> = {
   sensor: "센서",
@@ -21,6 +21,11 @@ export function NrlPanel({ element, onResolved, disabled = false }: Props) {
   const [wizard, setWizard] = useState<WizardResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<NrlSearchHit[]>([]);
+  const [excluded, setExcluded] = useState<{ name: string; message: string } | null>(null);
+  const [emptyMessage, setEmptyMessage] = useState<string | null>(null);
+  const skipClear = useRef(false);
 
   useEffect(() => {
     setBusy(true);
@@ -31,11 +36,14 @@ export function NrlPanel({ element, onResolved, disabled = false }: Props) {
   }, [element]);
 
   useEffect(() => {
-    onResolved(null);
-    setModel("");
+    if (!skipClear.current) {
+      onResolved(null);
+      setModel("");
+      setAnswers({});
+      setWizard(null);
+    }
+    skipClear.current = false;
     setModels([]);
-    setAnswers({});
-    setWizard(null);
     if (!manufacturer) return;
     apiGet<{ models: string[] }>(
       `/api/nrl/models?element=${element}&manufacturer=${encodeURIComponent(manufacturer)}`
@@ -44,14 +52,18 @@ export function NrlPanel({ element, onResolved, disabled = false }: Props) {
       .catch((err: Error) => setError(err.message));
   }, [element, manufacturer, onResolved]);
 
-  async function loadWizard(nextAnswers: Record<string, string>, nextModel = model) {
-    if (!manufacturer || !nextModel) return;
+  async function loadWizard(
+    nextAnswers: Record<string, string>,
+    nextModel = model,
+    nextManufacturer = manufacturer
+  ) {
+    if (!nextManufacturer || !nextModel) return;
     setBusy(true);
     setError(null);
     try {
       const data = await apiPost<WizardResult>("/api/nrl/wizard", {
         element,
-        manufacturer,
+        manufacturer: nextManufacturer,
         model: nextModel,
         answers: nextAnswers,
       });
@@ -88,12 +100,93 @@ export function NrlPanel({ element, onResolved, disabled = false }: Props) {
     await loadWizard(next);
   }
 
+  async function runSearch(event?: FormEvent) {
+    event?.preventDefault();
+    const q = query.trim();
+    setError(null);
+    setExcluded(null);
+    setHits([]);
+    setEmptyMessage(null);
+    if (q.length < 2) {
+      setEmptyMessage("검색어는 2자 이상입니다");
+      return;
+    }
+    setBusy(true);
+    try {
+      const data = await apiGet<{
+        hits: NrlSearchHit[];
+        excluded: { name: string; message: string } | null;
+        message: string | null;
+      }>(`/api/nrl/search?element=${element}&q=${encodeURIComponent(q)}`);
+      if (data.excluded) {
+        setExcluded(data.excluded);
+        setHits([]);
+        return;
+      }
+      setHits(data.hits);
+      setEmptyMessage(data.hits.length ? null : data.message);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function applyHit(hit: NrlSearchHit) {
+    skipClear.current = true;
+    setManufacturer(hit.manufacturer);
+    setHits([]);
+    setExcluded(null);
+    if (hit.model) {
+      setModel(hit.model);
+      setAnswers({});
+      await loadWizard({}, hit.model, hit.manufacturer);
+    } else {
+      setModel("");
+      setWizard(null);
+      onResolved(null);
+    }
+  }
+
   const title = LABELS[element] ?? element;
   const resolved = wizard?.match_count === 1 ? wizard.matches[0] : null;
 
   return (
     <section className="nrl-card">
       <h3>{title}</h3>
+      <form className="nrl-search" onSubmit={runSearch}>
+        <label>
+          검색
+          <input
+            value={query}
+            disabled={disabled}
+            placeholder="3t, metrozet, cme…"
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </label>
+        <button type="submit" disabled={disabled || busy}>
+          찾기
+        </button>
+      </form>
+      {excluded ? (
+        <p className="lock-banner" role="status">
+          {excluded.message}
+        </p>
+      ) : null}
+      {emptyMessage ? <p className="hint">{emptyMessage}</p> : null}
+      {hits.length > 0 ? (
+        <ul className="search-hits">
+          {hits.map((hit) => (
+            <li key={`${hit.manufacturer}-${hit.model ?? ""}`}>
+              <button type="button" disabled={disabled} onClick={() => applyHit(hit)}>
+                {hit.manufacturer}
+                {hit.model ? ` / ${hit.model}` : ""}
+                {hit.via === "alias" ? " · 별칭" : ""}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <label>
         제조사
         <select
