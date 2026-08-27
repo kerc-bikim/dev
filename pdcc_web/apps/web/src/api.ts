@@ -86,6 +86,8 @@ export type Project = {
   can_undo?: boolean;
   draft?: { updated_at: string | null; base_updated_at: string; conflict: boolean } | null;
   has_original?: boolean;
+  original_kind?: string | null;
+  original_filename?: string | null;
   my_role?: string | null;
   can_edit?: boolean;
 };
@@ -219,6 +221,10 @@ export function apiPost<T>(path: string, body?: unknown): Promise<T> {
     headers: body === undefined ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+}
+
+export function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  return api<T>(path, { method: "POST", body: form });
 }
 
 export function apiPut<T>(path: string, body?: unknown): Promise<T> {

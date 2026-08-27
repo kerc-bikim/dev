@@ -199,6 +199,23 @@ export function EditorPage({
     }
   }
 
+  async function downloadOriginal() {
+    setError(null);
+    try {
+      const { filename, blob } = await apiDownload(`/api/projects/${projectId}/original`);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
   async function exportSeed() {
     setError(null);
     try {
@@ -298,6 +315,11 @@ export function EditorPage({
         <button type="button" onClick={() => downloadXml()}>
           StationXML
         </button>
+        {project.has_original ? (
+          <button type="button" id="original-file-btn" onClick={() => downloadOriginal()}>
+            {project.original_kind === "dataless" ? "원본 SEED" : "원본 파일"}
+          </button>
+        ) : null}
         <button
           type="button"
           id="export-seed-btn"

@@ -75,6 +75,7 @@ export function ValidationPanel({
         {source === "draft" ? "초안 기준" : "서버 버전 기준"}
         {mode === "full" ? " · 공식 검증" : " · 즉시 검사"}
         {filename ? ` · ${filename}` : ""}
+        {issues.some((row) => row.source === "import") ? " · SEED 변환 경고" : ""}
         {validating ? " · 검증 중…" : ""}
         . 항목을 누르면 해당 칸으로 이동합니다.
       </p>

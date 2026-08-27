@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import NoReturn
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -150,6 +150,34 @@ def post_import(
             raw=body.xml_text.encode("utf-8"),
             name=body.name,
             operator=body.operator,
+        )
+        db.commit()
+        db.refresh(project)
+    except InventoryError as exc:
+        db.rollback()
+        _http_inv(exc)
+    return project_out(project, user, db=db)
+
+
+@router.post("/import-file")
+def post_import_file(
+    file: UploadFile = File(...),
+    name: str | None = Form(default=None),
+    operator: str | None = Form(default=None),
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> dict:
+    require_creator(user)
+    raw = file.file.read()
+    filename = file.filename or "upload.bin"
+    try:
+        project = import_project(
+            db,
+            user,
+            filename=filename,
+            raw=raw,
+            name=name,
+            operator=operator,
         )
         db.commit()
         db.refresh(project)
