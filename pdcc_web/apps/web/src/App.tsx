@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { readError, type Health, type Me } from "./api";
 import { EditorPage } from "./editor/EditorPage";
 import { ProjectHome } from "./editor/ProjectHome";
+import { JobBell } from "./jobs/JobBell";
 
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null);
@@ -89,13 +90,14 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <h1>PDCC Web</h1>
-          <small>NRL 위저드 · StationXML 편집기</small>
+          <small>NRL 위저드 · StationXML · RESP/SEED</small>
         </div>
         {me ? (
           <div className="controls">
             <span className="badge ok">
               {me.username} · {me.role}
             </span>
+            <JobBell />
             <button type="button" onClick={onLogout} disabled={busy}>
               로그아웃
             </button>

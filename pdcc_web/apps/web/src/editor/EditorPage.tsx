@@ -10,6 +10,7 @@ import {
 } from "../api";
 import { NrlWorkbench } from "../nrl/NrlWorkbench";
 import { StationWizard } from "./StationWizard";
+import { ExportPanel } from "./ExportPanel";
 
 export function EditorPage({
   projectId,
@@ -189,6 +190,11 @@ export function EditorPage({
                 : null
             }
             onApplied={() => refresh().catch((err: Error) => setError(err.message))}
+          />
+          <ExportPanel
+            projectId={project.id}
+            station={selected}
+            channel={channel}
           />
         </div>
       </div>
