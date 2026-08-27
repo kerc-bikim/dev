@@ -1,0 +1,5 @@
+modName q3302ew
+modId   MOD_Q3302EW
+instId  ${EW_INST_ID}
+tsec    90
+restartMe

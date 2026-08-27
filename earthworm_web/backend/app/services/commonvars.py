@@ -46,6 +46,19 @@ def parse_key_values(text: str) -> dict[str, str]:
     return out
 
 
+def parse_commands(text: str) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    for ln in text.splitlines():
+        s = ln.strip()
+        if not s or s.startswith("#"):
+            continue
+        parts = s.split(None, 1)
+        key = parts[0]
+        val = parts[1] if len(parts) > 1 else ""
+        out.setdefault(key, []).append(val)
+    return out
+
+
 def replace_command_value(text: str, key: str, value: str) -> tuple[str, bool]:
     lines = text.splitlines()
     found = False
@@ -59,3 +72,32 @@ def replace_command_value(text: str, key: str, value: str) -> tuple[str, bool]:
         else:
             out.append(ln)
     return "\n".join(out).rstrip() + "\n", found
+
+
+def replace_repeated_command(text: str, key: str, values: list[str]) -> str:
+    lines = text.splitlines()
+    pat = re.compile(rf"^(\s*#\s*)?{re.escape(key)}\b")
+    first_idx: int | None = None
+    out: list[str] = []
+    for ln in lines:
+        m = pat.match(ln)
+        if m and m.group(1) is None:
+            if first_idx is None:
+                first_idx = len(out)
+            continue
+        out.append(ln)
+    block = [f"{key}     {v}" for v in values if str(v).strip() != ""]
+    if first_idx is None:
+        out.extend(block)
+    else:
+        out[first_idx:first_idx] = block
+    return "\n".join(out).rstrip() + "\n"
+
+
+def upsert_command_value(text: str, key: str, value: str) -> str:
+    new, found = replace_command_value(text, key, value)
+    if found:
+        return new
+    if not new.endswith("\n"):
+        new += "\n"
+    return new + f"{key}     {value}\n"

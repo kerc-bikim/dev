@@ -1,0 +1,5 @@
+modName slink2ew
+modId   MOD_SLINK2EW
+instId  ${EW_INST_ID}
+tsec    90
+restartMe

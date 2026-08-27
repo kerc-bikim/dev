@@ -24,10 +24,12 @@ npm run dev -- --host 0.0.0.0 --port 5174
 
 인증:
 
-- HTTP API 는 `X-API-Key` 헤더만 인정합니다. `?key=` 쿼리는 거부합니다.
-- WebSocket 은 브라우저가 커스텀 헤더를 보낼 수 없어 `/ws/*?key=` 를 씁니다.
-- `EW_WEB_API_KEY` 가 비어 있으면 API 는 503 입니다. 배포 시 `dev` 기본값을 바꾸세요.
-- 프론트는 `VITE_API_KEY` (없으면 로컬 기본 `dev`).
+- 사람 UI 는 로그인 세션(HttpOnly 쿠키 `ew_session`)입니다. 프론트는 `credentials: include` 만 씁니다.
+- WebSocket 은 `POST /api/auth/ws-ticket` 후 `?ticket=` 입니다. 비밀번호를 쿼리에 넣지 않습니다.
+- `EW_WEB_API_KEY` 는 pytest · 서비스 합성 작업자(`service`, 역할 operator) 전용입니다. 사람 UI 에서 쓰지 마세요.
+- `/api/health` 는 공개입니다.
+- 작업자 테이블이 비어 있으면 `POST /api/auth/bootstrap` 또는 마법사 마지막 칸으로 최초 관리자를 만듭니다.
+- 개발·CI 전용: `EW_WEB_BOOTSTRAP_USERNAME` / `EW_WEB_BOOTSTRAP_PASSWORD` (테이블이 비어 있을 때만 시드). 배포 시 비우세요.
 - Swagger 는 기본 비활성. 켤 때만 `EW_WEB_OPEN_DOCS=1`.
 
 ```bash
@@ -38,6 +40,6 @@ cd frontend && npm run build
 ## 동작 요약
 
 1. **초기 설정 마법사** — `EW_HOME` / `EW_RUN_DIR`(params, log, data), Inst ID, 링 이름·키·크기·순서. 완료 전 제어 API 는 409.
-2. **이후 설정** — 우선 모듈 팔레트·구성 보드(계획), 모듈 토글·복제, 통합 변수, 파일 편집, 시작(`startstop`)/종료(`pau`)/일시중지(`stopmodule` pid)/재개(`restart` pid), 대시보드, 로그, sniffwave/sniffring. 복제 다발 후보는 `q3302ew` · `slink2ew` · `export_scnl` · `export_generic` · `wave_serverV`.
+2. **이후 설정** — 우선 모듈 팔레트·구성 보드, 작업자·이력, 모듈 토글·복제, 통합 변수, 파일 편집, 시작(`startstop`)/종료(`pau`)/일시중지(`stopmodule` pid)/재개(`restart` pid), 대시보드, 로그, sniffwave/sniffring. 복제 다발 후보는 `q3302ew` · `slink2ew` · `export_scnl` · `export_generic` · `wave_serverV`.
 3. 첫 startstop 링은 `STATUS_RING`. `FLAG_RING` 은 startstop 목록에 넣지 않습니다.
 4. 목 미리보기(백엔드 없음): `frontend/preview/` 에서 `python3 -m http.server 8765`
