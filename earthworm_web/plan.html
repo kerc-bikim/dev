@@ -190,7 +190,7 @@ footer {
 </tbody>
 </table>
 <p>상태: 계획만. 구현 체크리스트는 <a href="#12-구현-단계">구현 단계</a>에 둔다. 웹 흐름은 <strong>초기 설정</strong>(디렉터리·링)과 <strong>이후 설정</strong>(모듈·운영)으로 나눈다. 근거는 <a href="#17-소스매뉴얼-분석-근거">17절</a>.</p>
-<p>우선 운영 모듈·한 창 일괄 구성·모노레포 배포는 <a href="plan_priority.md">plan_priority.md</a> (<a href="#18">18절 이하</a>).</p>
+<p>우선 운영 모듈·한 창 일괄 구성·모노레포 배포는 <a href="plan_priority.md">plan_priority.md</a> (<a href="#18">18절 이하</a>). 단계별 세부·MVP는 <a href="plan_mvp.md">plan_mvp.md</a> (<a href="#30-mvp">30절</a>).</p>
 <hr />
 <h2 id="1">1. 목표</h2>
 <p>운영자가 SSH와 <code>startstop</code> 콘솔 없이, 브라우저에서 다음을 한다.</p>
@@ -1552,6 +1552,7 @@ sniffring [-n] &lt;ringname&gt; &lt;instid&gt; &lt;mod&gt; &lt;type&gt; verbose
 <li><code>deploy/earthworm-web.service</code>, 태그 <code>earthworm-web-v0.x</code>. 디렉터리 rename 없음</li>
 <li>tankplayer 는 기타 등록</li>
 </ul>
+<p>각 단계의 넣을 것/빼는 것·API·수락 조건과 <strong>MVP 경계</strong>는 <a href="plan_mvp.md">plan_mvp.md</a> (<a href="#30-mvp">30절</a>). MVP는 3–4단계(카탈로그·구성 보드)를 닫는 것이다. 1–2단계와 로그·스니프는 기존 코드가 전제다.</p>
 <p>각 단계마다 백엔드 pytest (파서·argv 생성·경로 샌드박스) 와 프론트 타입체크를 둔다.</p>
 <hr />
 <h2 id="13">13. 백엔드 / 프론트엔드 책임 요약</h2>
@@ -3057,7 +3058,7 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process &quot;q3302ew_st
 </ul>
 <hr />
 <h2 id="27-12">27. 구현 단계 (본계획 12절을 이 문서로 재배치)</h2>
-<p>본계획 1–2단계(마법사, 제어)는 이미 코드에 있다. 우선 모듈 작업은 <strong>3단계부터</strong> 끼워 넣는다.</p>
+<p>본계획 1–2단계(마법사, 제어)는 이미 코드에 있다. 우선 모듈 작업은 <strong>3단계부터</strong> 끼워 넣는다. 티켓 단위·MVP 수락은 <a href="plan_mvp.md">plan_mvp.md</a>.</p>
 <h3 id="3_1">3단계 — 우선 카탈로그와 스키마</h3>
 <ul>
 <li><code>module_fields.yaml</code> + <code>/api/modules/schema</code></li>
@@ -3167,10 +3168,444 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process &quot;q3302ew_st
 </tr>
 </tbody>
 </table>
-<p>이 파일이 닫히는 조건: 3–4단계가 머지되어 우선 12 Process 를 한 창에서 여러 인스턴스로 적용하고, 시드만으로 pytest 가 검증·apply 를 통과하는 것.</p>
+<p>이 파일이 닫히는 조건: 3–4단계가 머지되어 우선 12 Process 를 한 창에서 여러 인스턴스로 적용하고, 시드만으로 pytest 가 검증·apply 를 통과하는 것. 그 시점이 <strong>MVP</strong> 다 (<a href="plan_mvp.md">30절</a>).</p>
+<p>이 문서는 <a href="plan.md">plan.md 12절</a>과 <a href="plan_priority.md">plan_priority.md 27절</a>을 <strong>실행 단위</strong>로 쪼갠다. 각 단계의 목표, 넣을 것/빼는 것, API·화면·테스트, 수락 조건을 적는다.</p>
+<p>전제: 백엔드는 FastAPI, 프론트는 React. 프론트는 Earthworm 바이너리를 직접 호출하지 않는다. 제어 규칙은 그대로다 (<code>startstop</code> / <code>pau</code> / <code>stopmodule &lt;pid&gt;</code> / <code>restart &lt;pid&gt;</code>, <code>pidpau</code> 웹 금지, 첫 링 <code>STATUS_RING</code>).</p>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/phase-roadmap.html" title="단계 지도" loading="lazy" style="height:600px"></iframe><figcaption><a href="diagrams/phase-roadmap.html">단계 지도</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/mvp-scope.html" title="MVP 범위" loading="lazy" style="height:620px"></iframe><figcaption><a href="diagrams/mvp-scope.html">MVP 범위</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<hr />
+<h2 id="30-mvp">30. MVP 한 줄</h2>
+<p><strong>MVP</strong>는 운영자가 SSH 없이, 우선 I/O 모듈을 <strong>한 창에서 여러 인스턴스로 등록·입력·검증·적용</strong>한 뒤, 같은 <code>startstop</code>으로 <strong>함께 기동·정지·일시중지</strong>하고, 대시보드·로그·스니프로 확인하는 최소 제품이다.</p>
+<p>MVP가 <strong>새로 닫는 갭</strong>은 3단계(화이트리스트·스키마·시드)와 4단계(구성 보드·일괄 적용)다. 1·2단계와 로그·스니프는 이미 코드에 있으므로 <strong>재구현하지 않고 전제로 쓴다.</strong></p>
+<p>MVP가 <strong>성공한 장면</strong> (시드 홈만으로도, 실제 <code>EW_HOME</code>이 있으면 더 좋음):</p>
+<ol>
+<li>초기 설정 마법사를 끝낸다.</li>
+<li>구성 보드에서 <code>q3302ew</code> 두 장, <code>slink2ew</code> 한 장, <code>export_scnl</code> 한 장, <code>wave_serverV</code> 한 장을 추가한다.</li>
+<li>1차 필드만 채운다 (IP·시리얼·UDP, SeedLink 호스트, 리슨 포트·<code>Send_scnl</code>, Tank 경로).</li>
+<li>검토가 포트/이름 충돌을 잡고, 고친 뒤 적용이 <code>.d</code> · Module ID · 복사 bin · Process 줄을 만든다.</li>
+<li>시작을 누르면 대시보드에 인스턴스 이름이 뜬다. 한 행 일시중지(<code>stopmodule</code>), 전체 종료(<code>pau</code>)가 동작한다.</li>
+<li>로그와 sniffwave/sniffring은 기존 화면으로 본다.</li>
+</ol>
+<p>이 장면 밖(기타 <code>bin</code> 등록, <code>getmenu</code>, systemd 패키지, WEB_DOC, NTP 위젯)은 <strong>MVP 이후</strong>다. 파일 편집 화면이 우회 경로로 남는다.</p>
+<hr />
+<h2 id="31-mvp">31. 단계와 MVP의 관계</h2>
+<table>
+<thead>
+<tr>
+<th>단계</th>
+<th>이름</th>
+<th>코드 상태</th>
+<th>MVP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>기반(이미 있음)</td>
+<td>마법사·제어·대시보드·파일·로그·스니프·clone API</td>
+<td><strong>전제</strong>. 손대지 않거나 보드가 호출만 함</td>
+</tr>
+<tr>
+<td>1</td>
+<td>초기 설정 마법사</td>
+<td>있음</td>
+<td>전제. 회귀만</td>
+</tr>
+<tr>
+<td>2</td>
+<td>제어와 대시보드</td>
+<td>있음</td>
+<td>전제. 회귀만</td>
+</tr>
+<tr>
+<td>3</td>
+<td>우선 카탈로그·스키마</td>
+<td>없음</td>
+<td><strong>MVP에 포함</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td>구성 보드·일괄 적용</td>
+<td>없음</td>
+<td><strong>MVP에 포함</strong> (1차 스키마만)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>로그·링 모니터</td>
+<td>대부분 있음. <code>getmenu</code> 없음</td>
+<td>기존 화면은 MVP에 포함. <code>getmenu</code>는 이후</td>
+</tr>
+<tr>
+<td>6</td>
+<td>다듬기·배포</td>
+<td>없음</td>
+<td>MVP 밖. README 배포 문장만 최소</td>
+</tr>
+</tbody>
+</table>
+<p>구현 순서는 <strong>3 → 4</strong>. 3이 없으면 보드가 필드를 그릴 수 없다. 4의 적용이 없으면 한 창 일괄 운영이 성립하지 않는다.</p>
+<hr />
+<h2 id="32-1">32. 1단계 — 초기 설정 마법사 (전제, 동결)</h2>
+<h3 id="_7">목표</h3>
+<p><code>ew_linux.bash</code>로 <code>EW_HOME</code>/<code>EW_PARAMS</code>/<code>EW_LOG</code>/<code>EW_DATA_DIR</code>·Inst를 고정하고, 링 테이블과 <code>startstop_unix.d</code> 뼈대를 만든다. 끝나기 전 제어 API는 409.</p>
+<h3 id="_8">이미 있는 것</h3>
+<ul>
+<li><code>/api/setup/*</code>, SetupWizard, <code>STATUS_RING</code> 첫 줄, <code>FLAG_RING</code> 제외</li>
+<li>params 부트스트랩, Inst/테이블 검증</li>
+<li>파일 트리 편집 (<code>/api</code> files)</li>
+</ul>
+<h3 id="mvp">MVP에서 할 일</h3>
+<p>새 기능 없음. 3–4단계가 마법사 <code>setup_complete</code> 가드를 깨지 않는지 회귀 테스트만 유지.</p>
+<h3 id="_9">넣지 않는 것</h3>
+<p>링 크기 변경을 기동 중에 허용하기. 재진입은 기존처럼 <code>pau</code> 후 기반 설정.</p>
+<h3 id="_10">수락</h3>
+<ul>
+<li>마법사 완료 전 <code>/api/control/start</code> 409</li>
+<li>완료 후 <code>EW_PARAMS</code>에 링·startstop 파일이 있다</li>
+<li>pytest <code>test_api_flow</code> 의 setup 경로 통과</li>
+</ul>
+<hr />
+<h2 id="33-2">33. 2단계 — 제어와 대시보드 (전제, 동결)</h2>
+<h3 id="_11">목표</h3>
+<p>같은 호스트에서 Earthworm 전체를 기동·종료하고, pid 기준으로 모듈을 잠시 멈추거나 재개한다. 상태를 대시보드와 <code>/ws/status</code>로 본다.</p>
+<h3 id="_12">이미 있는 것</h3>
+<ul>
+<li>Start=<code>startstop</code>, Stop=<code>pau</code>, Pause=<code>stopmodule &lt;pid&gt;</code>, Resume=<code>restart &lt;pid&gt;</code></li>
+<li>락파일·IPC 진단, KillDelay 폴링</li>
+<li>기동 중 토글 ↔ stopmodule / reconfigure</li>
+<li>HTTP <code>X-API-Key</code>, WS만 <code>?key=</code></li>
+</ul>
+<h3 id="mvp_1">MVP에서 할 일</h3>
+<p>구성 보드의 <strong>시작</strong> 버튼이 기존 control API를 호출하게만 연결. 제어 규칙을 바꾸지 않는다. Alive 중 적용은 파일만 쓰고 “restart 필요” 배지(4단계에서 추가).</p>
+<h3 id="_13">넣지 않는 것</h3>
+<p>이름 인자로 중지, <code>pidpau</code> 웹 버튼, 여러 startstop.</p>
+<h3 id="_14">수락</h3>
+<ul>
+<li>시드 스텁에서 start → status 파싱 → pau</li>
+<li>한 모듈 pause/resume이 pid 인자인지 argv 테스트로 확인</li>
+</ul>
+<hr />
+<h2 id="34-3-mvp">34. 3단계 — 우선 카탈로그와 스키마 (MVP)</h2>
+<h3 id="_15">목표</h3>
+<p>팔레트에 <strong>우선 모듈만</strong> 보이게 하고, 각 Process 패밀리의 1차 필드를 JSON으로 프론트에 준다. 시드에 I/O 12개 스텁과 샘플 <code>.d</code>가 있어 실제 tarball 없이도 보드를 시험한다.</p>
+<h3 id="_16">넣을 것</h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>module_fields.yaml</code></td>
+<td>family, <code>role</code>, <code>fleet</code>, 1차 <code>fields[]</code> (22절 키만)</td>
+</tr>
+<tr>
+<td><code>GET /api/modules/schema</code></td>
+<td>YAML → JSON</td>
+</tr>
+<tr>
+<td><code>catalog()</code></td>
+<td><code>priority</code>, <code>role</code>, <code>fleet</code>, <code>clone_of</code></td>
+</tr>
+<tr>
+<td>시드</td>
+<td>12 I/O + 기존 CONTROL_BINS 스텁, 최소 <code>.d</code>/<code>.desc</code></td>
+</tr>
+<tr>
+<td>팔레트 UI</td>
+<td>우선 12. fleet는 <code>+</code> = 인스턴스 추가 예고(실제 복사는 4단계 apply). 비-fleet는 카드 하나</td>
+</tr>
+<tr>
+<td>카탈로그 필터</td>
+<td>기본 <code>priority</code>. “전체 bin”은 보기 전용(등록은 4단계 이후)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mvp_2">빼는 것 (MVP 밖)</h3>
+<ul>
+<li><code>POST /api/modules/register</code> (기타 모듈). 우회는 파일 편집</li>
+<li>매뉴얼 전 키를 폼으로 올리기</li>
+<li><code>getmenu</code>를 팔레트 Process로 오인</li>
+</ul>
+<h3 id="api">API</h3>
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>경로</th>
+<th>비고</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/modules</code></td>
+<td>기존 + <code>priority</code>/<code>role</code>/<code>fleet</code></td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/modules/schema</code></td>
+<td>신규</td>
+</tr>
+</tbody>
+</table>
+<p>기존 clone API는 유지. 3단계 UI는 clone을 직접 호출하지 않고 4단계 apply에 맡기는 것이 원칙이다. 3단계만 머지된 중간 상태에서는 기존 Modules 토글이 깨지면 안 된다.</p>
+<h3 id="_17">화면</h3>
+<p><code>Modules.tsx</code>에 팔레트 그룹(I/O · 제어 안내 · 진단 안내). 제어/진단은 카드가 아니라 “대시보드/링 모니터로” 링크. 아직 보드 레이아웃이 없으면 기존 토글 목록 위에 팔레트만 얹는다.</p>
+<h3 id="_18">테스트</h3>
+<ul>
+<li>YAML 로드, 12 family 존재, fleet 5개 플래그</li>
+<li>시드 후 <code>bin</code>에 <code>q3302ew</code> 등 실행 비트</li>
+<li>카탈로그 기본 응답에 <code>pick_ew</code>가 없거나 <code>priority: false</code></li>
+<li>프론트 <code>tsc --noEmit</code></li>
+</ul>
+<h3 id="_19">수락</h3>
+<p>운영자가 모듈 설정에서 <strong>우선 12 + 필수 statmgr</strong>만 또렷이 보고, 스키마 API가 <code>q3302ew.fields</code>에 <code>IPAddress</code>를 돌려준다.</p>
+<h3 id="_20">완료 정의</h3>
+<p>3단계 단독으로 일괄 적용은 하지 않는다. 다음 단계의 입력이다.</p>
+<hr />
+<h2 id="35-4-mvp">35. 4단계 — 구성 보드와 일괄 적용 (MVP 핵심)</h2>
+<h3 id="_21">목표</h3>
+<p>한 창에서 인스턴스를 늘리고 1차 파라미터를 채운 뒤, <strong>검토 → 적용 → 시작</strong>으로 전체가 같이 돌아간다.</p>
+<h3 id="_22">넣을 것</h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/compose</code></td>
+<td>디스크+clones → 보드 모델</td>
+</tr>
+<tr>
+<td><code>POST /api/compose/validate</code></td>
+<td>쓰기 없이 이슈 목록</td>
+</tr>
+<tr>
+<td><code>POST /api/compose/apply</code></td>
+<td>스냅샷 + clone/패치 + Process 줄. 옵션 <code>reconfigure</code></td>
+</tr>
+<tr>
+<td><code>POST /api/compose/suggest</code></td>
+<td>이름·포트·탱크 제안</td>
+</tr>
+<tr>
+<td><code>Compose.tsx</code></td>
+<td>사이트 공통 + 팔레트 + 카드 + 적용 바. 네비 라벨 “모듈 설정”</td>
+</tr>
+<tr>
+<td>사이트 공통</td>
+<td>HeartbeatInt, 기본 WAVE_RING, Inst 표시. 기존 카드 덮어쓰기는 체크 시에만</td>
+</tr>
+<tr>
+<td>1차 필드</td>
+<td>22절 표. 고급은 원문 <code>.d</code></td>
+</tr>
+<tr>
+<td>검증</td>
+<td><code>dup_process</code>, <code>dup_module_id</code>, <code>dup_listen</code>, <code>dup_tank</code>, <code>missing_ring</code>, <code>missing_bin</code>, <code>max_child</code>, <code>cmd_len</code>, <code>bad_name</code>, <code>empty_required</code>, <code>ephemeral_port</code>(경고)</td>
+</tr>
+<tr>
+<td>롤백</td>
+<td><code>backend/data/backups/compose-&lt;ts&gt;/</code></td>
+</tr>
+<tr>
+<td>AuthCode</td>
+<td>password 입력, 서버 로그 마스킹</td>
+</tr>
+</tbody>
+</table>
+<p>적용은 내부에서 기존 <code>clone_module</code>을 여러 번 호출한다. 중간 실패 시 그 apply가 만든 파일만 되돌린다.</p>
+<h3 id="mvp_3">빼는 것 (MVP 밖)</h3>
+<ul>
+<li>기타 모듈 등록 모달</li>
+<li>Variables 페이지 삭제(보드는 사이트 바를 갖고, Variables는 남겨도 됨)</li>
+<li>기동 중 <code>.d</code> 핫 리로드 (배지 + 수동 restart만)</li>
+<li>bin 원본 해시 비교 후 재복사</li>
+<li>StationXML에서 <code>Send_scnl</code> 자동 채움</li>
+<li>공통 전파로 모든 카드 HeartbeatInt 강제 덮어쓰기(기본 끔)</li>
+</ul>
+<h3 id="mvp_4">화면 조작 (MVP 데모 스크립트)</h3>
+<ol>
+<li>팔레트 <code>q3302ew</code> + 두 번 → <code>q3302ew_sta1</code>, <code>q3302ew_sta2</code> (제안 이름 수정 가능)</li>
+<li><code>slink2ew</code> +, <code>export_scnl</code> +, <code>wave_serverV</code> + (원본 이름 또는 <code>_n1</code>)</li>
+<li>필수 칸 입력. 같은 <code>ServerPort</code>를 두 export에 넣으면 검토가 빨강</li>
+<li>적용 → 시작. 대시보드에서 이름 확인</li>
+<li>카드 삭제 후 적용 = 기존 복제 삭제(기동 중이면 stopmodule 먼저)</li>
+</ol>
+<p><code>statmgr</code> 카드는 삭제 불가.</p>
+<h3 id="_23">테스트</h3>
+<ul>
+<li>같은 리슨 포트 두 장 → validate 409, 디스크 불변</li>
+<li>apply 후 <code>earthworm.d</code> Module 유일, <code>startstop_unix.d</code>에 <code>q3302ew_sta1 q3302ew_sta1.d</code></li>
+<li>Tank 경로 중복 거부</li>
+<li><code>MAX_CHILD</code> 초과 거부</li>
+<li>apply 실패 롤백 (두 번째 clone을 강제 실패시키는 테스트)</li>
+<li><code>SAFE_NAME</code> 위반 400</li>
+</ul>
+<h3 id="_24">수락</h3>
+<p>시드만으로 pytest가 validate·apply를 통과하고, 브라우저(또는 preview)에서 카드 여러 장을 한 번에 적용할 수 있다. 이 단계가 끝나야 MVP가 닫힌다.</p>
+<hr />
+<h2 id="36-5-mvp">36. 5단계 — 로그와 링 모니터 (기존=MVP, 확장=이후)</h2>
+<h3 id="_25">목표</h3>
+<p>기동 후 운영자가 파일 로그와 링 내용을 본다.</p>
+<h3 id="mvp_5">이미 있는 것 (MVP에 포함)</h3>
+<ul>
+<li>로그 디렉터리·보관일·뷰어·follow. lock/data 제외</li>
+<li>sniffwave / sniffring 세션 2개, WS, 서버 줄 상한</li>
+</ul>
+<h3 id="mvp_6">MVP에서 할 일</h3>
+<p>새 기능 없음. 보드에서 기동한 인스턴스 로그 파일 이름이 <code>{id}_YYYYMMDD.log</code> 패턴과 맞는지 스모크만.</p>
+<h3 id="mvp_7">이후 (MVP 밖)</h3>
+<ul>
+<li><code>getmenu</code> → 선택 wave_serverV IP:포트</li>
+<li>기반 설정 재진입 UX 다듬기</li>
+</ul>
+<h3 id="mvp_8">수락 (MVP)</h3>
+<p>기존 Sniff·Logs 페이지가 보드 적용 이후에도 동작한다. sniff 세션 한도 2 유지.</p>
+<hr />
+<h2 id="37-6-mvp">37. 6단계 — 다듬기와 모노레포 배포 (MVP 밖)</h2>
+<h3 id="_26">목표</h3>
+<p>웹 콘솔만 호스트에 올리고, Earthworm 바이너리는 <code>EW_HOME</code>에 둔다.</p>
+<h3 id="_27">넣을 것 (이후)</h3>
+<ul>
+<li><code>earthworm_web/deploy/earthworm-web.service</code></li>
+<li><code>DEPLOY.md</code>, 태그 <code>earthworm-web-v0.x</code></li>
+<li>WEB_DOC 정적 <code>/docs/ew/</code></li>
+<li>NTP·디스크 위젯, 감사 로그 강화</li>
+<li>기타 모듈 등록 API</li>
+<li>tankplayer는 등록으로만</li>
+</ul>
+<h3 id="mvp_9">MVP에서 허용하는 최소</h3>
+<p>README에 “배포 시 <code>EW_WEB_AUTO_SEED=0</code>, <code>EW_WEB_BASH</code>, 키를 <code>dev</code>에서 바꿀 것”이 이미 있다. 유닛 파일은 MVP 필수 아님.</p>
+<h3 id="_28">빼는 것</h3>
+<p>디렉터리 rename, 루트 pnpm workspace, 이미지에 tarball 넣기, 프론트 마이크로프론트 합성.</p>
+<hr />
+<h2 id="38-mvp">38. MVP 범위 표</h2>
+<table>
+<thead>
+<tr>
+<th>기능</th>
+<th>MVP</th>
+<th>이후</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>마법사·링·Inst</td>
+<td>○ 기존</td>
+<td></td>
+</tr>
+<tr>
+<td>start / pau / stopmodule / restart</td>
+<td>○ 기존</td>
+<td></td>
+</tr>
+<tr>
+<td>대시보드 + <code>/ws/status</code></td>
+<td>○ 기존</td>
+<td></td>
+</tr>
+<tr>
+<td>파일 편집 (우회)</td>
+<td>○ 기존</td>
+<td></td>
+</tr>
+<tr>
+<td>로그·sniff</td>
+<td>○ 기존</td>
+<td>getmenu</td>
+</tr>
+<tr>
+<td>우선 12 스키마·시드</td>
+<td>○ 신규</td>
+<td>필드 확장</td>
+</tr>
+<tr>
+<td>구성 보드 한 창</td>
+<td>○ 신규</td>
+<td></td>
+</tr>
+<tr>
+<td>복제 다발 5종 인스턴스 추가</td>
+<td>○ 신규</td>
+<td></td>
+</tr>
+<tr>
+<td>검토·적용 트랜잭션</td>
+<td>○ 신규</td>
+<td>원본 bin 재복사</td>
+</tr>
+<tr>
+<td>기타 모듈 등록</td>
+<td></td>
+<td>○</td>
+</tr>
+<tr>
+<td>Variables 페이지 제거</td>
+<td></td>
+<td>○ (보드는 사이트 바)</td>
+</tr>
+<tr>
+<td>systemd·태그·WEB_DOC</td>
+<td></td>
+<td>○</td>
+</tr>
+<tr>
+<td>StationXML·PPSD 연동</td>
+<td></td>
+<td>○</td>
+</tr>
+<tr>
+<td><code>pidpau</code> 웹 버튼</td>
+<td>하지 않음</td>
+<td>하지 않음</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="39-mvp">39. MVP 수락 테스트</h2>
+<p>자동화 (시드, Earthworm 실기동 불필요):</p>
+<ol>
+<li>setup complete</li>
+<li>schema에 fleet 5 + process 12</li>
+<li>compose 모델에 <code>q3302ew</code> 두 인스턴스(포트 다름) apply → Process 두 줄</li>
+<li>같은 <code>ServerPort</code> 두 <code>export_scnl</code> → validate 실패, 파일 없음</li>
+<li>같은 Tank 두 <code>wave_serverV</code> → 실패</li>
+<li>잘못된 이름 → 400</li>
+<li>기존 start/pau argv 테스트 회귀</li>
+</ol>
+<p>수동 (스텁 또는 실기):</p>
+<ol>
+<li>보드에서 인스턴스 추가·입력·적용·시작</li>
+<li>대시보드 이름 확인, 한 행 일시중지, 전체 종료</li>
+<li>로그 한 파일, sniffwave 헤더 몇 줄</li>
+</ol>
+<p>실기 Rocky 바이너리가 없는 환경에서는 자동화가 MVP 통과 기준이고, 수동은 스텁 status로 이름을 확인하는 수준이다.</p>
+<hr />
+<h2 id="40">40. 작업 쪼개기 (구현 착수 시)</h2>
+<p>3단계 티켓:</p>
+<ol>
+<li><code>module_fields.yaml</code> + 로더 + schema 엔드포인트</li>
+<li>catalog 플래그 + 시드 12 스텁</li>
+<li>팔레트 UI (토글 목록과 공존)</li>
+</ol>
+<p>4단계 티켓:</p>
+<ol>
+<li>compose 모델 GET + validate</li>
+<li>apply 트랜잭션 + 롤백 pytest</li>
+<li>Compose 화면 + 적용 바 + control start 연결</li>
+<li>제안 포트/이름 API</li>
+</ol>
+<p>한 티켓이 머지돼도 기존 마법사·제어가 깨지면 안 된다. MVP 태그는 4단계 3번까지 끝난 시점의 <code>earthworm-web-v0.1.0</code>을 권장한다.</p>
     </article>
     <footer>
-      Generated from <code>plan.md</code> + <code>plan_priority.md</code>.
+      Generated from <code>plan.md</code> + <code>plan_priority.md</code> + <code>plan_mvp.md</code>.
     </footer>
   </div>
 </body>

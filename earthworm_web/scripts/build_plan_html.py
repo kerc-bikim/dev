@@ -7,7 +7,7 @@ from pathlib import Path
 import markdown
 
 ROOT = Path(__file__).resolve().parents[1]
-MD_PATHS = (ROOT / "plan.md", ROOT / "plan_priority.md")
+MD_PATHS = (ROOT / "plan.md", ROOT / "plan_priority.md", ROOT / "plan_mvp.md")
 HTML_PATH = ROOT / "plan.html"
 
 CSS = """
@@ -170,7 +170,7 @@ TEMPLATE = """<!DOCTYPE html>
 {body}
     </article>
     <footer>
-      Generated from <code>plan.md</code> + <code>plan_priority.md</code>.
+      Generated from <code>plan.md</code> + <code>plan_priority.md</code> + <code>plan_mvp.md</code>.
     </footer>
   </div>
 </body>
@@ -199,6 +199,8 @@ DIAGRAM_HEIGHTS = {
     "instance-fleet": 620,
     "monorepo": 600,
     "compose-apply": 660,
+    "phase-roadmap": 600,
+    "mvp-scope": 620,
 }
 
 

@@ -13,7 +13,7 @@ Earthworm **v8.0b17** 기준으로, 이미 컴파일된 Rocky Linux 9 바이너�
 
 상태: 계획만. 구현 체크리스트는 [구현 단계](#12-구현-단계)에 둔다. 웹 흐름은 **초기 설정**(디렉터리·링)과 **이후 설정**(모듈·운영)으로 나눈다. 근거는 [17절](#17-소스매뉴얼-분석-근거).
 
-우선 운영 모듈·한 창 일괄 구성·모노레포 배포는 [plan_priority.md](plan_priority.md) ([18절 이하](#18)).
+우선 운영 모듈·한 창 일괄 구성·모노레포 배포는 [plan_priority.md](plan_priority.md) ([18절 이하](#18)). 단계별 세부·MVP는 [plan_mvp.md](plan_mvp.md) ([30절](#30-mvp)).
 
 ---
 
@@ -788,6 +788,8 @@ Earthworm 을 실제로 기동하지 않고도 1단계는 마법사·파일 파�
 - WEB_DOC 정적 제공 (`/docs/ew/`)
 - `deploy/earthworm-web.service`, 태그 `earthworm-web-v0.x`. 디렉터리 rename 없음
 - tankplayer 는 기타 등록
+
+각 단계의 넣을 것/빼는 것·API·수락 조건과 **MVP 경계**는 [plan_mvp.md](plan_mvp.md) ([30절](#30-mvp)). MVP는 3–4단계(카탈로그·구성 보드)를 닫는 것이다. 1–2단계와 로그·스니프는 기존 코드가 전제다.
 
 각 단계마다 백엔드 pytest (파서·argv 생성·경로 샌드박스) 와 프론트 타입체크를 둔다.
 
