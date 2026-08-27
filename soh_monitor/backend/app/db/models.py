@@ -269,6 +269,10 @@ class Device(UuidPrimaryKey, Timestamped, Base):
     sensors: Mapped[list["Sensor"]] = relationship(
         back_populates="device", cascade="all, delete-orphan"
     )
+    manufacturer: Mapped["Manufacturer | None"] = relationship(lazy="joined")
+    device_model: Mapped["DeviceModel | None"] = relationship(lazy="joined")
+    collection_profile: Mapped["CollectionProfile | None"] = relationship(lazy="joined")
+    metric_profile: Mapped["MetricProfile | None"] = relationship(lazy="joined")
 
 
 class DeviceEndpoint(UuidPrimaryKey, Timestamped, Base):
