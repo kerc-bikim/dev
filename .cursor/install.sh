@@ -34,20 +34,27 @@ if ! dpkg -s "${SYS_PKGS[@]}" >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Shared Python virtualenv (PPSD backend, recvQSCD20, seedlinkToMp3)
-#    numpy/obspy versions are pinned by PPSD_v1/backend/requirements.txt.
-#    setuptools is pinned <81 there so ObsPy 1.4's pkg_resources import works.
+# 2. Shared Python virtualenv (PPSD backend, recvQSCD20, earthworm_web backend,
+#    stationxml_manager, seedlinkToMp3)
+#    All four requirements files pin a consistent stack (obspy 1.4.1,
+#    numpy 1.26.4, fastapi 0.115.6, pydantic 2.10.4, ...), so they coexist in a
+#    single shared venv. setuptools is pinned <81 (PPSD_v1 requirements) so
+#    ObsPy 1.4's pkg_resources import keeps working on Python 3.12.
 # ---------------------------------------------------------------------------
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip wheel
 .venv/bin/pip install \
   -r PPSD_v1/backend/requirements.txt \
   -r recvQSCD20/requirements.txt \
+  -r earthworm_web/backend/requirements.txt \
+  -r stationxml_manager/requirements.txt \
   scipy==1.13.1 soundfile==0.12.1 requests==2.32.3 pytest==8.3.4
 
 # ---------------------------------------------------------------------------
 # 3. Node dependencies
 #    ringserver uses vite 8 with a compatible plugin, so a normal install works.
+#    earthworm_web/frontend and stationxml_manager/frontend pin vite ^6 with a
+#    compatible @vitejs/plugin-react ^4, so a normal install works too.
 #    PPSD_v1/frontend pins vite ^8 while @vitejs/plugin-react ^4 only declares a
 #    peer range up to vite 7, so --legacy-peer-deps is required (the build works
 #    with vite 8 in practice). This does not modify the repo's pinned versions.
@@ -55,6 +62,8 @@ python3 -m venv .venv
 npm install --prefix ringserver_seedlink_websocket
 npm install --prefix ringserver_seedlink_websocket/backend
 npm install --prefix ringserver_seedlink_websocket/frontend
+npm install --prefix earthworm_web/frontend
+npm install --prefix stationxml_manager/frontend
 npm install --prefix PPSD_v1/frontend --legacy-peer-deps
 
 echo "Environment bootstrap complete."
