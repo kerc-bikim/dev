@@ -64,13 +64,15 @@ NRL은 API 기동 시 호출하지 않습니다. 업스트림이 죽거나 URL�
 
 ## M3 가져오기·복제
 
-홈 **파일 열기**는 StationXML 1.2와 dataless SEED를 받습니다. SEED는 converter(JAR가 있으면) 또는 ObsPy로 StationXML로 바꾼 뒤 프로젝트를 만들고, 원문 바이트는 덮어쓰지 않습니다. 변환 경고는 검사 패널에 남습니다 (`docs/adr/0015-seed-import.md`, S2).
+홈 **파일 열기**는 StationXML 1.2, dataless SEED, RESP를 받습니다. SEED·RESP는 converter(JAR가 있으면) 또는 ObsPy로 StationXML로 바꾼 뒤 프로젝트를 만들고, 원문 바이트는 덮어쓰지 않습니다. 변환 경고는 검사 패널에 남습니다 (`docs/adr/0015-seed-import.md`, `docs/adr/0019-resp.md`).
 
 편집기 **관측소 복제** 표에 엑셀 행을 붙여넣으면 원본 채널·응답을 복사해 관측소를 만듭니다. 코드가 비어 있는 행은 무시합니다. API는 `POST /api/projects/{id}/clone-stations` (`docs/adr/0013-station-clone.md`, S7).
 
 **검증**은 공식 검사를 작업 큐에 넣고 바로 돌아옵니다. 진행률은 상단과 작업 벨에 보이고, 이전 검사 결과는 유지됩니다. 편집은 그동안 계속할 수 있습니다. 끝나면 패널이 스냅샷 결과로 갱신됩니다 (`docs/adr/0016-bulk-validate.md`, S14). 실패한 작업은 같은 version id로 다시 돌립니다.
 
 `dataless SEED` 를 누르면 변환 손실 확인 창이 열립니다. 70자 코멘트·25자 FIR·확장 필드 제거 목록을 본 뒤에만 내보내기가 진행됩니다 (`docs/adr/0017-seed-loss.md`, S6).
+
+**RESP** 는 선택한 채널 파일, **RESP zip** 은 관측소의 채널별 zip입니다. NRL combine이 아니라 현재 편집 StationXML에서 만들므로 고친 감도가 들어갑니다. 검증 오류가 있으면 막습니다 (`docs/adr/0019-resp.md`).
 
 | 이름 | 기본 | 설명 |
 |------|------|------|
