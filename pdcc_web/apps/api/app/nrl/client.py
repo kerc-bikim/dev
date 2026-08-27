@@ -82,6 +82,64 @@ def nrl_cache_count(redis) -> int:
     return len(seen)
 
 
+def nrl_cache_bytes(redis) -> int:
+    total = 0
+    keys: list = []
+    try:
+        keys = list(redis.scan_iter(match="pdcc:nrl:*"))
+    except Exception:
+        try:
+            keys = list(redis.keys("pdcc:nrl:*"))
+        except Exception:
+            return 0
+    for key in keys:
+        text = key.decode() if isinstance(key, bytes) else str(key)
+        if not any(text.startswith(prefix) for prefix in CACHE_KEY_PREFIXES):
+            continue
+        try:
+            total += int(redis.strlen(key) or 0)
+        except Exception:
+            try:
+                raw = redis.get(key)
+            except Exception:
+                raw = None
+            if raw:
+                total += len(raw) if isinstance(raw, (bytes, str)) else 0
+    return total
+
+
+def nrl_snapshot_from_redis(redis) -> dict:
+    cache_count = 0
+    cache_bytes = 0
+    last_ok_at = None
+    source = None
+    try:
+        cache_count = nrl_cache_count(redis)
+        cache_bytes = nrl_cache_bytes(redis)
+        last_ok_at = redis.get(META_LAST_OK_AT)
+        source = redis.get(META_SOURCE)
+    except Exception:
+        cache_count = 0
+        cache_bytes = 0
+    if source not in {"online", "cache", "offline"}:
+        if cache_count > 0:
+            source = "cache"
+        elif last_ok_at:
+            source = "online"
+        else:
+            source = None
+    return {
+        "mode": settings.nrl_mode,
+        "source": source,
+        "badge": nrl_badge(source) if source else None,
+        "base_url": settings.nrl_base_url,
+        "last_ok": bool(last_ok_at),
+        "last_ok_at": last_ok_at,
+        "cache_count": cache_count,
+        "cache_bytes": cache_bytes,
+    }
+
+
 def _redis_set(redis, key: str, value: str, ex: int | None = None) -> None:
     try:
         if ex is None:

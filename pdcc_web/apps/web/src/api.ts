@@ -208,11 +208,38 @@ export type NrlStatus = {
   source?: string;
   badge?: string;
   base_url: string;
-  cache_ttl_sec: number;
+  cache_ttl_sec?: number;
   last_ok: boolean;
   last_ok_at?: string | null;
   cache_count?: number;
 };
+export type AdminDashboard = {
+  user_count: number;
+  project_count: number;
+  export_count_today: number;
+  nrl: NrlStatus & { cache_bytes?: number };
+  failed_jobs: Job[];
+  locks: {
+    station_path: string;
+    project_id: number;
+    username: string;
+    expires_at: string | null;
+    remaining_sec: number;
+  }[];
+  disk: {
+    path: string;
+    used_bytes: number;
+    total_bytes: number;
+    free_bytes: number;
+    percent: number;
+    over_90: boolean;
+    originals_bytes: number;
+    exports_bytes: number;
+    nrl_zip_bytes: number;
+  };
+  badges: { nrl: boolean; failed_jobs: boolean; disk: boolean };
+};
+
 
 export class ApiError extends Error {
   status: number;
