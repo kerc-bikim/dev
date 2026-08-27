@@ -112,12 +112,56 @@ export function ContractsPage() {
         </p>
       </div>
 
-      {(adapters.data?.adapters.length ?? 0) === 0 && (
-        <div className="notice warn" style={{ marginBottom: "1.25rem" }}>
-          등록된 기록계 Adapter 가 없다. Centaur CTR Adapter 는 M2 에서 등록되며, 그전까지
-          장비 등록은 열리지 않는다.
-        </div>
-      )}
+      <div className="card">
+        <h2>등록된 기록계 Adapter</h2>
+        {(adapters.data?.adapters.length ?? 0) === 0 ? (
+          <div className="notice warn">
+            등록된 기록계 Adapter 가 없다. Adapter 가 없으면 장비 등록은 열리지 않는다.
+          </div>
+        ) : (
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>Adapter</th>
+                  <th>제조사</th>
+                  <th>제품군</th>
+                  <th>지원 모델</th>
+                  <th>프로토콜</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {adapters.data!.adapters.map((adapter) => (
+                  <tr key={adapter.adapterKey}>
+                    <td>
+                      <code>{adapter.adapterKey}</code> v{adapter.adapterVersion}
+                    </td>
+                    <td>{adapter.manufacturer}</td>
+                    <td>{adapter.productFamilies.join(", ")}</td>
+                    <td>{adapter.supportedModels.length}종</td>
+                    <td>{adapter.protocols.join(", ")}</td>
+                    <td>
+                      <span className="badge">{adapter.status}</span>
+                      {!adapter.selectable && (
+                        <>
+                          {" "}
+                          <span className="badge">준비 중</span>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ marginBottom: 0, color: "var(--muted)", fontSize: "0.9rem" }}>
+              등록 화면의 제조사·모델 선택과 접속 입력 폼은 이 응답의{" "}
+              <code>configurationSchema</code> 로 만들어진다. 새 제조사를 붙일 때 화면 코드를
+              고치지 않는다.
+            </p>
+          </>
+        )}
+      </div>
 
       <div className="card">
         <h2>Metric 목록</h2>
