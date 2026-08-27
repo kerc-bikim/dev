@@ -18,6 +18,8 @@ Docker Compose 모노레포입니다. 앱 코드는 `apps/` 아래에 있고, �
 
 Earthworm 바이너리(Rocky tarball)는 이미지에 넣지 않습니다. 기본 스택은 웹 콘솔 + 시드 스텁입니다. 실제 `startstop` 은 `compose.override.example.yaml` 을 `compose.override.yaml` 로 복사해 `EW_HOME` 을 붙이고 `ipc: host` 를 켭니다.
 
+API 컨테이너는 호스트에 노출하지 않습니다. UI nginx 는 같은 네트워크 네임스페이스에서 `/api` · `/ws` 를 `127.0.0.1` 로 프록시합니다.
+
 ## 실행
 
 ```bash
@@ -51,7 +53,7 @@ docker compose --profile ppsd --profile stationxml up --build
 | StationXML UI | 8082 |
 | RingWave UI | 8083 |
 
-API 컨테이너는 기본으로 호스트에 노출하지 않습니다. UI nginx 가 `/api` · `/ws` 를 프록시합니다.
+UI nginx 가 같은 네임스페이스에서 `/api` · `/ws` 를 프록시합니다.
 
 ## 앱별 로컬 개발 (Compose 없이)
 

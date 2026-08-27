@@ -18,6 +18,8 @@ services:
     volumes:
       - earthworm-data:/app/backend/data
       - earthworm-home:/app/.ew_home
+    ports:
+      - "8081:80"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/api/health')"]
       interval: 10s
@@ -29,11 +31,10 @@ services:
     build:
       context: ./apps/earthworm_web
       dockerfile: docker/frontend.Dockerfile
+    network_mode: "service:earthworm-web"
     depends_on:
       earthworm-web:
         condition: service_healthy
-    ports:
-      - "8081:80"
     restart: unless-stopped
 
   ppsd-api:
@@ -76,6 +77,8 @@ services:
       STATIONXML_API_KEY: ${STATIONXML_API_KEY:-dev}
     volumes:
       - stationxml-data:/app/data
+    ports:
+      - "8082:80"
     healthcheck:
       test: ["CMD", "python", "-c", "import os, urllib.request; k=os.environ.get('STATIONXML_API_KEY',''); r=urllib.request.Request('http://127.0.0.1:8000/api/health', headers={'X-API-Key': k} if k else {}); urllib.request.urlopen(r)"]
       interval: 10s
@@ -88,13 +91,12 @@ services:
     build:
       context: ./apps/stationxml_manager
       dockerfile: docker/frontend.Dockerfile
+    network_mode: "service:stationxml-api"
     depends_on:
       stationxml-api:
         condition: service_healthy
     environment:
       STATIONXML_API_KEY: ${STATIONXML_API_KEY:-dev}
-    ports:
-      - "8082:80"
     restart: unless-stopped
 
   ringserver-api:
@@ -110,6 +112,8 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ringserver-data:/app/backend/data
+    ports:
+      - "8083:80"
     restart: unless-stopped
 
   ringserver-ui:
@@ -117,10 +121,9 @@ services:
     build:
       context: ./apps/ringserver_seedlink_websocket
       dockerfile: docker/frontend.Dockerfile
+    network_mode: "service:ringserver-api"
     depends_on:
       - ringserver-api
-    ports:
-      - "8083:80"
     restart: unless-stopped
 
   dataselect:
