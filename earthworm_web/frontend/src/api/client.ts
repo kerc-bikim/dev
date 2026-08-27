@@ -1,28 +1,49 @@
-async function parseError(res: Response): Promise<string> {
+export type ComposeIssue = {
+  code: string;
+  message: string;
+  instance?: string | null;
+  field?: string | null;
+  level?: string;
+};
+
+type ErrorBody = { message: string; issues?: ComposeIssue[] };
+
+async function parseError(res: Response): Promise<ErrorBody> {
   try {
     const body = await res.json();
-    if (typeof body.detail === "string") return body.detail;
+    if (typeof body.detail === "string") return { message: body.detail };
     if (body.detail && typeof body.detail === "object") {
-      if (typeof body.detail.message === "string") return body.detail.message;
-      if (Array.isArray(body.detail.issues)) {
-        const first = body.detail.issues[0];
-        return first?.message || "검증 실패";
+      const issues = Array.isArray(body.detail.issues) ? (body.detail.issues as ComposeIssue[]) : undefined;
+      let message = typeof body.detail.message === "string" ? body.detail.message : "";
+      if (issues?.length && (!message || message === "검증 실패")) {
+        const errs = issues.filter((i) => i.level !== "warning");
+        const parts = (errs.length ? errs : issues).map((i) => i.message).filter(Boolean).slice(0, 3);
+        if (parts.length) message = parts.join("; ");
       }
+      return { message: message || "요청이 거절되었습니다", issues };
     }
     if (Array.isArray(body.detail)) {
-      return body.detail.map((d: { msg?: string }) => d.msg ?? JSON.stringify(d)).join("; ");
+      return { message: body.detail.map((d: { msg?: string }) => d.msg ?? JSON.stringify(d)).join("; ") };
     }
   } catch {
     /* ignore */
   }
-  return `${res.status} ${res.statusText}`;
+  return { message: `${res.status} ${res.statusText}` };
 }
 
-export class AuthError extends Error {
+export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  issues?: ComposeIssue[];
+  constructor(message: string, status: number, issues?: ComposeIssue[]) {
     super(message);
     this.status = status;
+    this.issues = issues;
+  }
+}
+
+export class AuthError extends ApiError {
+  constructor(message: string, status: number) {
+    super(message, status);
   }
 }
 
@@ -32,8 +53,14 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
   const res = await fetch(path, { ...init, headers, credentials: "include" });
-  if (res.status === 401) throw new AuthError(await parseError(res), 401);
-  if (!res.ok) throw new Error(await parseError(res));
+  if (res.status === 401) {
+    const err = await parseError(res);
+    throw new AuthError(err.message, 401);
+  }
+  if (!res.ok) {
+    const err = await parseError(res);
+    throw new ApiError(err.message, res.status, err.issues);
+  }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
@@ -152,14 +179,6 @@ export type ComposeBoard = {
   rings: string[];
   compose_revision: number;
   running: boolean;
-};
-
-export type ComposeIssue = {
-  code: string;
-  message: string;
-  instance?: string | null;
-  field?: string | null;
-  level?: string;
 };
 
 export type Operator = {

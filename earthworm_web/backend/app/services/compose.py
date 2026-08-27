@@ -245,8 +245,21 @@ def suggest(family: str, board: dict | None = None) -> dict:
         values.setdefault("MaxMsgSize", "4096")
     if family == "import_pasv":
         values.setdefault("ReceiverIpAdr", "0.0.0.0")
+        values.setdefault("SenderIpAdr", "127.0.0.1")
+    if family == "q3302ew":
+        values.setdefault("IPAddress", "0.0.0.0")
+        values.setdefault("SerialNumber", "0")
+        values.setdefault("LC", "0 BHZ 100")
     if family == "slink2ew":
+        values.setdefault("SLhost", "127.0.0.1")
         values.setdefault("SLport", "18000")
+        values.setdefault("Stream", "STREAM")
+        values.setdefault("Selectors", "??")
+    if family == "export_scnl":
+        values.setdefault("Send_scnl", "* * * *")
+    if family == "import_generic":
+        values.setdefault("SenderIpAdr", "127.0.0.1")
+        values.setdefault("SenderPort", "16005")
     if family == "ew2ringserver":
         values.setdefault("RSPort", "18000")
         values.setdefault("RSAddress", "127.0.0.1")
@@ -298,13 +311,16 @@ def validate_board(board: dict) -> list[dict]:
             rv = str(values.get(rk) or "").strip()
             if rv and rv not in rings and rv != "FLAG_RING":
                 issues.append(_issue("missing_ring", f"{rk} {rv} 가 startstop 링 목록에 없습니다", iid, rk))
+        enabled = bool(inst.get("enabled"))
         for field in process_fields(family):
             key = field["key"]
             val = values.get(key)
             empty = val is None or str(val).strip() == ""
             if field.get("required") and empty:
                 code = "auth_empty" if key == "AuthCode" else "empty_required"
-                issues.append(_issue(code, f"필수 값 없음: {key}", iid, key))
+                level = "error" if enabled else "warning"
+                msg = f"필수 값 없음: {key}" if enabled else f"켜기 전에 필요: {key}"
+                issues.append(_issue(code, msg, iid, key, level))
             if field.get("type") in LISTEN_TYPES and not empty:
                 try:
                     port = int(val)

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   api,
+  ApiError,
   type ComposeBoard,
   type ComposeInstance,
   type ComposeIssue,
@@ -165,6 +166,7 @@ export function ComposePage({
       );
       await load();
     } catch (e) {
+      if (e instanceof ApiError && e.issues?.length) setIssues(e.issues);
       toast((e as Error).message);
     } finally {
       setBusy(false);
@@ -193,6 +195,7 @@ export function ComposePage({
       <h2>구성 보드</h2>
       <p className="lead">
         우선 I/O 모듈을 한 창에서 채운 뒤 검토 → 적용 → 시작합니다. 적용과 시작은 분리되어 있습니다.
+        꺼진 카드의 빈 필드는 경고이며, 켠 뒤에만 적용을 막습니다.
         {running ? " startstop 이 살아 있으면 적용은 파일만 기록합니다." : ""}
       </p>
       <div className="card">

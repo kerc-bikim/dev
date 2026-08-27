@@ -216,4 +216,57 @@ def test_suggest_names(ew_home):
         r = client.post("/api/compose/suggest", headers=HEADERS, json={"family": "q3302ew"})
         assert r.status_code == 200, r.text
         assert r.json()["id"].startswith("q3302ew_")
-        assert "SourcePortControl" in r.json()["values"]
+        vals = r.json()["values"]
+        assert "SourcePortControl" in vals
+        assert vals["IPAddress"] == "0.0.0.0"
+        assert vals["LC"] == "0 BHZ 100"
+        assert "AuthCode" not in vals
+
+
+def test_apply_seed_board_ok(ew_home):
+    with TestClient(app) as client:
+        _complete(client, ew_home)
+        board = client.get("/api/compose", headers=HEADERS).json()
+        r = client.post("/api/compose/apply", headers=HEADERS, json=board)
+        assert r.status_code == 200, r.text
+        assert r.json()["ok"] is True
+
+
+def test_disabled_incomplete_q330_does_not_block_apply(ew_home):
+    with TestClient(app) as client:
+        _complete(client, ew_home)
+        board = client.get("/api/compose", headers=HEADERS).json()
+        board["instances"].append(
+            {
+                "family": "q3302ew",
+                "id": "q3302ew_sta1",
+                "enabled": False,
+                "values": {"RingName": "WAVE_RING", "SourcePortControl": 16032, "SourcePortData": 16033},
+            }
+        )
+        checked = client.post("/api/compose/validate", headers=HEADERS, json=board)
+        assert checked.status_code == 200, checked.text
+        codes = {(i["code"], i["level"]) for i in checked.json()["issues"]}
+        assert ("auth_empty", "warning") in codes
+        r = client.post("/api/compose/apply", headers=HEADERS, json=board)
+        assert r.status_code == 200, r.text
+        params = Path(parsed_core()["EW_PARAMS"])
+        assert (params / "q3302ew_sta1.d").is_file()
+        audit = client.get("/api/audit", headers=HEADERS).json()["events"]
+        rows = [e for e in audit if e["action"] == "compose_apply" and e["result"] == "ok"]
+        assert rows
+
+
+def test_enabled_q330_without_auth_rejected(ew_home):
+    with TestClient(app) as client:
+        _complete(client, ew_home)
+        board = client.get("/api/compose", headers=HEADERS).json()
+        inst = _q330("q3302ew_sta1", 16032, 16033)
+        inst["values"].pop("AuthCode")
+        body = {"site": board["site"], "instances": [inst]}
+        r = client.post("/api/compose/apply", headers=HEADERS, json=body)
+        assert r.status_code == 409, r.text
+        issues = r.json()["detail"]["issues"]
+        assert any(i["code"] == "auth_empty" and i["level"] == "error" for i in issues)
+        params = Path(parsed_core()["EW_PARAMS"])
+        assert not (params / "q3302ew_sta1.d").is_file()
