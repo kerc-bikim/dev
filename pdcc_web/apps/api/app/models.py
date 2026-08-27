@@ -6,18 +6,30 @@ import os
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
 
 PBKDF2_ITERS = 120_000
+VIEWER_ROLE = "viewer"
 STUB_ROLE = "editor"
+EDITOR_ROLE = "editor"
 ADMIN_ROLE = "admin"
+ROLES = (VIEWER_ROLE, EDITOR_ROLE, ADMIN_ROLE)
 
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+    __table_args__ = (UniqueConstraint("name", name="uq_organizations_name"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 def hash_password(plain: str, *, salt: bytes | None = None) -> str:
@@ -48,8 +60,11 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(String(64), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(32), nullable=False, default=STUB_ROLE)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    org_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -65,6 +80,17 @@ class Project(Base):
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ProjectMember(Base):
+    __tablename__ = "project_members"
+    __table_args__ = (UniqueConstraint("project_id", "user_id", name="uq_project_members_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default=EDITOR_ROLE)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class StationLock(Base):

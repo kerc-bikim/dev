@@ -8,7 +8,11 @@ from app.seed import seed_users
 def test_stub_login(client):
     response = client.post("/api/login", json={"username": "stub", "password": "stub"})
     assert response.status_code == 200
-    assert response.json() == {"username": "stub", "role": "editor"}
+    body = response.json()
+    assert body["username"] == "stub"
+    assert body["role"] == "editor"
+    assert body["active"] is True
+    assert body["display_name"] == "stub"
     assert client.cookies.get("pdcc_session")
 
 
@@ -46,4 +50,5 @@ def test_admin_allowed_when_bootstrap_on(client):
         db.close()
     response = client.post("/api/login", json={"username": "admin", "password": "admin"})
     assert response.status_code == 200
-    assert response.json() == {"username": "admin", "role": "admin"}
+    assert response.json()["username"] == "admin"
+    assert response.json()["role"] == "admin"

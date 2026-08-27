@@ -66,6 +66,10 @@ NRL은 API 기동 시 호출하지 않습니다. 업스트림이 죽거나 URL�
 
 편집기 **관측소 복제** 표에 엑셀 행을 붙여넣으면 원본 채널·응답을 복사해 관측소를 만듭니다. 코드가 비어 있는 행은 무시합니다. API는 `POST /api/projects/{id}/clone-stations` (`docs/adr/0013-station-clone.md`, S7).
 
+## M0 사용자·역할
+
+관리자(`/admin`)가 기관과 조회자·편집자를 만듭니다. 프로젝트에 속하지 않으면 목록에 없고, 조회자는 StationXML만 받습니다 (`docs/adr/0014-users-roles.md`).
+
 ## 테스트
 
 ```bash

@@ -8,8 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .cache import get_redis, set_redis
 from .config import settings
-from .db import Base, SessionLocal, configure_engine, get_engine
+from .db import SessionLocal, configure_engine, ensure_schema
 from .nrl.client import set_nrl_client
+from .routers.admin import router as admin_router
 from .routers.auth import router as auth_router
 from .routers.collab import router as collab_router
 from .routers.health import router as health_router
@@ -32,7 +33,7 @@ async def lifespan(_app: FastAPI):
     if settings.dev_bootstrap_admin:
         log.warning("DEV_BOOTSTRAP_ADMIN=true — admin/admin 로그인이 허용됩니다.")
     configure_engine()
-    Base.metadata.create_all(bind=get_engine())
+    ensure_schema()
     db = SessionLocal()
     try:
         seed_users(db)
@@ -64,6 +65,7 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(nrl_router)
 app.include_router(projects_router)
 app.include_router(locks_router)

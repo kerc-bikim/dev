@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..access import EDITOR_ROLE, ROLES, add_member, project_role, can_edit_role
 from ..models import AuditLog, FileAsset, Project, User, utcnow
 from .collab import get_draft, latest_undo, record_edit
 from .importers import inspect_stationxml
@@ -92,6 +93,12 @@ def project_out(
                 "conflict": draft.base_updated_at != data["updated_at"],
             }
         data["has_original"] = original_asset(db, project.id) is not None
+        role = project_role(db, project, user)
+        data["my_role"] = role
+        data["can_edit"] = can_edit_role(role)
+    else:
+        data["my_role"] = None
+        data["can_edit"] = False
     if top_lock is not None:
         data["lock"] = top_lock
     return data
@@ -112,6 +119,8 @@ def create_project(db: Session, user: User, *, name: str, network_code: str, ope
     )
     db.add(project)
     db.flush()
+    owner_role = user.role if user.role in ROLES else EDITOR_ROLE
+    add_member(db, project, user, owner_role)
     write_audit(
         db,
         project_id=project.id,
@@ -145,6 +154,8 @@ def import_project(
     )
     db.add(project)
     db.flush()
+    owner_role = user.role if user.role in ROLES else EDITOR_ROLE
+    add_member(db, project, user, owner_role)
     db.add(
         FileAsset(
             project_id=project.id,

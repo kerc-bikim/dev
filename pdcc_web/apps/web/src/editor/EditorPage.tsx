@@ -77,6 +77,7 @@ export function EditorPage({
       .then(async (data) => {
         const first = data.stations[0];
         if (!first) return;
+        if (data.can_edit === false) return;
         try {
           await apiPost(
             `/api/projects/${projectId}/lock?station_path=${encodeURIComponent(first.station_path)}`
@@ -96,7 +97,9 @@ export function EditorPage({
   const channel: ChannelSummary | null =
     selected?.channels.find((row) => row.nslc === selectedNslc) ?? selected?.channels[0] ?? null;
   const lock: LockInfo | undefined = selected?.lock ?? project?.lock ?? undefined;
-  const readOnly = Boolean(lock && lock.mine === false);
+  const viewerOnly = project?.my_role === "viewer";
+  const canEdit = Boolean(project?.can_edit);
+  const readOnly = !canEdit || Boolean(lock && lock.mine === false);
 
   useEffect(() => {
     if (!selected || readOnly) return;
@@ -127,6 +130,7 @@ export function EditorPage({
   async function openStation(sta: StationSummary) {
     setSelectedPath(sta.station_path);
     setSelectedNslc(sta.channels[0]?.nslc ?? null);
+    if (!canEdit) return;
     try {
       await apiPost(
         `/api/projects/${projectId}/lock?station_path=${encodeURIComponent(sta.station_path)}`
@@ -255,7 +259,12 @@ export function EditorPage({
         <h2>
           {project.name} <small>{project.network_code}</small>
         </h2>
-        <button type="button" className="primary" onClick={() => setWizard(true)}>
+        {viewerOnly ? (
+          <span className="badge warn" id="viewer-readonly-badge">
+            조회자 · 읽기 전용
+          </span>
+        ) : null}
+        <button type="button" className="primary" disabled={readOnly} onClick={() => setWizard(true)}>
           관측소 위저드
         </button>
         <button
@@ -292,14 +301,20 @@ export function EditorPage({
         <button
           type="button"
           id="export-seed-btn"
-          disabled={!canSeed}
-          title={canSeed ? "dataless SEED" : "오류가 있으면 SEED를 만들 수 없습니다. 먼저 검증하세요."}
+          disabled={!canSeed || readOnly}
+          title={
+            readOnly
+              ? "조회자는 StationXML만 받을 수 있습니다"
+              : canSeed
+                ? "dataless SEED"
+                : "오류가 있으면 SEED를 만들 수 없습니다. 먼저 검증하세요."
+          }
           onClick={() => exportSeed()}
         >
           dataless SEED
         </button>
       </div>
-      {lock ? (
+      {lock && !viewerOnly ? (
         <p className={lock.mine ? "lock-banner mine" : "lock-banner"}>
           {lock.mine
             ? `${lock.username} 님이 수정 중 (이 세션)`

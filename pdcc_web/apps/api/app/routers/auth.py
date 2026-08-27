@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..access import org_of, user_out
 from ..cache import get_redis, session_key
 from ..config import settings
 from ..db import get_db
@@ -21,6 +22,10 @@ class LoginIn(BaseModel):
 class UserOut(BaseModel):
     username: str
     role: str
+    display_name: str
+    active: bool
+    org_id: int | None = None
+    org_name: str | None = None
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -48,7 +53,21 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = db.get(User, int(raw))
     if user is None:
         raise HTTPException(status_code=401, detail="로그인이 필요합니다")
+    if not user.active:
+        raise HTTPException(status_code=401, detail="비활성 계정입니다")
     return user
+
+
+def _as_out(db: Session, user: User) -> UserOut:
+    data = user_out(user, org_of(db, user))
+    return UserOut(
+        username=data["username"],
+        role=data["role"],
+        display_name=data["display_name"],
+        active=data["active"],
+        org_id=data["org_id"],
+        org_name=data["org_name"],
+    )
 
 
 @router.post("/login", response_model=UserOut)
@@ -61,10 +80,12 @@ def login(body: LoginIn, response: Response, db: Session = Depends(get_db)) -> U
     user = db.scalar(select(User).where(User.username == body.username))
     if user is None or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다")
+    if not user.active:
+        raise HTTPException(status_code=401, detail="비활성 계정입니다")
     token = new_session_token()
     get_redis().set(session_key(token), str(user.id), ex=settings.session_ttl_sec)
     _set_session_cookie(response, token)
-    return UserOut(username=user.username, role=user.role)
+    return _as_out(db, user)
 
 
 @router.post("/logout")
@@ -77,5 +98,5 @@ def logout(request: Request, response: Response) -> dict:
 
 
 @router.get("/me", response_model=UserOut)
-def me(user: User = Depends(current_user)) -> UserOut:
-    return UserOut(username=user.username, role=user.role)
+def me(user: User = Depends(current_user), db: Session = Depends(get_db)) -> UserOut:
+    return _as_out(db, user)
