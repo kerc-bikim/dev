@@ -1,0 +1,17 @@
+**/.git
+**/.venv
+**/node_modules
+**/dist
+**/__pycache__
+**/.pytest_cache
+**/.ew_home
+**/backend/data/*.sqlite
+**/backend/data/*.sqlite-*
+**/backend/data/app.json
+**/backend/data/backups
+**/.env
+**/cache
+**/*.pyc
+**/.cursor
+**/.vscode
+**/plan.html

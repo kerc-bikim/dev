@@ -31,7 +31,7 @@ Earthworm `bin` 에는 픽커·로케이터·hypoinverse·tankplayer 등 수십 
 | `Modules.tsx` 토글 + `prompt()` 복제 | **구성 보드**: 인스턴스 카드 + 사이트 공통 + 적용 |
 | `Variables.tsx` 가 HeartbeatInt 등 소수 공통키만 | 사이트 공통 + 모듈 스키마 필드가 **한 화면** |
 | `seed.py` CONTROL_BINS 에 I/O 모듈 스텁이 부족 | 우선 Process 바이너리 스텁·샘플 `.d` 를 시드에 포함 |
-| 앱이 `earthworm_web/` 한 트리 | 배포 단위를 **앱 패키지**로 문서화. 강제 디렉터리 이동은 하지 않음 |
+| 앱이 저장소 루트에 흩어짐 | `apps/` + 루트 `compose.yaml` Docker 모노레포 |
 
 ---
 
@@ -245,7 +245,7 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process "q3302ew_sta2 q3
 
 ## 22. 모듈 필드 스키마
 
-진실의 원천 파일: `earthworm_web/backend/app/module_fields.yaml` (구현 시 추가). 프론트는 `/api/modules/schema` 로 받는다. 매뉴얼은 소스 `doc/WEB_DOC` 의 각 cmd HTML.
+진실의 원천 파일: `apps/earthworm_web/backend/app/module_fields.yaml`. 프론트는 `/api/modules/schema` 로 받는다. 매뉴얼은 소스 `doc/WEB_DOC` 의 각 cmd HTML.
 
 공통 Process 필드 (스키마가 생략해도 카드 상단에 항상 표시):
 
@@ -469,77 +469,61 @@ families:
 
 [모노레포](diagrams/monorepo.html)
 
-이 저장소(`kerc-bikim/dev`)는 이미 **여러 앱이 한 git** 에 있다. npm/pnpm workspace 파일은 없다. 지금 다른 앱 디렉터리를 `apps/` 아래로 옮기지 않는다. 이동은 각 앱 담당이 준비됐을 때 따로 한다.
+저장소는 **Docker Compose 모노레포**다. 앱은 `apps/` 아래, 서비스는 루트 `compose.yaml` 이다. 프론트 마이크로프론트 합성은 하지 않는다. 앱마다 UI 포트가 다르다.
 
-목표: Earthworm 웹 콘솔을 **독립 배포 단위**로 만들되, 같은 저장소에서 StationXML · PPSD · ringserver UI 와 버전을 함께 자를 수 있게 **패키지 경계**를 문서와 스크립트로 고정한다.
-
-### 26.1 현재 레이아웃 (유지)
+### 26.1 레이아웃
 
 ```
 dev/
-  earthworm_web/          ← 이 앱 (백엔드+프론트+계획)
-  stationxml_manager/
-  PPSD_v1/
-  ringserver_seedlink_websocket/
-  dataselect/
-  recvQSCD20/
+  compose.yaml
+  apps/
+    earthworm_web/
+    stationxml_manager/
+    PPSD_v1/
+    ringserver_seedlink_websocket/
+    dataselect/
+    recvQSCD20/          # GUI, Compose 프로필 없음
+    seedlinkToMp3/
+  packages/              # 공유 라이브러리 (비어 있음)
 ```
-
-강제 이전이 없는 1차 모노레포 규약:
 
 | 규약 | 내용 |
 |------|------|
-| 앱 루트 | 각 제품은 저장소 최상위 **한 디렉터리**. 그 안에서 `backend/` + `frontend/` |
-| 공유 없음 (1차) | 앱 간 npm 패키지 강제 추출 없음. 스타일·API 키 패턴만 맞춤 |
-| 락파일 | 앱 프론트의 `package-lock.json` 은 그 앱만. 루트 단일 lock 은 2차 |
-| 태그 | `earthworm-web-v0.1.0` 처럼 **앱 prefix**. 저장소 전역 `v1` 만으로 배포하지 않음 |
-| Earthworm 바이너리 | **패키지에 넣지 않음**. 호스트(또는 볼륨)의 `EW_HOME` |
-| 시드 | `earthworm_web/fixtures` 는 개발·CI 전용 |
+| 앱 루트 | `apps/<name>/` 안에서 `backend/`+`frontend/` 또는 해당 스택 |
+| 오케스트레이션 | 루트 `docker compose`. 기본 프로필은 Earthworm 웹 |
+| 이미지 | 앱별 Dockerfile. Earthworm Rocky tarball 은 **넣지 않음** |
+| 시드 | `apps/earthworm_web/fixtures` + 볼륨 `earthworm-home` |
+| 태그 | 앱 prefix (`earthworm-web-v0.x`) |
+| GUI | `recvQSCD20` 는 호스트/Xvfb |
 
-### 26.2 2차 — workspace 를 열 때 (다른 앱 이관 시)
+### 26.2 Compose 서비스
 
-루트에만 추가하고, `earthworm_web` 경로는 심볼릭 또는 `packages/earthworm-web` rename 을 **별 PR** 로 한다.
+| 서비스 | 프로필 | 포트 |
+|--------|--------|------|
+| `earthworm-web` + `earthworm-web-ui` | (기본) | 8081 |
+| `ppsd-api` + `ppsd-ui` | `ppsd` | 8080 |
+| `stationxml-api` + `stationxml-ui` | `stationxml` | 8082 |
+| `ringserver-api` + `ringserver-ui` | `ringserver` | 8083 |
+| `dataselect` | `tools` | CLI |
 
-```
-dev/
-  pnpm-workspace.yaml    # packages: ['earthworm_web/frontend', 'stationxml_manager/frontend', …]
-  package.json           # private, scripts: { "ew:dev": "…" }
-  deploy/
-    earthworm-web.service
-    earthworm-web.nginx.conf
-```
+UI nginx 가 `/api`·`/ws` 를 같은 오리진으로 프록시한다. 사람 세션 쿠키가 포트가 갈라진 API 로 새지 않는다.
 
-Python 은 앱별 `requirements.txt` 를 유지한다. 루트 uv workspace 는 선택. 백엔드 의존성이 달라서 한 venv 로 묶지 않는다.
+실제 `startstop` 은 `ipc: host` 와 `compose.override.example.yaml` 의 `EW_HOME` 바인드. SysV IPC 가 컨테이너에서 실패하면 웹만 Docker, Earthworm 은 호스트.
 
-### 26.3 Earthworm 웹 배포 산출물 (이 앱만)
+### 26.3 같은 저장소 다른 앱
 
-배포 아티팩트는 **웹 콘솔**이다.
+| 앱 | Earthworm 웹 |
+|----|----------------|
+| ringserver | `ew2ringserver`/`slink2ew` 포트 교차. Compose 프로필 `ringserver` |
+| stationxml | SCNL 수동. 프로필 `stationxml` |
+| PPSD | 아카이브 소비. 프로필 `ppsd` |
+| dataselect | MiniSEED CLI 이미지 |
 
-| 산출물 | 내용 |
-|--------|------|
-| `earthworm_web/backend` wheel 또는 rsync | FastAPI, `EW_WEB_*` env |
-| `earthworm_web/frontend/dist` | Vite 정적. nginx 가 `/` , `/api` 프록시 → 8010 |
-| systemd | `earthworm-web.service` User=ew 계정 (startstop 과 동일 uid) |
-| 환경 | `EW_WEB_API_KEY`, `EW_WEB_BASH`, `EW_WEB_AUTO_SEED=0` |
+### 26.4 CI
 
-Docker 는 선택: 이미지에 Rocky tarball 을 넣지 않는다. `EW_HOME` 마운트. 공유 메모리(`/dev/shm`, SysV IPC) 가 컨테이너에서 깨지면 호스트 프로세스로 되돌린다는 것을 README 에 적는다. **기본 배포는 호스트 systemd** 다.
-
-### 26.4 같은 저장소 다른 앱과의 경계
-
-| 앱 | Earthworm 웹과의 관계 |
-|----|------------------------|
-| `ringserver_seedlink_websocket` | `ew2ringserver` / `slink2ew` 의 상대. 포트만 문서 교차 |
-| `stationxml_manager` | SCNL 메타. 1차에서 API 연동 없음. 구성 보드 `Send_scnl` 은 수동 |
-| `PPSD_v1` | 아카이브 소비측. 연동 없음 |
-| `dataselect` | MiniSEED 추출. `ewmseedarchiver` 경로만 운영 약속 |
-
-1차에서 프론트 마이크로프론트 합성은 하지 않는다. 운영자가 앱마다 URL 을 연다.
-
-### 26.5 CI · 버전
-
-- 변경 경로가 `earthworm_web/**` 일 때만 이 앱 pytest + `npm run build`.
-- 계획 HTML 은 `scripts/build_plan_html.py` 가 `plan.md` + 이 파일을 이어 붙인다.
-- 릴리스 노트는 앱 디렉터리 `CHANGELOG.md` (구현 시).
+- `apps/earthworm_web/**` → pytest + frontend build
+- `docker compose config` 로 Compose 문법
+- 계획 HTML 은 `apps/earthworm_web/scripts/build_plan_html.py`
 
 ---
 
@@ -566,12 +550,13 @@ Docker 는 선택: 이미지에 Rocky tarball 을 넣지 않는다. `EW_HOME` �
 
 구성 보드와 독립. `getmenu` 를 진단에 연결 (wave_serverV 인스턴스 콤보).
 
-### 6단계 — 배포 패키징 (모노레포 1차)
+### 6단계 — 배포 패키징 (Docker 모노레포)
 
-- `deploy/earthworm-web.service` 예시
-- README 배포 절, 태그 규칙
-- 루트에 앱 목록만 적은 `AGENTS.md` 또는 `earthworm_web/DEPLOY.md`
-- 디렉터리 rename 없음
+- 루트 `compose.yaml`. 앱은 `apps/<name>/`
+- 기본 프로필: Earthworm 웹 UI `:8081`. 다른 앱은 `--profile`
+- `compose.override.example.yaml` 로 `EW_HOME` 바인드 · `ipc: host`
+- README 배포 절, 태그 `earthworm-web-v0.x`
+- systemd 유닛은 호스트에서 Earthworm 만 돌릴 때 선택
 
 본계획 5단계 P2(포트 인벤토리)는 구성 보드 검증이 대체하므로 **4단계에 흡수**한다. tankplayer 시험 프로파일은 기타 등록으로 미룬다.
 

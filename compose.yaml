@@ -1,0 +1,144 @@
+# KERC seismic tools — Docker monorepo
+# Default: Earthworm web console (API internal, UI :8081)
+# Default stack does not use ipc: host (that belongs in compose.override.yaml
+# with a real EW_HOME). Seed stubs are enough for the web console.
+name: kerc-dev
+
+services:
+  earthworm-web:
+    build:
+      context: ./apps/earthworm_web
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      EW_WEB_API_KEY: ${EW_WEB_API_KEY:-}
+      EW_WEB_AUTO_SEED: ${EW_WEB_AUTO_SEED:-1}
+      EW_WEB_LOG_LEVEL: INFO
+      EW_WEB_BOOTSTRAP_USERNAME: ${EW_WEB_BOOTSTRAP_USERNAME:-}
+      EW_WEB_BOOTSTRAP_PASSWORD: ${EW_WEB_BOOTSTRAP_PASSWORD:-}
+    volumes:
+      - earthworm-data:/app/backend/data
+      - earthworm-home:/app/.ew_home
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/api/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 8
+    restart: unless-stopped
+
+  earthworm-web-ui:
+    build:
+      context: ./apps/earthworm_web
+      dockerfile: docker/frontend.Dockerfile
+    depends_on:
+      earthworm-web:
+        condition: service_healthy
+    ports:
+      - "8081:80"
+    restart: unless-stopped
+
+  ppsd-api:
+    profiles: [ppsd]
+    build:
+      context: ./apps/PPSD_v1/backend
+    environment:
+      FDSNWS_URL: ${FDSNWS_URL:-https://service.iris.edu}
+      LOG_LEVEL: INFO
+    volumes:
+      - ppsd-cache:/app/cache
+      - ppsd-sds:/app/sds
+    networks:
+      default:
+        aliases:
+          - backend
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    restart: unless-stopped
+
+  ppsd-ui:
+    profiles: [ppsd]
+    build:
+      context: ./apps/PPSD_v1/frontend
+    depends_on:
+      - ppsd-api
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  stationxml-api:
+    profiles: [stationxml]
+    build:
+      context: ./apps/stationxml_manager
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      STATIONXML_API_KEY: ${STATIONXML_API_KEY:-dev}
+    volumes:
+      - stationxml-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, urllib.request; k=os.environ.get('STATIONXML_API_KEY',''); r=urllib.request.Request('http://127.0.0.1:8000/api/health', headers={'X-API-Key': k} if k else {}); urllib.request.urlopen(r)"]
+      interval: 10s
+      timeout: 3s
+      retries: 8
+    restart: unless-stopped
+
+  stationxml-ui:
+    profiles: [stationxml]
+    build:
+      context: ./apps/stationxml_manager
+      dockerfile: docker/frontend.Dockerfile
+    depends_on:
+      stationxml-api:
+        condition: service_healthy
+    environment:
+      STATIONXML_API_KEY: ${STATIONXML_API_KEY:-dev}
+    ports:
+      - "8082:80"
+    restart: unless-stopped
+
+  ringserver-api:
+    profiles: [ringserver]
+    build:
+      context: ./apps/ringserver_seedlink_websocket
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      PORT: "8787"
+      RINGSERVER_URL: ${RINGSERVER_URL:-http://host.docker.internal:18000}
+      FDSNWS_URL: ${FDSNWS_URL:-https://service.iris.edu/fdsnws}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ringserver-data:/app/backend/data
+    restart: unless-stopped
+
+  ringserver-ui:
+    profiles: [ringserver]
+    build:
+      context: ./apps/ringserver_seedlink_websocket
+      dockerfile: docker/frontend.Dockerfile
+    depends_on:
+      - ringserver-api
+    ports:
+      - "8083:80"
+    restart: unless-stopped
+
+  dataselect:
+    profiles: [tools]
+    build:
+      context: ./apps/dataselect
+      dockerfile: docker/Dockerfile
+    stdin_open: true
+    tty: true
+    volumes:
+      - ${DATASELECT_DATA:-./data/miniseed}:/data
+    working_dir: /data
+    entrypoint: ["dataselect"]
+
+volumes:
+  earthworm-data:
+  earthworm-home:
+  ppsd-cache:
+  ppsd-sds:
+  stationxml-data:
+  ringserver-data:

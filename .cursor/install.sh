@@ -35,26 +35,29 @@ fi
 
 # ---------------------------------------------------------------------------
 # 2. Shared Python virtualenv (PPSD backend, recvQSCD20, seedlinkToMp3)
-#    numpy/obspy versions are pinned by PPSD_v1/backend/requirements.txt.
+#    numpy/obspy versions are pinned by apps/PPSD_v1/backend/requirements.txt.
 #    setuptools is pinned <81 there so ObsPy 1.4's pkg_resources import works.
 # ---------------------------------------------------------------------------
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip wheel
 .venv/bin/pip install \
-  -r PPSD_v1/backend/requirements.txt \
-  -r recvQSCD20/requirements.txt \
-  scipy==1.13.1 soundfile==0.12.1 requests==2.32.3 pytest==8.3.4
+  -r apps/PPSD_v1/backend/requirements.txt \
+  -r apps/recvQSCD20/requirements.txt \
+  -r apps/earthworm_web/backend/requirements.txt \
+  scipy==1.13.1 soundfile==0.12.1 requests==2.32.3 pytest==8.3.4 markdown==3.7
 
 # ---------------------------------------------------------------------------
 # 3. Node dependencies
 #    ringserver uses vite 8 with a compatible plugin, so a normal install works.
-#    PPSD_v1/frontend pins vite ^8 while @vitejs/plugin-react ^4 only declares a
+#    apps/PPSD_v1/frontend pins vite ^8 while @vitejs/plugin-react ^4 only declares a
 #    peer range up to vite 7, so --legacy-peer-deps is required (the build works
 #    with vite 8 in practice). This does not modify the repo's pinned versions.
 # ---------------------------------------------------------------------------
-npm install --prefix ringserver_seedlink_websocket
-npm install --prefix ringserver_seedlink_websocket/backend
-npm install --prefix ringserver_seedlink_websocket/frontend
-npm install --prefix PPSD_v1/frontend --legacy-peer-deps
+npm install --prefix apps/ringserver_seedlink_websocket
+npm install --prefix apps/ringserver_seedlink_websocket/backend
+npm install --prefix apps/ringserver_seedlink_websocket/frontend
+npm install --prefix apps/PPSD_v1/frontend --legacy-peer-deps
+npm install --prefix apps/earthworm_web/frontend
+npm install --prefix apps/stationxml_manager/frontend
 
 echo "Environment bootstrap complete."

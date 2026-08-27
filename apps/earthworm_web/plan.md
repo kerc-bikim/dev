@@ -60,7 +60,7 @@ ${EW_HOME}                          # 기본 /opt/earthworm
 배포 tarball 은 **v8.0b8**, Git 태그는 **v8.0b17** 이다. 계획은 다음과 같이 고정한다.
 
 - 실행 파일: tarball `bin/` 을 그대로 쓴다. 이 호스트에서 재컴파일하지 않는다.
-- 배포 URL 은 현재 **HTTP 전용**이다 (`https://www.earthwormcentral.org/...` 는 HTTP 로 리다이렉트). 받은 파일은 크기(130927698 bytes, Last-Modified 2025-08-04)와 **SHA-256** 을 기록·대조한 뒤에만 푼다. 체크섬이 배포 사이트에 없으면 첫 신뢰 경로에서 한 번 계산해 `earthworm_web/checksums.txt` 에 보관하는 것을 운영 절차로 둔다.
+- 배포 URL 은 현재 **HTTP 전용**이다 (`https://www.earthwormcentral.org/...` 는 HTTP 로 리다이렉트). 받은 파일은 크기(130927698 bytes, Last-Modified 2025-08-04)와 **SHA-256** 을 기록·대조한 뒤에만 푼다. 체크섬이 배포 사이트에 없으면 첫 신뢰 경로에서 한 번 계산해 `apps/earthworm_web/checksums.txt` 에 보관하는 것을 운영 절차로 둔다.
 - 설정 템플릿·매뉴얼: v8.0b17 `params/`, `environment/`, `doc/WEB_DOC` 를 기준으로 파서·카탈로그를 만든다.
 - v8.0b17 에만 있는 모듈은 `bin` 에 실행 파일이 없으면 UI 에서 **바이너리 없음** 으로 표시하고 활성화를 막는다.
 - `ew_linux.bash` 의 `EW_VERSION` 은 tarball 을 푼 실제 디렉터리명으로 맞춘다.
@@ -269,7 +269,7 @@ ${EW_RUN_DIR}/
 
 ## 6. 백엔드 설계
 
-프로젝트 경로: `earthworm_web/backend/`
+프로젝트 경로: `apps/earthworm_web/backend/`
 
 ```
 backend/
@@ -532,9 +532,9 @@ WS 종료 시 프로세스에 SIGTERM, 수 초 후 SIGKILL.
 
 ## 7. 프론트엔드 설계
 
-프로젝트 경로: `earthworm_web/frontend/`
+프로젝트 경로: `apps/earthworm_web/frontend/`
 
-목 데이터 미리보기(백엔드 없음): `earthworm_web/frontend/preview/` 에서 `python3 -m http.server 8765` 후 `http://127.0.0.1:8765` .
+목 데이터 미리보기(백엔드 없음): `apps/earthworm_web/frontend/preview/` 에서 `python3 -m http.server 8765` 후 `http://127.0.0.1:8765` .
 
 기존 `PPSD_v1/frontend` 와 같이 React 18 + Vite + TypeScript. 상태: 간단한 Context + fetch/WS. 1차에 Redux 없음.
 
@@ -794,7 +794,7 @@ Earthworm 을 실제로 기동하지 않고도 1단계는 마법사·파일 파�
 
 - API 키 서비스 계정, 백업, NTP·디스크 위젯
 - WEB_DOC 정적 제공 (`/docs/ew/`)
-- `deploy/earthworm-web.service`, 태그 `earthworm-web-v0.x`. 디렉터리 rename 없음
+- 루트 `compose.yaml` + `apps/earthworm_web`. 태그 `earthworm-web-v0.x`. systemd 는 선택
 - tankplayer 는 기타 등록
 
 각 단계의 넣을 것/빼는 것·API·수락 조건과 **MVP 경계**는 [plan_mvp.md](plan_mvp.md) ([30절](#30-mvp)). MVP는 3–4단계(카탈로그·구성 보드)를 닫는 것이다. 1–2단계와 로그·스니프는 기존 코드가 전제다.

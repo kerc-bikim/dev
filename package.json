@@ -1,0 +1,12 @@
+{
+  "name": "kerc-seismic-tools",
+  "private": true,
+  "description": "Docker Compose monorepo for KERC seismic web tools",
+  "scripts": {
+    "up": "docker compose up --build",
+    "up:ppsd": "docker compose --profile ppsd up --build",
+    "up:stationxml": "docker compose --profile stationxml up --build",
+    "up:ringserver": "docker compose --profile ringserver up --build",
+    "up:stack": "docker compose --profile ppsd --profile stationxml --profile ringserver up --build"
+  }
+}

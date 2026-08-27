@@ -274,25 +274,25 @@ viewer의 start는 403+이력 `denied`. operator pau는 이력에 표시 이름.
 
 ### 목표
 
-웹 콘솔만 호스트에 올리고, Earthworm 바이너리는 `EW_HOME`에 둔다.
+웹 콘솔은 Docker Compose 로 올리고, Earthworm 바이너리는 `EW_HOME` 볼륨(또는 호스트)에 둔다.
 
 ### 넣을 것 (이후)
 
-- `earthworm_web/deploy/earthworm-web.service`
-- `DEPLOY.md`, 태그 `earthworm-web-v0.x`
+- 루트 `compose.yaml` 프로필 안정화, 태그 `earthworm-web-v0.x`
 - WEB_DOC 정적 `/docs/ew/`
 - NTP·디스크 위젯
 - 기타 모듈 등록 API
 - tankplayer는 등록으로만
 - SSO (작업자 모델은 2b에서 끝냄)
+- 호스트 전용 systemd 유닛(선택)
 
 ### MVP에서 허용하는 최소
 
-README에 “배포 시 `EW_WEB_AUTO_SEED=0`, `EW_WEB_BASH`, 키를 `dev`에서 바꿀 것”이 이미 있다. 유닛 파일은 MVP 필수 아님.
+README에 `docker compose up` 과 “배포 시 `EW_WEB_AUTO_SEED=0`, `EW_WEB_BASH`, 키를 `dev`에서 바꿀 것”이 있다. 실제 EW 기동은 override.
 
 ### 빼는 것
 
-디렉터리 rename, 루트 pnpm workspace, 이미지에 tarball 넣기, 프론트 마이크로프론트 합성.
+루트 npm/pnpm workspace 로 프론트를 한 lock 에 묶기, 이미지에 Rocky tarball 넣기, 프론트 마이크로프론트 합성.
 
 ---
 
@@ -313,7 +313,7 @@ README에 “배포 시 `EW_WEB_AUTO_SEED=0`, `EW_WEB_BASH`, 키를 `dev`에서 
 | 검토·적용 트랜잭션 | ○ 신규 | 원본 bin 재복사 |
 | 기타 모듈 등록 | | ○ |
 | Variables 페이지 제거 | | ○ (보드는 사이트 바) |
-| systemd·태그·WEB_DOC | | ○ |
+| Compose·태그·WEB_DOC | | ○ |
 | StationXML·PPSD 연동 | | ○ |
 | `pidpau` 웹 버튼 | 하지 않음 | 하지 않음 |
 

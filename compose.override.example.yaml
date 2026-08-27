@@ -1,0 +1,11 @@
+# Optional: bind a host Earthworm tree into the API container.
+# Copy to compose.override.yaml (gitignored) when you need real startstop.
+#
+# services:
+#   earthworm-web:
+#     ipc: host
+#     environment:
+#       EW_WEB_AUTO_SEED: "0"
+#       EW_WEB_BASH: /ew/host/earthworm_8.0/environment/ew_linux.bash
+#     volumes:
+#       - /opt/earthworm:/ew/host
