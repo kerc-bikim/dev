@@ -296,7 +296,7 @@ def dataless_filename(xml: str, network: str, when=None) -> str:
         root = parse_root(xml)
     except etree.XMLSyntaxError:
         return f"{net}.{date}.dataless"
-    for node in root.findall(qname("Station")):
+    for node in root.findall(f".//{qname('Station')}"):
         code = (node.get("code") or "").strip()
         if code and code not in stations:
             stations.append(code)
