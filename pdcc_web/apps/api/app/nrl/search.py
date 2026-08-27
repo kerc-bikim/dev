@@ -105,7 +105,7 @@ def search_nrl(db: Session, *, query: str, element: str) -> dict[str, Any]:
     for row in index:
         mfr = row["manufacturer"]
         model = row.get("model") or ""
-        blob = f"{mfr} {model} {row.get('detail') or ''}".lower()
+        blob = f"{mfr} {model}".lower()
         via = "catalog"
         matched = q in blob
         if mfr.lower() in alias_mfrs:
