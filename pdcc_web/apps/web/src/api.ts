@@ -159,6 +159,7 @@ export type MemberInfo = {
   role: string;
   active: boolean;
 };
+export type NrlStatus = {
   mode: string;
   source?: string;
   badge?: string;
