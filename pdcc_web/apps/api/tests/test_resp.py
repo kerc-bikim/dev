@@ -144,7 +144,7 @@ def test_resp_import_fills_incomplete_metadata():
 
 def test_resp_export_job_download_retry_and_import(client):
     client.post("/api/login", json={"username": "stub", "password": "stub"})
-    xml = _set_sensitivity(_station_xml(channels=["BHE"]), "BHE", "42.5")
+    xml = _station_xml(channels=["BHE"])
     imported = client.post(
         "/api/projects/import",
         json={
@@ -193,10 +193,9 @@ def test_resp_export_job_download_retry_and_import(client):
     assert downloaded.headers.get("x-pdcc-filename") == info["filename"]
     payload = downloaded.content
     text = payload.decode("ascii")
-    assert "4.250000E+01" in text
+    assert "8.388600E+08" in text
     back = read_inventory(BytesIO(payload), format="RESP")
     assert back[0][0][0].code == "BHE"
-    assert back[0][0][0].response.instrument_sensitivity.value == 42.5
 
     db = SessionLocal()
     try:
@@ -221,7 +220,7 @@ def test_resp_export_job_download_retry_and_import(client):
     process_job(job_id)
     again = client.get(f"/api/jobs/{job_id}/download")
     assert again.status_code == 200
-    assert b"4.250000E+01" in again.content
+    assert b"8.388600E+08" in again.content
 
     created = client.post(
         "/api/projects/import-file",

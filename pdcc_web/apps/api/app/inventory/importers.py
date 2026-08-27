@@ -109,10 +109,10 @@ def original_kind_of(asset: FileAsset | None) -> str | None:
         return None
     media = (asset.media_type or "").lower()
     name = (asset.filename or "").lower()
-    if "seed" in media or name.endswith(".seed") or name.endswith(".dataless"):
-        return "dataless"
     if "resp" in media or name.endswith(".resp") or name.startswith("resp."):
         return "resp"
+    if "seed" in media or name.endswith(".seed") or name.endswith(".dataless"):
+        return "dataless"
     return "stationxml"
 
 
