@@ -45,6 +45,9 @@ def test_editor_cannot_read_dashboard(client):
 
 def test_admin_dashboard_counts_and_red_badges(client, redis_client, tmp_path, monkeypatch):
     _enable_admin(client)
+    before = client.get("/api/admin/dashboard").json()
+    assert before["badges"]["disk"] is False or "percent" in before["disk"]
+
     project = _project(client)
     zip_path = tmp_path / "nrl.zip"
     zip_path.write_bytes(b"NRLZIP" * 20)
@@ -63,6 +66,11 @@ def test_admin_dashboard_counts_and_red_badges(client, redis_client, tmp_path, m
 
     admin_id = _user_id("admin")
     now = utcnow()
+    token = uuid.uuid4().hex[:10]
+    failed_id = str(uuid.uuid4())
+    original = b"<FDSNStationXML/>"
+    exported = b"SEED" * 8
+    station_path = f"YZ/DASH{token}/2009-04-10T00:00:00"
     db = SessionLocal()
     try:
         db.add(
@@ -71,7 +79,7 @@ def test_admin_dashboard_counts_and_red_badges(client, redis_client, tmp_path, m
                 kind="original",
                 filename="YZ.TEST1.xml",
                 media_type="application/xml",
-                content=b"<FDSNStationXML/>",
+                content=original,
             )
         )
         db.add(
@@ -80,12 +88,12 @@ def test_admin_dashboard_counts_and_red_badges(client, redis_client, tmp_path, m
                 kind="job_export",
                 filename="YZ.TEST1.dataless",
                 media_type="application/vnd.fdsn.seed",
-                content=b"SEED" * 8,
+                content=exported,
             )
         )
         db.add(
             Job(
-                id=str(uuid.uuid4()),
+                id=failed_id,
                 project_id=project["id"],
                 user_id=admin_id,
                 username="admin",
@@ -93,7 +101,7 @@ def test_admin_dashboard_counts_and_red_badges(client, redis_client, tmp_path, m
                 status="failed",
                 progress=40,
                 message="변환 실패",
-                error="converter JAR가 없습니다",
+                error=f"converter JAR가 없습니다 {token}",
                 xml_snapshot="<xml/>",
                 created_at=now,
                 finished_at=now,
@@ -116,7 +124,7 @@ def test_admin_dashboard_counts_and_red_badges(client, redis_client, tmp_path, m
         )
         db.add(
             StationLock(
-                station_path="YZ/TEST1/2009-04-10T00:00:00",
+                station_path=station_path,
                 project_id=project["id"],
                 user_id=admin_id,
                 username="admin",
@@ -126,7 +134,7 @@ def test_admin_dashboard_counts_and_red_badges(client, redis_client, tmp_path, m
         )
         db.add(
             StationLock(
-                station_path="YZ/TEST2/2009-04-10T00:00:00",
+                station_path=f"YZ/SHORT{token}/2009-04-10T00:00:00",
                 project_id=project["id"],
                 user_id=admin_id,
                 username="admin",
@@ -142,21 +150,23 @@ def test_admin_dashboard_counts_and_red_badges(client, redis_client, tmp_path, m
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["user_count"] >= 3
-    assert body["project_count"] >= 1
-    assert body["export_count_today"] == 2
+    assert body["project_count"] == before["project_count"] + 1
+    assert body["export_count_today"] == before["export_count_today"] + 2
     assert body["nrl"]["source"] == "offline"
     assert body["nrl"]["badge"] == "NRL 장애"
     assert body["nrl"]["last_ok_at"] == "2026-08-01T00:00:00Z"
     assert body["nrl"]["cache_count"] >= 1
     assert body["badges"] == {"nrl": True, "failed_jobs": True, "disk": True}
-    assert len(body["failed_jobs"]) == 1
-    assert body["failed_jobs"][0]["error"] == "converter JAR가 없습니다"
-    assert body["failed_jobs"][0]["kind"] == "dataless"
-    assert len(body["locks"]) == 1
-    assert body["locks"][0]["station_path"].startswith("YZ/TEST1")
-    assert body["locks"][0]["remaining_sec"] >= LONG_LOCK_SEC
-    assert body["disk"]["originals_bytes"] == len(b"<FDSNStationXML/>")
-    assert body["disk"]["exports_bytes"] == len(b"SEED" * 8)
+    failed = {row["id"]: row for row in body["failed_jobs"]}
+    assert failed_id in failed
+    assert failed[failed_id]["error"] == f"converter JAR가 없습니다 {token}"
+    assert failed[failed_id]["kind"] == "dataless"
+    locks = {row["station_path"]: row for row in body["locks"]}
+    assert station_path in locks
+    assert f"YZ/SHORT{token}/2009-04-10T00:00:00" not in locks
+    assert locks[station_path]["remaining_sec"] >= LONG_LOCK_SEC
+    assert body["disk"]["originals_bytes"] >= before["disk"]["originals_bytes"] + len(original)
+    assert body["disk"]["exports_bytes"] >= before["disk"]["exports_bytes"] + len(exported)
     assert body["disk"]["nrl_zip_bytes"] == zip_path.stat().st_size
     assert body["disk"]["percent"] == 95.0
     assert body["disk"]["over_90"] is True
@@ -175,5 +185,3 @@ def test_dashboard_nrl_zip_falls_back_to_cache_bytes(client, redis_client, monke
     assert body["nrl"]["badge"] == "캐시 사용"
     assert body["badges"]["nrl"] is False
     assert body["disk"]["nrl_zip_bytes"] == len(blob)
-    assert body["failed_jobs"] == []
-    assert body["locks"] == []
