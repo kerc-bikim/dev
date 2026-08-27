@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { readError, type Health, type Me } from "./api";
-import { NrlWorkbench } from "./nrl/NrlWorkbench";
+import { EditorPage } from "./editor/EditorPage";
+import { ProjectHome } from "./editor/ProjectHome";
 
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null);
@@ -10,6 +11,7 @@ export default function App() {
   const [password, setPassword] = useState("stub");
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [projectId, setProjectId] = useState<number | null>(null);
 
   const refreshHealth = useCallback(() => {
     fetch("/api/health", { credentials: "include" })
@@ -74,6 +76,7 @@ export default function App() {
     try {
       await fetch("/api/logout", { method: "POST", credentials: "include" });
       setMe(null);
+      setProjectId(null);
     } finally {
       setBusy(false);
     }
@@ -102,13 +105,18 @@ export default function App() {
 
       {me ? (
         <main className="main">
-          <NrlWorkbench />
+          {projectId ? (
+            <EditorPage projectId={projectId} onBack={() => setProjectId(null)} />
+          ) : (
+            <ProjectHome onOpen={(project) => setProjectId(project.id)} />
+          )}
         </main>
       ) : (
         <main className="panel">
           <h2>로그인</h2>
           <p className="hint">
-            스텁 계정은 <code>stub</code> / <code>stub</code> 입니다.{" "}
+            스텁 계정은 <code>stub</code> / <code>stub</code> 와{" "}
+            <code>stub2</code> / <code>stub2</code> 입니다.{" "}
             <code>admin</code> / <code>admin</code> 은{" "}
             <code>DEV_BOOTSTRAP_ADMIN=true</code> 일 때만 됩니다.
           </p>

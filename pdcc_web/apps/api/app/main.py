@@ -12,7 +12,9 @@ from .db import Base, SessionLocal, configure_engine, get_engine
 from .nrl.client import set_nrl_client
 from .routers.auth import router as auth_router
 from .routers.health import router as health_router
+from .routers.locks import router as locks_router
 from .routers.nrl import router as nrl_router
+from .routers.projects import router as projects_router
 from .seed import seed_users
 
 log = logging.getLogger("pdcc.api")
@@ -62,3 +64,5 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(nrl_router)
+app.include_router(projects_router)
+app.include_router(locks_router)

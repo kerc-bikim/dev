@@ -9,9 +9,10 @@ const LABELS: Record<string, string> = {
 type Props = {
   element: "sensor" | "datalogger";
   onResolved: (instconfig: string | null) => void;
+  disabled?: boolean;
 };
 
-export function NrlPanel({ element, onResolved }: Props) {
+export function NrlPanel({ element, onResolved, disabled = false }: Props) {
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [models, setModels] = useState<string[]>([]);
   const [manufacturer, setManufacturer] = useState("");
@@ -97,7 +98,7 @@ export function NrlPanel({ element, onResolved }: Props) {
         제조사
         <select
           value={manufacturer}
-          disabled={busy && manufacturers.length === 0}
+          disabled={disabled || (busy && manufacturers.length === 0)}
           onChange={(e) => setManufacturer(e.target.value)}
         >
           <option value="">선택</option>
@@ -110,7 +111,7 @@ export function NrlPanel({ element, onResolved }: Props) {
       </label>
       <label>
         모델
-        <select value={model} disabled={!manufacturer} onChange={onPickModel}>
+        <select value={model} disabled={disabled || !manufacturer} onChange={onPickModel}>
           <option value="">선택</option>
           {models.map((name) => (
             <option key={name} value={name}>
@@ -125,6 +126,7 @@ export function NrlPanel({ element, onResolved }: Props) {
               {q.question}
               <select
                 value={answers[q.key] ?? ""}
+                disabled={disabled}
                 onChange={(e) => onAnswer(q.key, e.target.value)}
               >
                 <option value="">선택</option>
@@ -150,6 +152,7 @@ export function NrlPanel({ element, onResolved }: Props) {
           구성
           <select
             defaultValue=""
+            disabled={disabled}
             onChange={(e) => onResolved(e.target.value || null)}
           >
             <option value="">선택</option>

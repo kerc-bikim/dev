@@ -22,7 +22,7 @@ docker compose -f infra/docker-compose.yml up --build
 
 브라우저: http://localhost:3000  
 API: http://localhost:8080/health  
-스텁 로그인: `stub` / `stub`
+스텁 로그인: `stub` / `stub` (두 번째 사용자 `stub2` / `stub2`)
 
 호스트에서만 띄울 때 (compose 없이):
 
@@ -52,6 +52,14 @@ cd pdcc_web/apps/web && npm install && npm run dev -- --host 0.0.0.0 --port 3000
 | `NRL_CACHE_TTL_SEC` | `3600` | catalog·prefix Redis TTL |
 
 NRL은 API 기동 시 호출하지 않습니다.
+
+## M2 위저드·잠금
+
+로그인 후 프로젝트를 만들고 **관측소 위저드**로 TEST1 같은 3성분 채널을 만듭니다. NRL 응답은 원문 StationXML에 붙입니다. 같은 관측소 epoch는 한 사람만 고칩니다 (5분 잠금). 자세한 내용: [`docs/adr/0004-wizard-lock.md`](docs/adr/0004-wizard-lock.md).
+
+| 이름 | 기본 | 설명 |
+|------|------|------|
+| `LOCK_TTL_SEC` | `300` | 관측소 epoch 잠금 TTL |
 
 ## 테스트
 

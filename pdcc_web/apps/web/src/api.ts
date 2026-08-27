@@ -29,6 +29,49 @@ export type ResponseCurve = {
   max_freq: number;
   npts: number;
 };
+export type ChannelSummary = {
+  location: string;
+  code: string;
+  start: string | null;
+  end: string | null;
+  azimuth: number | null;
+  dip: number | null;
+  sample_rate: number | null;
+  has_response: boolean;
+  nslc: string;
+};
+export type LockInfo = {
+  station_path: string;
+  username: string;
+  user_id?: number;
+  expires_at?: string;
+  mine?: boolean | null;
+};
+export type StationSummary = {
+  code: string;
+  start: string;
+  end: string | null;
+  site_name: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  elevation: number | null;
+  station_path: string;
+  channels: ChannelSummary[];
+  lock?: LockInfo | null;
+};
+export type Project = {
+  id: number;
+  name: string;
+  network_code: string;
+  operator: string | null;
+  status: string;
+  updated_at: string | null;
+  station_count: number;
+  channel_count: number;
+  stations: StationSummary[];
+  nrl_applied: boolean;
+  lock?: LockInfo | null;
+};
 
 export async function readError(response: Response): Promise<string> {
   try {
@@ -48,12 +91,16 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const apiGet = api;
 
-export function apiPost<T>(path: string, body: unknown): Promise<T> {
+export function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return api<T>(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
+}
+
+export function apiDelete<T>(path: string): Promise<T> {
+  return api<T>(path, { method: "DELETE" });
 }
 
 export async function apiText(path: string): Promise<string> {
