@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  ApiError,
   apiGet,
   apiPost,
   apiText,
   type ChannelSummary,
+  type FieldDiff,
   type LockInfo,
   type Project,
   type StationSummary,
 } from "../api";
 import { NrlWorkbench } from "../nrl/NrlWorkbench";
+import { MergeDialog } from "./MergeDialog";
+import { StationForm } from "./StationForm";
 import { StationWizard } from "./StationWizard";
+import { VersionPanel } from "./VersionPanel";
 
 export function EditorPage({
   projectId,
@@ -24,12 +29,16 @@ export function EditorPage({
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [selectedNslc, setSelectedNslc] = useState<string | null>(null);
   const [xml, setXml] = useState<string | null>(null);
+  const [draftPrompt, setDraftPrompt] = useState(false);
+  const [mergeFields, setMergeFields] = useState<FieldDiff[] | null>(null);
+  const [viewStations, setViewStations] = useState<StationSummary[] | null>(null);
 
   const refresh = useCallback(async () => {
     const data = await apiGet<Project>(`/api/projects/${projectId}`);
     setProject(data);
     setSelectedPath((prev) => prev ?? data.stations[0]?.station_path ?? null);
     setSelectedNslc((prev) => prev ?? data.stations[0]?.channels[0]?.nslc ?? null);
+    if (data.draft) setDraftPrompt(true);
     return data;
   }, [projectId]);
 
@@ -51,14 +60,11 @@ export function EditorPage({
       .catch((err: Error) => setError(err.message));
   }, [projectId, refresh]);
 
+  const stations = viewStations ?? project?.stations ?? [];
   const selected: StationSummary | null =
-    project?.stations.find((row) => row.station_path === selectedPath) ??
-    project?.stations[0] ??
-    null;
+    stations.find((row) => row.station_path === selectedPath) ?? stations[0] ?? null;
   const channel: ChannelSummary | null =
-    selected?.channels.find((row) => row.nslc === selectedNslc) ??
-    selected?.channels[0] ??
-    null;
+    selected?.channels.find((row) => row.nslc === selectedNslc) ?? selected?.channels[0] ?? null;
   const lock: LockInfo | undefined = selected?.lock ?? project?.lock ?? undefined;
   const readOnly = Boolean(lock && lock.mine === false);
 
@@ -72,6 +78,22 @@ export function EditorPage({
     return () => window.clearInterval(id);
   }, [selected, readOnly]);
 
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "z") return;
+      if (readOnly || !project?.can_undo) return;
+      event.preventDefault();
+      apiPost<{ project: Project }>(`/api/projects/${projectId}/undo`)
+        .then((data) => {
+          setProject(data.project);
+          setViewStations(null);
+        })
+        .catch((err: Error) => setError(err.message));
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [project?.can_undo, projectId, readOnly]);
+
   async function openStation(sta: StationSummary) {
     setSelectedPath(sta.station_path);
     setSelectedNslc(sta.channels[0]?.nslc ?? null);
@@ -83,6 +105,38 @@ export function EditorPage({
     } catch (err) {
       setError((err as Error).message);
       await refresh();
+    }
+  }
+
+  async function resumeDraft() {
+    const data = await apiGet<{
+      draft: { stations: StationSummary[]; conflict: boolean } | null;
+    }>(`/api/projects/${projectId}/draft`);
+    if (data.draft?.stations) setViewStations(data.draft.stations);
+    setDraftPrompt(false);
+  }
+
+  async function discardDraft() {
+    await apiPost(`/api/projects/${projectId}/draft/discard`);
+    setViewStations(null);
+    setDraftPrompt(false);
+    await refresh();
+  }
+
+  async function commitDraft() {
+    setError(null);
+    try {
+      const data = await apiPost<{ project: Project }>(`/api/projects/${projectId}/draft/commit`);
+      setProject(data.project);
+      setViewStations(null);
+      setMergeFields(null);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        const detail = (err.payload as { detail?: { fields?: FieldDiff[] } }).detail;
+        setMergeFields(detail?.fields ?? []);
+        return;
+      }
+      setError((err as Error).message);
     }
   }
 
@@ -108,6 +162,23 @@ export function EditorPage({
         </button>
         <button
           type="button"
+          disabled={!project.can_undo || readOnly}
+          onClick={() =>
+            apiPost<{ project: Project }>(`/api/projects/${projectId}/undo`)
+              .then((data) => {
+                setProject(data.project);
+                setViewStations(null);
+              })
+              .catch((err: Error) => setError(err.message))
+          }
+        >
+          실행 취소
+        </button>
+        <button type="button" disabled={readOnly} onClick={commitDraft}>
+          초안 저장
+        </button>
+        <button
+          type="button"
           onClick={() =>
             apiText(`/api/projects/${projectId}/xml`)
               .then(setXml)
@@ -124,6 +195,17 @@ export function EditorPage({
             : `${lock.username} 님이 수정 중 · 읽기 전용`}
         </p>
       ) : null}
+      {draftPrompt ? (
+        <p className="lock-banner">
+          저장하지 않은 초안이 있습니다.{" "}
+          <button type="button" className="primary" onClick={() => resumeDraft().catch((err: Error) => setError(err.message))}>
+            초안 이어가기
+          </button>{" "}
+          <button type="button" onClick={() => discardDraft().catch((err: Error) => setError(err.message))}>
+            마지막 버전으로
+          </button>
+        </p>
+      ) : null}
       {error ? <p className="error">{error}</p> : null}
       {wizard ? (
         <StationWizard
@@ -137,11 +219,22 @@ export function EditorPage({
           }}
         />
       ) : null}
+      {mergeFields ? (
+        <MergeDialog
+          projectId={projectId}
+          fields={mergeFields}
+          onCancel={() => setMergeFields(null)}
+          onDone={() => {
+            setMergeFields(null);
+            refresh().catch((err: Error) => setError(err.message));
+          }}
+        />
+      ) : null}
       <div className="editor-layout">
         <aside className="nrl-card tree">
           <h3>트리</h3>
           <p>{project.network_code}</p>
-          {project.stations.map((sta) => (
+          {stations.map((sta) => (
             <div key={sta.station_path}>
               <button
                 type="button"
@@ -170,11 +263,17 @@ export function EditorPage({
               </ul>
             </div>
           ))}
-          {project.stations.length === 0 ? (
-            <p className="hint">위저드로 관측소를 만드세요.</p>
-          ) : null}
+          {stations.length === 0 ? <p className="hint">위저드로 관측소를 만드세요.</p> : null}
         </aside>
         <div>
+          {selected ? (
+            <StationForm
+              key={`${selected.station_path}-${selected.latitude}`}
+              projectId={projectId}
+              station={selected}
+              disabled={readOnly}
+            />
+          ) : null}
           <NrlWorkbench
             disabled={readOnly}
             apply={
@@ -189,6 +288,11 @@ export function EditorPage({
                 : null
             }
             onApplied={() => refresh().catch((err: Error) => setError(err.message))}
+          />
+          <VersionPanel
+            projectId={projectId}
+            disabled={readOnly}
+            onRestored={() => refresh().catch((err: Error) => setError(err.message))}
           />
         </div>
       </div>

@@ -90,5 +90,57 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class EquipmentSet(Base):
+    __tablename__ = "equipment_sets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    notes: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    sensor_instconfig: Mapped[str] = mapped_column(String(256), nullable=False)
+    datalogger_instconfig: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    channels_json: Mapped[str] = mapped_column(String(128), nullable=False, default='["BHZ","BHN","BHE"]')
+    nrl_version: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ProjectVersion(Base):
+    __tablename__ = "project_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    number: Mapped[int] = mapped_column(Integer, nullable=False)
+    actor: Mapped[str] = mapped_column(String(64), nullable=False)
+    action: Mapped[str] = mapped_column(String(32), nullable=False, default="save")
+    summary: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    xml_text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ProjectDraft(Base):
+    __tablename__ = "project_drafts"
+    __table_args__ = (UniqueConstraint("project_id", "user_id", name="uq_drafts_project_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    xml_text: Mapped[str] = mapped_column(Text, nullable=False)
+    base_updated_at: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class EditUndo(Base):
+    __tablename__ = "edit_undos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    summary: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    before_xml: Mapped[str] = mapped_column(Text, nullable=False)
+    after_xml: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 def new_session_token() -> str:
     return secrets.token_urlsafe(32)

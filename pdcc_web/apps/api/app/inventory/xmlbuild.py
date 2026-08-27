@@ -253,6 +253,148 @@ def list_inventory(xml: str, network: str, project_id: int) -> list[dict]:
     return stations
 
 
+def update_station(
+    xml: str,
+    *,
+    network: str,
+    station: str,
+    start: str,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    elevation: float | None = None,
+    site_name: str | None = None,
+    propagate: bool = True,
+) -> str:
+    if latitude is not None and (latitude < -90 or latitude > 90):
+        raise InventoryError("위도는 -90 ~ 90 이어야 합니다", 400, "E_LAT")
+    if longitude is not None and (longitude < -180 or longitude > 180):
+        raise InventoryError("경도는 -180 ~ 180 이어야 합니다", 400, "E_LON")
+    root = parse_root(xml)
+    net = _network(root, network)
+    target = None
+    for sta in net.findall(qname("Station")):
+        if sta.get("code") == station and (not start or sta.get("startDate") == start):
+            target = sta
+            break
+    if target is None:
+        raise InventoryError("관측소를 찾을 수 없습니다", 404)
+    if latitude is not None:
+        set_child(target, "Latitude", str(latitude))
+    if longitude is not None:
+        set_child(target, "Longitude", str(longitude))
+    if elevation is not None:
+        set_child(target, "Elevation", str(elevation))
+    if site_name is not None:
+        site = target.find(qname("Site"))
+        if site is None:
+            site = el("Site")
+            target.append(site)
+        set_child(site, "Name", site_name)
+    if propagate:
+        for cha in target.findall(qname("Channel")):
+            if latitude is not None:
+                set_child(cha, "Latitude", str(latitude))
+            if longitude is not None:
+                set_child(cha, "Longitude", str(longitude))
+            if elevation is not None:
+                set_child(cha, "Elevation", str(elevation))
+    return dumps(root)
+
+
+def field_snapshot(xml: str, network: str, project_id: int) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for sta in list_inventory(xml, network, project_id):
+        prefix = f"{sta['code']}#{sta['start']}"
+        out[f"{prefix}/latitude"] = "" if sta["latitude"] is None else str(sta["latitude"])
+        out[f"{prefix}/longitude"] = "" if sta["longitude"] is None else str(sta["longitude"])
+        out[f"{prefix}/elevation"] = "" if sta["elevation"] is None else str(sta["elevation"])
+        out[f"{prefix}/site_name"] = sta["site_name"] or ""
+        for cha in sta["channels"]:
+            out[f"{prefix}/{cha['nslc']}.has_response"] = "1" if cha["has_response"] else "0"
+            out[f"{prefix}/{cha['nslc']}.azimuth"] = "" if cha["azimuth"] is None else str(cha["azimuth"])
+            out[f"{prefix}/{cha['nslc']}.dip"] = "" if cha["dip"] is None else str(cha["dip"])
+    return out
+
+
+def diff_fields(left: dict[str, str], right: dict[str, str]) -> list[dict]:
+    keys = sorted(set(left) | set(right))
+    rows = []
+    for key in keys:
+        a = left.get(key, "")
+        b = right.get(key, "")
+        if a != b:
+            rows.append({"path": key, "a": a, "b": b})
+    return rows
+
+
+def apply_field_choices(
+    server_xml: str,
+    draft_xml: str,
+    *,
+    network: str,
+    choices: dict[str, str],
+) -> str:
+    root_server = parse_root(server_xml)
+    root_draft = parse_root(draft_xml)
+    by_choice = {path: which for path, which in choices.items() if which in {"mine", "server"}}
+    for path, which in by_choice.items():
+        if which != "mine":
+            continue
+        station, _, rest = path.partition("#")
+        start, _, field = rest.partition("/")
+        sta_s = _find_station_el(root_server, network, station, start)
+        sta_d = _find_station_el(root_draft, network, station, start)
+        if sta_s is None or sta_d is None:
+            continue
+        if field in {"latitude", "longitude", "elevation"}:
+            tag = field[:1].upper() + field[1:]
+            text = child_text(sta_d, tag)
+            if text is not None:
+                set_child(sta_s, tag, text)
+                for cha in sta_s.findall(qname("Channel")):
+                    set_child(cha, tag, text)
+        elif field == "site_name":
+            site_d = sta_d.find(qname("Site"))
+            name = child_text(site_d, "Name") if site_d is not None else None
+            if name is not None:
+                site_s = sta_s.find(qname("Site"))
+                if site_s is None:
+                    site_s = el("Site")
+                    sta_s.append(site_s)
+                set_child(site_s, "Name", name)
+        elif field.endswith(".has_response"):
+            nslc = field[: -len(".has_response")]
+            loc, _, code = nslc.partition(".")
+            cha_s = _find_channel_el(sta_s, loc, code)
+            cha_d = _find_channel_el(sta_d, loc, code)
+            if cha_s is None or cha_d is None:
+                continue
+            existing = cha_s.find(qname("Response"))
+            if existing is not None:
+                cha_s.remove(existing)
+            src = cha_d.find(qname("Response"))
+            if src is not None:
+                cha_s.append(namespaced_copy(src))
+    return dumps(root_server)
+
+
+def _find_station_el(root: etree._Element, network: str, station: str, start: str) -> etree._Element | None:
+    for net in root.findall(qname("Network")):
+        if net.get("code") != network:
+            continue
+        for sta in net.findall(qname("Station")):
+            if sta.get("code") == station and sta.get("startDate") == start:
+                return sta
+    return None
+
+
+def _find_channel_el(sta: etree._Element, location: str, code: str) -> etree._Element | None:
+    for cha in sta.findall(qname("Channel")):
+        if cha.get("code") == code and (cha.get("locationCode") or "") == location:
+            return cha
+    return None
+
+
 def _site_name(sta: etree._Element) -> str | None:
     site = sta.find(qname("Site"))
     if site is None:

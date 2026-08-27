@@ -243,7 +243,19 @@ body {
   color: var(--muted);
 }
 .lock-banner.mine { color: var(--success); border-color: #24532d; }
-.wizard-nav, .pattern-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.wizard-nav, .pattern-row, .set-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.version-list { list-style: none; padding: 0; margin: 0; }
+.version-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+.nrl-card label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; margin: 8px 0; }
+.nrl-card input {
+  background: var(--input-bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  width: 100%;
+}
 .check { display: flex; align-items: center; gap: 8px; color: var(--fg); }
 .confirm-table {
   width: 100%;
