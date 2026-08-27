@@ -163,4 +163,4 @@ def test_draft_channel_and_issues_api(stub):
     issues = stub.get(f"/api/projects/{project['id']}/issues")
     assert issues.status_code == 200
     assert issues.json()["source"] == "draft"
-    assert issues.json()["issues"] == []
+    assert all(row["level"] != "error" for row in issues.json()["issues"])

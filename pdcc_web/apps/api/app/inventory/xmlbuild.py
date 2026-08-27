@@ -235,6 +235,7 @@ def list_inventory(xml: str, network: str, project_id: int) -> list[dict]:
                     "azimuth": _float(child_text(cha, "Azimuth")),
                     "dip": _float(child_text(cha, "Dip")),
                     "sample_rate": _float(child_text(cha, "SampleRate")),
+                    "sensitivity": _channel_sensitivity(cha),
                     "has_response": has_response,
                     "nslc": f"{loc}.{cha.get('code')}" if loc else cha.get("code"),
                 }
@@ -350,6 +351,7 @@ def update_channel(
     elevation: float | None = None,
     end: str | None = None,
     set_end: bool = False,
+    sensitivity: float | None = None,
 ) -> str:
     loc = location or ""
     code = channel.strip().upper()
@@ -405,6 +407,14 @@ def update_channel(
         set_child(target, "Elevation", str(elevation))
     if set_end:
         _set_end_date(target, end)
+    if sensitivity is not None:
+        resp = target.find(qname("Response"))
+        if resp is None:
+            raise InventoryError("응답이 없어 감도를 바꿀 수 없습니다", 400, "E_SENS")
+        ins = resp.find(qname("InstrumentSensitivity"))
+        if ins is None:
+            raise InventoryError("감도가 없습니다", 400, "E_SENS")
+        set_child(ins, "Value", str(sensitivity))
     return dumps(root)
 
 
@@ -415,15 +425,15 @@ def validate_inventory(xml: str, network: str, project_id: int) -> list[dict]:
         net = _network(root, network)
     except InventoryError:
         return [
-            {
-                "code": "E_CODE_NET",
-                "message": f"네트워크 {network}가 없습니다",
-                "path": network,
-                "field": "network",
-                "station": None,
-                "start": None,
-                "nslc": None,
-            }
+            _issue(
+                "E_CODE_NET",
+                f"네트워크 {network}가 없습니다",
+                network,
+                "network",
+                None,
+                None,
+                None,
+            )
         ]
     stations = list(net.findall(qname("Station")))
     for i, sta in enumerate(stations):
@@ -493,6 +503,67 @@ def validate_inventory(xml: str, network: str, project_id: int) -> list[dict]:
                 issues.append(_issue("E_LAT", "위도는 -90 ~ 90 이어야 합니다", cha_prefix, "latitude", code, start, nslc))
             if cha_code and not CHANNEL_CODE_RE.match(cha_code):
                 issues.append(_issue("E_CODE_CHA", "채널 코드는 3자여야 합니다", cha_prefix, "code", code, start, nslc))
+            if not loc:
+                issues.append(
+                    _issue(
+                        "W_LOC_EMPTY",
+                        "Location이 비어 있습니다",
+                        cha_prefix,
+                        "location",
+                        code,
+                        start,
+                        nslc,
+                        level="warning",
+                    )
+                )
+            if cha.find(qname("Response")) is None:
+                issues.append(
+                    _issue(
+                        "W_NO_RESPONSE",
+                        "채널에 응답이 없습니다",
+                        cha_prefix,
+                        "sensitivity",
+                        code,
+                        start,
+                        nslc,
+                        level="warning",
+                    )
+                )
+            cha_start = cha.get("startDate") or start
+            cha_end = cha.get("endDate")
+            try:
+                if cha_start and start and _parse_time(cha_start) and _parse_time(start):
+                    if _parse_time(cha_start) < _parse_time(start):
+                        issues.append(
+                            _issue(
+                                "W_EPOCH_OUTSIDE",
+                                "채널 기간이 관측소 밖입니다",
+                                cha_prefix,
+                                "start",
+                                code,
+                                start,
+                                nslc,
+                                level="warning",
+                            )
+                        )
+                    elif sta.get("endDate"):
+                        sta_end_t = _parse_time(sta.get("endDate"))
+                        cha_end_t = _parse_time(cha_end) if cha_end else None
+                        if sta_end_t and (cha_end_t is None or cha_end_t > sta_end_t):
+                            issues.append(
+                                _issue(
+                                    "W_EPOCH_OUTSIDE",
+                                    "채널 기간이 관측소 밖입니다",
+                                    cha_prefix,
+                                    "end",
+                                    code,
+                                    start,
+                                    nslc,
+                                    level="warning",
+                                )
+                            )
+            except InventoryError:
+                pass
             for other in channels[j + 1 :]:
                 if (other.get("locationCode") or "") != loc or (other.get("code") or "") != cha_code:
                     continue
@@ -528,6 +599,10 @@ def _issue(
     station: str | None,
     start: str | None,
     nslc: str | None,
+    *,
+    level: str = "error",
+    source: str = "quick",
+    official: str | None = None,
 ) -> dict:
     return {
         "code": code,
@@ -537,6 +612,9 @@ def _issue(
         "station": station,
         "start": start,
         "nslc": nslc,
+        "level": level,
+        "source": source,
+        "official": official,
     }
 
 
@@ -557,6 +635,9 @@ def field_snapshot(xml: str, network: str, project_id: int) -> dict[str, str]:
             out[f"{prefix}/{nslc}.depth"] = "" if cha["depth"] is None else str(cha["depth"])
             out[f"{prefix}/{nslc}.sample_rate"] = (
                 "" if cha["sample_rate"] is None else str(cha["sample_rate"])
+            )
+            out[f"{prefix}/{nslc}.sensitivity"] = (
+                "" if cha.get("sensitivity") is None else str(cha["sensitivity"])
             )
             out[f"{prefix}/{nslc}.location"] = cha["location"] or ""
             out[f"{prefix}/{nslc}.code"] = cha["code"] or ""
@@ -625,7 +706,20 @@ def apply_field_choices(
                 src = cha_d.find(qname("Response"))
                 if src is not None:
                     cha_s.append(namespaced_copy(src))
-            elif attr in {"azimuth", "dip", "depth", "sample_rate"}:
+            elif attr in {"azimuth", "dip", "depth", "sample_rate", "sensitivity"}:
+                if attr == "sensitivity":
+                    resp_d = cha_d.find(qname("Response"))
+                    resp_s = cha_s.find(qname("Response"))
+                    if resp_d is None or resp_s is None:
+                        continue
+                    ins_d = resp_d.find(qname("InstrumentSensitivity"))
+                    ins_s = resp_s.find(qname("InstrumentSensitivity"))
+                    if ins_d is None or ins_s is None:
+                        continue
+                    text = child_text(ins_d, "Value")
+                    if text is not None:
+                        set_child(ins_s, "Value", text)
+                    continue
                 tag = {
                     "azimuth": "Azimuth",
                     "dip": "Dip",
@@ -664,6 +758,16 @@ def _find_channel_el(sta: etree._Element, location: str, code: str) -> etree._El
         if cha.get("code") == code and (cha.get("locationCode") or "") == location:
             return cha
     return None
+
+
+def _channel_sensitivity(cha: etree._Element) -> float | None:
+    resp = cha.find(qname("Response"))
+    if resp is None:
+        return None
+    ins = resp.find(qname("InstrumentSensitivity"))
+    if ins is None:
+        return None
+    return _float(child_text(ins, "Value"))
 
 
 def _site_name(sta: etree._Element) -> str | None:
