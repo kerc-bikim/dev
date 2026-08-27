@@ -102,12 +102,18 @@ _registry: AdapterRegistry | None = None
 def get_registry() -> AdapterRegistry:
     """기본 Registry. 내장 Adapter 를 이 자리에서 등록한다.
 
-    M2 에서 Centaur CTR Adapter 가 여기에 등록된다. 지금은 비어 있고, 비어 있다는
-    사실이 화면에서 '준비 중' 으로 그대로 드러난다.
+    Manifest 파일 원본으로 검증한다. 배포되는 실체가 파일이기 때문이다.
+    등록에 실패하면 프로세스가 뜨지 않는다. 계약과 어긋난 Adapter 가 조용히
+    UNKNOWN 을 쌓는 것보다 기동 실패가 낫다.
     """
     global _registry
     if _registry is None:
-        _registry = AdapterRegistry()
+        registry = AdapterRegistry()
+
+        from app.adapters.centaur_ctr.adapter import MANIFEST_PATH, CentaurCtrAdapter
+
+        registry.register(CentaurCtrAdapter(), manifest_path=MANIFEST_PATH)
+        _registry = registry
     return _registry
 
 

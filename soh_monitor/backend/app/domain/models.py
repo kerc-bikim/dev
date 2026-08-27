@@ -106,6 +106,15 @@ class DeviceIdentity(BaseModel):
         return diffs
 
 
+def dimensioned_capability(capability_key: str, dimension_value: str) -> str:
+    """차원별 capability 키.
+
+    3채널 모델의 Sensor B 처럼 같은 기능이 축·포트마다 다르게 지원될 수 있다.
+    `sensor.status[B]` 형태로 구분하고, 없으면 기본 키로 되돌아본다.
+    """
+    return f"{capability_key}[{dimension_value}]"
+
+
 class CapabilityReport(BaseModel):
     """장비 기능 탐지 결과. 키는 capabilities.yaml 의 capability 키."""
 
@@ -113,13 +122,17 @@ class CapabilityReport(BaseModel):
 
     states: dict[str, SupportState] = Field(default_factory=dict)
 
-    def state_of(self, capability_key: str) -> SupportState:
+    def state_of(self, capability_key: str, dimension_value: str | None = None) -> SupportState:
+        if dimension_value:
+            specific = self.states.get(dimensioned_capability(capability_key, dimension_value))
+            if specific is not None:
+                return specific
         return self.states.get(capability_key, SupportState.UNKNOWN)
 
-    def evaluable(self, capability_key: str | None) -> bool:
+    def evaluable(self, capability_key: str | None, dimension_value: str | None = None) -> bool:
         if capability_key is None:
             return True
-        return self.state_of(capability_key).evaluable
+        return self.state_of(capability_key, dimension_value).evaluable
 
 
 class PollResult(BaseModel):
@@ -147,6 +160,13 @@ class PollResult(BaseModel):
     unmapped_values: dict[str, str] = Field(
         default_factory=dict,
         description="표준 상태로 해석하지 못한 원문. Mapping 보강 대상이며 UNKNOWN 으로 적재된다.",
+    )
+    unknown_channels: tuple[str, ...] = Field(
+        default=(),
+        description=(
+            "표준 Metric 으로 옮기지 못한 장비 채널 이름. 새 펌웨어가 채널을 추가했다는 신호이며, "
+            "Mapping 보강 대상이다. 버리지 않고 남겨 둔다."
+        ),
     )
 
     @field_validator("observed_at")
