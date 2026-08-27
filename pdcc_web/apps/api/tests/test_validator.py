@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from app.jobs.runner import process_job
 from app.inventory.validator import (
     official_validate,
     parse_sidecar_output,
@@ -202,7 +203,12 @@ def test_validate_and_unvalidated_xml_api(stub):
     assert drafted.status_code == 200, drafted.text
     result = stub.post(f"/api/projects/{project['id']}/validate")
     assert result.status_code == 200, result.text
-    body = result.json()
+    job = result.json()
+    assert job["status"] == "queued"
+    process_job(job["id"])
+    done = stub.get(f"/api/jobs/{job['id']}")
+    assert done.status_code == 200, done.text
+    body = done.json()["result"]
     codes = {row["code"] for row in body["issues"]}
     assert "412" in codes
     assert body["mode"] == "full"

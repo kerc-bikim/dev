@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from typing import NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,6 +24,7 @@ from ..inventory.collab import (
 from ..inventory.importers import load_import_warnings
 from ..inventory.service import project_out, write_audit
 from ..inventory.validator import summarize, validate_project
+from ..jobs.service import enqueue_validate, job_out
 from ..inventory.xmlbuild import (
     InventoryError,
     apply_field_choices,
@@ -319,17 +321,10 @@ def post_validate(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
     project = require_view(db, project_id, user)
-    row = get_draft(db, project.id, user.id)
-    xml = row.xml_text if row is not None else project.xml_text
-    issues = load_import_warnings(db, project.id) + validate_project(
-        xml, project.network_code, project.id, mode="full"
-    )
-    return summarize(
-        issues,
-        xml_source="draft" if row is not None else "project",
-        mode="full",
-        network=project.network_code,
-    )
+    job = enqueue_validate(db, user, project, job_id=str(uuid.uuid4()))
+    db.commit()
+    db.refresh(job)
+    return job_out(job)
 
 
 @router.post("/api/projects/{project_id}/draft/discard")

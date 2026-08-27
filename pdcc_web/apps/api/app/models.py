@@ -200,5 +200,26 @@ class FileAsset(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class Job(Base):
+    __tablename__ = "jobs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    username: Mapped[str] = mapped_column(String(64), nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, default="validate")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued")
+    progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    message: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    error: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    version_id: Mapped[int | None] = mapped_column(ForeignKey("project_versions.id"), nullable=True)
+    xml_source: Mapped[str] = mapped_column(String(16), nullable=False, default="project")
+    xml_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    result_json: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 def new_session_token() -> str:
     return secrets.token_urlsafe(32)

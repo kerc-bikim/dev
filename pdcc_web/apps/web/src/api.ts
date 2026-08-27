@@ -132,6 +132,22 @@ export type ValidateResult = {
   filename: string;
   engine?: string;
 };
+export type Job = {
+  id: string;
+  project_id: number;
+  username: string;
+  kind: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled" | string;
+  progress: number;
+  message: string;
+  error: string | null;
+  version_id: number | null;
+  xml_source: string;
+  result: ValidateResult | null;
+  created_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+};
 export type NrlSearchHit = {
   element: string;
   manufacturer: string;

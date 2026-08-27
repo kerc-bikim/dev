@@ -246,6 +246,37 @@ body {
   margin-bottom: 12px;
 }
 .editor-top h2 { margin: 0; font-size: 18px; }
+.job-bell { position: relative; }
+.job-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(420px, 90vw);
+  max-height: 70vh;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  z-index: 20;
+  box-shadow: 0 12px 40px #0008;
+}
+.job-panel h3 { margin: 0 0 8px; font-size: 14px; }
+.job-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.job-list li {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: grid;
+  gap: 6px;
+}
+.job-list progress,
+.lock-banner progress {
+  width: 100%;
+  height: 8px;
+  display: block;
+  margin-top: 6px;
+}
 .editor-layout {
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);

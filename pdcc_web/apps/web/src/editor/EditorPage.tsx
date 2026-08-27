@@ -6,10 +6,10 @@ import {
   apiPost,
   type ChannelSummary,
   type FieldDiff,
+  type Job,
   type LockInfo,
   type Project,
   type StationSummary,
-  type ValidateResult,
   type ValidationIssue,
 } from "../api";
 import { NrlWorkbench } from "../nrl/NrlWorkbench";
@@ -43,6 +43,7 @@ export function EditorPage({
   const [issueMode, setIssueMode] = useState("quick");
   const [focusField, setFocusField] = useState<string | null>(null);
   const [validating, setValidating] = useState(false);
+  const [validateJob, setValidateJob] = useState<Job | null>(null);
   const [canSeed, setCanSeed] = useState(false);
   const [xmlName, setXmlName] = useState<string | null>(null);
   const issueModeRef = useRef(issueMode);
@@ -166,18 +167,40 @@ export function EditorPage({
     setValidating(true);
     setError(null);
     try {
-      const data = await apiPost<ValidateResult>(`/api/projects/${projectId}/validate`);
-      setIssues(data.issues);
-      setIssueSource(data.source);
-      setIssueMode(data.mode);
-      setCanSeed(data.can_export_seed);
-      setXmlName(data.filename);
+      const job = await apiPost<Job>(`/api/projects/${projectId}/validate`);
+      setValidateJob(job);
     } catch (err) {
       setError((err as Error).message);
-    } finally {
       setValidating(false);
     }
   }
+
+  useEffect(() => {
+    if (!validateJob) return;
+    if (validateJob.status === "succeeded") {
+      const data = validateJob.result;
+      if (data) {
+        setIssues(data.issues);
+        setIssueSource(data.source);
+        setIssueMode(data.mode);
+        setCanSeed(data.can_export_seed);
+        setXmlName(data.filename);
+      }
+      setValidating(false);
+      return;
+    }
+    if (validateJob.status === "failed" || validateJob.status === "cancelled") {
+      setError(validateJob.error || validateJob.message);
+      setValidating(false);
+      return;
+    }
+    const id = window.setInterval(() => {
+      apiGet<Job>(`/api/jobs/${validateJob.id}`)
+        .then((next) => setValidateJob(next))
+        .catch((err: Error) => setError(err.message));
+    }, 1200);
+    return () => window.clearInterval(id);
+  }, [validateJob]);
 
   async function downloadXml() {
     setError(null);
@@ -354,6 +377,12 @@ export function EditorPage({
           </button>
         </p>
       ) : null}
+      {validateJob && (validateJob.status === "queued" || validateJob.status === "running") ? (
+        <p className="lock-banner" id="validate-progress">
+          공식 검증 {validateJob.progress}% · 이전 결과를 유지합니다. 편집은 계속할 수 있습니다.
+          <progress max={100} value={validateJob.progress} />
+        </p>
+      ) : null}
       {error ? <p className="error">{error}</p> : null}
       {wizard ? (
         <StationWizard
@@ -483,6 +512,7 @@ export function EditorPage({
             source={issueSource}
             mode={issueMode}
             validating={validating}
+            progress={validateJob?.status === "queued" || validateJob?.status === "running" ? validateJob.progress : null}
             filename={xmlName}
             onJump={jumpToIssue}
           />
