@@ -7,7 +7,7 @@ from pathlib import Path
 import markdown
 
 ROOT = Path(__file__).resolve().parents[1]
-MD_PATH = ROOT / "plan.md"
+MD_PATHS = (ROOT / "plan.md", ROOT / "plan_priority.md")
 HTML_PATH = ROOT / "plan.html"
 
 CSS = """
@@ -164,13 +164,13 @@ TEMPLATE = """<!DOCTYPE html>
     <header class="doc-header">
       <p class="eyebrow">Earthworm · Web Control Plan</p>
       <h1>Earthworm Web Control — 계획서</h1>
-      <p class="meta">v8.0b17 · FastAPI 백엔드 + React 프론트엔드 · 구현 전 확정 계획</p>
+      <p class="meta">v8.0b17 · FastAPI 백엔드 + React 프론트엔드 · 우선 모듈 · 구성 보드 · 모노레포</p>
     </header>
     <article>
 {body}
     </article>
     <footer>
-      Generated from <code>plan.md</code>.
+      Generated from <code>plan.md</code> + <code>plan_priority.md</code>.
     </footer>
   </div>
 </body>
@@ -194,6 +194,11 @@ DIAGRAM_HEIGHTS = {
     "clone-sequence": 660,
     "sniff-sequence": 700,
     "stack-layers": 500,
+    "module-families": 640,
+    "compose-board": 680,
+    "instance-fleet": 620,
+    "monorepo": 600,
+    "compose-apply": 660,
 }
 
 
@@ -218,8 +223,18 @@ def embed_diagrams(html: str) -> str:
     )
 
 
+def load_markdown() -> str:
+    chunks: list[str] = []
+    for i, path in enumerate(MD_PATHS):
+        text = path.read_text(encoding="utf-8")
+        if i > 0:
+            text = re.sub(r"^# .+\n+", "", text, count=1)
+        chunks.append(text.rstrip())
+    return "\n\n".join(chunks) + "\n"
+
+
 def main() -> None:
-    md = MD_PATH.read_text(encoding="utf-8")
+    md = load_markdown()
     body = md_to_html(md)
     html = TEMPLATE.replace("{css}", CSS).replace("{body}", body)
     HTML_PATH.write_text(html, encoding="utf-8")

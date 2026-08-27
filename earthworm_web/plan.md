@@ -13,6 +13,8 @@ Earthworm **v8.0b17** 기준으로, 이미 컴파일된 Rocky Linux 9 바이너�
 
 상태: 계획만. 구현 체크리스트는 [구현 단계](#12-구현-단계)에 둔다. 웹 흐름은 **초기 설정**(디렉터리·링)과 **이후 설정**(모듈·운영)으로 나눈다. 근거는 [17절](#17-소스매뉴얼-분석-근거).
 
+우선 운영 모듈·한 창 일괄 구성·모노레포 배포는 [plan_priority.md](plan_priority.md) ([18절 이하](#18)).
+
 ---
 
 ## 1. 목표
@@ -21,9 +23,9 @@ Earthworm **v8.0b17** 기준으로, 이미 컴파일된 Rocky Linux 9 바이너�
 
 1. `ew_linux.bash` 로 런타임 환경을 고정한다.
 2. `params/` · `environment/` 파일을 웹에서 읽고 고친다.
-3. `bin` 모듈과 대응하는 `params` 를 토글로 켜고 끈다.
-4. 켜 둔 모듈을 복제해 **같은 기능, 다른 이름**으로 돌린다.
-5. 공통 변수를 한 화면에서 넣고, 각 `.d` 에 자동 반영한다.
+3. **우선 모듈**만 팔레트에 두고, 나머지는 필요 시 등록한다.
+4. `q3302ew` · `slink2ew` · `export_scnl` · `export_generic` · `wave_serverV` 는 복제 다발로 **같은 기능, 다른 이름** 인스턴스를 여러 대 돌린다.
+5. **구성 보드 한 창**에서 인스턴스 파라미터를 채우고 일괄 적용한 뒤, 전체가 같은 `startstop` 아래 운영되게 한다.
 6. Earthworm 전체를 시작 / 종료 / 일시중지한다.
 7. 실행 중 모듈 상태를 대시보드로 본다.
 8. 로그 디렉터리를 설정하고 모듈별 로그를 본다.
@@ -760,25 +762,32 @@ Earthworm 을 실제로 기동하지 않고도 1단계는 마법사·파일 파�
 - 기동 중 토글 ↔ stopmodule / reconfigure
 - KillDelay 폴링
 
-### 3단계 — 복제와 통합 변수 (P1)
+### 3단계 — 우선 카탈로그와 스키마 (P1)
 
-- clone: bin + `.d` + Module ID + `.desc` + Descriptor
-- Process 길이·MAX_CHILD·MAX_RING UI 한도
-- `earthworm_commonvars.d` + HeartbeatInt↔tsec
-- 링 토폴로지 경고 (CheckAllRings / copystatus)
+우선 목록·스키마·시드는 [plan_priority.md 27절](plan_priority.md).
 
-### 4단계 — 로그와 링 모니터
+- `module_fields.yaml`, 카탈로그 `priority` / `role` / `fleet`
+- I/O 12개 스텁·샘플 `.d`
+- 기타 모듈 등록 API. 팔레트 UI
+
+### 4단계 — 구성 보드와 일괄 적용 (P1)
+
+- 한 창: 사이트 공통 + 인스턴스 카드 + 검토/적용/시작
+- clone 트랜잭션을 apply 가 묶음. 포트·탱크·Process 유일 검증
+- `Variables` 를 사이트 공통으로 흡수. 포트 인벤토리(구 P2) 흡수
+
+### 5단계 — 로그와 링 모니터
 
 - 로그 디렉터리·보관·뷰어·follow. lock/data 제외
-- sniffwave / sniffring 세션 + WS
+- sniffwave / sniffring 세션 + WS. `getmenu` ↔ wave_serverV 인스턴스
 - 기반 설정 재진입 (링 크기 변경은 pau 후)
 
-### 5단계 — 다듬기 (P2)
+### 6단계 — 다듬기와 모노레포 배포 (P2)
 
-- API 키, 백업, 감사 로그
-- 포트/IP 인벤토리, tankplayer 시험 프로파일, NTP·디스크 위젯
+- API 키, 백업, 감사 로그, NTP·디스크 위젯
 - WEB_DOC 정적 제공 (`/docs/ew/`)
-- README, systemd 유닛 예시
+- `deploy/earthworm-web.service`, 태그 `earthworm-web-v0.x`. 디렉터리 rename 없음
+- tankplayer 는 기타 등록
 
 각 단계마다 백엔드 pytest (파서·argv 생성·경로 샌드박스) 와 프론트 타입체크를 둔다.
 
@@ -1005,5 +1014,9 @@ Linux autostart 예제(`USER_GUIDE/linux_autostart.html`)는 `ew_linux.bash` 를
 | P2 | tankplayer 시험 프로파일 | 라이브 망 없이 콘솔 검증 |
 | P2 | NTP·디스크·락 위젯 | 운영 장애 3대장 |
 
-이 절의 P0 는 [12절](#12-구현-단계) 1–2단계(초기 마법사 포함), P1 은 3–4단계, P2 는 5단계로 잡는다.
+이 절의 P0 는 [12절](#12-구현-단계) 1–2단계(초기 마법사 포함), P1 은 3–4단계(우선 카탈로그·구성 보드), P2 는 6단계로 잡는다. 포트/IP 인벤토리는 구성 보드 검증이 대체한다.
+
+---
+
+우선 모듈 화이트리스트, 구성 보드 UX, 인스턴스 스키마, 모노레포 배포 규약은 다음 문서에 이어진다.
 

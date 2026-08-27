@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>구성 보드 한 창</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #eb6c36;
+      --font-sans:     'Geist', 'Noto Sans KR', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem 2rem;
+    }
+    .frame { max-width: 1200px; width: 100%; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 720px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Compose · Diagram Design</p>
+    <h1>한 창에서 등록하고, 값을 채우고, 한 번에 적용한다</h1>
+    <svg viewBox="0 0 1000 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="compose-board-title compose-board-desc">
+      <title id="compose-board-title">구성 보드 한 창</title>
+      <desc id="compose-board-desc">사이트 공통 값과 팔레트, 인스턴스 카드가 한 화면에 있고 검토 후 적용하면 모듈 전체가 같은 startstop 아래 운영된다.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+      </defs>
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+      <rect x="40" y="24" width="920" height="72" rx="8" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+      <text x="64" y="48" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">SITE</text>
+      <text x="64" y="72" fill="#2d3142" font-size="16" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">사이트 공통</text>
+      <text x="920" y="64" text-anchor="end" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">Inst · HeartbeatInt · WAVE_RING · statmgr</text>
+
+      <rect x="40" y="116" width="200" height="252" rx="8" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+      <text x="140" y="144" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">PALETTE</text>
+      <text x="140" y="172" text-anchor="middle" fill="#2d3142" font-size="14" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">모듈 등록</text>
+      <text x="140" y="204" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">q3302ew  +</text>
+      <text x="140" y="228" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">export_scnl  +</text>
+      <text x="140" y="252" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">wave_serverV  +</text>
+      <text x="140" y="284" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">우선 12 + 기타</text>
+      <text x="140" y="328" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">+ 누르면 카드 추가</text>
+
+      <line x1="240" y1="242" x2="300" y2="242" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+      <rect x="300" y="116" width="660" height="252" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <text x="324" y="144" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">INSTANCES</text>
+      <text x="324" y="168" fill="#2d3142" font-size="14" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">인스턴스 카드 — 파라미터를 여기서 모두 입력</text>
+
+      <rect x="324" y="188" width="196" height="156" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
+      <text x="422" y="216" text-anchor="middle" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace">q3302ew_sta1</text>
+      <text x="422" y="240" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">IP · Serial · UDP</text>
+      <text x="422" y="264" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">AuthCode</text>
+      <text x="422" y="300" text-anchor="middle" fill="#4f5d75" font-size="10" font-family="'Geist Mono', monospace">WAVE_RING</text>
+
+      <rect x="532" y="188" width="196" height="156" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
+      <text x="630" y="216" text-anchor="middle" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace">export_scnl_n1</text>
+      <text x="630" y="240" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">리슨 IP · Port</text>
+      <text x="630" y="264" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">Send_scnl 줄</text>
+      <text x="630" y="300" text-anchor="middle" fill="#4f5d75" font-size="10" font-family="'Geist Mono', monospace">16015</text>
+
+      <rect x="740" y="188" width="196" height="156" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
+      <text x="838" y="216" text-anchor="middle" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist Mono', monospace">wave_serverV</text>
+      <text x="838" y="240" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">ServerPort · Tank</text>
+      <text x="838" y="264" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">TankStructFile</text>
+      <text x="838" y="300" text-anchor="middle" fill="#4f5d75" font-size="10" font-family="'Geist Mono', monospace">$EW_DATA_DIR</text>
+
+      <rect x="40" y="388" width="200" height="72" rx="8" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
+      <text x="140" y="418" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">VALIDATE</text>
+      <text x="140" y="442" text-anchor="middle" fill="#2d3142" font-size="14" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">검토</text>
+
+      <line x1="240" y1="424" x2="300" y2="424" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+      <rect x="300" y="388" width="292" height="72" rx="8" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
+      <text x="446" y="418" text-anchor="middle" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em" font-weight="600">APPLY</text>
+      <text x="446" y="442" text-anchor="middle" fill="#2d3142" font-size="14" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">적용 — .d · ID · bin</text>
+
+      <line x1="592" y1="424" x2="652" y2="424" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+
+      <rect x="652" y="388" width="308" height="72" rx="8" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
+      <text x="806" y="418" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">STARTSTOP</text>
+      <text x="806" y="442" text-anchor="middle" fill="#2d3142" font-size="14" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">시작 — 전체가 함께 기동</text>
+
+      <text x="40" y="500" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">RULE</text>
+      <text x="104" y="500" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">적용과 시작은 버튼을 나란히 두되 한 단계로 묶지 않는다. 파일 오류로 startstop 이 뜨는 것을 막는다.</text>
+    </svg>
+  </div>
+</body>
+</html>

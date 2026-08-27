@@ -2,7 +2,7 @@
 
 Earthworm **v8.0b17** 를 웹에서 설정·기동·감시하는 콘솔입니다. 백엔드(FastAPI)와 프론트엔드(React + Vite)는 분리되어 있고, Earthworm 바이너리는 프론트가 직접 호출하지 않습니다.
 
-계획서: [`plan.md`](plan.md) · HTML [`plan.html`](plan.html) · 그림 [`diagrams/`](diagrams/) ([diagram-design](https://github.com/cathrynlavery/diagram-design))
+계획서: [`plan.md`](plan.md) · 우선 모듈·구성 보드·모노레포 [`plan_priority.md`](plan_priority.md) · HTML [`plan.html`](plan.html) · 그림 [`diagrams/`](diagrams/) ([diagram-design](https://github.com/cathrynlavery/diagram-design))
 
 ## 개발 실행
 
@@ -38,6 +38,6 @@ cd frontend && npm run build
 ## 동작 요약
 
 1. **초기 설정 마법사** — `EW_HOME` / `EW_RUN_DIR`(params, log, data), Inst ID, 링 이름·키·크기·순서. 완료 전 제어 API 는 409.
-2. **이후 설정** — 모듈 토글·복제, 통합 변수, 파일 편집, 시작(`startstop`)/종료(`pau`)/일시중지(`stopmodule` pid)/재개(`restart` pid), 대시보드, 로그, sniffwave/sniffring.
+2. **이후 설정** — 우선 모듈 팔레트·구성 보드(계획), 모듈 토글·복제, 통합 변수, 파일 편집, 시작(`startstop`)/종료(`pau`)/일시중지(`stopmodule` pid)/재개(`restart` pid), 대시보드, 로그, sniffwave/sniffring. 복제 다발 후보는 `q3302ew` · `slink2ew` · `export_scnl` · `export_generic` · `wave_serverV`.
 3. 첫 startstop 링은 `STATUS_RING`. `FLAG_RING` 은 startstop 목록에 넣지 않습니다.
 4. 목 미리보기(백엔드 없음): `frontend/preview/` 에서 `python3 -m http.server 8765`

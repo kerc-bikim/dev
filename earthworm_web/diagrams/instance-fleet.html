@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>복제 다발 인스턴스</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #eb6c36;
+      --font-sans:     'Geist', 'Noto Sans KR', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem 2rem;
+    }
+    .frame { max-width: 1200px; width: 100%; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 720px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Fleet · Diagram Design</p>
+    <h1>같은 바이너리, 다른 이름 — 포트와 탱크는 겹치면 안 된다</h1>
+    <svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="instance-fleet-title instance-fleet-desc">
+      <title id="instance-fleet-title">복제 다발 인스턴스</title>
+      <desc id="instance-fleet-desc">q3302ew slink2ew export_scnl export_generic wave_serverV 는 여러 인스턴스로 기동한다. Process 이름 Module ID 리슨 포트 탱크 경로는 전역에서 유일해야 한다.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+      </defs>
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+      <rect x="300" y="200" width="400" height="88" rx="8" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
+      <text x="500" y="232" text-anchor="middle" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em" font-weight="600">UNIQUE</text>
+      <text x="500" y="260" text-anchor="middle" fill="#2d3142" font-size="15" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">이름 · Module ID · 리슨 포트 · Tank</text>
+
+      <rect x="40" y="24" width="280" height="140" rx="8" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
+      <text x="180" y="52" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">Q330</text>
+      <text x="180" y="76" text-anchor="middle" fill="#2d3142" font-size="14" font-weight="600" font-family="'Geist Mono', monospace">q3302ew</text>
+      <text x="180" y="104" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">_sta1  _sta2  _sta3</text>
+      <text x="180" y="132" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">호스트 UDP 포트 유일</text>
+      <line x1="180" y1="164" x2="360" y2="216" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <rect x="360" y="24" width="280" height="140" rx="8" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
+      <text x="500" y="52" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">SEEDLINK</text>
+      <text x="500" y="76" text-anchor="middle" fill="#2d3142" font-size="14" font-weight="600" font-family="'Geist Mono', monospace">slink2ew</text>
+      <text x="500" y="104" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">_n1  _n2</text>
+      <text x="500" y="132" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">원격 주소는 중복 가능</text>
+      <line x1="500" y1="164" x2="500" y2="200" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <rect x="680" y="24" width="280" height="140" rx="8" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
+      <text x="820" y="52" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">EXPORT</text>
+      <text x="820" y="76" text-anchor="middle" fill="#2d3142" font-size="14" font-weight="600" font-family="'Geist Mono', monospace">export_scnl</text>
+      <text x="820" y="104" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">export_generic  _n1</text>
+      <text x="820" y="132" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">리슨 포트 16xxx</text>
+      <line x1="820" y1="164" x2="640" y2="216" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <rect x="200" y="328" width="600" height="100" rx="8" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
+      <text x="500" y="360" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">WAVE</text>
+      <text x="500" y="384" text-anchor="middle" fill="#2d3142" font-size="14" font-weight="600" font-family="'Geist Mono', monospace">wave_serverV</text>
+      <text x="500" y="408" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">인스턴스마다 Tank 파일과 ServerPort 가 다르다</text>
+      <line x1="500" y1="288" x2="500" y2="328" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+
+      <text x="40" y="468" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">STARTSTOP</text>
+      <text x="160" y="468" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">같은 Process 문자열은 두 번 spawn 하지 않으므로 bin 을 새 이름으로 복사한다. MAX_CHILD 256.</text>
+    </svg>
+  </div>
+</body>
+</html>
