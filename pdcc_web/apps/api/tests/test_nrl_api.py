@@ -28,7 +28,7 @@ class FakeNrl(NrlClient):
         if level == "manufacturer":
             return self.manufacturers
         if level == "model":
-            if manufacturer == "Guralp":
+            if manufacturer in (None, "", "Guralp"):
                 return self.models
             return {
                 "NRLCatalog": {

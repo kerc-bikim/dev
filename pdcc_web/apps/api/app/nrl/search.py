@@ -30,28 +30,6 @@ def manufacturer_names(element: str) -> list[str]:
     return names
 
 
-def model_entries(element: str, manufacturer: str) -> list[dict[str, str]]:
-    data = get_nrl_client().catalog(
-        level="model", element=element, manufacturer=manufacturer
-    )
-    rows: list[dict[str, str]] = []
-    for el in as_list(data.get("NRLCatalog", {}).get("element")):
-        for mfr in as_list(el.get("manufacturer")):
-            mfr_name = str(mfr.get("name") or manufacturer)
-            detail = str(mfr.get("detail") or "")
-            for model in as_list(mfr.get("model")):
-                if not isinstance(model, dict) or not model.get("name"):
-                    continue
-                rows.append(
-                    {
-                        "manufacturer": mfr_name,
-                        "model": str(model["name"]),
-                        "detail": detail + " " + str(model.get("detail") or ""),
-                    }
-                )
-    return rows
-
-
 def catalog_index(element: str) -> list[dict[str, str]]:
     redis = get_redis()
     key = f"pdcc:nrl:index:{element}"
@@ -62,9 +40,35 @@ def catalog_index(element: str) -> list[dict[str, str]]:
     except Exception:
         raw = None
     rows: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
     for manufacturer in manufacturer_names(element):
         rows.append({"manufacturer": manufacturer, "model": "", "detail": ""})
-        rows.extend(model_entries(element, manufacturer))
+        seen.add((manufacturer, ""))
+    data = get_nrl_client().catalog(level="model", element=element)
+    for el in as_list(data.get("NRLCatalog", {}).get("element")):
+        for mfr in as_list(el.get("manufacturer")):
+            mfr_name = str(mfr.get("name") or "")
+            if not mfr_name:
+                continue
+            detail = str(mfr.get("detail") or "")
+            if (mfr_name, "") not in seen:
+                rows.append({"manufacturer": mfr_name, "model": "", "detail": detail})
+                seen.add((mfr_name, ""))
+            for model in as_list(mfr.get("model")):
+                if not isinstance(model, dict) or not model.get("name"):
+                    continue
+                name = str(model["name"])
+                key_row = (mfr_name, name)
+                if key_row in seen:
+                    continue
+                seen.add(key_row)
+                rows.append(
+                    {
+                        "manufacturer": mfr_name,
+                        "model": name,
+                        "detail": detail + " " + str(model.get("detail") or ""),
+                    }
+                )
     try:
         redis.set(key, json.dumps(rows), ex=settings.nrl_cache_ttl_sec)
         redis.set("pdcc:nrl:last_ok", "1", ex=settings.nrl_cache_ttl_sec)
