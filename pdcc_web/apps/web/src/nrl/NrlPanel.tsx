@@ -121,6 +121,10 @@ export function NrlPanel({ element, onResolved, disabled = false }: Props) {
       if (data.excluded) {
         setExcluded(data.excluded);
         setHits([]);
+        setManufacturer("");
+        setModel("");
+        setWizard(null);
+        onResolved(null);
         return;
       }
       setHits(data.hits);
