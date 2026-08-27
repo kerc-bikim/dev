@@ -31,7 +31,7 @@ Earthworm `bin` 에는 픽커·로케이터·hypoinverse·tankplayer 등 수십 
 | `Modules.tsx` 토글 + `prompt()` 복제 | **구성 보드**: 인스턴스 카드 + 사이트 공통 + 적용 |
 | `Variables.tsx` 가 HeartbeatInt 등 소수 공통키만 | 사이트 공통 + 모듈 스키마 필드가 **한 화면** |
 | `seed.py` CONTROL_BINS 에 I/O 모듈 스텁이 부족 | 우선 Process 바이너리 스텁·샘플 `.d` 를 시드에 포함 |
-| 앱이 저장소 루트에 흩어짐 | `apps/` + 루트 `compose.yaml` Docker 모노레포 |
+| 웹만 호스트 프로세스 | `earthworm_web/compose.yaml` 로 웹 콘솔만 Docker |
 
 ---
 
@@ -245,7 +245,7 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process "q3302ew_sta2 q3
 
 ## 22. 모듈 필드 스키마
 
-진실의 원천 파일: `apps/earthworm_web/backend/app/module_fields.yaml`. 프론트는 `/api/modules/schema` 로 받는다. 매뉴얼은 소스 `doc/WEB_DOC` 의 각 cmd HTML.
+진실의 원천 파일: `earthworm_web/backend/app/module_fields.yaml`. 프론트는 `/api/modules/schema` 로 받는다. 매뉴얼은 소스 `doc/WEB_DOC` 의 각 cmd HTML.
 
 공통 Process 필드 (스키마가 생략해도 카드 상단에 항상 표시):
 
@@ -465,65 +465,53 @@ families:
 
 ---
 
-## 26. 모노레포와 배포
+## 26. 배포 (이 앱만)
 
 [모노레포](diagrams/monorepo.html)
 
-저장소는 **Docker Compose 모노레포**다. 앱은 `apps/` 아래, 서비스는 루트 `compose.yaml` 이다. 프론트 마이크로프론트 합성은 하지 않는다. 앱마다 UI 포트가 다르다.
+이 작업은 **`earthworm_web/` 만** 다룬다. 저장소의 다른 디렉터리(StationXML, PPSD, ringserver, dataselect, recvQSCD20, seedlinkToMp3)는 옮기지 않고 Compose 에도 넣지 않는다. 프론트 마이크로프론트 합성은 하지 않는다.
 
 ### 26.1 레이아웃
 
 ```
-dev/
+earthworm_web/
   compose.yaml
-  apps/
-    earthworm_web/
-    stationxml_manager/
-    PPSD_v1/
-    ringserver_seedlink_websocket/
-    dataselect/
-    recvQSCD20/          # GUI, Compose 프로필 없음
-    seedlinkToMp3/
-  packages/              # 공유 라이브러리 (비어 있음)
+  docker/
+    backend.Dockerfile
+    frontend.Dockerfile
+    nginx.conf
+  backend/
+  frontend/
+  fixtures/
 ```
 
 | 규약 | 내용 |
 |------|------|
-| 앱 루트 | `apps/<name>/` 안에서 `backend/`+`frontend/` 또는 해당 스택 |
-| 오케스트레이션 | 루트 `docker compose`. 기본 프로필은 Earthworm 웹 |
-| 이미지 | 앱별 Dockerfile. Earthworm Rocky tarball 은 **넣지 않음** |
-| 시드 | `apps/earthworm_web/fixtures` + 볼륨 `earthworm-home` |
-| 태그 | 앱 prefix (`earthworm-web-v0.x`) |
-| GUI | `recvQSCD20` 는 호스트/Xvfb |
+| 앱 루트 | `earthworm_web/` (`backend/` + `frontend/`) |
+| 오케스트레이션 | `earthworm_web/compose.yaml` |
+| 이미지 | Rocky tarball 은 **넣지 않음** |
+| 시드 | `earthworm_web/fixtures` + 볼륨 `earthworm-home` |
+| 태그 | `earthworm-web-v0.x` |
 
 ### 26.2 Compose 서비스
 
-| 서비스 | 프로필 | 포트 |
-|--------|--------|------|
-| `earthworm-web` + `earthworm-web-ui` | (기본) | 8081 |
-| `ppsd-api` + `ppsd-ui` | `ppsd` | 8080 |
-| `stationxml-api` + `stationxml-ui` | `stationxml` | 8082 |
-| `ringserver-api` + `ringserver-ui` | `ringserver` | 8083 |
-| `dataselect` | `tools` | CLI |
+| 서비스 | 포트 |
+|--------|------|
+| `earthworm-web` + `earthworm-web-ui` | 8081 |
 
-UI nginx 가 `/api`·`/ws` 를 같은 오리진으로 프록시한다. 사람 세션 쿠키가 포트가 갈라진 API 로 새지 않는다.
+UI nginx 는 API 와 같은 네트워크 네임스페이스에서 `/api`·`/ws` 를 `127.0.0.1` 로 프록시한다. 호스트에는 UI 포트만 연다.
 
 실제 `startstop` 은 `ipc: host` 와 `compose.override.example.yaml` 의 `EW_HOME` 바인드. SysV IPC 가 컨테이너에서 실패하면 웹만 Docker, Earthworm 은 호스트.
 
 ### 26.3 같은 저장소 다른 앱
 
-| 앱 | Earthworm 웹 |
-|----|----------------|
-| ringserver | `ew2ringserver`/`slink2ew` 포트 교차. Compose 프로필 `ringserver` |
-| stationxml | SCNL 수동. 프로필 `stationxml` |
-| PPSD | 아카이브 소비. 프로필 `ppsd` |
-| dataselect | MiniSEED CLI 이미지 |
+포트 교차(`ew2ringserver` / `slink2ew`)는 문서에서만 맞춘다. 다른 앱 디렉터리·Compose 는 이 작업 밖이다.
 
 ### 26.4 CI
 
-- `apps/earthworm_web/**` → pytest + frontend build
-- `docker compose config` 로 Compose 문법
-- 계획 HTML 은 `apps/earthworm_web/scripts/build_plan_html.py`
+- `earthworm_web/**` → pytest + frontend build
+- `earthworm_web` 에서 `docker compose config`
+- 계획 HTML 은 `earthworm_web/scripts/build_plan_html.py`
 
 ---
 
@@ -550,13 +538,13 @@ UI nginx 가 `/api`·`/ws` 를 같은 오리진으로 프록시한다. 사람 �
 
 구성 보드와 독립. `getmenu` 를 진단에 연결 (wave_serverV 인스턴스 콤보).
 
-### 6단계 — 배포 패키징 (Docker 모노레포)
+### 6단계 — 배포 패키징 (Docker)
 
-- 루트 `compose.yaml`. 앱은 `apps/<name>/`
-- 기본 프로필: Earthworm 웹 UI `:8081`. 다른 앱은 `--profile`
+- `earthworm_web/compose.yaml`
+- 웹 UI `:8081`. nginx 가 `/api`·`/ws` 프록시
 - `compose.override.example.yaml` 로 `EW_HOME` 바인드 · `ipc: host`
 - README 배포 절, 태그 `earthworm-web-v0.x`
-- systemd 유닛은 호스트에서 Earthworm 만 돌릴 때 선택
+- 저장소 다른 디렉터리는 이 단계에서 옮기지 않음
 
 본계획 5단계 P2(포트 인벤토리)는 구성 보드 검증이 대체하므로 **4단계에 흡수**한다. tankplayer 시험 프로파일은 기타 등록으로 미룬다.
 

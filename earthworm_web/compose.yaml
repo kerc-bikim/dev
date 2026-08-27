@@ -1,0 +1,41 @@
+# Earthworm web console — Docker Compose
+# Run from this directory: docker compose up --build
+# UI: http://127.0.0.1:8081  (API is not published; nginx proxies /api and /ws)
+name: earthworm-web
+
+services:
+  earthworm-web:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      EW_WEB_API_KEY: ${EW_WEB_API_KEY:-}
+      EW_WEB_AUTO_SEED: ${EW_WEB_AUTO_SEED:-1}
+      EW_WEB_LOG_LEVEL: INFO
+      EW_WEB_BOOTSTRAP_USERNAME: ${EW_WEB_BOOTSTRAP_USERNAME:-}
+      EW_WEB_BOOTSTRAP_PASSWORD: ${EW_WEB_BOOTSTRAP_PASSWORD:-}
+    volumes:
+      - earthworm-data:/app/backend/data
+      - earthworm-home:/app/.ew_home
+    ports:
+      - "8081:80"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/api/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 8
+    restart: unless-stopped
+
+  earthworm-web-ui:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    network_mode: "service:earthworm-web"
+    depends_on:
+      earthworm-web:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  earthworm-data:
+  earthworm-home:

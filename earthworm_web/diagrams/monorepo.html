@@ -51,10 +51,10 @@
 <body>
   <div class="frame">
     <p class="eyebrow">Monorepo · Diagram Design</p>
-    <h1>Docker Compose 가 앱을 묶고, EW 바이너리는 볼륨이다</h1>
+    <h1>이 앱의 Compose 만 쓰고, EW 바이너리는 볼륨이다</h1>
     <svg viewBox="0 0 1000 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="monorepo-title monorepo-desc">
-      <title id="monorepo-title">Docker 모노레포</title>
-      <desc id="monorepo-desc">루트 compose.yaml 이 apps 아래 서비스를 띄운다. Earthworm 웹이 기본이고 다른 앱은 프로필이다. Rocky 바이너리는 이미지에 넣지 않고 볼륨으로 붙인다.</desc>
+      <title id="monorepo-title">earthworm_web Docker</title>
+      <desc id="monorepo-desc">earthworm_web/compose.yaml 이 웹 API와 nginx UI만 띄운다. 저장소의 다른 앱은 옮기지 않는다. Rocky 바이너리는 이미지에 넣지 않고 볼륨으로 붙인다.</desc>
       <defs>
         <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
         <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
@@ -63,13 +63,13 @@
 
       <rect x="40" y="24" width="920" height="56" rx="8" fill="#ececec"/>
       <text x="64" y="48" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">GIT</text>
-      <text x="140" y="58" fill="#2d3142" font-size="16" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">compose.yaml · apps/</text>
-      <text x="920" y="58" text-anchor="end" fill="#4f5d75" font-size="11" font-family="'Geist Mono', monospace">profiles: ppsd · stationxml</text>
+      <text x="140" y="58" fill="#2d3142" font-size="16" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">earthworm_web/compose.yaml</text>
+      <text x="920" y="58" text-anchor="end" fill="#4f5d75" font-size="11" font-family="'Geist Mono', monospace">this dir only</text>
 
       <rect x="40" y="108" width="300" height="220" rx="8" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
       <text x="190" y="136" text-anchor="middle" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em" font-weight="600">DEPLOY UNIT</text>
       <text x="190" y="164" text-anchor="middle" fill="#2d3142" font-size="16" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">earthworm-web</text>
-      <text x="190" y="196" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">apps/earthworm_web</text>
+      <text x="190" y="196" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">earthworm_web</text>
       <text x="190" y="220" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">API + nginx :8081</text>
       <text x="190" y="252" text-anchor="middle" fill="#2d3142" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">기본 compose up</text>
       <text x="190" y="284" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">ipc: host</text>
@@ -77,12 +77,12 @@
 
       <rect x="360" y="108" width="280" height="220" rx="8" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
       <text x="500" y="136" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">SIBLING APPS</text>
-      <text x="500" y="168" text-anchor="middle" fill="#2d3142" font-size="14" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">같은 Compose, 프로필</text>
+      <text x="500" y="168" text-anchor="middle" fill="#2d3142" font-size="14" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">이 작업 밖</text>
       <text x="500" y="200" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">stationxml_manager</text>
       <text x="500" y="224" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">PPSD_v1</text>
       <text x="500" y="248" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">ringserver_…</text>
       <text x="500" y="272" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">dataselect</text>
-      <text x="500" y="304" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">apps/ 아래, --profile</text>
+      <text x="500" y="304" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">디렉터리 이동 없음</text>
 
       <rect x="660" y="108" width="300" height="220" rx="8" fill="#ececec"/>
       <text x="810" y="136" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">HOST</text>
@@ -98,7 +98,7 @@
 
       <text x="40" y="380" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">CROSS</text>
       <text x="40" y="408" fill="#2d3142" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">ew2ringserver · slink2ew 는 ringserver 앱과 포트만 문서에서 맞춘다. 프론트 합성은 1차에 없다.</text>
-      <text x="40" y="436" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">프론트는 앱마다 빌드한다. 루트 npm workspace 로 vite 버전을 한 lock 에 묶지 않는다.</text>
+      <text x="40" y="436" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">git 변경은 earthworm_web/ 만. 다른 앱 Compose 는 넣지 않는다.</text>
     </svg>
   </div>
 </body>

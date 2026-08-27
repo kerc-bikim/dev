@@ -1,23 +1,23 @@
 # Shared Python virtualenv created by .cursor/install.sh.
+# Ignored so Cloud Agent branch checkouts preserve it (like node_modules) and
+# it is never accidentally committed.
 .venv/
 
+# Python bytecode caches
 __pycache__/
 *.pyc
-node_modules/
-dist/
 
-# PPSD backend runtime
-apps/PPSD_v1/backend/cache/
-apps/PPSD_v1/backend/sds/
+# PPSD backend runtime output (recreated at runtime)
+PPSD_v1/backend/cache/
+PPSD_v1/backend/sds/
 
 # Earthworm web control
-apps/earthworm_web/frontend/node_modules/
-apps/earthworm_web/frontend/dist/
-apps/earthworm_web/.ew_home/
-apps/earthworm_web/backend/data/app.json
-apps/earthworm_web/backend/data/control.sqlite
-apps/earthworm_web/backend/data/control.sqlite-*
-apps/earthworm_web/backend/data/backups/
-apps/earthworm_web/backend/.env
-.env
-compose.override.yaml
+earthworm_web/frontend/node_modules/
+earthworm_web/frontend/dist/
+earthworm_web/.ew_home/
+earthworm_web/backend/data/app.json
+earthworm_web/backend/data/control.sqlite
+earthworm_web/backend/data/control.sqlite-*
+earthworm_web/backend/data/backups/
+earthworm_web/backend/.env
+

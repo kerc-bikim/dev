@@ -1,5 +1,5 @@
 # Optional: bind a host Earthworm tree into the API container.
-# Copy to compose.override.yaml (gitignored) when you need real startstop.
+# Copy to compose.override.yaml when you need real startstop.
 #
 # services:
 #   earthworm-web:

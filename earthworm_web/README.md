@@ -6,14 +6,16 @@ Earthworm **v8.0b17** 를 웹에서 설정·기동·감시하는 콘솔입니다
 
 ## 개발 실행
 
-기본값은 저장소 `fixtures/` 의 **CLI 스텁**을 `apps/earthworm_web/.ew_home` 에 심습니다. 실제 Rocky Linux 바이너리가 있으면 `EW_WEB_BASH` 와 `EW_WEB_AUTO_SEED=0` 으로 가리키면 됩니다.
+기본값은 `fixtures/` 의 **CLI 스텁**을 `earthworm_web/.ew_home` 에 심습니다. 실제 Rocky Linux 바이너리가 있으면 `EW_WEB_BASH` 와 `EW_WEB_AUTO_SEED=0` 으로 가리키면 됩니다.
 
-Docker 모노레포 (저장소 루트):
+Docker (이 디렉터리만):
 
 ```bash
 docker compose up --build
 # http://127.0.0.1:8081
 ```
+
+실제 `startstop` 은 `compose.override.example.yaml` 을 `compose.override.yaml` 로 복사해 `EW_HOME` 을 붙입니다.
 
 ```bash
 # 백엔드 :8010

@@ -1,0 +1,10 @@
+frontend/node_modules/
+frontend/dist/
+.ew_home/
+backend/data/app.json
+backend/data/control.sqlite
+backend/data/control.sqlite-*
+backend/data/backups/
+backend/.env
+.env
+compose.override.yaml

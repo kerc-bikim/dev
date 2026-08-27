@@ -226,7 +226,7 @@ footer {
 <p>배포 tarball 은 <strong>v8.0b8</strong>, Git 태그는 <strong>v8.0b17</strong> 이다. 계획은 다음과 같이 고정한다.</p>
 <ul>
 <li>실행 파일: tarball <code>bin/</code> 을 그대로 쓴다. 이 호스트에서 재컴파일하지 않는다.</li>
-<li>배포 URL 은 현재 <strong>HTTP 전용</strong>이다 (<code>https://www.earthwormcentral.org/...</code> 는 HTTP 로 리다이렉트). 받은 파일은 크기(130927698 bytes, Last-Modified 2025-08-04)와 <strong>SHA-256</strong> 을 기록·대조한 뒤에만 푼다. 체크섬이 배포 사이트에 없으면 첫 신뢰 경로에서 한 번 계산해 <code>apps/earthworm_web/checksums.txt</code> 에 보관하는 것을 운영 절차로 둔다.</li>
+<li>배포 URL 은 현재 <strong>HTTP 전용</strong>이다 (<code>https://www.earthwormcentral.org/...</code> 는 HTTP 로 리다이렉트). 받은 파일은 크기(130927698 bytes, Last-Modified 2025-08-04)와 <strong>SHA-256</strong> 을 기록·대조한 뒤에만 푼다. 체크섬이 배포 사이트에 없으면 첫 신뢰 경로에서 한 번 계산해 <code>earthworm_web/checksums.txt</code> 에 보관하는 것을 운영 절차로 둔다.</li>
 <li>설정 템플릿·매뉴얼: v8.0b17 <code>params/</code>, <code>environment/</code>, <code>doc/WEB_DOC</code> 를 기준으로 파서·카탈로그를 만든다.</li>
 <li>v8.0b17 에만 있는 모듈은 <code>bin</code> 에 실행 파일이 없으면 UI 에서 <strong>바이너리 없음</strong> 으로 표시하고 활성화를 막는다.</li>
 <li><code>ew_linux.bash</code> 의 <code>EW_VERSION</code> 은 tarball 을 푼 실제 디렉터리명으로 맞춘다.</li>
@@ -700,7 +700,7 @@ footer {
 <p>개발 시 Vite 가 <code>/api</code>·<code>/ws</code> 를 FastAPI(<code>:8000</code>)로 프록시한다. 배포 시 백엔드가 빌드된 <code>frontend/dist</code> 를 서빙하거나 nginx 가 둘을 붙인다.</p>
 <hr />
 <h2 id="6">6. 백엔드 설계</h2>
-<p>프로젝트 경로: <code>apps/earthworm_web/backend/</code></p>
+<p>프로젝트 경로: <code>earthworm_web/backend/</code></p>
 <pre><code>backend/
   app/
     main.py                 # FastAPI, CORS, 라우터, WS
@@ -1000,8 +1000,8 @@ sniffring [-n] &lt;ringname&gt; &lt;instid&gt; &lt;mod&gt; &lt;type&gt; verbose
 </ul>
 <hr />
 <h2 id="7">7. 프론트엔드 설계</h2>
-<p>프로젝트 경로: <code>apps/earthworm_web/frontend/</code></p>
-<p>목 데이터 미리보기(백엔드 없음): <code>apps/earthworm_web/frontend/preview/</code> 에서 <code>python3 -m http.server 8765</code> 후 <code>http://127.0.0.1:8765</code> .</p>
+<p>프로젝트 경로: <code>earthworm_web/frontend/</code></p>
+<p>목 데이터 미리보기(백엔드 없음): <code>earthworm_web/frontend/preview/</code> 에서 <code>python3 -m http.server 8765</code> 후 <code>http://127.0.0.1:8765</code> .</p>
 <p>기존 <code>PPSD_v1/frontend</code> 와 같이 React 18 + Vite + TypeScript. 상태: 간단한 Context + fetch/WS. 1차에 Redux 없음.</p>
 <h3 id="71">7.1 화면 구성</h3>
 <pre><code>┌─ 탑바: 로고 · EW 버전 · startstop 뱃지 · 시작/종료/일시중지/재개 · 설정 ─────────────┐
@@ -1556,7 +1556,7 @@ sniffring [-n] &lt;ringname&gt; &lt;instid&gt; &lt;mod&gt; &lt;type&gt; verbose
 <ul>
 <li>API 키 서비스 계정, 백업, NTP·디스크 위젯</li>
 <li>WEB_DOC 정적 제공 (<code>/docs/ew/</code>)</li>
-<li>루트 <code>compose.yaml</code> + <code>apps/earthworm_web</code>. 태그 <code>earthworm-web-v0.x</code>. systemd 는 선택</li>
+<li><code>earthworm_web/compose.yaml</code>. 태그 <code>earthworm-web-v0.x</code>. systemd 는 선택</li>
 <li>tankplayer 는 기타 등록</li>
 </ul>
 <p>각 단계의 넣을 것/빼는 것·API·수락 조건과 <strong>MVP 경계</strong>는 <a href="plan_mvp.md">plan_mvp.md</a> (<a href="#30-mvp">30절</a>). MVP는 3–4단계(카탈로그·구성 보드)를 닫는 것이다. 1–2단계와 로그·스니프는 기존 코드가 전제다.</p>
@@ -2030,8 +2030,8 @@ sniffring [-n] &lt;ringname&gt; &lt;instid&gt; &lt;mod&gt; &lt;type&gt; verbose
 <td>우선 Process 바이너리 스텁·샘플 <code>.d</code> 를 시드에 포함</td>
 </tr>
 <tr>
-<td>앱이 저장소 루트에 흩어짐</td>
-<td><code>apps/</code> + 루트 <code>compose.yaml</code> Docker 모노레포</td>
+<td>웹만 호스트 프로세스</td>
+<td><code>earthworm_web/compose.yaml</code> 로 웹 콘솔만 Docker</td>
 </tr>
 </tbody>
 </table>
@@ -2465,7 +2465,7 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process &quot;q3302ew_st
 <p>모듈마다 파일 트리를 열고 <code>earthworm.d</code> 숫자를 고르지 않는다.</p>
 <hr />
 <h2 id="22">22. 모듈 필드 스키마</h2>
-<p>진실의 원천 파일: <code>apps/earthworm_web/backend/app/module_fields.yaml</code>. 프론트는 <code>/api/modules/schema</code> 로 받는다. 매뉴얼은 소스 <code>doc/WEB_DOC</code> 의 각 cmd HTML.</p>
+<p>진실의 원천 파일: <code>earthworm_web/backend/app/module_fields.yaml</code>. 프론트는 <code>/api/modules/schema</code> 로 받는다. 매뉴얼은 소스 <code>doc/WEB_DOC</code> 의 각 cmd HTML.</p>
 <p>공통 Process 필드 (스키마가 생략해도 카드 상단에 항상 표시):</p>
 <table>
 <thead>
@@ -2942,21 +2942,19 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process &quot;q3302ew_st
 </ul>
 <p>카탈로그: <code>catalog()</code> 는 계속 <code>bin</code> 을 스캔하되, 응답에 <code>priority: bool</code>, <code>role</code>, <code>fleet</code> 을 붙인다. UI 기본 필터는 <code>priority || extra</code>.</p>
 <hr />
-<h2 id="26">26. 모노레포와 배포</h2>
+<h2 id="26">26. 배포 (이 앱만)</h2>
 <p><figure class="diagram"><iframe class="diagram" src="diagrams/monorepo.html" title="모노레포" loading="lazy" style="height:600px"></iframe><figcaption><a href="diagrams/monorepo.html">모노레포</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
-<p>저장소는 <strong>Docker Compose 모노레포</strong>다. 앱은 <code>apps/</code> 아래, 서비스는 루트 <code>compose.yaml</code> 이다. 프론트 마이크로프론트 합성은 하지 않는다. 앱마다 UI 포트가 다르다.</p>
+<p>이 작업은 <strong><code>earthworm_web/</code> 만</strong> 다룬다. 저장소의 다른 디렉터리(StationXML, PPSD, ringserver, dataselect, recvQSCD20, seedlinkToMp3)는 옮기지 않고 Compose 에도 넣지 않는다. 프론트 마이크로프론트 합성은 하지 않는다.</p>
 <h3 id="261">26.1 레이아웃</h3>
-<pre><code>dev/
+<pre><code>earthworm_web/
   compose.yaml
-  apps/
-    earthworm_web/
-    stationxml_manager/
-    PPSD_v1/
-    ringserver_seedlink_websocket/
-    dataselect/
-    recvQSCD20/          # GUI, Compose 프로필 없음
-    seedlinkToMp3/
-  packages/              # 공유 라이브러리 (비어 있음)
+  docker/
+    backend.Dockerfile
+    frontend.Dockerfile
+    nginx.conf
+  backend/
+  frontend/
+  fixtures/
 </code></pre>
 <table>
 <thead>
@@ -2968,27 +2966,23 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process &quot;q3302ew_st
 <tbody>
 <tr>
 <td>앱 루트</td>
-<td><code>apps/&lt;name&gt;/</code> 안에서 <code>backend/</code>+<code>frontend/</code> 또는 해당 스택</td>
+<td><code>earthworm_web/</code> (<code>backend/</code> + <code>frontend/</code>)</td>
 </tr>
 <tr>
 <td>오케스트레이션</td>
-<td>루트 <code>docker compose</code>. 기본 프로필은 Earthworm 웹</td>
+<td><code>earthworm_web/compose.yaml</code></td>
 </tr>
 <tr>
 <td>이미지</td>
-<td>앱별 Dockerfile. Earthworm Rocky tarball 은 <strong>넣지 않음</strong></td>
+<td>Rocky tarball 은 <strong>넣지 않음</strong></td>
 </tr>
 <tr>
 <td>시드</td>
-<td><code>apps/earthworm_web/fixtures</code> + 볼륨 <code>earthworm-home</code></td>
+<td><code>earthworm_web/fixtures</code> + 볼륨 <code>earthworm-home</code></td>
 </tr>
 <tr>
 <td>태그</td>
-<td>앱 prefix (<code>earthworm-web-v0.x</code>)</td>
-</tr>
-<tr>
-<td>GUI</td>
-<td><code>recvQSCD20</code> 는 호스트/Xvfb</td>
+<td><code>earthworm-web-v0.x</code></td>
 </tr>
 </tbody>
 </table>
@@ -2997,72 +2991,25 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process &quot;q3302ew_st
 <thead>
 <tr>
 <th>서비스</th>
-<th>프로필</th>
 <th>포트</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>earthworm-web</code> + <code>earthworm-web-ui</code></td>
-<td>(기본)</td>
 <td>8081</td>
 </tr>
-<tr>
-<td><code>ppsd-api</code> + <code>ppsd-ui</code></td>
-<td><code>ppsd</code></td>
-<td>8080</td>
-</tr>
-<tr>
-<td><code>stationxml-api</code> + <code>stationxml-ui</code></td>
-<td><code>stationxml</code></td>
-<td>8082</td>
-</tr>
-<tr>
-<td><code>ringserver-api</code> + <code>ringserver-ui</code></td>
-<td><code>ringserver</code></td>
-<td>8083</td>
-</tr>
-<tr>
-<td><code>dataselect</code></td>
-<td><code>tools</code></td>
-<td>CLI</td>
-</tr>
 </tbody>
 </table>
-<p>UI nginx 가 <code>/api</code>·<code>/ws</code> 를 같은 오리진으로 프록시한다. 사람 세션 쿠키가 포트가 갈라진 API 로 새지 않는다.</p>
+<p>UI nginx 는 API 와 같은 네트워크 네임스페이스에서 <code>/api</code>·<code>/ws</code> 를 <code>127.0.0.1</code> 로 프록시한다. 호스트에는 UI 포트만 연다.</p>
 <p>실제 <code>startstop</code> 은 <code>ipc: host</code> 와 <code>compose.override.example.yaml</code> 의 <code>EW_HOME</code> 바인드. SysV IPC 가 컨테이너에서 실패하면 웹만 Docker, Earthworm 은 호스트.</p>
 <h3 id="263">26.3 같은 저장소 다른 앱</h3>
-<table>
-<thead>
-<tr>
-<th>앱</th>
-<th>Earthworm 웹</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>ringserver</td>
-<td><code>ew2ringserver</code>/<code>slink2ew</code> 포트 교차. Compose 프로필 <code>ringserver</code></td>
-</tr>
-<tr>
-<td>stationxml</td>
-<td>SCNL 수동. 프로필 <code>stationxml</code></td>
-</tr>
-<tr>
-<td>PPSD</td>
-<td>아카이브 소비. 프로필 <code>ppsd</code></td>
-</tr>
-<tr>
-<td>dataselect</td>
-<td>MiniSEED CLI 이미지</td>
-</tr>
-</tbody>
-</table>
+<p>포트 교차(<code>ew2ringserver</code> / <code>slink2ew</code>)는 문서에서만 맞춘다. 다른 앱 디렉터리·Compose 는 이 작업 밖이다.</p>
 <h3 id="264-ci">26.4 CI</h3>
 <ul>
-<li><code>apps/earthworm_web/**</code> → pytest + frontend build</li>
-<li><code>docker compose config</code> 로 Compose 문법</li>
-<li>계획 HTML 은 <code>apps/earthworm_web/scripts/build_plan_html.py</code></li>
+<li><code>earthworm_web/**</code> → pytest + frontend build</li>
+<li><code>earthworm_web</code> 에서 <code>docker compose config</code></li>
+<li>계획 HTML 은 <code>earthworm_web/scripts/build_plan_html.py</code></li>
 </ul>
 <hr />
 <h2 id="27-12">27. 구현 단계 (본계획 12절을 이 문서로 재배치)</h2>
@@ -3084,13 +3031,13 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process &quot;q3302ew_st
 </ul>
 <h3 id="5-4">5단계 — 로그·스니프 (본계획 4단계와 동일)</h3>
 <p>구성 보드와 독립. <code>getmenu</code> 를 진단에 연결 (wave_serverV 인스턴스 콤보).</p>
-<h3 id="6-docker">6단계 — 배포 패키징 (Docker 모노레포)</h3>
+<h3 id="6-docker">6단계 — 배포 패키징 (Docker)</h3>
 <ul>
-<li>루트 <code>compose.yaml</code>. 앱은 <code>apps/&lt;name&gt;/</code></li>
-<li>기본 프로필: Earthworm 웹 UI <code>:8081</code>. 다른 앱은 <code>--profile</code></li>
+<li><code>earthworm_web/compose.yaml</code></li>
+<li>웹 UI <code>:8081</code>. nginx 가 <code>/api</code>·<code>/ws</code> 프록시</li>
 <li><code>compose.override.example.yaml</code> 로 <code>EW_HOME</code> 바인드 · <code>ipc: host</code></li>
 <li>README 배포 절, 태그 <code>earthworm-web-v0.x</code></li>
-<li>systemd 유닛은 호스트에서 Earthworm 만 돌릴 때 선택</li>
+<li>저장소 다른 디렉터리는 이 단계에서 옮기지 않음</li>
 </ul>
 <p>본계획 5단계 P2(포트 인벤토리)는 구성 보드 검증이 대체하므로 <strong>4단계에 흡수</strong>한다. tankplayer 시험 프로파일은 기타 등록으로 미룬다.</p>
 <hr />
@@ -3513,7 +3460,7 @@ bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process &quot;q3302ew_st
 <p>웹 콘솔은 Docker Compose 로 올리고, Earthworm 바이너리는 <code>EW_HOME</code> 볼륨(또는 호스트)에 둔다.</p>
 <h3 id="_32">넣을 것 (이후)</h3>
 <ul>
-<li>루트 <code>compose.yaml</code> 프로필 안정화, 태그 <code>earthworm-web-v0.x</code></li>
+<li><code>earthworm_web/compose.yaml</code> 안정화, 태그 <code>earthworm-web-v0.x</code></li>
 <li>WEB_DOC 정적 <code>/docs/ew/</code></li>
 <li>NTP·디스크 위젯</li>
 <li>기타 모듈 등록 API</li>

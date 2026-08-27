@@ -278,7 +278,7 @@ viewer의 start는 403+이력 `denied`. operator pau는 이력에 표시 이름.
 
 ### 넣을 것 (이후)
 
-- 루트 `compose.yaml` 프로필 안정화, 태그 `earthworm-web-v0.x`
+- `earthworm_web/compose.yaml` 안정화, 태그 `earthworm-web-v0.x`
 - WEB_DOC 정적 `/docs/ew/`
 - NTP·디스크 위젯
 - 기타 모듈 등록 API
