@@ -3,6 +3,7 @@ import {
   BUILTIN_BANDPASS_PRESETS,
   clampBandPassToNyquist,
   mergeBandPassPresets,
+  remapBandPassPresetId,
   resolveBandPass,
   sanitizeBandPassPresets,
 } from "./bandPassPresets";
@@ -13,6 +14,25 @@ describe("mergeBandPassPresets", () => {
     expect(merged.filter((p) => p.builtin).map((p) => p.id)).toEqual(
       BUILTIN_BANDPASS_PRESETS.map((p) => p.id),
     );
+  });
+
+  it("does not list duplicate 1–10 Hz builtin bands", () => {
+    const bands = BUILTIN_BANDPASS_PRESETS.filter(
+      (p) => p.fminHz === 1 && p.fmaxHz === 10,
+    );
+    expect(bands).toHaveLength(1);
+    expect(bands[0]!.id).toBe("seis-1-10");
+  });
+
+  it("lists builtin presets from lowest to highest band", () => {
+    const bands = BUILTIN_BANDPASS_PRESETS.map((p) => [p.fminHz, p.fmaxHz]);
+    expect(bands).toEqual([
+      [0.02, 0.5],
+      [0.1, 1],
+      [0.5, 5],
+      [1, 5],
+      [1, 10],
+    ]);
   });
 
   it("appends valid custom presets and ignores invalid ones", () => {
@@ -49,6 +69,14 @@ describe("resolveBandPass", () => {
     expect(resolveBandPass(true, "seis-1-5", BUILTIN_BANDPASS_PRESETS)).toEqual({
       fminHz: 1,
       fmaxHz: 5,
+    });
+  });
+
+  it("maps the removed duplicate 1–10 Hz id to the remaining preset", () => {
+    expect(remapBandPassPresetId("infra-1-10")).toBe("seis-1-10");
+    expect(resolveBandPass(true, "infra-1-10", BUILTIN_BANDPASS_PRESETS)).toEqual({
+      fminHz: 1,
+      fmaxHz: 10,
     });
   });
 });

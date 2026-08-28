@@ -1,6 +1,6 @@
 # RingWave — ringserver 실시간 WebGL 파형 뷰어
 
-**버전 1.2.0** (2026-08-07)
+**버전 1.3.0** (2026-08-28)
 
 EarthScope [ringserver](https://github.com/EarthScope/ringserver) WebSocket(**DataLink**)으로 실시간 miniSEED를 수신하고, WebGL(`webgl-plot`)로 파형을 표출합니다.
 
@@ -41,7 +41,7 @@ PORT=8787
 
 설정 모달에서도 ringserver / FDSNWS URL을 바꿀 수 있습니다.
 
-## 주요 기능 (v1.2)
+## 주요 기능 (v1.3)
 
 - Network → Station → Channel 트리 다중 선택 Plot
 - 탑바 레이아웃 CRUD (`app.json`)
@@ -50,21 +50,41 @@ PORT=8787
 - 패널 최대 50, HTML5 DnD 순서 변경
 - Calibration 아이콘: Raw / Physical 토글 (기본 Raw)
 - Scale 아이콘: Auto / Uniform Y축 스케일
-- Band-pass 필터(지진 3·공중음파 3·커스텀, 기본 Off) — 파형+FFT
+- Band-pass 필터(기본 5종 + 커스텀, 주파수 낮은 순 정렬, 기본 Off) — 파형·FFT·Spectrogram
 - X축 오른쪽 기준: `now` / `lastData`
 - 시간축 눈금·보조선, 갭 배지
 - 전역 일시정지 + 마우스/터치 줌·팬
-- 패널 FFT (Log F × Log Power dB)
-- 설정 모달(톱니), 전체 스트림 닫기(✕✕)
+- 패널 우클릭 분석 모드 순환: **웨이브폼 → FFT → Spectrogram → 웨이브폼**
+  - FFT: Log F × Log Power (dB)
+  - Spectrogram: Time × Frequency, jet colormap, Y축 0~Nyquist
+- 설정 모달: 외관 테마(Light/Dark, Default/Claude/Candyland), **스펙트로그램 STFT** 조정
+- 상태바 전체 스트림 닫기(X 아이콘)
 - WS 자동 재연결 + 상태바 표시
 - 모바일 드로어 UI
 
+### 스펙트로그램 기본 STFT (설정에서 변경 가능)
+
+| 항목 | 기본값 |
+|------|--------|
+| 창 길이 | 2초 |
+| 최대 FFT 크기 | 512 |
+| 최대 시간 프레임 | 320 |
+| 창 겹침 | 75% |
+
 ## 히스토리
+
+### 1.3.0 — 2026-08-28
+
+- 패널 우클릭 Spectrogram(jet) 추가, FFT와 3단 순환
+- 설정 모달에 스펙트로그램 STFT 옵션 (창 길이·nFFT·프레임·겹침)
+- Shadcn + Tailwind v4 테마 (Default / Claude / Candyland, Light/Dark)
+- Band-pass UI 통합: 지진/공중음파 그룹 제거, 중복 1–10 Hz 제거, 주파수순 정렬
+- 상태바 전체 닫기 아이콘 X로 변경
 
 ### 1.2.0 — 2026-08-07
 
 - 상태바 Band-pass 필터 아이콘(기본 Off)
-- 지진 3·공중음파 3 프리셋 + 커스텀 추가/삭제(`app.json` 저장)
+- 지진·공중음파 프리셋 + 커스텀 추가/삭제(`app.json` 저장)
 - Butterworth 4차 zero-phase를 표시 윈도우에 적용(파형·FFT)
 
 ### 1.1.0 — 2026-08-04
@@ -72,7 +92,7 @@ PORT=8787
 - 모바일: 핀치 줌인/아웃, 더블탭 초기화, 줌 후 한손가락 팬
 - Y축 Scale Auto/Uniform (최대 진폭 패널 기준)
 - Raw/Physical → Calibration 아이콘, 상태바 좌측 이동
-- 전체 스트림 닫기(✕✕) + 확인 대화상자
+- 전체 스트림 닫기 + 확인 대화상자
 - 모바일 설정 모달 하단 버튼 잘림 보정
 - 줌 구간 파형 lookback 보정
 

@@ -9,6 +9,7 @@ import { scnlKey } from "../types";
 import {
   mergeBandPassPresets,
   BUILTIN_BANDPASS_PRESETS,
+  remapBandPassPresetId,
 } from "../realtime/bandPassPresets";
 import { api } from "../api/client";
 import { bufferStore } from "../buffer/ringBuffer";
@@ -93,6 +94,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (settings.bandPassPresetId === undefined) {
       settings.bandPassPresetId = null;
     }
+    settings.bandPassPresetId = remapBandPassPresetId(settings.bandPassPresetId);
     if (
       settings.bandPassEnabled &&
       settings.bandPassPresetId &&
