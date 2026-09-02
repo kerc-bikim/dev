@@ -75,7 +75,7 @@ class FakeNrl(NrlClient):
         validate_format(fmt)
         return self.combine_body, "application/xml"
 
-    def probe(self):
+    def probe(self, timeout=None):
         self.calls.append(("probe",))
         data = self.catalog(level="element")
         elements = []

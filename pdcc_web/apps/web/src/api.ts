@@ -129,9 +129,13 @@ export type NrlSearchHit = {
 };
 export type NrlStatus = {
   mode: string;
+  source?: string;
+  badge?: string;
   base_url: string;
   cache_ttl_sec: number;
   last_ok: boolean;
+  last_ok_at?: string | null;
+  cache_count?: number;
 };
 
 export class ApiError extends Error {
