@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..access import (
@@ -17,6 +17,7 @@ from ..dashboard import build_dashboard
 from ..db import get_db
 from ..inventory.service import write_audit
 from ..models import (
+    AuditLog,
     NrlAlias,
     NrlExcluded,
     Organization,
@@ -101,6 +102,20 @@ def _excluded_out(row: NrlExcluded) -> dict:
     }
 
 
+def _audit_out(row: AuditLog, project_name: str | None) -> dict:
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "project_name": project_name,
+        "actor": row.actor,
+        "action": row.action,
+        "target": row.target,
+        "summary": row.summary,
+        "details": row.details or "",
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+    }
+
+
 def _org_or_404(db: Session, org_id: int | None) -> Organization:
     if org_id is None:
         org = db.scalar(select(Organization).order_by(Organization.id.asc()))
@@ -116,6 +131,28 @@ def _org_or_404(db: Session, org_id: int | None) -> Organization:
 @router.get("/dashboard")
 def admin_dashboard(db: Session = Depends(get_db), _admin: User = Depends(_admin)) -> dict:
     return build_dashboard(db)
+
+
+@router.get("/audit-logs")
+def list_audit_logs(
+    project_id: int | None = Query(default=None, ge=1),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _admin: User = Depends(_admin),
+) -> dict:
+    filters = [AuditLog.project_id == project_id] if project_id is not None else []
+    total = db.scalar(select(func.count(AuditLog.id)).where(*filters)) or 0
+    rows = db.execute(
+        select(AuditLog, Project.name)
+        .outerjoin(Project, Project.id == AuditLog.project_id)
+        .where(*filters)
+        .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        .limit(limit)
+    ).all()
+    return {
+        "audit_logs": [_audit_out(row, project_name) for row, project_name in rows],
+        "total": total,
+    }
 
 
 @router.get("/nrl/aliases")

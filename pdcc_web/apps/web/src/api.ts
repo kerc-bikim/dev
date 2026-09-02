@@ -264,6 +264,22 @@ export type AdminDashboard = {
   badges: { nrl: boolean; failed_jobs: boolean; disk: boolean };
 };
 
+export type AuditLogInfo = {
+  id: number;
+  project_id: number | null;
+  project_name: string | null;
+  actor: string;
+  action: string;
+  target: string;
+  summary: string;
+  details: string;
+  created_at: string | null;
+};
+export type AuditLogPage = {
+  audit_logs: AuditLogInfo[];
+  total: number;
+};
+
 
 export class ApiError extends Error {
   status: number;

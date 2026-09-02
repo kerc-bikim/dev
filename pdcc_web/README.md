@@ -94,6 +94,9 @@ NRL은 API 기동 시 호출하지 않습니다. 업스트림이 죽거나 URL�
 스크립트와 실제 복구 순서는 [`docs/restore.md`](docs/restore.md), 결정은
 [`docs/adr/0022-backup-confirmation.md`](docs/adr/0022-backup-confirmation.md)에 있습니다.
 
+관리자 **감사 로그**는 프로젝트별 변경 이력과 NRL 적용에 사용한 `instconfig`를 함께
+보여 줍니다 (`docs/adr/0023-audit-log.md`).
+
 | 이름 | 기본 | 설명 |
 |------|------|------|
 | `DATA_DIR` | `.` | 디스크 사용률을 재는 볼륨 |

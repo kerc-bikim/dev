@@ -35,6 +35,7 @@ def write_audit(
     action: str,
     target: str,
     summary: str,
+    details: str = "",
 ) -> None:
     db.add(
         AuditLog(
@@ -43,6 +44,7 @@ def write_audit(
             action=action,
             target=target,
             summary=summary,
+            details=details,
         )
     )
 
@@ -287,6 +289,7 @@ def run_wizard(
         action="create",
         target=f"{project.network_code}/{station}",
         summary=f"위저드로 관측소 생성 ({', '.join(channels)})",
+        details=f"instconfig={cascade}" if cascade else "",
     )
     db.flush()
     return {"project": project_out(project, user, lock, db), "station_path": path, "lock": lock}
@@ -422,6 +425,7 @@ def apply_nrl(
         action="nrl",
         target=f"{project.network_code}/{station}",
         summary=f"NRL 적용 {', '.join(applied)}",
+        details=f"instconfig={cascade}",
     )
     db.flush()
     return {
