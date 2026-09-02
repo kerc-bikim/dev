@@ -11,6 +11,18 @@ __pycache__/
 PPSD_v1/backend/cache/
 PPSD_v1/backend/sds/
 
+# 관측소 SOH 통합 모니터링
+soh_monitor/frontend/node_modules/
+soh_monitor/frontend/dist/
+soh_monitor/backend/.env
+soh_monitor/central.env
+soh_monitor/edge.env
+soh_monitor/secrets/
+soh_monitor/certs/
+soh_monitor/*.db
+soh_monitor/.pytest_cache/
+soh_monitor/frontend/*.tsbuildinfo
+
 # Earthworm web control
 earthworm_web/frontend/node_modules/
 earthworm_web/frontend/dist/

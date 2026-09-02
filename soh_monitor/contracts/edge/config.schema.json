@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://soh-monitor/contracts/edge/config.schema.json",
+  "title": "Edge Collector Configuration",
+  "description": "중앙이 Edge 에 내려주는 설정 묶음. Edge 는 검증 통과 후 원자적으로 적용하고, 실패 시 이전 버전으로 되돌린다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["configVersion", "edgeId", "issuedAt", "devices"],
+  "properties": {
+    "configVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "단조 증가. Edge 는 자신이 적용한 버전보다 큰 값만 받아들인다."
+    },
+    "edgeId": { "type": "string", "minLength": 1 },
+    "issuedAt": { "type": "string", "format": "date-time" },
+    "heartbeatIntervalSeconds": { "type": "integer", "minimum": 10, "default": 30 },
+    "uploadBatchMaxPolls": { "type": "integer", "minimum": 1, "default": 1000 },
+    "uploadBatchMaxBytes": { "type": "integer", "minimum": 65536, "default": 5242880 },
+    "spoolLimitBytes": { "type": "integer", "minimum": 104857600, "default": 5368709120 },
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "deviceId",
+          "stationCode",
+          "adapterKey",
+          "adapterVersion",
+          "assignmentEpoch",
+          "enabled",
+          "pollIntervalMinutes",
+          "connection"
+        ],
+        "properties": {
+          "deviceId": { "type": "string", "minLength": 1 },
+          "stationId": { "type": "string" },
+          "stationCode": { "type": "string", "minLength": 1 },
+          "adapterKey": { "type": "string", "minLength": 1 },
+          "adapterVersion": { "type": "string", "minLength": 1 },
+          "metricMappingVersion": { "type": "string" },
+          "assignmentEpoch": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "할당 세대. 오래된 epoch 을 받은 Edge 는 해당 장비 수집을 중단한다. 이중 수집 방지 장치."
+          },
+          "enabled": { "type": "boolean" },
+          "pollIntervalMinutes": { "type": "integer", "minimum": 1, "maximum": 1440 },
+          "connectTimeoutMs": { "type": "integer", "minimum": 500, "default": 5000 },
+          "requestTimeoutMs": { "type": "integer", "minimum": 500, "default": 15000 },
+          "retryCount": { "type": "integer", "minimum": 0, "maximum": 5, "default": 1 },
+          "maintenanceUntil": { "type": ["string", "null"], "format": "date-time" },
+          "connection": {
+            "type": "object",
+            "description": "Adapter 의 configurationSchema 를 따르는 접속 설정. 비밀값은 참조 또는 암호문으로만 온다.",
+            "additionalProperties": true
+          },
+          "credential": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "reference": { "type": "string" },
+              "encrypted": { "type": "string" },
+              "keyId": { "type": "string" }
+            }
+          },
+          "expectedCapabilities": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
+        }
+      }
+    },
+    "metricProfile": {
+      "type": "object",
+      "description": "활성 Metric 과 임계값. Edge 는 사전 판정에만 쓰고 최종 판정은 중앙이 한다.",
+      "additionalProperties": true
+    }
+  }
+}

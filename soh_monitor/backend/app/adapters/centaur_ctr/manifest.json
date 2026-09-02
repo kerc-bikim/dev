@@ -1,0 +1,141 @@
+{
+  "adapterKey": "nanometrics.centaur.ctr",
+  "adapterVersion": "1.0",
+  "manufacturer": "Nanometrics",
+  "productFamilies": ["Centaur CTR"],
+  "generation": "ctr",
+  "supportedModels": [
+    "CTR2-3",
+    "CTR2-6",
+    "CTR3-3",
+    "CTR3-6",
+    "CTR4-3S",
+    "CTR4-3H",
+    "CTR4-3A",
+    "CTR4-6S",
+    "CTR4-6H",
+    "CTR4-6H/S",
+    "CTR4-6A/S"
+  ],
+  "protocols": ["http", "https"],
+  "capabilities": [
+    "device.overall_status",
+    "device.configuration_status",
+    "device.firmware_status",
+    "device.temperature",
+    "power.input_voltage",
+    "power.current",
+    "timing.status",
+    "timing.quality",
+    "gnss.receiver",
+    "sensor.status",
+    "sensor.control_lines",
+    "sensor.mass_position",
+    "storage.internal",
+    "storage.removable",
+    "archive.continuous",
+    "archive.event",
+    "external_soh.analog",
+    "environment.weather_station",
+    "acquisition.data_check",
+    "vendor.nanometrics.centaur"
+  ],
+  "providedMetrics": [
+    "device.overall_status",
+    "device.configuration_status",
+    "device.firmware_status",
+    "device.firmware_version",
+    "device.temperature_c",
+    "power.input_voltage_v",
+    "power.current_a",
+    "power.consumption_w",
+    "timing.status",
+    "timing.phase_lock",
+    "timing.quality_percent",
+    "timing.error_ns",
+    "timing.uncertainty_ns",
+    "timing.last_lock_at",
+    "gnss.satellite_count",
+    "gnss.antenna_status",
+    "gnss.latitude",
+    "gnss.longitude",
+    "gnss.elevation_m",
+    "sensor.status",
+    "sensor.control_state",
+    "sensor.mass_position_v",
+    "storage.used_percent",
+    "storage.recording_status",
+    "storage.sd_status",
+    "storage.sd_free_bytes",
+    "archive.continuous_status",
+    "archive.event_status",
+    "external_soh.value"
+  ],
+  "minimumCollectorVersion": "0.1.0",
+  "minimumEdgeVersion": "0.1.0",
+  "status": "experimental",
+  "configurationSchema": {
+    "type": "object",
+    "properties": {
+      "scheme": {
+        "type": "string",
+        "enum": ["http", "https"],
+        "default": "http",
+        "title": "프로토콜",
+        "description": "구형 CTR 은 HTTP 만 지원할 수 있다. 그때는 관측소망 VPN 안에서만 접근한다."
+      },
+      "hostname": {
+        "type": "string",
+        "minLength": 1,
+        "title": "IP 또는 호스트명"
+      },
+      "port": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 65535,
+        "title": "포트",
+        "description": "비워 두면 프로토콜 기본 포트를 쓴다."
+      },
+      "basePath": {
+        "type": "string",
+        "default": "",
+        "title": "기본 경로",
+        "description": "역방향 프록시 뒤에 있는 경우에만 채운다."
+      },
+      "instrumentId": {
+        "type": "string",
+        "title": "Instrument ID",
+        "description": "예: centaur-6__0242. 비우면 장비가 자기 자신의 SOH 를 보고한다."
+      },
+      "tlsVerify": {
+        "type": "boolean",
+        "default": true,
+        "title": "TLS 인증서 검증"
+      },
+      "username": {
+        "type": "string",
+        "default": "admin",
+        "title": "사용자 이름",
+        "description": "SOH 조회에 인증이 필요한 모델에서만 쓴다."
+      },
+      "password": {
+        "type": "string",
+        "title": "비밀번호",
+        "description": "암호화 저장되며 화면·로그·미리보기에 표시되지 않는다."
+      }
+    },
+    "required": ["hostname"],
+    "secretFields": ["password"]
+  },
+  "uiHints": {
+    "groups": [
+      { "title": "접속", "fields": ["scheme", "hostname", "port", "basePath", "tlsVerify"] },
+      { "title": "식별", "fields": ["instrumentId"] },
+      { "title": "인증", "fields": ["username", "password"] }
+    ],
+    "notes": [
+      "SOH API 는 모델명과 시리얼을 직접 주지 않는다. Instrument ID 로 채널 수와 시리얼을 추정한다.",
+      "Mass Position 채널 이름은 실장비 응답으로 확정해야 한다 (조사 항목 M-1.3)."
+    ]
+  }
+}

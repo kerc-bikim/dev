@@ -1,0 +1,44 @@
+# api / collector / migrate 세 실행체를 한 파일에서 만든다.
+# 런타임 이미지에는 빌드 도구를 남기지 않는다.
+#
+#   docker build -f deploy/docker/Dockerfile.backend --target runtime-api      -t soh-api .
+#   docker build -f deploy/docker/Dockerfile.backend --target runtime-collector -t soh-collector .
+#   docker build -f deploy/docker/Dockerfile.backend --target runtime-migrate  -t soh-migrate .
+
+FROM python:3.12-slim AS base
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+WORKDIR /app
+
+FROM base AS builder
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+COPY backend/requirements.txt /tmp/requirements.txt
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip \
+    && /opt/venv/bin/pip install -r /tmp/requirements.txt
+
+FROM base AS runtime-common
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+# 계약 파일은 코드와 함께 배포된다. 런타임에 외부에서 갈아끼우지 않는다.
+COPY contracts /app/contracts
+COPY backend /app/backend
+WORKDIR /app/backend
+RUN useradd --create-home --uid 10001 soh \
+    && chown -R soh:soh /app
+USER soh
+
+FROM runtime-common AS runtime-api
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3).status==200 else 1)"
+CMD ["python", "-m", "app.main_api"]
+
+FROM runtime-common AS runtime-collector
+CMD ["python", "-m", "app.main_collector"]
+
+FROM runtime-common AS runtime-migrate
+CMD ["python", "-m", "app.main_migrate"]

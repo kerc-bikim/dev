@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://soh-monitor/contracts/adapter/manifest.schema.json",
+  "title": "Recorder Adapter Manifest",
+  "description": "기록계 Adapter 가 자신을 선언하는 문서. 중앙은 이 선언만 보고 등록 화면을 만들고 Edge 호환성을 검사한다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "adapterKey",
+    "adapterVersion",
+    "manufacturer",
+    "productFamilies",
+    "protocols",
+    "capabilities",
+    "configurationSchema"
+  ],
+  "properties": {
+    "adapterKey": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+(\\.[a-z0-9_]+){1,3}$",
+      "description": "제조사.제품군.세대 형식의 고유 키. 예: nanometrics.centaur.ctr"
+    },
+    "adapterVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+    },
+    "manufacturer": { "type": "string", "minLength": 1 },
+    "productFamilies": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "generation": { "type": ["string", "null"] },
+    "supportedModels": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "protocols": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": ["http", "https", "snmp", "tcp", "seedlink", "fdsnws", "vendor_sdk"]
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "이 Adapter 가 탐지·제공할 수 있는 capability 키 목록. capabilities.yaml 에 등록된 키만 허용한다.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "providedMetrics": {
+      "type": "array",
+      "description": "이 Adapter 가 채울 수 있는 표준 Metric 키 목록. catalog.yaml 에 없는 키는 거부한다.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "minimumCollectorVersion": { "type": "string" },
+    "minimumEdgeVersion": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["planned", "experimental", "supported", "deprecated"],
+      "default": "supported",
+      "description": "planned 은 등록 화면에 '준비 중'으로 표시되고 장비 할당이 막힌다."
+    },
+    "configurationSchema": {
+      "type": "object",
+      "description": "제조사별 접속 설정 입력 폼을 생성할 JSON Schema. 프론트엔드는 이것으로 폼을 만든다.",
+      "required": ["type", "properties"],
+      "properties": {
+        "type": { "const": "object" },
+        "properties": { "type": "object" },
+        "required": { "type": "array", "items": { "type": "string" } },
+        "secretFields": {
+          "type": "array",
+          "description": "암호화 저장 대상 필드. 응답·로그·미리보기에서 반드시 제거된다.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "uiHints": {
+      "type": "object",
+      "description": "필드 순서·그룹·설명 등 화면 표시 힌트.",
+      "additionalProperties": true
+    }
+  }
+}

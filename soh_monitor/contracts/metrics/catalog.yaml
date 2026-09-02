@@ -1,0 +1,681 @@
+# 표준 SOH Metric 카탈로그 — 이 파일이 단일 원본이다.
+#
+# 여기서 백엔드 상수(backend/app/metrics/generated.py)와
+# 프론트 타입(frontend/src/generated/metrics.ts)을 생성한다. 손으로 고치지 않는다.
+#
+# 제조사 원본 필드명은 이 파일에 절대 등장하지 않는다. 원본 → 표준 변환은
+# 각 Adapter 내부(mapper)와 adapter_metric_mappings 테이블에만 존재한다.
+#
+# value_type : boolean | integer | float | status | text | timestamp
+# source     : adapter(기록계 응답) | collector(수집기 생성) | data_availability(데이터 연속성 검사)
+#              | health_engine(상태 판정 결과)
+# dimensions : 값이 여러 개로 갈라지는 축. InfluxDB tag 로 나간다.
+# aggregation: 다운샘플링 시 사용할 함수
+# capability : 이 Metric 이 존재하려면 필요한 장비 기능. null 이면 항상 존재해야 한다.
+
+version: 1
+
+statuses:
+  - OK
+  - WARNING
+  - CRITICAL
+  - UNKNOWN
+  - DISABLED
+  - MAINTENANCE
+
+dimensions:
+  sensor_port:
+    display_name: 센서 포트
+    example: A
+  axis:
+    display_name: 축
+    example: U
+  channel:
+    display_name: 채널
+    example: EX1
+  category:
+    display_name: 판정 분류
+    example: power
+
+categories:
+  - key: connectivity
+    display_name: 통신
+    order: 10
+  - key: device
+    display_name: 장비
+    order: 20
+  - key: power
+    display_name: 전원
+    order: 30
+  - key: timing
+    display_name: 시각
+    order: 40
+  - key: gnss
+    display_name: GNSS
+    order: 50
+  - key: sensor
+    display_name: 센서
+    order: 60
+  - key: storage
+    display_name: 저장소
+    order: 70
+  - key: archive
+    display_name: 아카이브
+    order: 80
+  - key: external_soh
+    display_name: 외부 SOH
+    order: 90
+  - key: acquisition
+    display_name: 데이터
+    order: 100
+  - key: environment
+    display_name: 환경
+    order: 110
+  - key: health
+    display_name: 판정
+    order: 120
+  - key: vendor
+    display_name: 제조사 전용
+    order: 130
+
+metrics:
+  # ---------------------------------------------------------------- 통신
+  - key: connectivity.reachable
+    category: connectivity
+    display_name: 통신 가능
+    value_type: boolean
+    unit: null
+    source: collector
+    measurement: recorder_poll
+    field: reachable
+    required: true
+    aggregation: last
+    capability: null
+    description: 이번 Poll 에서 기록계 응답을 정상 수신했는지 여부.
+
+  - key: connectivity.latency_ms
+    category: connectivity
+    display_name: 응답 시간
+    value_type: float
+    unit: ms
+    source: collector
+    measurement: recorder_poll
+    field: latency_ms
+    required: true
+    aggregation: mean
+    capability: null
+    description: 요청부터 응답 수신까지 소요 시간. 회선 품질 저하의 선행 지표.
+
+  - key: connectivity.consecutive_failures
+    category: connectivity
+    display_name: 연속 실패 횟수
+    value_type: integer
+    unit: count
+    source: collector
+    measurement: recorder_poll
+    field: consecutive_failures
+    required: true
+    aggregation: max
+    capability: null
+    description: 마지막 성공 이후 누적된 실패 횟수. Offline 판정의 근거.
+
+  - key: connectivity.error_code
+    category: connectivity
+    display_name: 실패 유형
+    value_type: text
+    unit: null
+    source: collector
+    measurement: recorder_poll
+    field: error_code
+    required: false
+    aggregation: last
+    capability: null
+    description: DNS/연결거부/연결Timeout/응답Timeout/HTTP오류/인증오류/본문오류 등 실패 분류.
+
+  # ---------------------------------------------------------------- 장비
+  - key: device.overall_status
+    category: device
+    display_name: 장비 종합 상태
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_device
+    field: overall_status
+    required: false
+    aggregation: last
+    capability: device.overall_status
+    description: 기록계가 스스로 보고하는 종합 상태. 이 값만으로 정상을 판단하지 않는다.
+
+  - key: device.configuration_status
+    category: device
+    display_name: 설정 반영 상태
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_device
+    field: configuration_status
+    required: false
+    aggregation: last
+    capability: device.configuration_status
+    description: 변경한 설정이 장비에 반영(commit)되었는지 여부.
+
+  - key: device.firmware_status
+    category: device
+    display_name: 펌웨어 상태
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_device
+    field: firmware_status
+    required: false
+    aggregation: last
+    capability: device.firmware_status
+    description: 시험 펌웨어(testcode) 또는 미반영 펌웨어로 동작 중인지 여부.
+
+  - key: device.firmware_version
+    category: device
+    display_name: 펌웨어 버전
+    value_type: text
+    unit: null
+    source: adapter
+    measurement: recorder_device
+    field: firmware_version
+    required: false
+    aggregation: last
+    capability: device.firmware_status
+    description: 현재 구동 중인 펌웨어 버전 문자열.
+
+  - key: device.temperature_c
+    category: device
+    display_name: 내부 온도
+    value_type: float
+    unit: "°C"
+    source: adapter
+    measurement: recorder_device
+    field: temperature_c
+    required: false
+    aggregation: mean
+    capability: device.temperature
+    description: 기록계 내부 온도. 통상 주변 온도보다 몇 도 높다.
+
+  # ---------------------------------------------------------------- 전원
+  - key: power.input_voltage_v
+    category: power
+    display_name: 입력 전압
+    value_type: float
+    unit: V
+    source: adapter
+    measurement: recorder_power
+    field: input_voltage_v
+    required: false
+    aggregation: mean
+    capability: power.input_voltage
+    description: 전원 공급 전압. 임계값은 12V/24V/태양광 등 전원 구성별 프로파일로 다르게 준다.
+
+  - key: power.current_a
+    category: power
+    display_name: 시스템 전류
+    value_type: float
+    unit: A
+    source: adapter
+    measurement: recorder_power
+    field: current_a
+    required: false
+    aggregation: mean
+    capability: power.current
+    description: 시스템이 소비하는 전류.
+
+  - key: power.consumption_w
+    category: power
+    display_name: 소비 전력
+    value_type: float
+    unit: W
+    source: adapter
+    measurement: recorder_power
+    field: consumption_w
+    required: false
+    aggregation: mean
+    capability: power.current
+    description: 전압 × 전류로 계산한 소비 전력. 장비가 직접 제공하면 그 값을 쓴다.
+
+  # ---------------------------------------------------------------- 시각
+  - key: timing.status
+    category: timing
+    display_name: 시각 상태
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_timing
+    field: status
+    required: false
+    aggregation: last
+    capability: timing.status
+    description: 시각 서브시스템 상태(정상/오류/초기화/Free running/안테나 이상 등).
+
+  - key: timing.phase_lock
+    category: timing
+    display_name: 위상 잠금
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_timing
+    field: phase_lock
+    required: false
+    aggregation: last
+    capability: timing.status
+    description: 내부 클럭 PLL 상태(no lock / coarse / fine / free running).
+
+  - key: timing.quality_percent
+    category: timing
+    display_name: 시각 품질
+    value_type: float
+    unit: "%"
+    source: adapter
+    measurement: recorder_timing
+    field: quality_percent
+    required: false
+    aggregation: min
+    capability: timing.quality
+    description: 시각 품질 추정치. 100%는 fine lock, 값이 낮아지면 Free running 누적을 뜻한다.
+
+  - key: timing.error_ns
+    category: timing
+    display_name: 시각 오차
+    value_type: float
+    unit: ns
+    source: adapter
+    measurement: recorder_timing
+    field: error_ns
+    required: false
+    aggregation: max
+    capability: timing.quality
+    description: 내부 시계와 시각원 사이의 차이.
+
+  - key: timing.uncertainty_ns
+    category: timing
+    display_name: 시각 불확도
+    value_type: float
+    unit: ns
+    source: adapter
+    measurement: recorder_timing
+    field: uncertainty_ns
+    required: false
+    aggregation: max
+    capability: timing.quality
+    description: 클럭 드리프트·온도 변동을 반영한 시각 불확도 추정치.
+
+  - key: timing.last_lock_at
+    category: timing
+    display_name: 마지막 잠금 시각
+    value_type: timestamp
+    unit: null
+    source: adapter
+    measurement: recorder_timing
+    field: last_lock_at
+    required: false
+    aggregation: last
+    capability: timing.status
+    description: 내부 클럭이 시각원에 마지막으로 잠긴 UTC 시각.
+
+  # ---------------------------------------------------------------- GNSS
+  - key: gnss.satellite_count
+    category: gnss
+    display_name: 위성 수
+    value_type: integer
+    unit: count
+    source: adapter
+    measurement: recorder_gnss
+    field: satellite_count
+    required: false
+    aggregation: min
+    capability: gnss.receiver
+    description: 시각 해에 사용된 위성 수. Duty cycle 장비는 이 값만으로 장애를 만들지 않는다.
+
+  - key: gnss.antenna_status
+    category: gnss
+    display_name: 안테나 상태
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_gnss
+    field: antenna_status
+    required: false
+    aggregation: last
+    capability: gnss.receiver
+    description: GNSS 안테나 상태(정상/미연결/단락).
+
+  - key: gnss.latitude
+    category: gnss
+    display_name: 위도
+    value_type: float
+    unit: deg
+    source: adapter
+    measurement: recorder_gnss
+    field: latitude
+    required: false
+    aggregation: last
+    capability: gnss.receiver
+    description: GNSS 산출 위도. 등록 좌표와의 차이는 장비 이동·오등록 탐지에 쓴다.
+
+  - key: gnss.longitude
+    category: gnss
+    display_name: 경도
+    value_type: float
+    unit: deg
+    source: adapter
+    measurement: recorder_gnss
+    field: longitude
+    required: false
+    aggregation: last
+    capability: gnss.receiver
+    description: GNSS 산출 경도.
+
+  - key: gnss.elevation_m
+    category: gnss
+    display_name: 고도
+    value_type: float
+    unit: m
+    source: adapter
+    measurement: recorder_gnss
+    field: elevation_m
+    required: false
+    aggregation: last
+    capability: gnss.receiver
+    description: GNSS 산출 고도.
+
+  # ---------------------------------------------------------------- 센서
+  - key: sensor.status
+    category: sensor
+    display_name: 센서 상태
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_sensor
+    field: status
+    required: false
+    aggregation: last
+    dimensions: [sensor_port]
+    capability: sensor.status
+    description: >
+      포트별 센서 상태. Centaur 계열에서는 사실상 Mass Position 임계값 초과만 반영하므로
+      센서 미연결·파형 정지는 acquisition.* 로 별도 확인한다.
+
+  - key: sensor.control_state
+    category: sensor
+    display_name: 제어선 상태
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_sensor
+    field: control_state
+    required: false
+    aggregation: last
+    dimensions: [sensor_port]
+    capability: sensor.control_lines
+    description: 제어선 설정이 센서 라이브러리의 기대값과 일치하는지 여부.
+
+  - key: sensor.mass_position_v
+    category: sensor
+    display_name: Mass Position
+    value_type: float
+    unit: V
+    source: adapter
+    measurement: recorder_sensor
+    field: mass_position_v
+    required: false
+    aggregation: max
+    dimensions: [sensor_port, axis]
+    capability: sensor.mass_position
+    description: 축별 Mass Position 전압. 임계값은 센서 모델별 프로파일로 준다.
+
+  # ---------------------------------------------------------------- 저장소
+  - key: storage.used_percent
+    category: storage
+    display_name: 내부 저장소 사용률
+    value_type: float
+    unit: "%"
+    source: adapter
+    measurement: recorder_storage
+    field: used_percent
+    required: false
+    aggregation: max
+    capability: storage.internal
+    description: 내부 저장소 사용률.
+
+  - key: storage.recording_status
+    category: storage
+    display_name: 기록 상태
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_storage
+    field: recording_status
+    required: false
+    aggregation: last
+    capability: storage.internal
+    description: 내부 저장소 기록 상태. 기록 중단은 즉시 장애로 다룬다.
+
+  - key: storage.sd_status
+    category: storage
+    display_name: SD카드 상태
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_storage
+    field: sd_status
+    required: false
+    aggregation: last
+    capability: storage.removable
+    description: 외장 SD카드 상태(정상/오류/미장착/포맷 중 등).
+
+  - key: storage.sd_free_bytes
+    category: storage
+    display_name: SD카드 여유 공간
+    value_type: integer
+    unit: bytes
+    source: adapter
+    measurement: recorder_storage
+    field: sd_free_bytes
+    required: false
+    aggregation: min
+    capability: storage.removable
+    description: 외장 SD카드 여유 공간. 미장착을 뜻하는 음수 원값은 값 없음으로 변환한다.
+
+  # ---------------------------------------------------------------- 아카이브
+  - key: archive.continuous_status
+    category: archive
+    display_name: 연속 아카이브 상태
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_archive
+    field: continuous_status
+    required: false
+    aggregation: last
+    capability: archive.continuous
+    description: 연속 데이터 아카이브 기능 상태.
+
+  - key: archive.event_status
+    category: archive
+    display_name: 이벤트 아카이브 상태
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_archive
+    field: event_status
+    required: false
+    aggregation: last
+    capability: archive.event
+    description: 이벤트 아카이브 기능 상태.
+
+  # ---------------------------------------------------------------- 외부 SOH
+  - key: external_soh.value
+    category: external_soh
+    display_name: 외부 SOH 값
+    value_type: float
+    unit: null
+    source: adapter
+    measurement: recorder_external_soh
+    field: value
+    required: false
+    aggregation: mean
+    dimensions: [channel]
+    capability: external_soh.analog
+    description: >
+      외부 SOH 입력값. 채널별 변환식(value = raw × scale + offset)과 출력 단위는
+      external_soh_channels 설정에서 관리한다.
+
+  - key: external_soh.switch_state
+    category: external_soh
+    display_name: 외부 접점 상태
+    value_type: status
+    unit: null
+    source: adapter
+    measurement: recorder_external_soh
+    field: switch_state
+    required: false
+    aggregation: last
+    dimensions: [channel]
+    capability: external_soh.analog
+    description: 개폐 접점으로 설정된 외부 SOH 채널의 상태(문 열림 등).
+
+  # ---------------------------------------------------------------- 데이터 연속성
+  - key: acquisition.latest_sample_age_seconds
+    category: acquisition
+    display_name: 최신 데이터 경과 시간
+    value_type: float
+    unit: s
+    source: data_availability
+    measurement: recorder_acquisition
+    field: latest_sample_age_seconds
+    required: false
+    aggregation: max
+    dimensions: [channel]
+    capability: acquisition.data_check
+    description: 채널별 마지막 샘플 시각으로부터 경과한 시간. SOH 가 정상이어도 이 값으로 정지를 잡는다.
+
+  - key: acquisition.gap_duration_seconds
+    category: acquisition
+    display_name: 데이터 공백 길이
+    value_type: float
+    unit: s
+    source: data_availability
+    measurement: recorder_acquisition
+    field: gap_duration_seconds
+    required: false
+    aggregation: sum
+    dimensions: [channel]
+    capability: acquisition.data_check
+    description: 최근 검사 구간에서 발견된 데이터 공백의 합.
+
+  - key: acquisition.channel_active
+    category: acquisition
+    display_name: 채널 활성
+    value_type: boolean
+    unit: null
+    source: data_availability
+    measurement: recorder_acquisition
+    field: channel_active
+    required: false
+    aggregation: last
+    dimensions: [channel]
+    capability: acquisition.data_check
+    description: 채널이 실제로 데이터를 내보내는지 여부.
+
+  # ---------------------------------------------------------------- 환경(기상 센서 연동 시)
+  - key: environment.outdoor_temperature_c
+    category: environment
+    display_name: 외기 온도
+    value_type: float
+    unit: "°C"
+    source: adapter
+    measurement: recorder_environment
+    field: outdoor_temperature_c
+    required: false
+    aggregation: mean
+    capability: environment.weather_station
+    description: 기상 센서가 연동된 관측소에서만 제공된다.
+
+  - key: environment.humidity_percent
+    category: environment
+    display_name: 상대 습도
+    value_type: float
+    unit: "%"
+    source: adapter
+    measurement: recorder_environment
+    field: humidity_percent
+    required: false
+    aggregation: mean
+    capability: environment.weather_station
+    description: 기상 센서 연동 시 제공.
+
+  - key: environment.pressure_pa
+    category: environment
+    display_name: 기압
+    value_type: float
+    unit: Pa
+    source: adapter
+    measurement: recorder_environment
+    field: pressure_pa
+    required: false
+    aggregation: mean
+    capability: environment.weather_station
+    description: 기상 센서 연동 시 제공.
+
+  # ---------------------------------------------------------------- 판정 결과
+  - key: health.severity
+    category: health
+    display_name: 판정 심각도
+    value_type: integer
+    unit: null
+    source: health_engine
+    measurement: recorder_health
+    field: severity
+    required: true
+    aggregation: max
+    dimensions: [category]
+    capability: null
+    description: >
+      백엔드 판정 결과를 Grafana 가 감시할 수 있게 수치화한 값.
+      0=OK, 1=WARNING, 2=CRITICAL, 3=UNKNOWN, 4=DISABLED, 5=MAINTENANCE.
+
+  - key: health.is_stale
+    category: health
+    display_name: 값 낡음
+    value_type: boolean
+    unit: null
+    source: health_engine
+    measurement: recorder_health
+    field: is_stale
+    required: true
+    aggregation: last
+    dimensions: [category]
+    capability: null
+    description: 수집은 성공했으나 값이 갱신되지 않아 신뢰할 수 없는 상태인지 여부.
+
+  # ---------------------------------------------------------------- 제조사 전용
+  - key: vendor.nanometrics.centaur.buffer_used_percent
+    category: vendor
+    display_name: 디지타이저 버퍼 사용률
+    value_type: float
+    unit: "%"
+    source: adapter
+    measurement: recorder_vendor_metric
+    field: value
+    required: false
+    aggregation: max
+    capability: vendor.nanometrics.centaur
+    description: Centaur 전용. 공통 대시보드에서는 쓰지 않는다.
+
+  - key: vendor.nanometrics.centaur.vco_control
+    category: vendor
+    display_name: VCO 제어 전압
+    value_type: float
+    unit: counts
+    source: adapter
+    measurement: recorder_vendor_metric
+    field: value
+    required: false
+    aggregation: last
+    capability: vendor.nanometrics.centaur
+    description: Centaur 전용. 시각 발진기 제어 DAC 값.

@@ -1,0 +1,113 @@
+# 제조사 상태 문자열 → 표준 상태 Mapping.
+#
+# 규칙
+#  1. 비교는 소문자·공백정리 후 수행한다.
+#  2. 목록에 없는 값은 OK 가 아니라 UNKNOWN 으로 떨어진다. 새 펌웨어가 새 문자열을
+#     내보내도 정상으로 오인하지 않게 하려는 것이다.
+#  3. UNKNOWN 으로 떨어진 원문은 로그와 poll_runs 에 남겨 Mapping 을 보강한다.
+#
+# 근거: Centaur User Guide 17935R10, 7.4 State of Health API — SOH channels 표.
+
+version: 1
+
+adapters:
+  nanometrics.centaur.ctr:
+    device.overall_status:
+      ok: OK
+      warning: WARNING
+      error: CRITICAL
+
+    device.configuration_status:
+      committed: OK
+      uncommitted: WARNING
+
+    device.firmware_status:
+      ok: OK
+      testcode: WARNING
+
+    timing.status:
+      time ok: OK
+      time init: WARNING
+      free running: WARNING
+      no ptp master: WARNING
+      time error: CRITICAL
+      no antenna: CRITICAL
+      antenna short: CRITICAL
+
+    timing.phase_lock:
+      fine lock: OK
+      coarse lock: WARNING
+      free running: WARNING
+      no lock: CRITICAL
+
+    gnss.antenna_status:
+      ok: OK
+      no antenna: CRITICAL
+      antenna short: CRITICAL
+
+    sensor.status:
+      ok: OK
+      error: CRITICAL
+
+    sensor.control_state:
+      expected: OK
+      unexpected: WARNING
+
+    storage.recording_status:
+      recording: OK
+      wrapping: OK
+      re-indexing: WARNING
+      read only: WARNING
+      not ready: WARNING
+      temporary location: WARNING
+      not enough space: CRITICAL
+      no store: CRITICAL
+      error: CRITICAL
+
+    storage.sd_status:
+      ok: OK
+      not present: WARNING
+      mounting: WARNING
+      formatting: WARNING
+      repairing: WARNING
+      ejecting: WARNING
+      ejected: WARNING
+      error: CRITICAL
+
+    archive.continuous_status:
+      ok: OK
+      archive started: OK
+      disabled: DISABLED
+      media not present: WARNING
+      media full: CRITICAL
+      error: CRITICAL
+
+    archive.event_status:
+      ok: OK
+      archive started: OK
+      disabled: DISABLED
+      media not present: WARNING
+      media full: CRITICAL
+      error: CRITICAL
+
+    external_soh.switch_state:
+      open: WARNING
+      closed: OK
+
+# 수치 코드로 오는 값의 해석. Steim/SeedLink 계열 SOH 채널이 정수로 올 때 쓴다.
+# 근거: Centaur User Guide 8.2 SOH channels in Steim compressed formats.
+numeric_codes:
+  nanometrics.centaur.ctr:
+    gnss.antenna_status:   # GAN
+      0: OK
+      1: CRITICAL
+      2: CRITICAL
+    timing.phase_lock:     # GPL
+      0: CRITICAL
+      1: WARNING
+      2: OK
+      3: WARNING
+    timing.status:         # GST
+      0: DISABLED
+      1: WARNING
+      2: OK

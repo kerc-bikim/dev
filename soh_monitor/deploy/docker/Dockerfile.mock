@@ -1,0 +1,29 @@
+# 시험용 가상 Centaur CTR 서버.
+#
+# 운영 스택에는 올리지 않는다. 개발·시험 Compose 에서만 쓴다.
+#
+#   docker build -f deploy/docker/Dockerfile.mock -t soh-centaur-mock .
+
+FROM python:3.12-slim AS builder
+ENV PIP_NO_CACHE_DIR=1
+COPY backend/requirements.txt /tmp/requirements.txt
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip \
+    && /opt/venv/bin/pip install fastapi==0.115.6 "uvicorn[standard]==0.32.1" \
+       pydantic==2.10.4 PyYAML==6.0.2
+
+FROM python:3.12-slim AS runtime
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    MOCK_PORT=8090
+COPY --from=builder /opt/venv /opt/venv
+
+WORKDIR /app
+COPY mock /app/mock
+
+RUN useradd --create-home --uid 10003 sohmock && chown -R sohmock:sohmock /app
+USER sohmock
+
+EXPOSE 8090
+CMD ["python", "-m", "mock.centaur_mock"]

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://soh-monitor/contracts/edge/ingest.schema.json",
+  "title": "Edge Ingest Batch",
+  "description": "Edge → 중앙 데이터 묶음. 같은 batchId 를 여러 번 보내도 결과가 같아야 한다(멱등).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["edgeId", "batchId", "firstSequence", "lastSequence", "polls"],
+  "properties": {
+    "edgeId": { "type": "string", "minLength": 1 },
+    "batchId": { "type": "string", "minLength": 8, "description": "UUID. 멱등 처리 키." },
+    "configVersion": { "type": "integer", "minimum": 0 },
+    "agentVersion": { "type": "string" },
+    "firstSequence": { "type": "integer", "minimum": 1 },
+    "lastSequence": { "type": "integer", "minimum": 1 },
+    "polls": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pollId", "sequence", "deviceId", "observedAt", "success"],
+        "properties": {
+          "pollId": { "type": "string", "minLength": 8 },
+          "sequence": { "type": "integer", "minimum": 1 },
+          "deviceId": { "type": "string", "minLength": 1 },
+          "adapterKey": { "type": "string" },
+          "adapterVersion": { "type": "string" },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "기록계를 관측한 시각. InfluxDB Point timestamp 가 된다."
+          },
+          "success": { "type": "boolean" },
+          "errorCode": { "type": ["string", "null"] },
+          "errorMessage": { "type": ["string", "null"] },
+          "latencyMs": { "type": ["number", "null"], "minimum": 0 },
+          "httpStatus": { "type": ["integer", "null"] },
+          "payloadBytes": { "type": ["integer", "null"], "minimum": 0 },
+          "capabilities": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["metricKey"],
+              "properties": {
+                "metricKey": {
+                  "type": "string",
+                  "description": "catalog.yaml 에 등록된 키만 허용한다. 미등록 키는 Batch 전체를 거부하지 않고 해당 샘플만 버리며 경고를 남긴다."
+                },
+                "dimensions": {
+                  "type": "object",
+                  "additionalProperties": { "type": "string" }
+                },
+                "valueFloat": { "type": ["number", "null"] },
+                "valueInt": { "type": ["integer", "null"] },
+                "valueBool": { "type": ["boolean", "null"] },
+                "valueText": { "type": ["string", "null"] },
+                "valueStatus": {
+                  "type": ["string", "null"],
+                  "enum": ["OK", "WARNING", "CRITICAL", "UNKNOWN", "DISABLED", "MAINTENANCE", null]
+                },
+                "valueTimestamp": { "type": ["string", "null"], "format": "date-time" },
+                "rawValue": {
+                  "type": ["string", "null"],
+                  "description": "표준화 이전 원값의 문자열 표현. UNKNOWN 으로 떨어진 원인 추적에만 쓴다."
+                },
+                "supportState": {
+                  "type": ["string", "null"],
+                  "enum": ["SUPPORTED_ENABLED", "SUPPORTED_DISABLED", "UNSUPPORTED", "UNKNOWN", "ERROR", null]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "edgeHealth": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Edge 자체 상태 스냅샷. Heartbeat 를 놓쳤을 때의 보조 근거."
+    }
+  }
+}
