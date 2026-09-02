@@ -19,19 +19,24 @@ from obspy.io.xseed import Parser
 from obspy.io.xseed.blockette import (
     Blockette010,
     Blockette030,
+    Blockette031,
     Blockette033,
     Blockette034,
     Blockette050,
+    Blockette051,
     Blockette052,
     Blockette053,
     Blockette054,
     Blockette057,
     Blockette058,
+    Blockette059,
     Blockette061,
 )
 
 SITE_MAX = 60
 FIR_NAME_MAX = 25
+COMMENT_MAX = 70
+NETWORK_SEED_MAX = 2
 
 
 class SeedWriteError(Exception):
@@ -62,9 +67,37 @@ def _pz_type(stage: PolesZerosResponseStage) -> str:
 
 def _coeff_type(stage: CoefficientsTypeResponseStage) -> str:
     raw = (getattr(stage, "cf_transfer_function_type", None) or "").upper()
+    if "HERTZ" in raw or "HZ" in raw:
+        return "B"
     if "ANALOG" in raw:
         return "A"
     return "D"
+
+
+def _is_digital_stage(stage) -> bool:
+    if isinstance(stage, FIRResponseStage):
+        return True
+    if isinstance(stage, CoefficientsTypeResponseStage):
+        return _coeff_type(stage) == "D"
+    if isinstance(stage, PolesZerosResponseStage):
+        return _pz_type(stage) == "D"
+    return False
+
+
+def _comment_text(comment) -> str:
+    value = getattr(comment, "value", None)
+    if value is None:
+        value = str(comment or "")
+    text = " ".join(str(value).split())
+    return text.replace("_", "-")
+
+
+def _comment_times(comment, fallback_start, fallback_end):
+    begin = getattr(comment, "begin_effective_time", None) or fallback_start
+    end = getattr(comment, "end_effective_time", None)
+    if end is None:
+        end = fallback_end
+    return _seed_time(begin) or UTCDateTime(1970, 1, 1), _seed_time(end)
 
 
 def _channel_flags(cha) -> str:
@@ -119,6 +152,27 @@ def prepare_seed_inventory(inv: Inventory) -> list[str]:
                 warnings.append(f"{net.code}.{sta.code}: 사이트명을 {SITE_MAX}자로 잘랐습니다")
             if sta.description and not _ascii_ok(sta.description):
                 sta.description = None
+            kept = []
+            for comment in sta.comments or []:
+                text = _comment_text(comment)
+                if not text or not _ascii_ok(text):
+                    warnings.append(
+                        f"{net.code}.{sta.code}: ASCII가 아닌 관측소 코멘트는 SEED에 넣지 않습니다"
+                    )
+                    continue
+                kept.append(comment)
+            sta.comments = kept
+            for cha in sta:
+                kept_ch = []
+                for comment in cha.comments or []:
+                    text = _comment_text(comment)
+                    if not text or not _ascii_ok(text):
+                        warnings.append(
+                            f"{net.code}.{sta.code}.{cha.code}: ASCII가 아닌 채널 코멘트는 SEED에 넣지 않습니다"
+                        )
+                        continue
+                    kept_ch.append(comment)
+                cha.comments = kept_ch
     return warnings
 
 
@@ -130,8 +184,10 @@ def inventory_to_seed_bytes(
 ) -> bytes:
     units: dict[str, int] = {}
     abbrevs: dict[str, int] = {}
+    comments: dict[str, int] = {}
     unit_blockettes: list[Blockette034] = []
     abbrev_blockettes: list[Blockette033] = []
+    comment_blockettes: list[Blockette031] = []
 
     def unit_code(name: str | None) -> int:
         key = (name or "UNKNOWN").upper()
@@ -154,22 +210,41 @@ def inventory_to_seed_bytes(
             abbrev_blockettes.append(blkt)
         return abbrevs[key]
 
+    def comment_code(text: str, class_code: str) -> int:
+        cleaned = (text or "")[:COMMENT_MAX] or "comment"
+        key = f"{class_code}:{cleaned}"
+        if key not in comments:
+            comments[key] = len(comments) + 1
+            blkt = Blockette031()
+            blkt.comment_code_key = comments[key]
+            blkt.comment_class_code = class_code
+            blkt.description_of_comment = cleaned
+            blkt.units_of_comment_level = 0
+            comment_blockettes.append(blkt)
+        return comments[key]
+
     starts: list[UTCDateTime] = []
     stations_out: list[list] = []
     for net in inv:
-        net_abbrev = abbrev_code(net.description or net.code)
+        net_code = (net.code or "XX").strip().upper() or "XX"
+        if len(net_code) > NETWORK_SEED_MAX:
+            raise SeedWriteError(
+                f"SEED 2.4 네트워크 코드는 {NETWORK_SEED_MAX}자입니다. 지금 값은 {net_code}입니다"
+            )
+        net_abbrev = abbrev_code(net.description or net_code)
         for sta in net:
             channels = list(sta.channels)
             site_name = sta.site.name if sta.site and sta.site.name else sta.code
             if not _ascii_ok(site_name):
                 site_name = sta.code
+            sta_comments = list(sta.comments or [])
             b50 = Blockette050()
             b50.station_call_letters = sta.code
             b50.latitude = float(sta.latitude)
             b50.longitude = float(sta.longitude)
             b50.elevation = float(sta.elevation or 0.0)
             b50.number_of_channels = len(channels)
-            b50.number_of_station_comments = 0
+            b50.number_of_station_comments = len(sta_comments)
             b50.site_name = site_name[:SITE_MAX]
             b50.network_identifier_code = net_abbrev
             b50.word_order_32bit = 3210
@@ -177,8 +252,16 @@ def inventory_to_seed_bytes(
             b50.start_effective_date = _seed_time(sta.start_date) or UTCDateTime(1970, 1, 1)
             b50.end_effective_date = _seed_time(sta.end_date)
             b50.update_flag = "N"
-            b50.network_code = (net.code or "XX")[:2]
+            b50.network_code = net_code
             station_blkts: list = [b50]
+            for comment in sta_comments:
+                begin, end = _comment_times(comment, sta.start_date, sta.end_date)
+                b51 = Blockette051()
+                b51.beginning_effective_time = begin
+                b51.end_effective_time = end
+                b51.comment_code_key = comment_code(_comment_text(comment), "S")
+                b51.comment_level = 0
+                station_blkts.append(b51)
             for cha in channels:
                 if cha.start_date:
                     starts.append(cha.start_date)
@@ -211,7 +294,8 @@ def inventory_to_seed_bytes(
                 b52.data_record_length = 12
                 b52.sample_rate = float(cha.sample_rate or 0.0)
                 b52.max_clock_drift = float(cha.clock_drift_in_seconds_per_sample or 0.0)
-                b52.number_of_comments = 0
+                cha_comments = list(cha.comments or [])
+                b52.number_of_comments = len(cha_comments)
                 b52.channel_flags = _channel_flags(cha)
                 b52.start_date = _seed_time(cha.start_date) or UTCDateTime(1970, 1, 1)
                 b52.end_date = _seed_time(cha.end_date)
@@ -232,6 +316,13 @@ def inventory_to_seed_bytes(
                     if isinstance(stage, ResponseListResponseStage):
                         raise SeedWriteError(
                             f"{net.code}.{sta.code}.{cha.code} 단계 {seq}: ResponseList는 SEED로 쓰지 않습니다"
+                        )
+                    if _is_digital_stage(stage) and not getattr(
+                        stage, "decimation_input_sample_rate", None
+                    ):
+                        raise SeedWriteError(
+                            f"{net.code}.{sta.code}.{cha.code} 단계 {seq}: "
+                            "디지털 단계에는 데시메이션(Blockette 057)이 필요합니다"
                         )
                     if isinstance(stage, PolesZerosResponseStage):
                         zeros = list(stage.zeros or [])
@@ -300,14 +391,26 @@ def inventory_to_seed_bytes(
                         b58.frequency = float(stage.stage_gain_frequency or 1.0)
                         b58.number_of_history_values = 0
                         station_blkts.append(b58)
-                if resp.instrument_sensitivity is not None:
-                    sens = resp.instrument_sensitivity
-                    b0 = Blockette058()
-                    b0.stage_sequence_number = 0
-                    b0.sensitivity_gain = float(sens.value)
-                    b0.frequency = float(sens.frequency or 1.0)
-                    b0.number_of_history_values = 0
-                    station_blkts.append(b0)
+                if resp.instrument_sensitivity is None:
+                    raise SeedWriteError(
+                        f"{net.code}.{sta.code}.{cha.location_code or ''}.{cha.code}: "
+                        "채널 전체 감도(Blockette 058 stage 0)가 필요합니다"
+                    )
+                sens = resp.instrument_sensitivity
+                b0 = Blockette058()
+                b0.stage_sequence_number = 0
+                b0.sensitivity_gain = float(sens.value)
+                b0.frequency = float(sens.frequency or 1.0)
+                b0.number_of_history_values = 0
+                station_blkts.append(b0)
+                for comment in cha_comments:
+                    begin, end = _comment_times(comment, cha.start_date, cha.end_date)
+                    b59 = Blockette059()
+                    b59.beginning_of_effective_time = begin
+                    b59.end_effective_time = end
+                    b59.comment_code_key = comment_code(_comment_text(comment), "C")
+                    b59.comment_level = 0
+                    station_blkts.append(b59)
             stations_out.append(station_blkts)
 
     b30 = Blockette030()
@@ -328,6 +431,6 @@ def inventory_to_seed_bytes(
 
     parser = Parser()
     parser.volume = [b10]
-    parser.abbreviations = [b30] + abbrev_blockettes + unit_blockettes
+    parser.abbreviations = [b30] + abbrev_blockettes + unit_blockettes + comment_blockettes
     parser.stations = stations_out
     return parser.get_seed()

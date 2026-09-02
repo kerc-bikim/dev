@@ -81,7 +81,7 @@ API는 SQLAlchemy 2를 쓰므로 레포 루트 `.venv`(ObsPy 1.4 / SQLAlchemy 1.
 
 **검증**은 공식 검사를 작업 큐에 넣고 바로 돌아옵니다. JAR가 없으면 Python이 같은 번호를 붙입니다. StationXML은 오류가 있어도 `{network}_unvalidated.xml`로 받습니다. dataless는 오류면 409입니다 ([`docs/adr/0010-official-validator.md`](docs/adr/0010-official-validator.md), [`docs/adr/0016-bulk-validate.md`](docs/adr/0016-bulk-validate.md)).
 
-**dataless SEED**는 70자 코멘트·25자 FIR·확장 필드 제거 목록을 확인한 뒤에만 진행합니다 ([`docs/adr/0017-seed-loss.md`](docs/adr/0017-seed-loss.md), [`docs/adr/0018-seed-export.md`](docs/adr/0018-seed-export.md)). **RESP** / **RESP zip**은 현재 편집 XML에서 만들므로 고친 감도가 들어갑니다 ([`docs/adr/0019-resp.md`](docs/adr/0019-resp.md)). 실패한 작업은 같은 스냅샷으로 다시 시도할 수 있고, 대기 작업은 취소할 수 있습니다.
+**dataless SEED**는 FDSN SEED Manual V2.4 제어 헤더(Volume·Abbreviation·Station, Time Span/파형 없음)로 쓰고 다시 읽습니다. 70자 코멘트·25자 FIR·확장 필드 제거와 2자 네트워크·0.1 m 깊이 제한을 확인한 뒤에만 진행합니다 ([`docs/adr/0017-seed-loss.md`](docs/adr/0017-seed-loss.md), [`docs/adr/0018-seed-export.md`](docs/adr/0018-seed-export.md)). **RESP** / **RESP zip**은 현재 편집 XML에서 만들므로 고친 감도가 들어갑니다 ([`docs/adr/0019-resp.md`](docs/adr/0019-resp.md)). 실패한 작업은 같은 스냅샷으로 다시 시도할 수 있고, 대기 작업은 취소할 수 있습니다.
 
 ### 관리자 `/admin`
 
