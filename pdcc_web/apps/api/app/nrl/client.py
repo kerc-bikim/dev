@@ -113,6 +113,14 @@ class NrlClient:
 
         return self._cached_json("pdcc:nrl:prefix", load)
 
+    def catalog_fingerprint(self) -> str:
+        try:
+            data = self.catalog(level="element")
+        except NrlError:
+            return "nrl-offline"
+        blob = json.dumps(data, sort_keys=True, default=str)
+        return hashlib.sha256(blob.encode()).hexdigest()[:16]
+
     def combine(self, instconfig: str, fmt: str) -> tuple[bytes, str]:
         instconfig = validate_instconfig(instconfig)
         fmt = validate_format(fmt)

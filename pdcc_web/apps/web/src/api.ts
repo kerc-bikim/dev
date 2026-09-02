@@ -1,5 +1,38 @@
 export type Me = { username: string; role: string };
 export type Health = { ok: boolean; db: boolean; redis: boolean };
+export type OpsStatus = {
+  env: string;
+  allow_stub_login: boolean;
+  dev_bootstrap_admin: boolean;
+  session_cookie_secure: boolean;
+  session_cookie_samesite: string;
+  audit_retention_days: number;
+  app_secret_is_default: boolean;
+  username: string;
+  role: string;
+  production: boolean;
+};
+export type AuditRow = {
+  id: number;
+  project_id: number | null;
+  actor: string;
+  action: string;
+  target: string;
+  summary: string;
+  created_at: string | null;
+};
+export type AuditList = {
+  items: AuditRow[];
+  total: number;
+  limit: number;
+  offset: number;
+  retention_days: number;
+};
+export type RestoreResult = {
+  created: { id: number; name: string; network_code: string }[];
+  replaced: { id: number; name: string; network_code: string }[];
+  count: number;
+};
 export type WizardQuestion = { key: string; question: string; options: string[] };
 export type WizardMatch = {
   instconfig: string;
@@ -34,6 +67,10 @@ export type ChannelSummary = {
   code: string;
   start: string | null;
   end: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  elevation?: number | null;
+  depth?: number | null;
   azimuth: number | null;
   dip: number | null;
   sample_rate: number | null;
@@ -71,13 +108,51 @@ export type Project = {
   stations: StationSummary[];
   nrl_applied: boolean;
   lock?: LockInfo | null;
+  can_undo?: boolean;
+  draft?: { updated_at: string | null; base_updated_at: string; conflict: boolean } | null;
 };
+export type EquipmentSet = {
+  id: number;
+  name: string;
+  notes: string;
+  sensor_instconfig: string;
+  datalogger_instconfig: string;
+  channels: string[];
+  nrl_version: string;
+  stale: boolean;
+};
+export type VersionInfo = {
+  id: number;
+  number: number;
+  actor: string;
+  action: string;
+  summary: string;
+  created_at: string | null;
+};
+export type FieldDiff = { path: string; a?: string; b?: string; server?: string; mine?: string };
+export type ValidationIssue = {
+  code: string;
+  message: string;
+  path: string;
+  field: string;
+  station: string | null;
+  start: string | null;
+  nslc: string | null;
+};
+
+export class ApiError extends Error {
+  status: number;
+  payload: unknown;
+  constructor(message: string, status: number, payload: unknown) {
+    super(message);
+    this.status = status;
+    this.payload = payload;
+  }
+}
 
 export async function readError(response: Response): Promise<string> {
   try {
-    const body = (await response.json()) as {
-      detail?: string | { message?: string };
-    };
+    const body = (await response.json()) as { detail?: string | { message?: string } };
     if (typeof body.detail === "string") return body.detail;
     if (body.detail && typeof body.detail === "object" && body.detail.message) {
       return body.detail.message;
@@ -90,7 +165,19 @@ export async function readError(response: Response): Promise<string> {
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { credentials: "include", ...init });
-  if (!response.ok) throw new Error(await readError(response));
+  if (!response.ok) {
+    let payload: unknown = null;
+    let message = `요청 실패 (${response.status})`;
+    try {
+      payload = await response.json();
+      const detail = (payload as { detail?: string | { message?: string } }).detail;
+      if (typeof detail === "string") message = detail;
+      else if (detail && typeof detail === "object" && detail.message) message = detail.message;
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(message, response.status, payload);
+  }
   return (await response.json()) as T;
 }
 
@@ -104,10 +191,9 @@ export function apiPost<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
-export function apiPostResponse(path: string, body?: unknown): Promise<Response> {
-  return fetch(path, {
-    method: "POST",
-    credentials: "include",
+export function apiPut<T>(path: string, body?: unknown): Promise<T> {
+  return api<T>(path, {
+    method: "PUT",
     headers: body === undefined ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -123,93 +209,8 @@ export async function apiText(path: string): Promise<string> {
   return response.text();
 }
 
-export type ExportLoss = {
-  nslc: string;
-  field: string;
-  kind: string;
-  original?: string;
-  result?: string;
-  reason: string;
-};
-
-export type ExportPreview = {
-  kind: string;
-  channel_count: number;
-  errors: ExportLoss[];
-  losses: ExportLoss[];
-  drops: ExportLoss[];
-  needs_confirm: boolean;
-  blocked: boolean;
-};
-
-export type ExportJob = {
-  id: string;
-  project_id: number;
-  username: string;
-  kind: string;
-  scope: string;
-  station: string | null;
-  start_time: string | null;
-  nslc: string | null;
-  status: string;
-  progress: number;
-  message: string;
-  error: string | null;
-  filename: string | null;
-  media_type: string | null;
-  downloadable: boolean;
-  warnings: string[];
-  losses: ExportLoss[];
-  drops: ExportLoss[];
-  created_at: string | null;
-};
-
-export async function parseExportError(
-  response: Response
-): Promise<{ message: string; preview?: Partial<ExportPreview> }> {
-  try {
-    const body = (await response.json()) as {
-      detail?:
-        | string
-        | {
-            message?: string;
-            errors?: ExportLoss[];
-            losses?: ExportLoss[];
-            drops?: ExportLoss[];
-          };
-    };
-    if (typeof body.detail === "string") return { message: body.detail };
-    if (body.detail && typeof body.detail === "object") {
-      return {
-        message: body.detail.message || `요청 실패 (${response.status})`,
-        preview: {
-          errors: body.detail.errors || [],
-          losses: body.detail.losses || [],
-          drops: body.detail.drops || [],
-          needs_confirm: Boolean(body.detail.losses?.length),
-          blocked: Boolean(body.detail.errors?.length),
-        },
-      };
-    }
-  } catch {
-    /* ignore */
-  }
-  return { message: `요청 실패 (${response.status})` };
-}
-
-export async function apiDownload(path: string, fallbackName: string): Promise<void> {
+export async function apiBlob(path: string): Promise<Blob> {
   const response = await fetch(path, { credentials: "include" });
   if (!response.ok) throw new Error(await readError(response));
-  const blob = await response.blob();
-  const header = response.headers.get("content-disposition") || "";
-  const match = /filename="([^"]+)"/.exec(header);
-  const name = match?.[1] || fallbackName;
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  return response.blob();
 }

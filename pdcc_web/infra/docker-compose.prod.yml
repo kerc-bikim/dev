@@ -1,0 +1,28 @@
+# PDCC Web — 프로덕션 overlay.
+# APP_SECRET 과 POSTGRES_PASSWORD 가 없으면 compose 가 바로 실패한다.
+# 사용:
+#   export APP_SECRET=... POSTGRES_PASSWORD=...
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+
+  api:
+    environment:
+      APP_ENV: production
+      APP_SECRET: ${APP_SECRET:?APP_SECRET must be set}
+      ALLOW_STUB_LOGIN: "false"
+      DEV_BOOTSTRAP_ADMIN: "false"
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-365}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import json,urllib.request; d=json.load(urllib.request.urlopen('http://127.0.0.1:8080/health/ready')); raise SystemExit(0 if d.get('ok') else 1)",
+        ]

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -9,6 +11,7 @@ from ..cache import get_redis, session_key
 from ..config import settings
 from ..db import get_db
 from ..models import User, new_session_token, verify_password
+from ..runtime import STUB_USERNAMES, cookie_samesite, cookie_secure, stub_login_allowed
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
@@ -24,12 +27,16 @@ class UserOut(BaseModel):
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
+    samesite: Literal["lax", "strict", "none"] = cookie_samesite()  # type: ignore[assignment]
+    if samesite not in ("lax", "strict", "none"):
+        samesite = "lax"
     response.set_cookie(
         key=settings.session_cookie_name,
         value=token,
         max_age=settings.session_ttl_sec,
         httponly=True,
-        samesite="lax",
+        secure=cookie_secure(),
+        samesite=samesite,
         path="/",
     )
 
@@ -53,6 +60,11 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
 
 @router.post("/login", response_model=UserOut)
 def login(body: LoginIn, response: Response, db: Session = Depends(get_db)) -> UserOut:
+    if body.username in STUB_USERNAMES and not stub_login_allowed():
+        raise HTTPException(
+            status_code=403,
+            detail="스텁 로그인은 이 환경에서 꺼져 있습니다 (ALLOW_STUB_LOGIN)",
+        )
     if body.username == "admin" and not settings.dev_bootstrap_admin:
         raise HTTPException(
             status_code=403,

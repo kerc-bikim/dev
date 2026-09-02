@@ -243,50 +243,36 @@ body {
   color: var(--muted);
 }
 .lock-banner.mine { color: var(--success); border-color: #24532d; }
-.export-card { margin-top: 16px; }
-.export-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
+.field-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  text-decoration: none;
+  color: var(--muted);
+  cursor: help;
 }
-.export-row select {
-  width: 100%;
-  height: 38px;
+.issue-list { list-style: none; padding: 0; margin: 0; }
+.issue-list li { margin: 4px 0; }
+.issue-list code { color: var(--danger); margin-right: 6px; }
+.wizard-nav, .pattern-row, .set-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.version-list { list-style: none; padding: 0; margin: 0; }
+.version-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+.nrl-card label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; margin: 8px 0; }
+.nrl-card input {
   background: var(--input-bg);
   color: var(--fg);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 0 10px;
-}
-.job-bell { position: relative; }
-.job-panel {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  width: min(420px, 90vw);
-  max-height: 70vh;
-  overflow: auto;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 14px;
-  z-index: 20;
-  box-shadow: 0 12px 40px #0008;
-}
-.job-panel h3 { margin: 0 0 8px; font-size: 14px; }
-.job-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.job-list li {
-  border: 1px solid var(--border);
-  border-radius: 8px;
   padding: 8px 10px;
-  display: grid;
-  gap: 6px;
-}
-.job-list progress {
+  font-size: 14px;
   width: 100%;
-  height: 8px;
 }
-.wizard-nav, .pattern-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .check { display: flex; align-items: center; gap: 8px; color: var(--fg); }
 .confirm-table {
   width: 100%;
@@ -338,3 +324,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .status-bar .ok { color: var(--success); font-weight: 600; }
 .status-bar .bad { color: var(--danger); font-weight: 600; }
 .status-bar .muted { color: var(--muted); }
+
+.ops-panel { margin-top: 16px; display: grid; gap: 16px; }
+.ops-panel .nrl-card { max-width: 720px; }
+p.ok { color: var(--success); }
