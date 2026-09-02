@@ -2,7 +2,7 @@
 
 Nanometrics **Centaur CTR** 계열 기록계의 SOH를 설정한 분 주기로 수집해 InfluxDB에 적재하고, Grafana로 관측소를 통합 감시하는 시스템이다. Centaur Gen5와 타 제조사 기록계는 Adapter 추가만으로 편입한다.
 
-진행 상태: **M0(저장소 골격) · M1(계약 확정) · M2(Centaur CTR Adapter) · M3(중앙 직접 수집) 완료.** 가상 기록계 50~100대를 분 주기로 수집하고 시계열로 적재하는 경로가 동작한다. 상태 판정(M4)과 관리 화면(M6)은 아직 없다. 작업별 상태는 [`docs/progress.md`](docs/progress.md) 에 있다.
+진행 상태: **M0(저장소 골격) · M1(계약 확정) · M2(Centaur CTR Adapter) · M3(중앙 직접 수집) · M4(상태 판정) 완료.** 가상 기록계 50~100대를 수집해 시계열로 적재하고, 장애를 열고 복구까지 인식한다. 관리 화면(M6)은 아직 없다. 작업별 상태는 [`docs/progress.md`](docs/progress.md) 에 있다.
 
 ## 문서
 
@@ -84,7 +84,7 @@ make mock-load                               # 부하 시험용 100대 (20% 느�
 수집기 부하·안정성 시험도 실장비 없이 돌린다.
 
 ```bash
-make soak                      # 50대 5회. 느린 장비·실패 장비·적재 중단 구간 포함
+make soak                      # 50대. 느린 장비·실패 장비·적재 중단·복구 구간 포함
 make soak devices=100 ticks=3
 ```
 

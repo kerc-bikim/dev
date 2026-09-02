@@ -16,7 +16,7 @@ Nanometrics **Centaur CTR** 계열 기록계의 SOH(State of Health)를 설정�
 
 구현 착수 순서와 완료 판정은 [15절 세부 작업 마일스톤](#15-세부-작업-마일스톤)을 따른다. 근거는 [19절](#19-근거-centaur-사용자-가이드).
 
-현재 상태: **M0(저장소 골격)·M1(계약 확정)·M2(Centaur CTR Adapter)·M3(중앙 직접 수집) 완료.** 작업별 실제 진행 상태는 [`docs/progress.md`](docs/progress.md) 에 있다. 이 문서는 계획 원본이며, 구현이 계획과 달라진 부분은 `progress.md` 에 기록한다.
+현재 상태: **M0(저장소 골격)·M1(계약 확정)·M2(Centaur CTR Adapter)·M3(중앙 직접 수집)·M4(상태 판정) 완료.** 작업별 실제 진행 상태는 [`docs/progress.md`](docs/progress.md) 에 있다. 이 문서는 계획 원본이며, 구현이 계획과 달라진 부분은 `progress.md` 에 기록한다.
 
 ---
 
