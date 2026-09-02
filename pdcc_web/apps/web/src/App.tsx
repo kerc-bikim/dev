@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { readError, type Health, type Me, type NrlStatus } from "./api";
+import { AdminPage } from "./editor/AdminPage";
 import { EditorPage } from "./editor/EditorPage";
 import { ProjectHome } from "./editor/ProjectHome";
 
@@ -13,6 +14,9 @@ export default function App() {
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [projectId, setProjectId] = useState<number | null>(null);
+  const [adminView, setAdminView] = useState(
+    () => window.location.pathname.startsWith("/admin")
+  );
 
   const refreshHealth = useCallback(() => {
     fetch("/api/health", { credentials: "include" })
@@ -45,6 +49,14 @@ export default function App() {
     const id = window.setInterval(refreshHealth, 5000);
     return () => window.clearInterval(id);
   }, [refreshHealth, refreshMe]);
+
+  useEffect(() => {
+    function onPop() {
+      setAdminView(window.location.pathname.startsWith("/admin"));
+    }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   useEffect(() => {
     if (!me) {
@@ -96,12 +108,36 @@ export default function App() {
       await fetch("/api/logout", { method: "POST", credentials: "include" });
       setMe(null);
       setProjectId(null);
+      if (window.location.pathname.startsWith("/admin")) {
+        window.history.replaceState({}, "", "/");
+        setAdminView(false);
+      }
     } finally {
       setBusy(false);
     }
   }
 
   const apiLabel = !apiReachable ? "API 오류" : health?.ok ? "API OK" : "API 저하";
+  const showAdmin = Boolean(me && adminView && me.role === "admin");
+
+  function openAdmin() {
+    window.history.pushState({}, "", "/admin");
+    setAdminView(true);
+    setProjectId(null);
+  }
+
+  function openHome() {
+    window.history.pushState({}, "", "/");
+    setAdminView(false);
+    setProjectId(null);
+  }
+
+  useEffect(() => {
+    if (me && adminView && me.role !== "admin") {
+      window.history.replaceState({}, "", "/");
+      setAdminView(false);
+    }
+  }, [me, adminView]);
 
   return (
     <div className="app">
@@ -113,8 +149,13 @@ export default function App() {
         {me ? (
           <div className="controls">
             <span className="badge ok">
-              {me.username} · {me.role}
+              {me.username} · {me.role === "viewer" ? "조회자" : me.role === "admin" ? "관리자" : "편집자"}
             </span>
+            {me.role === "admin" ? (
+              <button type="button" onClick={showAdmin ? openHome : openAdmin}>
+                {showAdmin ? "홈" : "관리"}
+              </button>
+            ) : null}
             <button type="button" onClick={onLogout} disabled={busy}>
               로그아웃
             </button>
@@ -124,10 +165,12 @@ export default function App() {
 
       {me ? (
         <main className="main">
-          {projectId ? (
+          {showAdmin ? (
+            <AdminPage onHome={openHome} />
+          ) : projectId ? (
             <EditorPage projectId={projectId} onBack={() => setProjectId(null)} />
           ) : (
-            <ProjectHome onOpen={(project) => setProjectId(project.id)} />
+            <ProjectHome me={me} onOpen={(project) => setProjectId(project.id)} />
           )}
         </main>
       ) : (

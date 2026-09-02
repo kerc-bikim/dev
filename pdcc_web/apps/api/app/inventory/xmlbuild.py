@@ -183,6 +183,225 @@ def add_station(
     return dumps(root)
 
 
+CLONE_COLUMNS = (
+    "code",
+    "site_name",
+    "latitude",
+    "longitude",
+    "elevation",
+    "start",
+    "end",
+    "comment",
+    "serial",
+)
+
+_CLONE_HEADERS = {
+    "code": {"code", "station", "sta", "관측소", "관측소코드", "코드"},
+    "site_name": {"site", "site_name", "name", "사이트", "사이트명", "이름"},
+    "latitude": {"lat", "latitude", "위도"},
+    "longitude": {"lon", "longitude", "lng", "경도"},
+    "elevation": {"elev", "elevation", "고도"},
+    "start": {"start", "start_time", "시작"},
+    "end": {"end", "end_time", "종료"},
+    "comment": {"comment", "comments", "코멘트", "채널코멘트"},
+    "serial": {"serial", "sn", "시리얼"},
+}
+
+SERIAL_MAX = 30
+
+
+def parse_clone_paste(text: str) -> list[dict]:
+    """Excel/TSV/CSV 붙여넣기를 행 dict 목록으로 바꾼다. 빈 줄은 버린다."""
+    raw = (text or "").replace("\r\n", "\n").replace("\r", "\n").strip("\n")
+    if not raw.strip():
+        return []
+    lines = [line for line in raw.split("\n")]
+    delimiter = "\t" if any("\t" in line for line in lines) else ","
+    cells = [[part.strip() for part in line.split(delimiter)] for line in lines]
+    if not cells:
+        return []
+    mapping = _clone_header_map(cells[0])
+    start = 1 if mapping else 0
+    if mapping is None:
+        mapping = {index: CLONE_COLUMNS[index] for index in range(min(len(cells[0]), len(CLONE_COLUMNS)))}
+    rows: list[dict] = []
+    for parts in cells[start:]:
+        if not any(parts):
+            continue
+        row = {key: "" for key in CLONE_COLUMNS}
+        for index, value in enumerate(parts):
+            key = mapping.get(index)
+            if key:
+                row[key] = value
+        rows.append(row)
+    return rows
+
+
+def _clone_header_map(parts: list[str]) -> dict[int, str] | None:
+    mapping: dict[int, str] = {}
+    matched = False
+    for index, part in enumerate(parts):
+        token = part.strip().lower().replace(" ", "").replace("_", "")
+        for key, aliases in _CLONE_HEADERS.items():
+            normalized = {alias.lower().replace(" ", "").replace("_", "") for alias in aliases}
+            if token in normalized:
+                mapping[index] = key
+                matched = True
+                break
+    return mapping if matched else None
+
+
+def clone_stations(
+    xml: str,
+    *,
+    network: str,
+    source_station: str,
+    source_start: str,
+    rows: list[dict],
+) -> tuple[str, list[dict], list[dict]]:
+    """원본 관측소 XML(응답 포함)을 복사한다. 코드가 비어 있는 행은 무시한다."""
+    root = parse_root(xml)
+    net = _network(root, network)
+    source = None
+    for sta in net.findall(qname("Station")):
+        if sta.get("code") == source_station and (
+            not source_start or sta.get("startDate") == source_start
+        ):
+            source = sta
+            break
+    if source is None:
+        raise InventoryError("원본 관측소를 찾을 수 없습니다", 404)
+
+    defaults = {
+        "site_name": _site_name(source) or source_station,
+        "latitude": _float(child_text(source, "Latitude")),
+        "longitude": _float(child_text(source, "Longitude")),
+        "elevation": _float(child_text(source, "Elevation")) or 0,
+        "start": source.get("startDate") or source_start,
+    }
+    created: list[dict] = []
+    skipped: list[dict] = []
+    planned: list[tuple[dict, etree._Element]] = []
+    seen: set[tuple[str, str]] = set()
+
+    for index, raw in enumerate(rows):
+        code = str(raw.get("code") or "").strip().upper()
+        if not code:
+            skipped.append({"index": index, "code": "", "reason": "empty_code"})
+            continue
+        if not STATION_CODE_RE.match(code):
+            raise InventoryError("관측소 코드는 1–5자의 영문·숫자여야 합니다", 400, "E_CODE_STA")
+        start = str(raw.get("start") or "").strip() or defaults["start"]
+        end = str(raw.get("end") or "").strip() or None
+        key = (code, start)
+        if key in seen:
+            raise InventoryError(f"{code} 행이 중복됩니다", 400, "E_CODE_STA")
+        seen.add(key)
+        serial = str(raw.get("serial") or "").strip()
+        if len(serial) > SERIAL_MAX:
+            raise InventoryError("시리얼 번호는 30자를 넘을 수 없습니다", 400, "E_SERIAL")
+        latitude = _clone_number(raw.get("latitude"), defaults["latitude"], "위도")
+        longitude = _clone_number(raw.get("longitude"), defaults["longitude"], "경도")
+        elevation = _clone_number(raw.get("elevation"), defaults["elevation"], "고도")
+        if latitude is None or longitude is None:
+            raise InventoryError("위도·경도가 필요합니다", 400, "E_REQ")
+        site_name = str(raw.get("site_name") or "").strip() or defaults["site_name"]
+        comment = str(raw.get("comment") or "").strip()
+        clone = _clone_station_el(
+            source,
+            code=code,
+            site_name=site_name,
+            start=start,
+            end=end,
+            latitude=latitude,
+            longitude=longitude,
+            elevation=elevation,
+            comment=comment,
+            serial=serial,
+        )
+        for existing in list(net.findall(qname("Station"))) + [node for _, node in planned]:
+            if existing.get("code") != code:
+                continue
+            if _overlaps(existing.get("startDate", ""), existing.get("endDate"), start, end):
+                raise InventoryError("같은 관측소의 기간이 겹칩니다", 400, "E_EPOCH_OVERLAP")
+        planned.append(
+            (
+                {
+                    "code": code,
+                    "site_name": site_name,
+                    "start": start,
+                    "end": end,
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "elevation": elevation,
+                },
+                clone,
+            )
+        )
+
+    for info, clone in planned:
+        net.append(clone)
+        created.append(info)
+    return dumps(root), created, skipped
+
+
+def _clone_number(value: object, fallback: float | None, label: str) -> float | None:
+    if value is None or value == "":
+        return fallback
+    try:
+        return float(str(value).strip())
+    except (TypeError, ValueError) as exc:
+        raise InventoryError(f"{label} 값이 올바르지 않습니다", 400) from exc
+
+
+def _clone_station_el(
+    source: etree._Element,
+    *,
+    code: str,
+    site_name: str,
+    start: str,
+    end: str | None,
+    latitude: float,
+    longitude: float,
+    elevation: float,
+    comment: str,
+    serial: str,
+) -> etree._Element:
+    clone = namespaced_copy(source)
+    clone.set("code", code)
+    clone.set("startDate", start)
+    _set_end_date(clone, end)
+    if latitude is not None and (latitude < -90 or latitude > 90):
+        raise InventoryError("위도는 -90 ~ 90 이어야 합니다", 400, "E_LAT")
+    if longitude is not None and (longitude < -180 or longitude > 180):
+        raise InventoryError("경도는 -180 ~ 180 이어야 합니다", 400, "E_LON")
+    if end:
+        start_t = _parse_time(start)
+        end_t = _parse_time(end)
+        if start_t and end_t and end_t <= start_t:
+            raise InventoryError("종료가 시작보다 앞섭니다", 400, "E_TIME_ORDER")
+    set_child(clone, "Latitude", str(latitude))
+    set_child(clone, "Longitude", str(longitude))
+    set_child(clone, "Elevation", str(elevation))
+    site = clone.find(qname("Site"))
+    if site is None:
+        site = el("Site")
+        clone.append(site)
+    set_child(site, "Name", site_name)
+    extras = [text for text in (comment, serial) if text]
+    for cha in clone.findall(qname("Channel")):
+        cha.set("startDate", start)
+        _set_end_date(cha, end)
+        set_child(cha, "Latitude", str(latitude))
+        set_child(cha, "Longitude", str(longitude))
+        set_child(cha, "Elevation", str(elevation))
+        for text in extras:
+            node = el("Comment")
+            node.append(el("Value", text))
+            cha.append(node)
+    return clone
+
+
 def iter_stations(xml: str, network: str | None = None) -> list[etree._Element]:
     root = parse_root(xml)
     stations: list[etree._Element] = []

@@ -7,13 +7,31 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..access import (
+    add_member,
+    member_out,
+    require_creator,
+    require_edit,
+    require_manage_members,
+    require_view,
+    visible_projects,
+)
 from ..db import get_db
 from ..inventory.collab import get_draft
 from ..inventory.locks import LockError, acquire_lock
-from ..inventory.service import apply_nrl, create_project, import_project, original_asset, project_out, run_wizard
+from ..inventory.service import (
+    apply_nrl,
+    create_project,
+    import_project,
+    original_asset,
+    project_out,
+    run_clone,
+    run_wizard,
+    write_audit,
+)
 from ..inventory.validator import has_errors, validate_project, xml_filename
 from ..inventory.xmlbuild import InventoryError
-from ..models import Project, User
+from ..models import ProjectMember, User
 from ..routers.auth import current_user
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -25,13 +43,6 @@ def _http_inv(exc: InventoryError) -> NoReturn:
 
 def _http_lock(exc: LockError) -> NoReturn:
     raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
-
-
-def _owned(db: Session, project_id: int, user: User) -> Project:
-    project = db.get(Project, project_id)
-    if project is None:
-        raise HTTPException(status_code=404, detail="프로젝트가 없습니다")
-    return project
 
 
 class ProjectIn(BaseModel):
@@ -75,9 +86,33 @@ class ImportIn(BaseModel):
     operator: str | None = Field(default=None, max_length=128)
 
 
+class CloneRowIn(BaseModel):
+    code: str | None = None
+    site_name: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    elevation: float | None = None
+    start: str | None = None
+    end: str | None = None
+    comment: str | None = None
+    serial: str | None = None
+
+
+class CloneIn(BaseModel):
+    source_station: str = Field(min_length=1, max_length=5)
+    source_start: str = Field(min_length=1, max_length=40)
+    rows: list[CloneRowIn] = Field(default_factory=list)
+    paste: str | None = None
+
+
+class MemberIn(BaseModel):
+    user_id: int
+    role: str = Field(min_length=1, max_length=32)
+
+
 @router.get("")
 def list_projects(db: Session = Depends(get_db), user: User = Depends(current_user)) -> dict:
-    rows = db.scalars(select(Project).order_by(Project.updated_at.desc())).all()
+    rows = visible_projects(db, user)
     return {"projects": [project_out(row, user, db=db) for row in rows]}
 
 
@@ -85,6 +120,7 @@ def list_projects(db: Session = Depends(get_db), user: User = Depends(current_us
 def post_project(
     body: ProjectIn, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
+    require_creator(user)
     try:
         project = create_project(
             db,
@@ -105,6 +141,7 @@ def post_project(
 def post_import(
     body: ImportIn, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
+    require_creator(user)
     try:
         project = import_project(
             db,
@@ -126,7 +163,7 @@ def post_import(
 def get_project(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_view(db, project_id, user)
     return project_out(project, user, db=db)
 
 
@@ -134,7 +171,7 @@ def get_project(
 def get_original(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ):
-    project = _owned(db, project_id, user)
+    project = require_view(db, project_id, user)
     asset = original_asset(db, project.id)
     if asset is None:
         raise HTTPException(status_code=404, detail="원본 파일이 없습니다")
@@ -153,7 +190,7 @@ def get_project_xml(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ):
-    project = _owned(db, project_id, user)
+    project = require_view(db, project_id, user)
     row = get_draft(db, project.id, user.id)
     use_draft = source == "draft" and row is not None
     xml = row.xml_text if use_draft else project.xml_text
@@ -174,7 +211,7 @@ def get_project_xml(
 def post_export_seed(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_edit(db, project_id, user)
     row = get_draft(db, project.id, user.id)
     xml = row.xml_text if row is not None else project.xml_text
     issues = validate_project(xml, project.network_code, project.id, mode="full")
@@ -200,9 +237,29 @@ def post_wizard(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_edit(db, project_id, user)
     try:
         result = run_wizard(db, user, project, body.model_dump())
+        db.commit()
+    except InventoryError as exc:
+        db.rollback()
+        _http_inv(exc)
+    except LockError as exc:
+        db.rollback()
+        _http_lock(exc)
+    return result
+
+
+@router.post("/{project_id}/clone-stations")
+def post_clone_stations(
+    project_id: int,
+    body: CloneIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> dict:
+    project = require_edit(db, project_id, user)
+    try:
+        result = run_clone(db, user, project, body.model_dump())
         db.commit()
     except InventoryError as exc:
         db.rollback()
@@ -220,7 +277,7 @@ def post_apply_nrl(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_edit(db, project_id, user)
     try:
         result = apply_nrl(db, user, project, body.model_dump())
         db.commit()
@@ -240,7 +297,7 @@ def post_project_lock(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_edit(db, project_id, user)
     try:
         lock = acquire_lock(db, project_id=project.id, station_path=station_path, user=user)
         db.commit()
@@ -248,3 +305,73 @@ def post_project_lock(
         db.rollback()
         _http_lock(exc)
     return lock
+
+
+@router.get("/{project_id}/members")
+def list_members(
+    project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
+) -> dict:
+    project = require_view(db, project_id, user)
+    rows = db.scalars(
+        select(ProjectMember).where(ProjectMember.project_id == project.id)
+    ).all()
+    users = {row.id: row for row in db.scalars(select(User)).all()}
+    return {
+        "project_id": project.id,
+        "members": [member_out(row, users[row.user_id]) for row in rows if row.user_id in users],
+    }
+
+
+@router.put("/{project_id}/members")
+def put_member(
+    project_id: int,
+    body: MemberIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> dict:
+    project = require_manage_members(db, project_id, user)
+    member = db.get(User, body.user_id)
+    if member is None:
+        raise HTTPException(status_code=404, detail="사용자가 없습니다")
+    row = add_member(db, project, member, body.role)
+    write_audit(
+        db,
+        project_id=project.id,
+        actor=user.username,
+        action="member",
+        target=member.username,
+        summary=f"{member.username} 멤버 {row.role}",
+    )
+    db.commit()
+    return member_out(row, member)
+
+
+@router.delete("/{project_id}/members/{user_id}")
+def delete_member(
+    project_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> dict:
+    project = require_manage_members(db, project_id, user)
+    row = db.scalar(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == user_id,
+        )
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="멤버가 없습니다")
+    member = db.get(User, user_id)
+    name = member.username if member is not None else str(user_id)
+    db.delete(row)
+    write_audit(
+        db,
+        project_id=project.id,
+        actor=user.username,
+        action="member_remove",
+        target=name,
+        summary=f"{name} 멤버 해제",
+    )
+    db.commit()
+    return {"ok": True}

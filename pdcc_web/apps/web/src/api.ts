@@ -1,4 +1,11 @@
-export type Me = { username: string; role: string };
+export type Me = {
+  username: string;
+  role: string;
+  display_name?: string;
+  active?: boolean;
+  org_id?: number | null;
+  org_name?: string | null;
+};
 export type Health = { ok: boolean; db: boolean; redis: boolean };
 export type WizardQuestion = { key: string; question: string; options: string[] };
 export type WizardMatch = {
@@ -79,6 +86,8 @@ export type Project = {
   can_undo?: boolean;
   draft?: { updated_at: string | null; base_updated_at: string; conflict: boolean } | null;
   has_original?: boolean;
+  my_role?: string | null;
+  can_edit?: boolean;
 };
 export type EquipmentSet = {
   id: number;
@@ -126,6 +135,29 @@ export type NrlSearchHit = {
   manufacturer: string;
   model: string | null;
   via: string;
+};
+export type OrgInfo = {
+  id: number;
+  name: string;
+  user_count: number;
+  created_at: string | null;
+};
+export type UserInfo = {
+  id: number;
+  username: string;
+  display_name: string;
+  role: string;
+  active: boolean;
+  org_id: number | null;
+  org_name: string | null;
+  created_at: string | null;
+};
+export type MemberInfo = {
+  user_id: number;
+  username: string;
+  display_name: string;
+  role: string;
+  active: boolean;
 };
 export type NrlStatus = {
   mode: string;

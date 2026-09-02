@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -54,3 +54,30 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def ensure_schema(engine: Engine | None = None) -> None:
+    from . import models as _models  # noqa: F401
+
+    eng = engine or get_engine()
+    Base.metadata.create_all(bind=eng)
+    inspector = inspect(eng)
+    if "users" not in inspector.get_table_names():
+        return
+    cols = {column["name"] for column in inspector.get_columns("users")}
+    dialect = eng.dialect.name
+    stmts: list[str] = []
+    if "active" not in cols:
+        default = "1" if dialect == "sqlite" else "TRUE"
+        stmts.append(f"ALTER TABLE users ADD COLUMN active BOOLEAN DEFAULT {default}")
+    if "display_name" not in cols:
+        stmts.append("ALTER TABLE users ADD COLUMN display_name VARCHAR(128)")
+    if "org_id" not in cols:
+        stmts.append("ALTER TABLE users ADD COLUMN org_id INTEGER")
+    if not stmts:
+        return
+    with eng.begin() as conn:
+        for stmt in stmts:
+            conn.execute(text(stmt))
+        if "active" not in cols:
+            conn.execute(text("UPDATE users SET active = TRUE WHERE active IS NULL"))
