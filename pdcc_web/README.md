@@ -61,6 +61,22 @@ NRL은 API 기동 시 호출하지 않습니다.
 |------|------|------|
 | `LOCK_TTL_SEC` | `300` | 관측소 epoch 잠금 TTL |
 
+## M3 RESP · dataless SEED · 작업 큐
+
+위저드로 만든 관측소에서 RESP(채널 또는 zip)와 dataless SEED를 내보냅니다. 변환은 Redis 큐와 `apps/worker`가 처리하고, API는 바로 작업 상태를 돌려줍니다. 저장 StationXML은 `Inventory.write()`로 다시 쓰지 않습니다. 코멘트 70자·FIR 25자 등 잘림은 확인 후에만 진행합니다. 자세한 내용: [`docs/adr/0005-seed-resp-queue.md`](docs/adr/0005-seed-resp-queue.md).
+
+```bash
+cd pdcc_web/apps/api
+export DATABASE_URL=postgresql+psycopg://pdcc:pdcc@127.0.0.1:5432/pdcc
+export REDIS_URL=redis://127.0.0.1:6379/0
+.venv/bin/python -m app.jobs.runner
+```
+
+| 이름 | 기본 | 설명 |
+|------|------|------|
+| `EXPORT_DIR` | `/tmp/pdcc-exports` | 작업 산출물 디렉터리 |
+
+이번 슬라이스에 넣지 않은 것: SEED/RESP 가져오기, 공식 validator sidecar, 관측소 복제 표, 대량 검증. 운영 compose는 M4입니다.
 ## M4 운영
 
 비밀·헬스·StationXML 백업·감사 로그. SEED/RESP 작업 큐는 M3. 자세한 내용: [`docs/adr/0006-operations.md`](docs/adr/0006-operations.md), [`infra/runbook.md`](infra/runbook.md).

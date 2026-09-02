@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     nrl_timeout_sec: float = 30.0
     nrl_cache_ttl_sec: int = 3600
     lock_ttl_sec: int = 300
+    export_dir: str = "/tmp/pdcc-exports"
+    job_poll_sec: int = 5
 
     @field_validator("session_cookie_secure", mode="before")
     @classmethod

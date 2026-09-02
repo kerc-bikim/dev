@@ -78,6 +78,34 @@ class StationLock(Base):
     heartbeat_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class ExportJob(Base):
+    __tablename__ = "export_jobs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    username: Mapped[str] = mapped_column(String(64), nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    scope: Mapped[str] = mapped_column(String(16), nullable=False, default="project")
+    station: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    start_time: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    nslc: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued")
+    progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    message: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    error: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    filename: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    media_type: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    artifact_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    warnings_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    losses_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    drops_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    xml_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 

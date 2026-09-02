@@ -131,7 +131,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <h1>PDCC Web</h1>
-          <small>NRL 위저드 · StationXML 편집기</small>
+          <small>NRL 위저드 · StationXML · RESP/SEED</small>
         </div>
         {me ? (
           <div className="controls">

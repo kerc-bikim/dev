@@ -13,6 +13,7 @@ from .nrl.client import set_nrl_client
 from .routers.auth import router as auth_router
 from .routers.collab import router as collab_router
 from .routers.health import router as health_router
+from .routers.jobs import router as export_router
 from .routers.locks import router as locks_router
 from .routers.nrl import router as nrl_router
 from .routers.ops import purge_expired_audit, router as ops_router
