@@ -367,25 +367,31 @@ def _first(root: etree._Element, name: str) -> etree._Element | None:
     return root.find(f".//{{{FDSN_NS}}}{name}")
 
 
+def _response(root: etree._Element) -> etree._Element | None:
+    if etree.QName(root).localname == "Response":
+        return root
+    return _first(root, "Response")
+
+
 def _cascade_stationxml(payloads: list[bytes]) -> bytes:
     try:
         roots = [etree.fromstring(payload) for payload in payloads]
     except etree.XMLSyntaxError as exc:
         raise NrlError("NRL zip StationXML이 올바르지 않습니다", 503) from exc
     output = copy.deepcopy(roots[0])
-    output_response = _first(output, "Response")
+    output_response = _response(output)
     if output_response is None:
         raise NrlError("NRL zip StationXML에 Response가 없습니다", 503)
     stages = output_response.findall(f"{{{FDSN_NS}}}Stage")
     next_stage = len(stages) + 1
     sensitivities: list[etree._Element] = []
     for root in roots:
-        response = _first(root, "Response")
+        response = _response(root)
         sensitivity = _first(response, "InstrumentSensitivity") if response is not None else None
         if sensitivity is not None:
             sensitivities.append(sensitivity)
     for root in roots[1:]:
-        response = _first(root, "Response")
+        response = _response(root)
         if response is None:
             raise NrlError("NRL zip StationXML에 Response가 없습니다", 503)
         for stage in response.findall(f"{{{FDSN_NS}}}Stage"):
