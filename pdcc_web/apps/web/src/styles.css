@@ -225,6 +225,27 @@ body {
 }
 .member-btn { justify-self: start; }
 .admin-page { display: grid; gap: 16px; }
+.dash-badges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.dash-stats div {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+}
+.dash-stats span { color: var(--muted); font-size: 12px; }
+.dash-stats strong { font-size: 22px; }
+.dash-nrl { margin: 4px 0; }
+.admin-page h4 { margin: 8px 0 0; font-size: 13px; color: var(--muted); font-weight: 600; }
+@media (max-width: 700px) {
+  .dash-stats { grid-template-columns: minmax(0, 1fr); }
+}
 .project-create select, .admin-page select {
   background: var(--input-bg);
   color: var(--fg);

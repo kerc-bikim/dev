@@ -13,6 +13,7 @@ from ..access import (
     require_admin,
     user_out,
 )
+from ..dashboard import build_dashboard
 from ..db import get_db
 from ..inventory.service import write_audit
 from ..models import Organization, Project, ProjectMember, User, hash_password
@@ -61,6 +62,11 @@ def _org_or_404(db: Session, org_id: int | None) -> Organization:
     if org is None:
         raise HTTPException(status_code=404, detail="기관이 없습니다")
     return org
+
+
+@router.get("/dashboard")
+def admin_dashboard(db: Session = Depends(get_db), _admin: User = Depends(_admin)) -> dict:
+    return build_dashboard(db)
 
 
 @router.get("/orgs")
