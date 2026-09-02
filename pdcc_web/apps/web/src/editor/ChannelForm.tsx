@@ -116,7 +116,7 @@ export function ChannelForm({
       <p className="hint">칸을 벗어나면 초안에만 저장됩니다.</p>
       <label>
         <span>
-          코드 <Hint text="BHE = Broadband / High gain / East" />
+          코드 <Hint text="3자 SEED 코드입니다. BHE = Broadband / High gain / East." chapter="chapter-7" />
         </span>
         <input
           ref={first}
@@ -128,7 +128,9 @@ export function ChannelForm({
         />
       </label>
       <label>
-        location
+        <span>
+          location <Hint text="0–2자 위치 코드이며 공백과 00은 서로 다릅니다." chapter="chapter-7" />
+        </span>
         <input
           data-field="location"
           value={location}
@@ -139,7 +141,8 @@ export function ChannelForm({
       </label>
       <label>
         <span>
-          깊이 (m) <Hint text="지면 기준 센서 깊이(m). 고도에 더하면 지표면 고도입니다." />
+          깊이 (m){" "}
+          <Hint text="지면 아래 센서 깊이(m)이며 0 이상입니다." chapter="chapter-7" />
         </span>
         <input
           data-field="depth"
@@ -150,7 +153,9 @@ export function ChannelForm({
         />
       </label>
       <label>
-        방위각
+        <span>
+          방위각 <Hint text="북쪽 0°, 동쪽 90° 기준의 수평 방향입니다." chapter="chapter-7" />
+        </span>
         <input
           data-field="azimuth"
           value={azimuth}
@@ -160,7 +165,9 @@ export function ChannelForm({
         />
       </label>
       <label>
-        경사
+        <span>
+          경사 <Hint text="수평 0°, 위 +90°, 아래 -90°입니다." chapter="chapter-7" />
+        </span>
         <input
           data-field="dip"
           value={dip}
@@ -170,7 +177,9 @@ export function ChannelForm({
         />
       </label>
       <label>
-        샘플링 (Hz)
+        <span>
+          샘플링 (Hz) <Hint text="기록계 설정과 일치하는 최종 샘플률입니다." chapter="chapter-7" />
+        </span>
         <input
           data-field="sample_rate"
           value={sampleRate}
@@ -181,7 +190,11 @@ export function ChannelForm({
       </label>
       <label>
         <span>
-          감도 <Hint text="InstrumentSensitivity. 공식 검증 412는 이 값과 단계 게인 곱을 비교합니다." />
+          감도{" "}
+          <Hint
+            text="InstrumentSensitivity이며 공식 검증 412는 단계 게인 곱과 비교합니다."
+            chapter="chapter-7"
+          />
         </span>
         <input
           data-field="sensitivity"

@@ -132,7 +132,9 @@ export function StationForm({
       <h3>관측소 {station.code}</h3>
       <p className="hint">칸을 벗어나면 초안에만 저장됩니다. 서버 버전은 저장을 눌러야 바뀝니다.</p>
       <label>
-        사이트명
+        <span>
+          사이트명 <Hint text="현장에서 쓰는 관측소 이름입니다." chapter="chapter-6" />
+        </span>
         <input
           data-field="site_name"
           value={siteName}
@@ -142,12 +144,18 @@ export function StationForm({
         />
       </label>
       <label>
-        시작
+        <span>
+          시작 <Hint text="관측소 epoch의 시작일이며 편집기에서는 바꿀 수 없습니다." chapter="chapter-6" />
+        </span>
         <input data-field="start" value={datePart(station.start)} disabled />
       </label>
       <label>
         <span>
-          종료일 <Hint text="현재 운영이면 비워 두세요. 먼 미래 날짜를 넣지 마세요." />
+          종료일{" "}
+          <Hint
+            text="현재 운영이면 비워 두세요. 먼 미래 날짜를 넣지 마세요."
+            chapter="chapter-6"
+          />
         </span>
         <input
           data-field="end"
@@ -159,7 +167,9 @@ export function StationForm({
         />
       </label>
       <label>
-        위도
+        <span>
+          위도 <Hint text="WGS84 십진도 -90~90 범위입니다." chapter="chapter-6" />
+        </span>
         <input
           data-field="latitude"
           value={latitude}
@@ -174,7 +184,9 @@ export function StationForm({
       </label>
       {latErr ? <p className="error">E_LAT · {latErr}</p> : null}
       <label>
-        경도
+        <span>
+          경도 <Hint text="WGS84 십진도 -180~180 범위입니다." chapter="chapter-6" />
+        </span>
         <input
           data-field="longitude"
           value={longitude}
@@ -184,7 +196,9 @@ export function StationForm({
         />
       </label>
       <label>
-        고도 (m)
+        <span>
+          고도 (m) <Hint text="평균 해수면 기준 관측소 지표 고도(m)입니다." chapter="chapter-6" />
+        </span>
         <input
           data-field="elevation"
           value={elevation}

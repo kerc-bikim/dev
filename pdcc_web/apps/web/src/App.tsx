@@ -3,6 +3,7 @@ import { readError, type Health, type Me, type NrlStatus } from "./api";
 import { AdminPage } from "./editor/AdminPage";
 import { EditorPage } from "./editor/EditorPage";
 import { ProjectHome } from "./editor/ProjectHome";
+import { UserManual } from "./help/UserManual";
 import { JobBell } from "./jobs/JobBell";
 
 export default function App() {
@@ -17,6 +18,9 @@ export default function App() {
   const [projectId, setProjectId] = useState<number | null>(null);
   const [adminView, setAdminView] = useState(
     () => window.location.pathname.startsWith("/admin")
+  );
+  const [helpView, setHelpView] = useState(
+    () => window.location.pathname.startsWith("/help/user")
   );
 
   const refreshHealth = useCallback(() => {
@@ -54,6 +58,7 @@ export default function App() {
   useEffect(() => {
     function onPop() {
       setAdminView(window.location.pathname.startsWith("/admin"));
+      setHelpView(window.location.pathname.startsWith("/help/user"));
     }
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -124,13 +129,32 @@ export default function App() {
   function openAdmin() {
     window.history.pushState({}, "", "/admin");
     setAdminView(true);
+    setHelpView(false);
     setProjectId(null);
   }
 
   function openHome() {
     window.history.pushState({}, "", "/");
     setAdminView(false);
+    setHelpView(false);
     setProjectId(null);
+  }
+
+  function openHelp() {
+    if (helpView) return;
+    window.history.pushState({ fromApp: true }, "", "/help/user");
+    setAdminView(false);
+    setHelpView(true);
+  }
+
+  function closeHelp() {
+    if (window.history.state?.fromApp) {
+      window.history.back();
+      return;
+    }
+    window.history.replaceState({}, "", "/");
+    setHelpView(false);
+    setAdminView(false);
   }
 
   useEffect(() => {
@@ -147,8 +171,12 @@ export default function App() {
           <h1>PDCC Web</h1>
           <small>NRL 위저드 · StationXML 편집기</small>
         </div>
-        {me ? (
-          <div className="controls">
+        <div className="controls">
+          <button type="button" onClick={openHelp} aria-current={helpView ? "page" : undefined}>
+            도움말
+          </button>
+          {me ? (
+            <>
             <span className="badge ok">
               {me.username} · {me.role === "viewer" ? "조회자" : me.role === "admin" ? "관리자" : "편집자"}
             </span>
@@ -161,11 +189,16 @@ export default function App() {
             <button type="button" onClick={onLogout} disabled={busy}>
               로그아웃
             </button>
-          </div>
-        ) : null}
+            </>
+          ) : null}
+        </div>
       </header>
 
-      {me ? (
+      {helpView ? (
+        <main className="main">
+          <UserManual onClose={closeHelp} />
+        </main>
+      ) : me ? (
         <main className="main">
           {showAdmin ? (
             <AdminPage onHome={openHome} />

@@ -343,7 +343,12 @@ body {
   font-size: 11px;
   text-decoration: none;
   color: var(--muted);
-  cursor: help;
+  cursor: pointer;
+}
+.field-hint:hover, .field-hint:focus {
+  color: var(--accent);
+  border-color: var(--accent);
+  outline: none;
 }
 .issue-list { list-style: none; padding: 0; margin: 0; }
 .issue-list li { margin: 4px 0; }
@@ -488,3 +493,67 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .status-bar .warn { color: #d29922; font-weight: 600; }
 .status-bar .bad { color: var(--danger); font-weight: 600; }
 .status-bar .muted { color: var(--muted); }
+
+.manual {
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+.manual-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+}
+.manual-heading h2 { margin: 0; font-size: 24px; }
+.manual-heading .hint { margin: 6px 0 0; }
+.manual-kicker {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  margin: 0 0 4px;
+}
+.manual-toc, .manual-chapter {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+.manual-toc ol {
+  columns: 2;
+  margin: 10px 0 0;
+  padding-left: 24px;
+}
+.manual-toc li { break-inside: avoid; margin: 4px 0; }
+.manual a { color: var(--accent); }
+.manual-chapter { scroll-margin-top: 16px; }
+.manual-chapter h3 { margin: 0 0 10px; font-size: 17px; }
+.manual-chapter p { margin: 8px 0; }
+.manual-example {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--bg);
+}
+.manual-fields {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.25fr) minmax(0, 1fr);
+  margin: 0;
+}
+.manual-fields div { display: contents; }
+.manual-fields dt, .manual-fields dd {
+  border-bottom: 1px solid var(--border);
+  padding: 7px 8px;
+  margin: 0;
+}
+.manual-fields dt { color: var(--accent); font-weight: 650; }
+.manual-scenario { padding-left: 24px; }
+.manual-scenario li { margin: 7px 0; }
+.manual-top-link { justify-self: end; margin-bottom: 12px; }
+@media (max-width: 700px) {
+  .manual-toc ol { columns: 1; }
+  .manual-heading { align-items: stretch; flex-direction: column; }
+  .manual-heading button { align-self: start; }
+}
