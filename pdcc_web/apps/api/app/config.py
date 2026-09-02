@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     nrl_offline_zip: str = ""
     nrl_library_timeout_sec: float = 900.0
     data_dir: str = "."
+    backup_status_file: str = ""
     lock_ttl_sec: int = 300
     validator_jar: str = ""
     validator_timeout_sec: float = 60.0

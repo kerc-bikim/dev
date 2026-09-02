@@ -40,6 +40,7 @@ cd pdcc_web/apps/web && npm install && npm run dev -- --host 0.0.0.0 --port 3000
 | `DATABASE_URL` | `postgresql+psycopg://pdcc:pdcc@postgres:5432/pdcc` | SQLAlchemy URL |
 | `REDIS_URL` | `redis://redis:6379/0` | 세션·헬스 |
 | `DEV_BOOTSTRAP_ADMIN` | `false` | `admin`/`admin` 허용 |
+| `BACKUP_STATUS_FILE` | `${DATA_DIR}/backup-last-success` | 검증된 마지막 백업 성공 시각 표식 |
 
 ## M1 NRL
 
@@ -88,6 +89,10 @@ NRL은 API 기동 시 호출하지 않습니다. 업스트림이 죽거나 URL�
 ## M0 사용자·역할
 
 관리자(`/admin`)가 기관과 조회자·편집자를 만듭니다. 프로젝트에 속하지 않으면 목록에 없고, 조회자는 StationXML만 받습니다 (`docs/adr/0014-users-roles.md`). `/admin` 대시보드는 NRL 상태, 실패 작업 최근 10개, 원본·export·NRL zip 디스크, 10분 이상 남은 잠금을 보여 줍니다. 빨간 배지는 NRL 장애·실패 작업·디스크 90% 이상만 씁니다 (`docs/adr/0020-admin-dashboard.md`).
+
+대시보드의 **마지막 백업 성공**은 검증된 PostgreSQL 덤프가 남긴 표식만 읽습니다. 백업
+스크립트와 실제 복구 순서는 [`docs/restore.md`](docs/restore.md), 결정은
+[`docs/adr/0022-backup-confirmation.md`](docs/adr/0022-backup-confirmation.md)에 있습니다.
 
 | 이름 | 기본 | 설명 |
 |------|------|------|

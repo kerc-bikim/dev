@@ -185,3 +185,33 @@ def test_dashboard_nrl_zip_falls_back_to_cache_bytes(client, redis_client, monke
     assert body["nrl"]["badge"] == "캐시 사용"
     assert body["badges"]["nrl"] is False
     assert body["disk"]["nrl_zip_bytes"] == len(blob)
+
+
+def test_dashboard_reports_last_successful_backup(client, tmp_path, monkeypatch):
+    _enable_admin(client)
+    marker = tmp_path / "backup-last-success"
+    marker.write_text("2026-09-02T07:15:30+09:00\n", encoding="utf-8")
+    monkeypatch.setattr(settings, "backup_status_file", str(marker))
+
+    response = client.get("/api/admin/dashboard")
+
+    assert response.status_code == 200, response.text
+    assert response.json()["backup"] == {
+        "last_success_at": "2026-09-01T22:15:30Z",
+        "confirmed": True,
+    }
+
+
+def test_dashboard_does_not_confirm_missing_or_invalid_backup(client, tmp_path, monkeypatch):
+    _enable_admin(client)
+    marker = tmp_path / "backup-last-success"
+    monkeypatch.setattr(settings, "backup_status_file", str(marker))
+
+    missing = client.get("/api/admin/dashboard")
+    assert missing.status_code == 200, missing.text
+    assert missing.json()["backup"] == {"last_success_at": None, "confirmed": False}
+
+    marker.write_text("backup started", encoding="utf-8")
+    invalid = client.get("/api/admin/dashboard")
+    assert invalid.status_code == 200, invalid.text
+    assert invalid.json()["backup"] == {"last_success_at": None, "confirmed": False}

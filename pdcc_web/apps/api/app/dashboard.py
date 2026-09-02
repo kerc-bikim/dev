@@ -1,10 +1,10 @@
-"""M4-01 관리자 대시보드. NRL·실패 작업·디스크만 한 화면에 모은다."""
+"""M4 관리자 대시보드. NRL·작업·디스크·백업 상태를 한 화면에 모은다."""
 
 from __future__ import annotations
 
 import os
 import shutil
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy import func, select
@@ -21,6 +21,7 @@ EXPORT_JOB_KINDS = ("dataless", "resp")
 ORIGINAL_KIND = "original"
 EXPORT_KIND = "job_export"
 DISK_WARN_PERCENT = 90.0
+BACKUP_MARKER_NAME = "backup-last-success"
 
 
 def _as_aware(value):
@@ -74,6 +75,22 @@ def _disk_usage() -> dict:
         "percent": round(percent, 1),
         "over_90": percent >= DISK_WARN_PERCENT,
     }
+
+
+def _backup_status() -> dict:
+    configured = (settings.backup_status_file or "").strip()
+    marker = Path(configured) if configured else Path(settings.data_dir or ".") / BACKUP_MARKER_NAME
+    try:
+        raw = marker.read_text(encoding="utf-8").strip()
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return {
+            "last_success_at": parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "confirmed": True,
+        }
+    except (OSError, UnicodeError, ValueError):
+        return {"last_success_at": None, "confirmed": False}
 
 
 def _failed_jobs(db: Session) -> list[dict]:
@@ -150,5 +167,6 @@ def build_dashboard(db: Session) -> dict:
             "exports_bytes": exports,
             "nrl_zip_bytes": nrl_zip,
         },
+        "backup": _backup_status(),
         "badges": badges,
     }
