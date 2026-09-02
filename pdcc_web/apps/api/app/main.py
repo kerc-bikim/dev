@@ -11,6 +11,7 @@ from .db import Base, SessionLocal, configure_engine, get_engine
 from .middleware import RequestContextMiddleware
 from .nrl.client import set_nrl_client
 from .routers.auth import router as auth_router
+from .routers.collab import router as collab_router
 from .routers.health import router as health_router
 from .routers.locks import router as locks_router
 from .routers.nrl import router as nrl_router

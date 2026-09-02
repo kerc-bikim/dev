@@ -1,5 +1,5 @@
-import { FormEvent, useCallback, useMemo, useState } from "react";
-import { apiPost, type Project } from "../api";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { apiGet, apiPost, type EquipmentSet, type Project } from "../api";
 import { NrlPanel } from "../nrl/NrlPanel";
 
 const PATTERNS: { label: string; channels: string[] }[] = [
@@ -38,9 +38,19 @@ export function StationWizard({
   const [datalogger, setDatalogger] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sets, setSets] = useState<EquipmentSet[]>([]);
+  const [saveSet, setSaveSet] = useState(false);
+  const [setName, setSetName] = useState("광대역 표준세트");
+  const [staleWarn, setStaleWarn] = useState<string | null>(null);
 
   const onSensor = useCallback((value: string | null) => setSensor(value), []);
   const onDatalogger = useCallback((value: string | null) => setDatalogger(value), []);
+
+  useEffect(() => {
+    apiGet<{ sets: EquipmentSet[] }>("/api/equipment-sets")
+      .then((data) => setSets(data.sets))
+      .catch(() => undefined);
+  }, []);
 
   const preview = useMemo(
     () =>
@@ -52,6 +62,19 @@ export function StationWizard({
       }),
     [channels]
   );
+
+  function applySet(item: EquipmentSet) {
+    setSensor(item.sensor_instconfig);
+    setDatalogger(item.datalogger_instconfig || null);
+    setChannels(item.channels.length ? item.channels : ["BHZ", "BHN", "BHE"]);
+    setNrlLater(false);
+    setStaleWarn(
+      item.stale
+        ? `이 세트는 옛 NRL 응답입니다 (${item.nrl_version}). 최신 카탈로그와 다를 수 있습니다.`
+        : null
+    );
+    setStep(6);
+  }
 
   function next() {
     setError(null);
@@ -80,6 +103,14 @@ export function StationWizard({
         sensor_instconfig: nrlLater ? null : sensor,
         datalogger_instconfig: nrlLater ? null : datalogger,
       });
+      if (saveSet && sensor) {
+        await apiPost("/api/equipment-sets", {
+          name: setName,
+          sensor_instconfig: sensor,
+          datalogger_instconfig: datalogger || "",
+          channels,
+        });
+      }
       onDone(result.project);
     } catch (err) {
       setError((err as Error).message);
@@ -125,11 +156,7 @@ export function StationWizard({
             <input value={startTime} onChange={(e) => setStartTime(e.target.value)} />
           </label>
           <label className="check">
-            <input
-              type="checkbox"
-              checked={current}
-              onChange={(e) => setCurrent(e.target.checked)}
-            />
+            <input type="checkbox" checked={current} onChange={(e) => setCurrent(e.target.checked)} />
             현재 운영 (종료 없음)
           </label>
           {current ? null : (
@@ -162,6 +189,17 @@ export function StationWizard({
       ) : null}
       {step === 4 ? (
         <>
+          {sets.length ? (
+            <div className="set-list">
+              <p className="hint">내 장비 세트</p>
+              {sets.map((item) => (
+                <button key={item.id} type="button" onClick={() => applySet(item)}>
+                  {item.name}
+                  {item.stale ? " · 옛 NRL" : ""}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <label className="check">
             <input
               type="checkbox"
@@ -216,6 +254,7 @@ export function StationWizard({
       ) : null}
       {step === 6 ? (
         <>
+          {staleWarn ? <p className="error">{staleWarn}</p> : null}
           <p className="mono">
             {project.network_code}.{station} {startTime}
             {current ? " ~ 현재" : ` ~ ${endTime}`}
@@ -248,6 +287,16 @@ export function StationWizard({
               {datalogger ? ` : ${datalogger}` : ""}
             </p>
           )}
+          <label className="check">
+            <input type="checkbox" checked={saveSet} onChange={(e) => setSaveSet(e.target.checked)} />
+            이 조합을 내 장비 세트로 저장
+          </label>
+          {saveSet ? (
+            <label>
+              세트 이름
+              <input value={setName} onChange={(e) => setSetName(e.target.value)} />
+            </label>
+          ) : null}
         </>
       ) : null}
       {error ? <p className="error">{error}</p> : null}
