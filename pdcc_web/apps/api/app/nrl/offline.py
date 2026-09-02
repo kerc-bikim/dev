@@ -197,15 +197,22 @@ def _build_index(path: Path) -> ArchiveIndex:
                 manufacturer = ManufacturerEntry(manufacturer_name)
                 for model_name, model_tree in _index_sections(archive, manufacturer_index):
                     manufacturer.models[model_name] = ModelEntry(model_name, model_tree)
-                    for row in _configuration_rows(
-                        archive,
-                        model_tree,
-                        element=element.name,
-                        manufacturer=manufacturer.name,
-                    ):
-                        responses[row["instconfig"]] = row["_response_path"]
                 element.manufacturers[manufacturer.name] = manufacturer
             elements[element.name] = element
+        root_path = PurePosixPath(root)
+        for name in names:
+            member = PurePosixPath(name)
+            try:
+                relative = member.relative_to(root_path)
+            except ValueError:
+                continue
+            if len(relative.parts) != 3 or member.suffix.lower() != ".xml":
+                continue
+            element_name, manufacturer_name, filename = relative.parts
+            stem = filename[: -len(".response.xml")] if filename.endswith(
+                ".response.xml"
+            ) else PurePosixPath(filename).stem
+            responses[f"{element_name}_{manufacturer_name}_{stem}"] = name
         if not elements or not responses:
             raise NrlError("NRL zip에 탐색 가능한 응답이 없습니다", 503)
         return ArchiveIndex(root=root, elements=elements, response_paths=responses)
