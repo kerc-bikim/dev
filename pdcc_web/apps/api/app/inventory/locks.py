@@ -150,6 +150,18 @@ def release_lock(
         db.delete(row)
 
 
+def _remaining_sec(expires_at: str | datetime | None) -> int:
+    if expires_at is None:
+        return 0
+    if isinstance(expires_at, str):
+        expires = datetime.fromisoformat(expires_at)
+    else:
+        expires = expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    return max(0, int((expires - _now()).total_seconds()))
+
+
 def project_locks(db: Session, project_id: int) -> list[dict]:
     rows = db.scalars(select(StationLock).where(StationLock.project_id == project_id)).all()
     out: list[dict] = []
@@ -162,4 +174,29 @@ def project_locks(db: Session, project_id: int) -> list[dict]:
             continue
         live["mine"] = None
         out.append(live)
+    return out
+
+
+def all_live_locks(db: Session) -> list[dict]:
+    rows = db.scalars(select(StationLock).order_by(StationLock.expires_at.desc())).all()
+    out: list[dict] = []
+    for row in rows:
+        live = lock_snapshot(row.station_path)
+        if live is None:
+            continue
+        remaining = _remaining_sec(live.get("expires_at") or row.expires_at)
+        if remaining <= 0:
+            continue
+        expires = live.get("expires_at")
+        out.append(
+            {
+                "station_path": row.station_path,
+                "project_id": int(live.get("project_id") or row.project_id or 0),
+                "username": str(live.get("username") or row.username or ""),
+                "expires_at": expires if isinstance(expires, str) else (
+                    expires.isoformat() if expires else None
+                ),
+                "remaining_sec": remaining,
+            }
+        )
     return out

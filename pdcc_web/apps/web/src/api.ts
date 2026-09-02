@@ -295,6 +295,13 @@ export type AdminDashboard = {
   }[];
   badges: { api_5xx: boolean; nrl: boolean; failed_jobs: boolean; disk: boolean };
 };
+export type AdminLock = {
+  station_path: string;
+  project_id: number;
+  username: string;
+  expires_at: string | null;
+  remaining_sec: number;
+};
 export type AdminJob = Job & { project_name?: string | null; network_code?: string | null };
 export type AdminSystem = {
   upload: {

@@ -42,6 +42,7 @@ def test_editor_cannot_use_admin_ops(client, fake_nrl):
     _login(client, "stub", "stub")
     assert client.get("/api/admin/jobs").status_code == 403
     assert client.get("/api/admin/system").status_code == 403
+    assert client.get("/api/admin/locks").status_code == 403
     assert client.post("/api/nrl/catalog/refresh").status_code == 403
     denied = client.post(
         "/api/admin/locks/unlock",
@@ -99,6 +100,12 @@ def test_force_unlock_requires_reason_notifies_and_keeps_draft(client, fake_nrl)
     assert drafted.status_code == 200, drafted.text
 
     _login_admin(client)
+    live = client.get("/api/admin/locks")
+    assert live.status_code == 200, live.text
+    assert path in {row["station_path"] for row in live.json()["locks"]}
+    dash = client.get("/api/admin/dashboard")
+    assert dash.status_code == 200, dash.text
+    assert path not in {row["station_path"] for row in dash.json()["locks"]}
     blank = client.post(
         "/api/admin/locks/unlock", json={"station_path": path, "reason": " "}
     )

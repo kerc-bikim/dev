@@ -17,7 +17,7 @@ from ..access import (
 from ..config import settings
 from ..dashboard import backup_status, build_dashboard
 from ..db import get_db
-from ..inventory.locks import LockError, lock_snapshot, release_lock
+from ..inventory.locks import LockError, all_live_locks, lock_snapshot, release_lock
 from ..inventory.service import write_audit
 from ..jobs.queue import cancel_queued
 from ..jobs.service import job_out
@@ -643,6 +643,11 @@ def admin_cancel_job(
     db.commit()
     db.refresh(job)
     return _admin_job(db, job)
+
+
+@router.get("/locks")
+def admin_list_locks(db: Session = Depends(get_db), _admin: User = Depends(_admin)) -> dict:
+    return {"locks": all_live_locks(db)}
 
 
 @router.post("/locks/unlock")

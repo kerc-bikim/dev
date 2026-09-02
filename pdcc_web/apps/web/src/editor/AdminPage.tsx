@@ -7,6 +7,7 @@ import {
   apiPut,
   type AdminDashboard,
   type AdminJob,
+  type AdminLock,
   type AdminSystem,
   type AuditLogInfo,
   type AuditLogPage,
@@ -357,23 +358,35 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
   const [unlockReason, setUnlockReason] = useState("");
   const [nrlTest, setNrlTest] = useState<string | null>(null);
   const [jobs, setJobs] = useState<AdminJob[]>([]);
+  const [liveLocks, setLiveLocks] = useState<AdminLock[]>([]);
+  const [unlockPath, setUnlockPath] = useState("");
   const [jobProjectId, setJobProjectId] = useState<number | "">("");
   const [jobKind, setJobKind] = useState("");
   const [jobStatus, setJobStatus] = useState("");
   const [system, setSystem] = useState<AdminSystem | null>(null);
 
   async function refresh() {
-    const [dashData, libraryData, aliasData, excludedData, orgData, userData, projectData, systemData] =
-      await Promise.all([
-        apiGet<AdminDashboard>("/api/admin/dashboard"),
-        apiGet<NrlLibraryStatus>("/api/nrl/library"),
-        apiGet<{ aliases: NrlAliasRule[] }>("/api/admin/nrl/aliases"),
-        apiGet<{ excluded: NrlExcludedRule[] }>("/api/admin/nrl/excluded"),
-        apiGet<{ orgs: OrgInfo[] }>("/api/admin/orgs"),
-        apiGet<{ users: UserInfo[] }>("/api/admin/users"),
-        apiGet<{ projects: Project[] }>("/api/projects"),
-        apiGet<AdminSystem>("/api/admin/system"),
-      ]);
+    const [
+      dashData,
+      libraryData,
+      aliasData,
+      excludedData,
+      orgData,
+      userData,
+      projectData,
+      systemData,
+      lockData,
+    ] = await Promise.all([
+      apiGet<AdminDashboard>("/api/admin/dashboard"),
+      apiGet<NrlLibraryStatus>("/api/nrl/library"),
+      apiGet<{ aliases: NrlAliasRule[] }>("/api/admin/nrl/aliases"),
+      apiGet<{ excluded: NrlExcludedRule[] }>("/api/admin/nrl/excluded"),
+      apiGet<{ orgs: OrgInfo[] }>("/api/admin/orgs"),
+      apiGet<{ users: UserInfo[] }>("/api/admin/users"),
+      apiGet<{ projects: Project[] }>("/api/projects"),
+      apiGet<AdminSystem>("/api/admin/system"),
+      apiGet<{ locks: AdminLock[] }>("/api/admin/locks"),
+    ]);
     setDashboard(dashData);
     setNrlLibrary(libraryData);
     setAliases(aliasData.aliases);
@@ -382,6 +395,7 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
     setUsers(userData.users);
     setProjects(projectData.projects);
     setSystem(systemData);
+    setLiveLocks(lockData.locks);
     if (orgId === "" && orgData.orgs[0]) setOrgId(orgData.orgs[0].id);
   }
 
@@ -702,6 +716,7 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
         reason: unlockReason.trim(),
       });
       setUnlockReason("");
+      setUnlockPath("");
       await refresh();
     } catch (err) {
       setError((err as Error).message);
@@ -990,6 +1005,84 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
                           취소
                         </button>
                       ) : null}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="nrl-card" id="admin-locks">
+        <h3>
+          현재 잠금 <AdminHelpLink chapter={8} label="잠금 강제 해제" />
+        </h3>
+        <p className="hint">
+          기본 잠금은 5분입니다. 대시보드의 10분 이상 목록과 달리 여기서 모든 활성 잠금을 해제할 수
+          있습니다. 사유는 필수이며 초안은 유지됩니다.
+        </p>
+        <form
+          className="project-create"
+          onSubmit={(event) => {
+            event.preventDefault();
+            forceUnlock(unlockPath);
+          }}
+        >
+          <label>
+            관측소 경로
+            <input
+              id="admin-unlock-path"
+              value={unlockPath}
+              onChange={(event) => setUnlockPath(event.target.value)}
+              placeholder="sta:1:YZ.TEST1#2009-04-10T00:00:00"
+              required
+            />
+          </label>
+          <label>
+            사유
+            <input
+              id="admin-unlock-reason"
+              aria-label="강제 해제 사유"
+              value={unlockReason}
+              onChange={(event) => setUnlockReason(event.target.value)}
+              placeholder="사유"
+              required
+            />
+          </label>
+          <button type="submit" className="primary" disabled={busy} id="admin-unlock-submit">
+            강제 해제
+          </button>
+        </form>
+        <div className="table-scroll">
+          <table className="confirm-table" id="admin-lock-table">
+            <thead>
+              <tr>
+                <th>관측소</th>
+                <th>편집자</th>
+                <th>남은 시간</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {liveLocks.length === 0 ? (
+                <tr>
+                  <td colSpan={4}>활성 잠금이 없습니다</td>
+                </tr>
+              ) : (
+                liveLocks.map((lock) => (
+                  <tr key={lock.station_path}>
+                    <td>{lock.station_path}</td>
+                    <td>{lock.username}</td>
+                    <td>{formatRemain(lock.remaining_sec)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => forceUnlock(lock.station_path)}
+                      >
+                        강제 해제
+                      </button>
                     </td>
                   </tr>
                 ))
