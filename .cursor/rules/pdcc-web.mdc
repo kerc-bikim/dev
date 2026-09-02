@@ -1,0 +1,16 @@
+---
+description: PDCC Web 불변식과 커밋 범위
+globs: pdcc_web/**
+alwaysApply: false
+---
+
+# PDCC Web
+
+`pdcc_web/`만 수정합니다. 작업 전에 `pdcc_web/AGENTS.md`와 `pdcc_web/docs/prompts/product.md`를 읽습니다.
+
+- 브라우저는 NRL을 직접 호출하지 않습니다.
+- StationXML 원문이 진실입니다. 저장 경로에서 `Inventory.write()`로 전체를 다시 쓰지 않습니다.
+- UI 문자열은 한국어입니다.
+- 테스트: `cd pdcc_web/apps/api && python -m pytest --ignore=tests/test_ops.py`
+- `ringserver_seedlink_websocket/frontend/package-lock.json`은 커밋하지 않습니다.
+- 끝난 M0–M4를 다시 뼈대부터 만들지 않습니다. `pdcc_web/docs/prompts/completed-m0-m4.md`.
