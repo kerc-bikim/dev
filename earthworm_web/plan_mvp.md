@@ -36,11 +36,11 @@ MVP가 **성공한 장면** (시드 홈만으로도, 실제 `EW_HOME`이 있으�
 | 0 | 기반(이미 있음) | 마법사·제어·대시보드·파일·로그·스니프·clone API | **전제**. 손대지 않거나 보드가 호출만 함 |
 | 1 | 초기 설정 마법사 | 있음 | 전제. 2b와 함께 최초 admin 칸 |
 | 2 | 제어와 대시보드 | 있음 | 전제. 2b 이후 actor 필수 |
-| **2b** | **작업자·이력** | 없음 | **MVP에 포함**. [plan_ops.md](plan_ops.md) |
-| 3 | 우선 카탈로그·스키마 | 없음 | **MVP에 포함** |
-| 4 | 구성 보드·일괄 적용 | 없음 | **MVP에 포함**. apply에 작업자 필수 |
+| **2b** | **작업자·이력** | 있음 | **MVP에 포함**. [plan_ops.md](plan_ops.md) |
+| 3 | 우선 카탈로그·스키마 | 있음 | **MVP에 포함** |
+| 4 | 구성 보드·일괄 적용 | 있음 | **MVP에 포함**. apply에 작업자 필수 |
 | 5 | 로그·링 모니터 | 대부분 있음. `getmenu` 없음 | 기존 화면은 MVP에 포함. `getmenu`는 이후 |
-| 6 | 다듬기·배포 | 없음 | SSO·systemd. 이력 자체는 6에 미루지 않음 |
+| 6 | 다듬기·배포 | `earthworm_web/compose.yaml` | 이 앱만 Docker. SSO·WEB_DOC는 이후 |
 
 구현 순서는 **2b → 3 → 4** (3과 2b는 병렬 가능, **4는 2b 이후**). 작업자 없는 적용은 이력이 아니다.
 
@@ -274,25 +274,25 @@ viewer의 start는 403+이력 `denied`. operator pau는 이력에 표시 이름.
 
 ### 목표
 
-웹 콘솔만 호스트에 올리고, Earthworm 바이너리는 `EW_HOME`에 둔다.
+웹 콘솔은 Docker Compose 로 올리고, Earthworm 바이너리는 `EW_HOME` 볼륨(또는 호스트)에 둔다.
 
 ### 넣을 것 (이후)
 
-- `earthworm_web/deploy/earthworm-web.service`
-- `DEPLOY.md`, 태그 `earthworm-web-v0.x`
+- `earthworm_web/compose.yaml` 안정화, 태그 `earthworm-web-v0.x`
 - WEB_DOC 정적 `/docs/ew/`
 - NTP·디스크 위젯
 - 기타 모듈 등록 API
 - tankplayer는 등록으로만
 - SSO (작업자 모델은 2b에서 끝냄)
+- 호스트 전용 systemd 유닛(선택)
 
 ### MVP에서 허용하는 최소
 
-README에 “배포 시 `EW_WEB_AUTO_SEED=0`, `EW_WEB_BASH`, 키를 `dev`에서 바꿀 것”이 이미 있다. 유닛 파일은 MVP 필수 아님.
+README에 `docker compose up` 과 “배포 시 `EW_WEB_AUTO_SEED=0`, `EW_WEB_BASH`, 키를 `dev`에서 바꿀 것”이 있다. 실제 EW 기동은 override.
 
 ### 빼는 것
 
-디렉터리 rename, 루트 pnpm workspace, 이미지에 tarball 넣기, 프론트 마이크로프론트 합성.
+루트 npm/pnpm workspace 로 프론트를 한 lock 에 묶기, 이미지에 Rocky tarball 넣기, 프론트 마이크로프론트 합성.
 
 ---
 
@@ -313,7 +313,7 @@ README에 “배포 시 `EW_WEB_AUTO_SEED=0`, `EW_WEB_BASH`, 키를 `dev`에서 
 | 검토·적용 트랜잭션 | ○ 신규 | 원본 bin 재복사 |
 | 기타 모듈 등록 | | ○ |
 | Variables 페이지 제거 | | ○ (보드는 사이트 바) |
-| systemd·태그·WEB_DOC | | ○ |
+| Compose·태그·WEB_DOC | | ○ |
 | StationXML·PPSD 연동 | | ○ |
 | `pidpau` 웹 버튼 | 하지 않음 | 하지 않음 |
 

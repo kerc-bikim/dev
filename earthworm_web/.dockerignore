@@ -1,0 +1,11 @@
+node_modules
+frontend/node_modules
+frontend/dist
+.ew_home
+backend/data/*.sqlite
+backend/data/*.sqlite-*
+backend/data/app.json
+backend/data/backups
+**/__pycache__
+**/.pytest_cache
+**/.env

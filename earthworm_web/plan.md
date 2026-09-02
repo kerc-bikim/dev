@@ -794,7 +794,7 @@ Earthworm 을 실제로 기동하지 않고도 1단계는 마법사·파일 파�
 
 - API 키 서비스 계정, 백업, NTP·디스크 위젯
 - WEB_DOC 정적 제공 (`/docs/ew/`)
-- `deploy/earthworm-web.service`, 태그 `earthworm-web-v0.x`. 디렉터리 rename 없음
+- `earthworm_web/compose.yaml`. 태그 `earthworm-web-v0.x`. systemd 는 선택
 - tankplayer 는 기타 등록
 
 각 단계의 넣을 것/빼는 것·API·수락 조건과 **MVP 경계**는 [plan_mvp.md](plan_mvp.md) ([30절](#30-mvp)). MVP는 3–4단계(카탈로그·구성 보드)를 닫는 것이다. 1–2단계와 로그·스니프는 기존 코드가 전제다.

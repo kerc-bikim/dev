@@ -9,15 +9,17 @@ import { FilesPage } from "./pages/Files";
 import { FoundationPage } from "./pages/Foundation";
 import { LoginPage } from "./pages/Login";
 import { LogsPage } from "./pages/Logs";
+import { ModulesPage } from "./pages/Modules";
 import { OperatorsPage } from "./pages/Operators";
 import { SetupWizard } from "./pages/SetupWizard";
 import { SniffPage } from "./pages/Sniff";
 import { VariablesPage } from "./pages/Variables";
 
 const NAV: { id: string; label: string; admin?: boolean }[] = [
+  { id: "compose", label: "구성 보드" },
   { id: "dashboard", label: "대시보드" },
   { id: "foundation", label: "기반 설정" },
-  { id: "modules", label: "모듈 설정" },
+  { id: "modules", label: "모듈 토글" },
   { id: "variables", label: "통합 변수" },
   { id: "files", label: "파일 편집" },
   { id: "logs", label: "로그" },
@@ -81,7 +83,7 @@ export default function App() {
       .then((s) => {
         setSetupComplete(s.setup_complete);
         setVersion(s.ew_version || "");
-        setPage(s.setup_complete ? "dashboard" : "setup");
+        setPage(s.setup_complete ? "compose" : "setup");
       })
       .catch((e: Error) => showToast(e.message));
   }, [me, showToast]);
@@ -225,15 +227,16 @@ export default function App() {
             needBootstrap={needBootstrap}
             onDone={() => {
               setSetupComplete(true);
-              setPage("dashboard");
+              setPage("compose");
               refresh();
               void loadMe();
             }}
           />
         )}
         {page === "dashboard" && <DashboardPage dash={dash} toast={showToast} refresh={refresh} />}
+        {page === "compose" && <ComposePage toast={showToast} running={running} me={me} />}
         {page === "foundation" && <FoundationPage toast={showToast} locked={running} />}
-        {page === "modules" && <ComposePage toast={showToast} running={running} me={me} />}
+        {page === "modules" && <ModulesPage toast={showToast} running={running} />}
         {page === "variables" && <VariablesPage toast={showToast} />}
         {page === "files" && <FilesPage toast={showToast} />}
         {page === "logs" && <LogsPage toast={showToast} />}

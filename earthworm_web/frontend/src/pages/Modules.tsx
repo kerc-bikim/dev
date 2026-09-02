@@ -42,9 +42,9 @@ export function ModulesPage({ toast, running }: { toast: (m: string) => void; ru
 
   return (
     <>
-      <h2>모듈 설정</h2>
+      <h2>모듈 토글</h2>
       <p className="lead">
-        토글은 startstop_unix.d Process 주석입니다. 복제는 bin 복사 + 새 Module ID + .desc + Descriptor.
+        구성 보드가 기본 경로입니다. 이 표는 startstop Process 주석·복제 우회입니다.
         {running ? " 기동 중 on → reconfigure, off → stopmodule." : ""}
       </p>
       <div className="card">

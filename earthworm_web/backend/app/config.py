@@ -17,6 +17,8 @@ class Settings(BaseSettings):
         "http://127.0.0.1:4173",
         "http://localhost:8010",
         "http://127.0.0.1:8010",
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
     ]
     LOG_LEVEL: str = "INFO"
     APP_JSON: Path = Path(__file__).resolve().parent.parent / "data" / "app.json"
