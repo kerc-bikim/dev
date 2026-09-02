@@ -69,7 +69,7 @@ class ApplyIn(BaseModel):
 @router.get("")
 def list_projects(db: Session = Depends(get_db), user: User = Depends(current_user)) -> dict:
     rows = db.scalars(select(Project).order_by(Project.updated_at.desc())).all()
-    return {"projects": [project_out(row, user) for row in rows]}
+    return {"projects": [project_out(row, user, db=db) for row in rows]}
 
 
 @router.post("")
@@ -89,7 +89,7 @@ def post_project(
     except InventoryError as exc:
         db.rollback()
         _http_inv(exc)
-    return project_out(project, user)
+    return project_out(project, user, db=db)
 
 
 @router.get("/{project_id}")
@@ -97,7 +97,7 @@ def get_project(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
     project = _owned(db, project_id, user)
-    return project_out(project, user)
+    return project_out(project, user, db=db)
 
 
 @router.get("/{project_id}/xml")

@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import os
 
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
-os.environ.setdefault("APP_SECRET", "test-secret")
-os.environ.setdefault("DEV_BOOTSTRAP_ADMIN", "false")
+os.environ["DATABASE_URL"] = os.environ.get("DATABASE_URL", "sqlite:///:memory:")
+if not os.environ["DATABASE_URL"].startswith("sqlite"):
+    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["REDIS_URL"] = "redis://localhost:6379/0"
+os.environ["APP_SECRET"] = "test-secret"
+os.environ["DEV_BOOTSTRAP_ADMIN"] = "false"
+os.environ["APP_ENV"] = "development"
+os.environ["ALLOW_STUB_LOGIN"] = "true"
 
 import pytest
 from fakeredis import FakeRedis

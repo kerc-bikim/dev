@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from ..models import AuditLog, Project, User, utcnow
+from .collab import get_draft, latest_undo, record_edit
 from ..nrl.client import get_nrl_client, validate_instconfig
 from ..nrl.curve import sample_rate_from_instconfig
 from .locks import acquire_lock, lock_snapshot, require_lock
@@ -47,7 +48,9 @@ def _with_mine(lock: dict, user: User) -> dict:
     return data
 
 
-def project_out(project: Project, user: User, lock: dict | None = None) -> dict[str, Any]:
+def project_out(
+    project: Project, user: User, lock: dict | None = None, db: Session | None = None
+) -> dict[str, Any]:
     stations = (
         list_inventory(project.xml_text, project.network_code, project.id) if project.xml_text else []
     )
@@ -71,7 +74,18 @@ def project_out(project: Project, user: User, lock: dict | None = None) -> dict[
         "nrl_applied": any(
             ch["has_response"] for sta in stations for ch in sta["channels"]
         ),
+        "can_undo": False,
+        "draft": None,
     }
+    if db is not None:
+        data["can_undo"] = latest_undo(db, project.id, user.id) is not None
+        draft = get_draft(db, project.id, user.id)
+        if draft is not None:
+            data["draft"] = {
+                "updated_at": draft.updated_at.isoformat() if draft.updated_at else None,
+                "base_updated_at": draft.base_updated_at,
+                "conflict": draft.base_updated_at != data["updated_at"],
+            }
     if top_lock is not None:
         data["lock"] = top_lock
     return data
@@ -149,6 +163,7 @@ def run_wizard(
     sample_rate = sample_rate or 20.0
 
     path = station_path(project.network_code, station, start, project.id)
+    before = project.xml_text
     xml = add_station(
         project.xml_text,
         network=project.network_code,
@@ -172,6 +187,15 @@ def run_wizard(
     project.xml_text = xml
     project.updated_at = utcnow()
     lock = acquire_lock(db, project_id=project.id, station_path=path, user=user)
+    record_edit(
+        db,
+        project,
+        user,
+        before=before,
+        after=xml,
+        action="create",
+        summary=f"위저드로 관측소 생성 ({', '.join(channels)})",
+    )
     write_audit(
         db,
         project_id=project.id,
@@ -181,7 +205,7 @@ def run_wizard(
         summary=f"위저드로 관측소 생성 ({', '.join(channels)})",
     )
     db.flush()
-    return {"project": project_out(project, user, lock), "station_path": path, "lock": lock}
+    return {"project": project_out(project, user, lock, db), "station_path": path, "lock": lock}
 
 
 def apply_nrl(
@@ -213,6 +237,7 @@ def apply_nrl(
     if not raw_channels:
         raise InventoryError("적용할 채널이 필요합니다", 400)
     xml = project.xml_text
+    before = xml
     applied: list[str] = []
     errors: list[dict] = []
     for item in raw_channels:
@@ -241,6 +266,15 @@ def apply_nrl(
         raise InventoryError(errors[0]["reason"], getattr(errors[0], "status_code", 400))
     project.xml_text = xml
     project.updated_at = utcnow()
+    record_edit(
+        db,
+        project,
+        user,
+        before=before,
+        after=xml,
+        action="nrl",
+        summary=f"NRL 적용 {', '.join(applied)}",
+    )
     write_audit(
         db,
         project_id=project.id,
@@ -254,5 +288,5 @@ def apply_nrl(
         "applied": applied,
         "errors": errors,
         "instconfig": cascade,
-        "project": project_out(project, user, require_lock(path, user)),
+        "project": project_out(project, user, require_lock(path, user), db),
     }

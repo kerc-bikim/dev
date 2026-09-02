@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -28,9 +26,17 @@ def health_payload() -> dict:
     return {"ok": db_ok and redis_ok, "db": db_ok, "redis": redis_ok}
 
 
+@router.get("/health/live")
+@router.get("/api/health/live")
+def live():
+    return {"ok": True}
+
+
+@router.get("/health/ready")
+@router.get("/api/health/ready")
 @router.get("/health")
 @router.get("/api/health")
-def health():
+def ready():
     body = health_payload()
     status = 200 if body["ok"] else 503
     return JSONResponse(content=body, status_code=status)
