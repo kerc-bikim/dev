@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>recvQSCD20 — GUI 문서 (v3.10)</title>
+  <title>recvQSCD20 — GUI 문서 (v1.0)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg: #f1f5f9;
@@ -117,6 +120,107 @@
       padding: 2rem 1rem;
     }
     a { color: var(--accent); }
+
+    /* diagram-design (https://github.com/cathrynlavery/diagram-design) */
+    .dd-figure {
+      --dd-paper: #f5f5f5;
+      --dd-ink: #2d3142;
+      --dd-muted: #4f5d75;
+      --dd-soft: #7a8399;
+      --dd-rule: rgba(45,49,66,0.12);
+      --dd-accent: #eb6c36;
+      --dd-accent-tint: rgba(235,108,54,0.08);
+      --dd-sans: "Geist", "Segoe UI", "Malgun Gothic", sans-serif;
+      --dd-serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+      --dd-mono: "Geist Mono", Consolas, "Courier New", monospace;
+      background: var(--dd-paper);
+      border-radius: 8px;
+      padding: 1.5rem 1rem 0.75rem;
+      margin: 1.25rem 0;
+      overflow-x: auto;
+    }
+    .dd-figure .dd-eyebrow {
+      font-family: var(--dd-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--dd-muted);
+      margin: 0 0 0.5rem 0.5rem;
+    }
+    .dd-figure .dd-title {
+      font-family: "Malgun Gothic", "Segoe UI", var(--dd-sans);
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--dd-ink);
+      margin: 0 0 0.25rem 0.5rem;
+      border: none;
+      padding: 0;
+    }
+    .dd-figure .dd-sub {
+      font-family: var(--dd-sans);
+      font-size: 0.92rem;
+      color: var(--dd-muted);
+      margin: 0 0 1rem 0.5rem;
+    }
+    .dd-figure svg { width: 100%; min-width: 720px; display: block; }
+    .dd-cards {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr 0.95fr;
+      gap: 0.75rem;
+      margin: 0.25rem 0 0.5rem;
+    }
+    .dd-card {
+      background: #ffffff;
+      border: 1px solid rgba(45,49,66,0.12);
+      border-radius: 6px;
+      padding: 1rem 1.1rem;
+    }
+    .dd-card .dd-card-eyebrow {
+      font-family: var(--dd-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--dd-muted);
+      margin: 0 0 0.45rem;
+    }
+    .dd-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin-bottom: 0.35rem;
+    }
+    .dd-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dd-dot.ink { background: #2d3142; }
+    .dd-dot.muted { background: #4f5d75; }
+    .dd-dot.coral { background: #eb6c36; }
+    .dd-card h4 {
+      margin: 0;
+      font-family: var(--dd-sans);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--dd-ink);
+    }
+    .dd-card p {
+      margin: 0;
+      font-size: 0.86rem;
+      color: var(--dd-muted);
+    }
+    .dd-card code {
+      background: transparent;
+      padding: 0;
+      font-family: var(--dd-mono);
+      font-size: 0.8rem;
+    }
+    @media (max-width: 720px) {
+      .dd-cards { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -125,20 +229,19 @@
     <p>
       KIGAM QSCD20 패킷(120바이트) 수신·기록·시각화 —
       <strong>PyQt5 + pyqtgraph</strong> 기반 GUI
-      <span class="badge">현재 v3.10</span>
+      <span class="badge">현재 v1.0</span>
     </p>
   </header>
 
   <nav class="toc">
     <a href="#overview">개요</a>
     <a href="#install">설치·실행</a>
-    <a href="#usage">사용법</a>
+    <a href="#features">기능</a>
+    <a href="#ui">UI 명세</a>
+    <a href="#usage">사용 순서</a>
     <a href="#binary">바이너리</a>
-    <a href="#ui">UI·차트</a>
     <a href="#changes">변경 이력</a>
-    <a href="#plan">구현 계획</a>
-    <a href="#constants">상수</a>
-    <a href="plan.html">plan.html</a>
+    <a href="#constants">설정</a>
   </nav>
 
   <main>
@@ -146,21 +249,250 @@
       <h2>개요</h2>
       <p>
         본 프로젝트는 <code>recvQSCD20_gui.py</code> 기반 QSCD20 UDP 수신·시각화 GUI입니다.
-        UDP로 데이터를 수신하고, 텍스트 로그·QCDX 바이너리로 저장하며,
-        Live 탭에서 실시간 차트를, File Viewer 탭에서 저장 파일을 재생합니다.
-        매뉴얼은 GUI 프로그램만 관리합니다.
+        UDP로 데이터를 수신하고, 텍스트 로그와 <code>.QSCD20.replay</code> 재생 파일로 저장하며,
+        Live 탭에서 관측소별 PGA 카드를, Detail View에서 상세 차트를, File View에서 저장 파일을 재생합니다.
+        매뉴얼은 GUI 프로그램만 관리합니다. 현재 버전은 <strong>1.0</strong>입니다.
       </p>
+
+      <h3>Time Diff — 데이터 시각과 수신 시각</h3>
+      <p>
+        Diff 차트의 값은 패킷에 들어 있는 <strong>데이터 시각</strong>과,
+        이 프로그램이 UDP 패킷을 받은 <strong>수신 시각</strong>의 차이입니다.
+        차트 x축(KST)은 데이터 시각을 쓰고, TimeDiff는 그 데이터가 여기까지 오는 데 걸린 지연을 초 단위로 보여 줍니다.
+      </p>
+
+      <figure class="dd-figure" aria-label="Time Diff 계산">
+        <p class="dd-eyebrow">Time Diff · Timeline</p>
+        <h3 class="dd-title">같은 패킷, 서로 다른 두 시각</h3>
+        <p class="dd-sub">TimeDiff = 수신 시각 − 데이터 시각. 아래 숫자는 설명용 예시입니다.</p>
+        <svg viewBox="0 0 900 300" role="img" aria-labelledby="td-title td-desc" xmlns="http://www.w3.org/2000/svg">
+          <title id="td-title">Time Diff timeline</title>
+          <desc id="td-desc">
+            QSCD20 패킷의 데이터 시각(myqscd[5])과 UDP 수신 시각(recv_wall) 사이의 간격이 TimeDiff이다.
+            예시: 데이터 시각 12:00:00.000, 수신 시각 12:00:01.240, TimeDiff 1.240초.
+          </desc>
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/>
+            </marker>
+            <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/>
+            </marker>
+            <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/>
+            </marker>
+          </defs>
+          <rect width="900" height="300" fill="#f5f5f5"/>
+
+          <line x1="80" y1="156" x2="820" y2="156" stroke="#bfc0c0" stroke-width="1"/>
+          <line x1="180" y1="152" x2="180" y2="160" stroke="#2d3142" stroke-width="1"/>
+          <line x1="720" y1="152" x2="720" y2="160" stroke="#2d3142" stroke-width="1"/>
+
+          <line x1="180" y1="156" x2="720" y2="156" stroke="#eb6c36" stroke-width="2"/>
+          <rect x="392" y="120" width="116" height="16" rx="2" fill="#f5f5f5"/>
+          <text x="450" y="132" fill="#eb6c36" font-size="12" font-weight="600"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif"
+                text-anchor="middle">TimeDiff</text>
+          <text x="450" y="188" fill="#2d3142" font-size="12" font-weight="600">
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle">1.240 s</text>
+          <text x="450" y="204" fill="#7a8399" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle">recv_wall − myqscd[5]</text>
+
+          <line x1="180" y1="156" x2="180" y2="96" stroke="rgba(45,49,66,0.20)" stroke-width="1"/>
+          <circle cx="180" cy="156" r="4" fill="#2d3142"/>
+          <text x="180" y="72" fill="#2d3142" font-size="12" font-weight="600"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif"
+                text-anchor="middle">데이터 시각</text>
+          <text x="180" y="88" fill="#4f5d75" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle">myqscd[5]</text>
+          <text x="180" y="220" fill="#4f5d75" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle">12:00:00.000</text>
+          <text x="180" y="232" fill="#7a8399" font-size="8"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif"
+                text-anchor="middle">패킷에 실린 Unix epoch</text>
+
+          <line x1="720" y1="156" x2="720" y2="96" stroke="rgba(45,49,66,0.20)" stroke-width="1"/>
+          <circle cx="720" cy="156" r="4" fill="#2d3142"/>
+          <text x="720" y="72" fill="#2d3142" font-size="12" font-weight="600"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif"
+                text-anchor="middle">수신 시각</text>
+          <text x="720" y="88" fill="#4f5d75" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle">recv_wall</text>
+          <text x="720" y="220" fill="#4f5d75" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle">12:00:01.240</text>
+          <text x="720" y="232" fill="#7a8399" font-size="8"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif"
+                text-anchor="middle">이 PC에 패킷이 도착한 때</text>
+
+          <line x1="80" y1="252" x2="820" y2="252" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+          <text x="80" y="272" fill="#4f5d75" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                letter-spacing="0.14em">LEGEND</text>
+          <circle cx="176" cy="268" r="4" fill="#2d3142"/>
+          <text x="188" y="272" fill="#4f5d75" font-size="8"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif">시각 점</text>
+          <line x1="280" y1="268" x2="312" y2="268" stroke="#eb6c36" stroke-width="2"/>
+          <text x="320" y="272" fill="#4f5d75" font-size="8"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif">TimeDiff 간격</text>
+          <text x="820" y="272" fill="#7a8399" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="end">예시 · 축은 Unix epoch(초)</text>
+        </svg>
+      </figure>
+
+      <div class="dd-cards">
+        <div class="dd-card">
+          <p class="dd-card-eyebrow">Packet clock</p>
+          <div class="dd-card-header">
+            <span class="dd-dot ink"></span>
+            <h4>데이터 시각</h4>
+          </div>
+          <p>관측소가 패킷에 넣은 시각 <code>myqscd[5]</code>. 차트 x축(KST)의 기준입니다.</p>
+        </div>
+        <div class="dd-card">
+          <p class="dd-card-eyebrow">Arrival clock</p>
+          <div class="dd-card-header">
+            <span class="dd-dot muted"></span>
+            <h4>수신 시각</h4>
+          </div>
+          <p>이 프로그램이 UDP를 받은 시각. Linux는 커널 수신 시각, Windows는 <code>recvfrom</code> 직후 <code>time.time_ns()</code>.</p>
+        </div>
+        <div class="dd-card">
+          <p class="dd-card-eyebrow">Diff chart</p>
+          <div class="dd-card-header">
+            <span class="dd-dot coral"></span>
+            <h4>TimeDiff</h4>
+          </div>
+          <p>전용 수신 프로세스에서 확정한 뒤 Diff 차트와 <code>.QSCD20.replay</code>에 그대로 저장합니다.</p>
+        </div>
+      </div>
+
+      <figure class="dd-figure" aria-label="Time Diff 처리 흐름">
+        <p class="dd-eyebrow">Time Diff · Process</p>
+        <h3 class="dd-title">계산은 수신 순간에, 차트와 따로</h3>
+        <p class="dd-sub">GUI 그리기 부하가 TimeDiff 값에 들어가지 않도록 전용 수신 프로세스에서 확정합니다.</p>
+        <svg viewBox="0 0 900 240" role="img" aria-labelledby="tp-title tp-desc" xmlns="http://www.w3.org/2000/svg">
+          <title id="tp-title">Time Diff process</title>
+          <desc id="tp-desc">
+            QSCD20 패킷의 데이터 시각을 읽고, UDP 수신 시각을 캡처한 뒤 TimeDiff를 계산하여
+            Diff 차트와 QSCD20.replay 파일에 저장한다.
+          </desc>
+          <defs>
+            <marker id="arrow-p" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/>
+            </marker>
+            <marker id="arrow-p-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/>
+            </marker>
+          </defs>
+          <rect width="900" height="240" fill="#f5f5f5"/>
+
+          <line x1="280" y1="96" x2="324" y2="96" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow-p)"/>
+          <rect x="282" y="76" width="40" height="12" rx="2" fill="#f5f5f5"/>
+          <text x="302" y="86" fill="#7a8399" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle" letter-spacing="0.06em">UDP</text>
+
+          <line x1="568" y1="96" x2="612" y2="96" stroke="#eb6c36" stroke-width="1.2" marker-end="url(#arrow-p-accent)"/>
+          <rect x="570" y="76" width="40" height="12" rx="2" fill="#f5f5f5"/>
+          <text x="590" y="86" fill="#eb6c36" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle" letter-spacing="0.06em">DIFF</text>
+
+          <rect x="40" y="40" width="240" height="112" rx="6" fill="#f5f5f5"/>
+          <rect x="40" y="40" width="240" height="112" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+          <rect x="48" y="46" width="56" height="12" rx="2" fill="transparent" stroke="rgba(122,131,153,0.40)" stroke-width="0.8"/>
+          <text x="76" y="56" fill="#7a8399" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle" letter-spacing="0.08em">PACKET</text>
+          <text x="160" y="84" fill="#2d3142" font-size="12" font-weight="600"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif"
+                text-anchor="middle">QSCD20 패킷</text>
+          <text x="160" y="104" fill="#4f5d75" font-size="8"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif"
+                text-anchor="middle">데이터 시각</text>
+          <text x="160" y="120" fill="#4f5d75" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle">myqscd[5]</text>
+          <text x="160" y="136" fill="#7a8399" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle">120 B · Unix epoch</text>
+
+          <rect x="328" y="40" width="240" height="112" rx="6" fill="#f5f5f5"/>
+          <rect x="328" y="40" width="240" height="112" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+          <rect x="336" y="46" width="40" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+          <text x="356" y="56" fill="#4f5d75" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle" letter-spacing="0.08em">RECV</text>
+          <text x="448" y="84" fill="#2d3142" font-size="12" font-weight="600"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif"
+                text-anchor="middle">UDP 수신</text>
+          <text x="448" y="104" fill="#4f5d75" font-size="8"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif"
+                text-anchor="middle">수신 시각</text>
+          <text x="448" y="120" fill="#4f5d75" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle">recv_wall</text>
+          <text x="448" y="136" fill="#7a8399" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle">kernel ts / time.time_ns</text>
+
+          <rect x="616" y="40" width="240" height="112" rx="6" fill="#f5f5f5"/>
+          <rect x="616" y="40" width="240" height="112" rx="6"
+                fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
+          <rect x="624" y="46" width="40" height="12" rx="2" fill="transparent" stroke="rgba(235,108,54,0.50)" stroke-width="0.8"/>
+          <text x="644" y="56" fill="#eb6c36" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle" letter-spacing="0.08em">DIFF</text>
+          <text x="736" y="84" fill="#2d3142" font-size="12" font-weight="600"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif"
+                text-anchor="middle">TimeDiff</text>
+          <text x="736" y="104" fill="#4f5d75" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle">recv − data</text>
+          <text x="736" y="120" fill="#4f5d75" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="middle">.QSCD20.replay</text>
+          <text x="736" y="136" fill="#7a8399" font-size="8"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif"
+                text-anchor="middle">Diff 차트에 그대로 표시</text>
+
+          <line x1="40" y1="184" x2="860" y2="184" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+          <text x="40" y="208" fill="#4f5d75" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                letter-spacing="0.14em">LEGEND</text>
+          <rect x="160" y="200" width="16" height="12" rx="2" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+          <text x="184" y="210" fill="#4f5d75" font-size="8"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif">입력</text>
+          <rect x="248" y="200" width="16" height="12" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+          <text x="272" y="210" fill="#4f5d75" font-size="8"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif">수신</text>
+          <rect x="336" y="200" width="16" height="12" rx="2" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
+          <text x="360" y="210" fill="#4f5d75" font-size="8"
+                font-family="'Geist', 'Segoe UI', 'Malgun Gothic', sans-serif">TimeDiff</text>
+          <text x="860" y="210" fill="#7a8399" font-size="8"
+                font-family="'Geist Mono', Consolas, monospace"
+                text-anchor="end">capture process · not GUI</text>
+        </svg>
+      </figure>
+
       <table>
         <thead>
           <tr><th>파일</th><th>역할</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>recvQSCD20_gui.py</code></td><td>GUI 메인 (v3.10)</td></tr>
+          <tr><td><code>recvQSCD20_gui.py</code></td><td>GUI 메인 (v1.0)</td></tr>
+          <tr><td><code>qscd_udp_capture.py</code></td><td>UDP 수신·TimeDiff 시각 캡처 (별도 프로세스)</td></tr>
           <tr><td><code>gui_settings.py</code></td><td>설정 로드·검증·UI 메타(한글 툴팁)</td></tr>
           <tr><td><code>recvQSCD20_gui_settings.json</code></td><td>사용자 기본 설정 (메뉴에서 편집)</td></tr>
           <tr><td><code>requirements.txt</code></td><td>PyQt5, PyQtWebEngine, pyqtgraph, numpy</td></tr>
-          <tr><td><code>README.md</code> / <code>plan.md</code></td><td>마크다운 문서</td></tr>
-          <tr><td><code>README.html</code> / <code>plan.html</code></td><td>본 HTML 문서</td></tr>
+          <tr><td><code>README.md</code> / <code>README.html</code></td><td>마크다운 · 본 HTML 매뉴얼</td></tr>
         </tbody>
       </table>
       <p><strong>요구 사항:</strong> Python 3.8+</p>
@@ -174,80 +506,326 @@ python recvQSCD20_gui.py</pre>
       <h3>의존성</h3>
       <ul>
         <li>PyQt5 &gt;= 5.15.0</li>
+        <li>PyQtWebEngine (도움말 HTML 렌더링, 없으면 기본 뷰어)</li>
         <li>pyqtgraph &gt;= 0.13.0</li>
         <li>numpy &gt;= 1.20.0</li>
       </ul>
     </section>
 
-    <section id="usage">
-      <h2>사용 방법</h2>
-      <h3>수신 (메인 우측 패널)</h3>
-      <ol>
-        <li><strong>로그 파일명 (prefix)</strong></li>
-        <li><strong>UDP Port</strong> — 기본 <code>9908</code></li>
-        <li><strong>Start</strong> / <strong>Stop</strong> · <strong>상태</strong></li>
-      </ol>
-      <p>저장 폴더는 <strong>기본 설정</strong>의 <code>log_save_dir</code>(기본 <code>logs</code>),
-        <code>bin_save_dir</code>(기본 <code>bin</code>) — 프로그램 디렉터리 기준 상대 경로.</p>
-      <table>
-        <thead>
-          <tr><th>생성 파일</th><th>내용</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><code>{prefix}.QSCD.log</code></td><td>텍스트 로그 (모든 관측소)</td></tr>
-          <tr><td><code>{prefix}.QSCD20.replay</code></td><td>GUI 확장 재생 파일 (QCDX, 아래 참고)</td></tr>
-        </tbody>
-      </table>
+    <section id="features">
+      <h2>기능 정리 (v1.0)</h2>
       <p>
-        prefix에는 경로 구분자, <code>..</code>, <code>&lt;&gt;:"|?*</code>, 제어 문자, 끝의 점·공백,
-        Windows 예약 이름(<code>CON</code>, <code>NUL</code>, <code>COM1</code> …)을 쓸 수 없습니다.
-        같은 이름의 파일이 있으면 Start 시 확인 창이 뜨고, 승인하면 로그·바이너리를 모두 새로 기록합니다.
+        현재 배포 기준 버전은 <strong>1.0</strong>입니다.
+        아래는 이 버전에 포함된 기능을 영역별로 정리한 것입니다. 이전 3.x 중간 이력을 나열하지 않습니다.
       </p>
 
-      <h3>TimeDiff 와 수신 부하</h3>
+      <h3>수신 · 저장</h3>
       <ul>
-        <li>TimeDiff(<code>recv − data time</code>)는 <code>recvfrom()</code> 직후 UDP 스레드에서 확정 — 차트·GUI 부하와 무관</li>
-        <li>큐가 <code>packet_queue_max</code> 까지 차면 <strong>먼저 받은 기록을 지키기 위해 새 패킷을 폐기</strong>하고 건수를 로그에 남김</li>
+        <li>QSCD20 UDP 패킷(120바이트) 수신. TimeDiff는 GUI와 분리된 <strong>전용 수신 프로세스</strong>에서 확정</li>
+        <li>Linux는 커널 수신 시각(<code>SO_TIMESTAMPNS</code>), Windows는 <code>recvfrom</code> 직후 <code>time.time_ns()</code></li>
+        <li>Start 시 <code>{prefix}.QSCD.log</code>(항상 상세, UTC)와 <code>{prefix}.QSCD20.replay</code>(패킷 + TimeDiff) 생성</li>
+        <li>수신 큐가 가득 차면 먼저 받은 기록을 지키기 위해 <strong>새 패킷을 폐기</strong>하고 건수를 로그에 남김</li>
         <li>Stop·프로그램 종료 시 큐에 남은 패킷을 모두 기록한 뒤 파일을 닫음</li>
       </ul>
 
-      <h3>Live 탭</h3>
+      <h3>Live</h3>
       <ul>
-        <li><strong>시간 선택</strong> — 60 / 120 / 600 / 1200 / 1800초</li>
-        <li><strong>수신 관측소</strong> — 선택 관측소만 화면 로그·차트 갱신</li>
-        <li><strong>최종 수신 (KST)</strong> — 선택 관측소 마지막 수신 시각
-          <span class="badge-new">10초 이상 지연 시 빨간색 깜빡임</span></li>
-        <li><strong>Quality / Station / Location</strong> — Quality Flag, 5B Station 코드, Location(<code>myqscd[34]</code>)</li>
-        <li><strong>표시 차트</strong> — Diff, Maximum, PGA, WMMA(3축), TMM(3축) 패널별 체크</li>
-        <li><strong>로그</strong> — Live 탭 상단 우측 로그 뷰어 아이콘 (Ctrl+L); 하단 <strong>상세 로그 표시</strong> 체크로 화면을 요약/상세로 다시 그림. 파일은 항상 상세 저장</li>
+        <li>관측소(Station + Location)마다 카드 1장 — PGA 현재값·윈도우 누적 최대·수신 시각 타임시리즈</li>
+        <li>LATENCY는 수신 시 확정한 TimeDiff. 설정 시간(기본 10초) 이상 미수신이면 빨간색으로 지연 초 표시</li>
+        <li>누적 최대는 선택한 타임윈도우 안의 PGA 최댓값</li>
       </ul>
 
-      <h3>File Viewer 탭</h3>
+      <h3>Detail View</h3>
       <ul>
-        <li><code>QSCD20.replay</code> 열기 — Live와 동일 패널·시간 창 (이전 <code>.bin</code> 도 가능)</li>
-        <li><span class="badge-new">관측소 콤보박스</span> — 파일 내 관측소 선택 후 해당 데이터만 차트 표시</li>
-        <li><strong>QCDX</strong> 파일 — Live에서 저장한 <strong>TimeDiff</strong>를 Diff 차트에 그대로 표시</li>
-        <li>구형 120B-only 파일 — Diff는 파일 열기 시각 기준 근사 (라벨 안내)</li>
+        <li>선택 관측소의 Time Diff, Maximum, PGA, WMMA, TMM 상세 차트</li>
+        <li>최종 수신 시각, 지연 시 빨간색 깜빡임, Quality / Station / Location</li>
+        <li>1초 격자·빈 초 NaN, 호버 팝업, 드래그 줌 / 더블클릭·⟲ 줌 초기화</li>
       </ul>
+
+      <h3>File View</h3>
+      <ul>
+        <li><code>.QSCD20.replay</code> 열기 — Live에서 저장한 TimeDiff를 Diff 차트에 그대로 표시</li>
+        <li>파일 내 관측소 선택, 차트 줌 구간에 맞춘 짝 로그(<code>.QSCD.log</code>) 표시</li>
+      </ul>
+
+      <h3>로그 · 설정 · 도움말</h3>
+      <ul>
+        <li>로그 뷰어(Ctrl+L): 하단 관측소 콤보, 화면 요약/상세 전환. 파일 로그는 항상 상세 UTC</li>
+        <li>기본 설정(Ctrl+P): 저장 폴더, 포트, 시간 창, 차트 패널, 큐·지연 경고 등</li>
+        <li>도움말(F1): 본 HTML. Linux는 WebEngine GPU를 끄고, 실패 시 기본 HTML 뷰어로 대체</li>
+        <li>화면 시간은 기본 KST, KST/UTC 토글. 저장 값은 항상 UTC</li>
+      </ul>
+    </section>
+
+    <section id="ui">
+      <h2>UI 명세</h2>
+      <p>메인 창은 왼쪽 <strong>탭 영역</strong>(Live / Detail View / File View)과 오른쪽 <strong>수신 패널</strong>로 나뉩니다. 메뉴는 창 상단 한 줄입니다.</p>
+
+      <h3>1. 메인 창 · 메뉴</h3>
+      <table>
+        <thead>
+          <tr><th>구성</th><th>동작</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>창 제목</td>
+            <td><code>QSCD20 UDP Receiver 1.0</code> (<code>VERSION</code> 파일)</td>
+          </tr>
+          <tr>
+            <td>파일 메뉴</td>
+            <td><strong>기본 설정</strong>(Ctrl+P), <strong>종료</strong></td>
+          </tr>
+          <tr>
+            <td>도움말 메뉴</td>
+            <td><strong>도움말</strong>(F1) — README.html 팝업</td>
+          </tr>
+          <tr>
+            <td>Ctrl+L</td>
+            <td>활성 탭에 맞는 로그 뷰어. File View이면 File 로그 뷰어, 그 외는 수신 로그 뷰어</td>
+          </tr>
+          <tr>
+            <td>탭 표시</td>
+            <td>이름 말줄임 없음. 탭: Live, Detail View, File View</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>2. 우측 수신 패널</h3>
+      <p>세 탭에서 공통으로 보입니다. UDP 수신 시작·중지와 저장 파일 이름을 여기서 다룹니다.</p>
+      <table>
+        <thead>
+          <tr><th>항목</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>로그 파일명 (prefix)</td>
+            <td>
+              저장 파일 앞부분. 예: <code>20260519_120000</code>.
+              경로 구분자, <code>..</code>, <code>&lt;&gt;:"|?*</code>, 제어 문자, 끝의 점·공백,
+              Windows 예약 이름(<code>CON</code>, <code>NUL</code>, <code>COM1</code> 등)은 거부합니다.
+              같은 이름이 있으면 Start 시 덮어쓰기 확인을 하며, 승인하면 로그와 replay를 모두 새로 씁니다.
+            </td>
+          </tr>
+          <tr>
+            <td>저장 경로 안내</td>
+            <td>기본 설정의 <code>log_save_dir</code> / <code>bin_save_dir</code> (프로그램 폴더 기준 상대 경로, 기본 <code>logs</code>, <code>bin</code>)</td>
+          </tr>
+          <tr>
+            <td>UDP Port</td>
+            <td>수신 포트. 기본값은 설정의 <code>default_port</code>(보통 9908). Start 전에 변경합니다.</td>
+          </tr>
+          <tr>
+            <td>Start</td>
+            <td>UDP 수신 시작. 관측소 버퍼·Live 카드를 비우고, 로그·replay를 엽니다.</td>
+          </tr>
+          <tr>
+            <td>Stop</td>
+            <td>수신 중지. 큐에 남은 패킷을 모두 기록한 뒤 파일을 닫습니다.</td>
+          </tr>
+          <tr>
+            <td>상태</td>
+            <td>대기 중 / 수신 중 등 현재 수신 상태</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>생성 파일: <code>{prefix}.QSCD.log</code>(모든 관측소 상세 텍스트), <code>{prefix}.QSCD20.replay</code>(패킷 120B + TimeDiff 8B).</p>
+
+      <h3>3. 공통 컨트롤</h3>
+      <table>
+        <thead>
+          <tr><th>컨트롤</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>시간 선택</td>
+            <td>
+              Live·Detail View·File View 각각의 콤보.
+              목록은 설정 <code>time_window_choices</code>(예: 60 / 120 / 600 / 1200 / 1800초).
+              기본 선택은 <code>default_time_window_sec</code>.
+            </td>
+          </tr>
+          <tr>
+            <td>KST / UTC 토글</td>
+            <td>
+              각 탭 상단과 로그 뷰어 하단에 있습니다. 차트 축, 최종 수신, Last Data, 로그 화면 시각만 바꿉니다.
+              로그 파일과 QSCD 데이터·TimeDiff 계산은 항상 UTC(Unix epoch)입니다.
+            </td>
+          </tr>
+          <tr>
+            <td>로그 뷰어 아이콘</td>
+            <td>문서+돋보기 모양. 툴팁에 Ctrl+L. Live·Detail View는 수신 로그, File View는 짝 .QSCD.log</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>4. Live 탭</h3>
+      <p>수신 중인 모든 관측소를 한눈에 보기 위한 화면입니다. 카드는 Station 코드와 Location 조합(<code>sta|loc</code>)마다 하나씩 생깁니다.</p>
+      <h4>상단 막대</h4>
+      <ul>
+        <li><strong>시간 선택</strong> — 카드 타임시리즈 x축 폭과 누적 최대를 계산할 구간</li>
+        <li><strong>PGA H / T</strong> — 막대와 타임시리즈 채널. 둘 다 끌 수 없으며, 하나를 끄면 나머지 하나는 유지됩니다.</li>
+        <li>안내 문구: 현재값 · 누적 최대(선택 시간 창, 시각/gal) · 타임시리즈(수신 시각)</li>
+        <li>KST/UTC, 로그 뷰어 아이콘</li>
+      </ul>
+      <h4>관측소 카드 (왼쪽 → 오른쪽)</h4>
+      <table>
+        <thead>
+          <tr><th>영역</th><th>표시</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>파란 사이드바</td>
+            <td>
+              <strong>Station Code</strong>, <strong>Location Code</strong> (loc 바이트 0x00은 문자 0, 예: <code>\x00\x00</code> → <code>00</code>),
+              Quality(<code>Good data</code> / <code>GPS Unlock</code> / <code>REBOOT</code> / <code>SPIKE</code>),
+              <strong>LATENCY (SEC)</strong>, <strong>Last Data</strong> (<code>HH:MM:SS</code>)
+            </td>
+          </tr>
+          <tr>
+            <td>LATENCY</td>
+            <td>
+              평소: 마지막 패킷의 TimeDiff(<code>recv_wall − 데이터 시각</code>, 초, 소수 3자리). 차트 타이머로 다시 계산하지 않습니다.
+              TimeDiff 절대값이 경고 시간(기본 10초)을 넘으면 빨간색.
+              마지막 수신 후 같은 시간이 지나면 빨간색으로 <strong>미수신 경과 초</strong>(소수 1자리)를 표시합니다.
+            </td>
+          </tr>
+          <tr>
+            <td>현재 값 막대</td>
+            <td>마지막 패킷의 PGA H / T (gal). 막대 위에 숫자</td>
+          </tr>
+          <tr>
+            <td>누적 최대 막대</td>
+            <td>선택한 시간 창 안에서 H·T 각각의 최댓값. 막대 위에는 최댓값이 난 <strong>데이터 시각</strong>과 gal</td>
+          </tr>
+          <tr>
+            <td>타임시리즈</td>
+            <td>x축은 <strong>수신 시각(지금 기준 슬라이딩 창)</strong>, y축은 gal. 곡선 H(노란계열)·T(청록). 호버 시 값 팝업. 창이 비면 빈 안내</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>5. Detail View 탭</h3>
+      <p>한 관측소를 골라 패킷 필드를 초 단위 격자로 그립니다. x축은 <strong>데이터 시각</strong>(표시 TZ)입니다.</p>
+      <h4>상단 정보 막대</h4>
+      <ul>
+        <li><strong>수신 관측소</strong> — Start 이후 도착한 Station 코드. <code>(관측소 선택)</code>이면 차트·화면 패킷 로그가 비어 있습니다. 바꾸면 화면 로그를 지우고 해당 관측소만 다시 그립니다. 로그 뷰어 하단 콤보와 동기화됩니다.</li>
+        <li><strong>최종 수신</strong> — 선택 관측소의 마지막 UDP 수신 시각. 경고 시간(기본 10초)을 넘으면 빨간 배경으로 깜빡이며 <code>(⚠ N초 지연)</code>을 붙입니다.</li>
+        <li><strong>Quality / Station / Location</strong> — 마지막 패킷 기준. Quality는 <code>0x00 — Good data</code> 형식</li>
+        <li>KST/UTC, 로그 뷰어 아이콘</li>
+      </ul>
+      <h4>시간 · 범례 · 패널</h4>
+      <ul>
+        <li><strong>시간 선택</strong> — 차트에 유지할 데이터 시각 구간. 안내: 드래그 줌인, 더블클릭/⟲ 줌아웃, 마우스 오버 값 팝업</li>
+        <li><strong>범례·최근값 표시</strong> — 끄면 각 차트 범례와 패널 상단 최근값 라벨을 함께 숨깁니다. 시작 기본값은 설정 <code>default_show_legend</code></li>
+        <li><strong>표시 차트 선택</strong> — 아래 패널을 켜고 끕니다. 시작 기본 ON은 설정 <code>default_panels</code>(보통 Diff, Maximum, PGA)</li>
+      </ul>
+      <table>
+        <thead>
+          <tr><th>패널</th><th>곡선</th><th>y축</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Time Diff (recv − data)</td><td>Diff</td><td>초</td></tr>
+          <tr><td>Maximum (Z, N, E)</td><td>Z / N / E</td><td>gal</td></tr>
+          <tr><td>PGA (H, T)</td><td>H / T</td><td>gal</td></tr>
+          <tr><td>U-D / N-S / E-W WMMA</td><td>m, M, A</td><td>gal</td></tr>
+          <tr><td>U-D / N-S / E-W TMM</td><td>m, M, A</td><td>gal</td></tr>
+        </tbody>
+      </table>
+      <h4>차트 동작</h4>
+      <ul>
+        <li>x축: 데이터 시각 → <code>HH:MM:SS</code>, 1초 칸. 빈 초는 선이 끊기도록 NaN</li>
+        <li>y축 gal: SI 접두(k/M) 없이 실제 값</li>
+        <li>상단 최근값: <code>— Z : 0.123456</code> 형식, 범례와 같은 색</li>
+        <li>호버: 흰 배경·검은 글씨. 위/아래에 따라 말풍선 방향을 바꿔 잘리지 않게 함. 차트 밖으로 나가면 숨김</li>
+        <li>줌: 왼쪽 드래그로 구간 확대, 더블클릭 또는 패널 오른쪽 위 <strong>⟲</strong>로 초기화. 범례는 왼쪽 위</li>
+        <li>Live 수신 중이면 창의 오른쪽(최신)으로 자동 스크롤. 사용자가 줌하면 자동 스크롤을 멈춥니다</li>
+      </ul>
+
+      <h3>6. File View 탭</h3>
+      <p>저장해 둔 replay를 재생합니다. 수신 패널의 Start와는 별개입니다.</p>
+      <ul>
+        <li><strong>QSCD20.replay 열기…</strong> — <code>QCDX\x01</code> 헤더 + 128바이트 레코드. 열리면 관측소 목록·시간 범위를 정보 라벨에 표시</li>
+        <li><strong>시간 선택</strong> — 표시 구간의 길이. 줌하지 않은 상태의 x축 폭</li>
+        <li><strong>관측소</strong> — 파일에 있는 Station만 나열. 하나면 비활성. 차트와 File 로그 뷰어 관측소와 동기화</li>
+        <li><strong>범례·최근값 표시</strong>, <strong>표시 차트 선택</strong> — Detail View와 같은 패널 집합</li>
+        <li>Diff 차트는 파일에 붙은 TimeDiff를 다시 계산하지 않고 그대로 사용. 저장값이 없는 구형 파일이면 열 시각 기준 근사라는 안내</li>
+        <li>로그 뷰어 아이콘: 같은 prefix의 <code>.QSCD.log</code>를 찾아 엽니다. 없으면 찾아보기</li>
+      </ul>
+
+      <h3>7. 로그 뷰어 (수신 — Live·Detail View)</h3>
+      <p>팝업 창. 화면에는 선택 관측소 패킷과 Start/Stop 등 시스템 메시지가 보입니다. 디스크의 <code>.QSCD.log</code>는 관측소와 관계없이 항상 상세 UTC입니다.</p>
+      <ul>
+        <li>본문: 읽기 전용 로그. 최대 줄 수는 설정 <code>log_max_lines</code></li>
+        <li>하단 <strong>관측소</strong> 콤보 — Detail View 수신 관측소와 같음. 바꾸면 화면 로그를 지우고 그 관측소 패킷만 이어 받음</li>
+        <li><strong>상세 로그 표시</strong> — 켜면 패킷마다 여러 줄, 끄면 한 줄 요약. 바꾸는 즉시 화면을 다시 그림. 이 체크는 저장되지 않음</li>
+        <li>KST/UTC, <strong>로그 지우기</strong></li>
+      </ul>
+
+      <h3>8. 로그 뷰어 (File View)</h3>
+      <ul>
+        <li>replay를 연 뒤에만 열 수 있습니다.</li>
+        <li>상단 정보: 로그 경로, 표시 시차, 관측소, 시간 구간, 패킷 수. 너무 많으면 앞 <code>3000</code>개만</li>
+        <li>하단 <strong>관측소</strong> — File View 관측소와 동기화</li>
+        <li><strong>차트 줌 구간에 맞추기</strong> — 켜면 차트에 보이는 data time 구간의 로그만. 끄면 그 관측소 로그 전체</li>
+        <li><strong>다시 읽기</strong>, <strong>로그 파일 찾아보기…</strong>, KST/UTC</li>
+      </ul>
+
+      <h3>9. 기본 설정 창 (Ctrl+P)</h3>
+      <p>항목 라벨과 입력란에 마우스를 올리면 한글 설명이 나옵니다. 저장 후 바로 안 바뀌는 항목은 완료 창에서 안내합니다.</p>
+      <ul>
+        <li>프로그램 재시작 후: <code>default_panels</code>, <code>default_show_legend</code></li>
+        <li>다음 Start부터: <code>packet_queue_max</code></li>
+        <li>변경 불가: <code>BIN_FILE_MAGIC</code> (<code>QCDX\x01</code>)</li>
+      </ul>
+
+      <h3>10. 도움말 창 (F1)</h3>
+      <p>본 README.html을 렌더링합니다. http(s) 링크는 시스템 브라우저로 엽니다. Linux에서는 Chromium GPU를 끄고, 렌더 프로세스가 죽으면 기본 HTML 뷰어로 바꿉니다.</p>
+
+      <h3>차트 공통 (Detail View · File View)</h3>
+      <table>
+        <thead>
+          <tr><th>기능</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>레이아웃</td><td>차트 영역 흰 배경, 로그 다크 테마, 탭·버튼은 앱 스타일시트</td></tr>
+          <tr><td>갱신</td><td><code>chart_refresh_ms</code>(기본 200ms)마다 패킷 배치(<code>packet_drain_max</code>)와 차트 다시 그리기</td></tr>
+          <tr><td>replay flush</td><td><code>bin_flush_every</code> 패킷마다 디스크 flush</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="usage">
+      <h2>사용 순서</h2>
+      <ol>
+        <li>필요하면 <strong>기본 설정</strong>에서 폴더·포트·시간 창을 맞춥니다.</li>
+        <li>우측 패널에 prefix와 UDP 포트를 넣고 <strong>Start</strong> 합니다.</li>
+        <li><strong>Live</strong>에서 전체 관측소 PGA를 보고, <strong>Detail View</strong>에서 한 관측소를 골라 상세 차트를 봅니다.</li>
+        <li>로그 아이콘 또는 Ctrl+L로 패킷 로그를 확인합니다. 하단에서 관측소를 바꿀 수 있습니다.</li>
+        <li><strong>Stop</strong> 한 뒤, <strong>File View</strong>에서 저장한 <code>.QSCD20.replay</code>를 열어 재생할 수 있습니다.</li>
+      </ol>
     </section>
 
     <section id="binary">
       <h2>바이너리 형식</h2>
-      <h3>GUI 저장 (QCDX 확장)</h3>
+      <p>
+        Start 시 <code>bin_save_dir</code> 아래에 <code>{prefix}.QSCD20.replay</code> 가 만들어집니다.
+        File View는 이 확장자 파일을 엽니다.
+      </p>
+      <h3>QSCD20.replay</h3>
       <table>
         <thead>
           <tr><th>구간</th><th>크기</th><th>설명</th></tr>
         </thead>
         <tbody>
-          <tr><td>파일 헤더</td><td>5B</td><td><code>QCDX\x01</code> (<code>BIN_FILE_MAGIC</code>)</td></tr>
-          <tr><td>레코드 × N</td><td>128B</td><td>QSCD20 120B + TimeDiff <code>float64</code> 8B (big-endian)</td></tr>
+          <tr><td>파일 헤더</td><td>5B</td><td>내부 식별 매직 <code>QCDX\x01</code> (<code>BIN_FILE_MAGIC</code>, 설정 불가)</td></tr>
+          <tr><td>레코드 × N</td><td>128B</td><td>QSCD20 패킷 120B + TimeDiff <code>float64</code> 8B (big-endian)</td></tr>
         </tbody>
       </table>
-      <p>TimeDiff = Live 수신 시 <code>recv_wall − myqscd[6]</code> (초)</p>
+      <p>
+        TimeDiff = Live 수신 시 <code>recv_wall − myqscd[5]</code> (초).
+        File View는 파일에 저장된 이 값을 Diff 차트에 그대로 그립니다.
+      </p>
       <p>API: <code>write_qscd20_bin_header()</code>, <code>pack_qscd20_bin_record()</code>, <code>read_qscd20_bin()</code> → <code>QscdBinLoadResult</code></p>
-
-      <h3>구형 120B-only 파일</h3>
-      <p>QCDX 헤더 없이 120B 패킷만 연속된 파일 — File Viewer 읽기 가능, TimeDiff 미저장(근사).</p>
 
       <h3>패킷 필드 (요약)</h3>
       <table>
@@ -255,193 +833,32 @@ python recvQSCD20_gui.py</pre>
           <tr><th>항목</th><th>인덱스</th><th>설명</th></tr>
         </thead>
         <tbody>
-          <tr><td>Quality Flag</td><td>[1]</td><td>0x00 Good / 0x01 GPS Unlock / 0x02 REBOOT / 0x03~FF Reserved</td></tr>
-          <tr><td>Station Code</td><td>[4]+[5]</td><td>2B + 3B (5바이트)</td></tr>
-          <tr><td>Data Time</td><td>[6]</td><td>Unix epoch (초) — 차트 x축·1초 버킷</td></tr>
-          <tr><td>Location</td><td>[34]</td><td>2s — 화면 Location 라벨</td></tr>
-          <tr><td>Maximum Z/N/E</td><td>22–24</td><td>차트 max 패널</td></tr>
-          <tr><td>PGA H/T</td><td>25–26</td><td>차트 pga 패널</td></tr>
-          <tr><td>WMMA / TMM</td><td>7–21</td><td>축별 m, M, (A)</td></tr>
+          <tr><td>Quality Flag</td><td>[1]</td><td>0x00 Good / 0x01 GPS Unlock / 0x02 REBOOT / 0x03 SPIKE</td></tr>
+          <tr><td>Data Type</td><td>[2]</td><td>비-NEMA <code>0x01</code>–<code>0x07</code> / NEMA <code>0x1F</code>, <code>0x3F</code>, <code>0x7F</code></td></tr>
+          <tr><td>Station Code</td><td>[4]</td><td><code>sta[5]</code></td></tr>
+          <tr><td>Data Time</td><td>[5]</td><td>signed int, Unix epoch (초) — 차트 x축·TimeDiff의 데이터 시각</td></tr>
+          <tr><td>Location</td><td>[33]</td><td><code>char loc[2]</code> — 2글자. 바이트 <code>0x00</code>은 문자 <code>0</code></td></tr>
+          <tr><td>Maximum Z/N/E</td><td>21–23</td><td>차트 max 패널</td></tr>
+          <tr><td>PGA H/T</td><td>24–25</td><td>차트 pga 패널</td></tr>
+          <tr><td>WMMA / TMM</td><td>6–20</td><td>축별 m, M, (A)</td></tr>
         </tbody>
       </table>
-    </section>
-
-    <section id="ui">
-      <h2>UI · 차트 기능</h2>
-      <table>
-        <thead>
-          <tr><th>기능</th><th>설명</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>차트 레이아웃</td>
-            <td>차트 영역 흰 배경·테두리 강조, 로그 다크 테마, 탭·버튼 스타일 (<code>APP_STYLESHEET</code>)</td>
-          </tr>
-          <tr>
-            <td>x축</td>
-            <td>data time → KST <code>HH:MM:SS</code>, 1초 격자, 빈 초 NaN</td>
-          </tr>
-          <tr>
-            <td>y축 (gal)</td>
-            <td><code>PlainGalAxisItem</code> — SI 접두(k/M) 없이 <strong>실제 값</strong> 표시</td>
-          </tr>
-          <tr>
-            <td>범례·최근값</td>
-            <td>체크박스로 on/off; 상단 <code>— Z : 값</code> 범례와 동일 색상</td>
-          </tr>
-          <tr>
-            <td>호버 팝업</td>
-            <td>흰 불투명 배경·검은 글씨; 상·하단에 따라 앵커 조절로 잘림 방지; 차트 이탈 시 숨김</td>
-          </tr>
-          <tr>
-            <td>도움말</td>
-            <td>메뉴 F1 → README.html (<strong>QWebEngineView</strong> HTML 렌더링)</td>
-          </tr>
-          <tr>
-            <td>줌</td>
-            <td>왼쪽 드래그 줌인, 더블클릭 줌아웃; 패널 우측 상단 <strong>⟲ 줌 초기화</strong> 버튼 (범례는 좌측 상단)</td>
-          </tr>
-          <tr>
-            <td>수신 지연 알림</td>
-            <td>선택 관측소 <code>RECV_DELAY_ALERT_SEC=10</code>초 초과 시 최종 수신 라벨 빨간색 깜빡임</td>
-          </tr>
-          <tr>
-            <td>성능</td>
-            <td>UDP → 큐 적재; 200ms 타이머 배치 처리; 활성 패널만 격자 캐시; bin 32패킷마다 flush</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>기본 ON 패널</h3>
-      <p><code>DEFAULT_PANELS = {"diff", "max", "pga"}</code></p>
     </section>
 
     <section id="changes">
-      <h2>변경 이력 (통합)</h2>
-      <p>README.md · plan.md 및 개발 중 반영된 수정 사항을 시간순으로 정리합니다.</p>
-
+      <h2>변경 이력</h2>
+      <p>현재 버전은 <strong>1.0</strong>입니다. 기능 목록은 위의 <a href="#features">기능 정리</a>를 기준으로 합니다.</p>
       <dl class="changelog">
-        <dt>v1 — 초기 GUI</dt>
-        <dd>UDP 포트/디렉터리/prefix, Live·File 탭, 기본 차트.</dd>
-
-        <dt>v2</dt>
-        <dd>Time Diff 차트, KST x축, 관측소 콤보, 체크박스 패널, 로그 하단, Quality/Station 표시.</dd>
-
-        <dt>v3</dt>
-        <dd>Correlate 패널 삭제, y축 gal 단위, 1초 NaN 격자, 관측소별 화면 로그, 최종 수신 시각, 성능 최적화.</dd>
-
-        <dt>v3.1</dt>
-        <dd><code>StationBuffer.version</code> 격자 캐시 수정; 드래그 줌/더블클릭 줌아웃; Live X축 자동 스크롤.</dd>
-
-        <dt>v4 (일시, 현재 미적용)</dt>
-        <dd>통합 PGA(ZPGA~TPGA) 단일 차트, 시간 콤보, 이미지형 범례 — 이후 v3.2에서 다패널 방식으로 복원.</dd>
-
-        <dt>v3.2 — 핵심 안정화</dt>
+        <dt>v1.0 <span class="badge-new">현재</span></dt>
         <dd>
           <ul>
-            <li>패널별 차트 복원 (diff / max / pga / wmma_* / tmm_*)</li>
-            <li><strong>QCDX</strong> 바이너리 + TimeDiff 저장 · File Viewer 재현</li>
-            <li>Live 패킷 큐·배치 처리 (장시간 수신 UI 멈춤/오경고 완화)</li>
-            <li>호버 툴팁 Leave 시 숨김</li>
-          </ul>
-        </dd>
-
-        <dt>v3.2+ — UX·File Viewer</dt>
-        <dd>관측소 선택, 호버·줌, Location, gal 축, UI 재구성, 수신 지연 알림</dd>
-
-        <dt>v3.3</dt>
-        <dd>수신 설정·로그 뷰어 <strong>메뉴 팝업</strong>, 메인 창 차트 전용</dd>
-
-        <dt>v3.4</dt>
-        <dd>
-          <ul>
-            <li>문서: <strong>recvQSCD20_gui.py</strong> 전용 (콘솔 수신기 문서 제거)</li>
-            <li>차트 상단 <strong>최근값</strong> (<code>— Z : 0.123456</code>), 범례와 동일 색상</li>
-            <li><strong>범례·최근값 표시</strong> 체크 — 해제 시 범례·최근값 함께 숨김</li>
-            <li>도움말(F1): <strong>README.html</strong> 매뉴얼 팝업</li>
-          </ul>
-        </dd>
-
-        <dt>v3.5</dt>
-        <dd>
-          <ul>
-            <li>런타임 상수 → <code>recvQSCD20_gui_settings.json</code> + <code>gui_settings.py</code></li>
-            <li>메뉴 <strong>기본 설정</strong> (Ctrl+P): GUI 편집·저장, 항목별 한글 툴팁</li>
-            <li><code>BIN_FILE_MAGIC</code> (<code>QCDX\x01</code>) 은 설정에서 변경 불가</li>
-          </ul>
-        </dd>
-
-        <dt>v3.6</dt>
-        <dd>
-          <ul>
-            <li>수신 설정 팝업 제거 → Live/File 탭 <strong>우측 수신 패널</strong></li>
-            <li>기본 설정에 <code>log_save_dir</code> / <code>bin_save_dir</code> 추가 (기본 logs, bin)</li>
-          </ul>
-        </dd>
-
-        <dt>v3.7</dt>
-        <dd>
-          <ul>
-            <li>TimeDiff: UDP <code>recvfrom()</code> 직후 확정 + <strong>thread-safe 큐</strong> (패킷당 Qt 시그널 제거)</li>
-            <li><code>bin_flush_every</code>를 패킷 수 기준으로 수정, 설정 저장 시 차트 체크 유지</li>
-            <li>prefix 경로 문자 차단, 기존 파일 덮어쓰기 확인, 잘못된 JSON은 기본값으로 기동</li>
-          </ul>
-        </dd>
-
-        <dt>v3.8</dt>
-        <dd>
-          <ul>
-            <li>큐 포화 시 <strong>새 패킷을 폐기</strong>(먼저 받은 기록 보존)하고 폐기 건수 로그</li>
-            <li><code>sock_timeout_sec</code> 하한 0.05초 — 0으로 인한 CPU 점유 방지, 변경은 수신 스레드가 적용</li>
-            <li>Stop·종료 시 남은 패킷을 모두 기록한 뒤 파일을 닫고 종료 기록을 로그 파일에 남김</li>
-            <li>덮어쓰기 승인 시 로그도 새로 기록(append 아님), bin 열기 실패 시 핸들 정리</li>
-            <li>prefix에 Windows 예약 이름·끝 점/공백 차단, 즉시 반영되지 않는 설정 항목 안내</li>
-            <li>수신 오류·unpack 오류 로그 폭주 방지, 단위 테스트 추가(<code>test_recv_core.py</code>)</li>
-          </ul>
-        </dd>
-
-        <dt>v3.9</dt>
-        <dd>
-          <ul>
-            <li>저장 파일 확장자를 <code>.QSCD20.bin</code> → <code>.QSCD20.replay</code> 로 변경, File Viewer 열기 대화 갱신</li>
-            <li>Live / File Viewer 탭 선택 시 이름 잘림 방지 (탭 폭·말줄임 해제)</li>
-            <li>로그 뷰어를 메뉴에서 Live 탭 상단 우측 아이콘으로 이동 (Ctrl+L 유지)</li>
-          </ul>
-        </dd>
-
-        <dt>v3.10 <span class="badge-new">현재</span></dt>
-        <dd>
-          <ul>
-            <li>TimeDiff: Linux 커널 수신 시각(<code>SO_TIMESTAMPNS</code>), Windows는 <code>time.time_ns()</code> + 1ms 타이머, 수신 스레드 우선순위 상향</li>
+            <li>QSCD20 UDP 수신·TimeDiff 확정(전용 프로세스)·로그/replay 저장</li>
+            <li>Live 관측소 카드(PGA 현재값·윈도우 누적 최대·LATENCY)</li>
+            <li>Detail View 상세 차트, File View replay 재생</li>
+            <li>로그 뷰어(관측소 선택), 기본 설정, F1 도움말</li>
           </ul>
         </dd>
       </dl>
-
-      <div class="note">
-        백업 파일: <code>recvQSCD20_gui_YYYYMMDD_HHMMSS.py</code>, <code>recvQSCD20_gui.py.bak</code>
-      </div>
-    </section>
-
-    <section id="plan">
-      <h2>구현 계획 요약</h2>
-      <p>상세 계획·데이터 흐름·모듈 설명은 <a href="plan.html">plan.html</a>을 참고하세요.</p>
-      <h3>목표 (최종)</h3>
-      <ul>
-        <li>UDP 9908, prefix 로그/bin, Quality·Station·Location</li>
-        <li>Diff = recv − data time, KST x축, 1초 NaN 격자</li>
-        <li>관측소 필터(Live/File), QCDX+TimeDiff, 패널별 차트</li>
-        <li>성능: 큐·200ms 타이머·활성 패널 격자 캐시</li>
-      </ul>
-      <h3>데이터 흐름 (개요)</h3>
-      <pre>UDP Thread: recv (Linux 커널 ts / 그 외 time.time_ns) → TimeDiff 확정 → queue.Queue
-         ↓ (QTimer, 패킷당 시그널 없음)
-    drain(최대 packet_drain_max) → QCDX.replay / StationBuffer / 로그
-         ↓
-    차트 갱신 (선택 관측소)
-
-Stop/종료: 남은 큐 전부 drain → flush → 파일 닫기
-
-File Viewer: read_qscd20_bin → 관측소 필터 → set_static_from_records</pre>
     </section>
 
     <section id="constants">
@@ -454,18 +871,19 @@ default_port, default_time_window_sec, time_window_choices
 default_panels, default_show_legend, log_max_lines
 chart_refresh_ms, packet_drain_max, packet_queue_max, bin_flush_every
 recv_delay_alert_sec, recv_alert_blink_ms
-sock_timeout_sec, sock_timeout_count</pre>
+sock_timeout_sec, sock_timeout_count, display_tz</pre>
       <p>
+        <code>default_panels</code> 는 기본 설정에서 차트 패널 체크박스로 고릅니다.
         <code>default_panels</code>·<code>default_show_legend</code> 는 프로그램을 다시 시작해야,
         <code>packet_queue_max</code> 는 다음 <strong>Start</strong> 부터 반영됩니다.
         저장 완료 창에서도 같은 내용을 안내합니다.
       </p>
-      <p><strong>코드 고정 (설정 불가):</strong> <code>BIN_FILE_MAGIC = b"QCDX\x01"</code></p>
+      <p><strong>코드 고정 (설정 불가):</strong> <code>BIN_FILE_MAGIC = b"QCDX\x01"</code> — <code>.QSCD20.replay</code> 파일 식별용</p>
     </section>
   </main>
 
   <footer>
-    recvQSCD20 · README.html · 마크다운 README.md / plan.md 기준 통합 문서
+    recvQSCD20 v1.0 · README.html
   </footer>
 </body>
 </html>
