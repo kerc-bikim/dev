@@ -84,11 +84,19 @@ function Dashboard({ data }: { data: AdminDashboard }) {
   return (
     <section className="nrl-card" id="admin-dashboard">
       <h3>대시보드</h3>
-      <p className="hint">운영 상태만 봅니다. 빨간 배지는 NRL 장애, 실패 작업, 디스크 90% 이상입니다.</p>
+      <p className="hint">
+        운영 상태만 봅니다. 빨간 배지는 API 5xx, NRL 장애·연속 실패, 실패 작업, 디스크 90%
+        이상입니다.
+      </p>
       <div className="dash-badges" id="admin-dash-badges">
+        {data.badges.api_5xx ? (
+          <span className="badge bad" id="dash-badge-api-5xx">
+            API 5xx
+          </span>
+        ) : null}
         {data.badges.nrl ? (
           <span className="badge bad" id="dash-badge-nrl">
-            NRL 장애
+            {data.nrl.source === "offline" ? "NRL 장애" : "NRL 연속 실패"}
           </span>
         ) : null}
         {data.badges.failed_jobs ? (
@@ -101,7 +109,10 @@ function Dashboard({ data }: { data: AdminDashboard }) {
             디스크 90% 이상
           </span>
         ) : null}
-        {!data.badges.nrl && !data.badges.failed_jobs && !data.badges.disk ? (
+        {!data.badges.api_5xx &&
+        !data.badges.nrl &&
+        !data.badges.failed_jobs &&
+        !data.badges.disk ? (
           <span className="hint">빨간 배지 없음</span>
         ) : null}
       </div>
@@ -128,6 +139,42 @@ function Dashboard({ data }: { data: AdminDashboard }) {
       <p className="hint">
         백업 성공 시각은 데이터베이스 덤프 검증을 마친 운영 절차가 기록한 값입니다.
       </p>
+      <h4>운영 알림</h4>
+      <table className="confirm-table" id="dash-monitoring-alerts" aria-live="polite">
+        <thead>
+          <tr>
+            <th>종류</th>
+            <th>상태</th>
+            <th>마지막 발생</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.alerts.length === 0 ? (
+            <tr>
+              <td colSpan={3}>활성 알림이 없습니다</td>
+            </tr>
+          ) : (
+            data.alerts.map((alert) => (
+              <tr key={alert.kind}>
+                <td>
+                  <span className="badge bad">{alert.title}</span>
+                </td>
+                <td>
+                  {alert.message}
+                  {alert.kind === "api_5xx" && data.monitoring.api_5xx.last_path ? (
+                    <span className="hint">
+                      {" "}
+                      · {data.monitoring.api_5xx.last_method} {data.monitoring.api_5xx.last_path} ·{" "}
+                      {data.monitoring.api_5xx.last_status}
+                    </span>
+                  ) : null}
+                </td>
+                <td>{formatWhen(alert.last_at)}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
       <div className="dash-nrl" id="dash-nrl">
         <p>
           NRL <AdminHelpLink chapter={4} label="NRL 연결과 캐시" />{" "}
@@ -148,7 +195,8 @@ function Dashboard({ data }: { data: AdminDashboard }) {
           <span className="hint">
             {" "}
             · 모드 {data.nrl.mode} · 마지막 동기화 {formatWhen(data.nrl.last_ok_at)} · 캐시된 응답{" "}
-            {data.nrl.cache_count ?? 0}개
+            {data.nrl.cache_count ?? 0}개 · 연속 실패 {data.monitoring.nrl.consecutive_failures}회
+            (알림 기준 {data.monitoring.nrl.threshold}회)
           </span>
         </p>
       </div>

@@ -226,6 +226,9 @@ export type NrlStatus = {
   last_ok: boolean;
   last_ok_at?: string | null;
   cache_count?: number;
+  consecutive_failures?: number;
+  threshold?: number;
+  last_failed_at?: string | null;
   library?: NrlLibraryStatus | null;
 };
 export type NrlLibraryStatus = {
@@ -263,7 +266,34 @@ export type AdminDashboard = {
     last_success_at: string | null;
     confirmed: boolean;
   };
-  badges: { nrl: boolean; failed_jobs: boolean; disk: boolean };
+  monitoring: {
+    api_5xx: {
+      window_sec: number;
+      count: number;
+      last_at: string | null;
+      last_method: string | null;
+      last_path: string | null;
+      last_status: number | null;
+    };
+    worker_failures: {
+      count: number;
+      last_at: string | null;
+      last_job_id: string | null;
+    };
+    nrl: {
+      consecutive_failures: number;
+      threshold: number;
+      last_failed_at: string | null;
+    };
+  };
+  alerts: {
+    kind: "api_5xx" | "worker_failure" | "nrl_consecutive_failure";
+    title: string;
+    message: string;
+    count: number;
+    last_at: string | null;
+  }[];
+  badges: { api_5xx: boolean; nrl: boolean; failed_jobs: boolean; disk: boolean };
 };
 
 export type AuditLogInfo = {

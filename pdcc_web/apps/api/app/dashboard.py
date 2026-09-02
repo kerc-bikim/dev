@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from .cache import get_redis
 from .config import settings
 from .jobs.service import job_out
+from .monitoring import api_5xx_snapshot
 from .models import FileAsset, Job, Project, StationLock, User, utcnow
 from .nrl.client import nrl_snapshot_from_redis
 
@@ -103,6 +104,62 @@ def _failed_jobs(db: Session) -> list[dict]:
     return [job_out(row) for row in rows]
 
 
+def _worker_failure_snapshot(db: Session, failed: list[dict]) -> dict:
+    count = int(
+        db.scalar(
+            select(func.count()).select_from(Job).where(Job.status == "failed")
+        )
+        or 0
+    )
+    latest = failed[0] if failed else {}
+    return {
+        "count": count,
+        "last_at": latest.get("finished_at") or latest.get("created_at"),
+        "last_job_id": latest.get("id"),
+    }
+
+
+def _alerts(api_5xx: dict, worker: dict, nrl: dict) -> list[dict]:
+    alerts: list[dict] = []
+    if api_5xx["count"] > 0:
+        alerts.append(
+            {
+                "kind": "api_5xx",
+                "title": "API 5xx",
+                "message": (
+                    f"최근 {api_5xx['window_sec'] // 60}분 동안 "
+                    f"{api_5xx['count']}건"
+                ),
+                "count": api_5xx["count"],
+                "last_at": api_5xx["last_at"],
+            }
+        )
+    if worker["count"] > 0:
+        alerts.append(
+            {
+                "kind": "worker_failure",
+                "title": "Worker 작업 실패",
+                "message": f"실패 상태 작업 {worker['count']}건",
+                "count": worker["count"],
+                "last_at": worker["last_at"],
+            }
+        )
+    if nrl["consecutive_failures"] >= nrl["threshold"]:
+        alerts.append(
+            {
+                "kind": "nrl_consecutive_failure",
+                "title": "NRL 연속 실패",
+                "message": (
+                    f"NRL 실시간 요청이 {nrl['consecutive_failures']}회 "
+                    "연속 실패했습니다"
+                ),
+                "count": nrl["consecutive_failures"],
+                "last_at": nrl["last_failed_at"],
+            }
+        )
+    return alerts
+
+
 def _long_locks(db: Session) -> list[dict]:
     now = utcnow()
     threshold = now + timedelta(seconds=LONG_LOCK_SEC)
@@ -142,16 +199,24 @@ def _export_count_today(db: Session) -> int:
 
 
 def build_dashboard(db: Session) -> dict:
-    nrl = nrl_snapshot_from_redis(get_redis())
+    redis = get_redis()
+    nrl = nrl_snapshot_from_redis(redis)
     originals = _asset_bytes(db, ORIGINAL_KIND)
     exports = _asset_bytes(db, EXPORT_KIND)
     nrl_zip = _nrl_zip_bytes(int(nrl.get("cache_bytes") or 0))
     disk = _disk_usage()
     failed = _failed_jobs(db)
+    worker = _worker_failure_snapshot(db, failed)
+    api_5xx = api_5xx_snapshot(
+        redis,
+        window_sec=max(1, settings.monitor_api_5xx_window_sec),
+    )
     nrl_down = nrl.get("source") == "offline"
     badges = {
-        "nrl": nrl_down,
-        "failed_jobs": len(failed) > 0,
+        "api_5xx": api_5xx["count"] > 0,
+        "nrl": nrl_down
+        or nrl["consecutive_failures"] >= nrl["threshold"],
+        "failed_jobs": worker["count"] > 0,
         "disk": bool(disk["over_90"]),
     }
     return {
@@ -168,5 +233,15 @@ def build_dashboard(db: Session) -> dict:
             "nrl_zip_bytes": nrl_zip,
         },
         "backup": _backup_status(),
+        "monitoring": {
+            "api_5xx": api_5xx,
+            "worker_failures": worker,
+            "nrl": {
+                "consecutive_failures": nrl["consecutive_failures"],
+                "threshold": nrl["threshold"],
+                "last_failed_at": nrl["last_failed_at"],
+            },
+        },
+        "alerts": _alerts(api_5xx, worker, nrl),
         "badges": badges,
     }

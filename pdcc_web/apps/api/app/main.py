@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .cache import get_redis, set_redis
 from .config import settings
 from .db import SessionLocal, configure_engine, ensure_schema
+from .monitoring import Api5xxMonitoringMiddleware
 from .nrl.client import set_nrl_client
 from .routers.admin import router as admin_router
 from .routers.auth import router as auth_router
@@ -63,6 +64,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(Api5xxMonitoringMiddleware)
 
 app.include_router(health_router)
 app.include_router(auth_router)
