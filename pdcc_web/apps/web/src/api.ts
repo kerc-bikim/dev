@@ -106,6 +106,18 @@ export type ValidationIssue = {
   start: string | null;
   nslc: string | null;
 };
+export type NrlSearchHit = {
+  element: string;
+  manufacturer: string;
+  model: string | null;
+  via: string;
+};
+export type NrlStatus = {
+  mode: string;
+  base_url: string;
+  cache_ttl_sec: number;
+  last_ok: boolean;
+};
 
 export class ApiError extends Error {
   status: number;

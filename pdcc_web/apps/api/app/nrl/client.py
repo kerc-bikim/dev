@@ -60,6 +60,47 @@ class NrlClient:
             raise NrlError("NRL 서비스가 오류를 반환했습니다", 502)
         return response
 
+    def probe(self) -> dict:
+        import time
+
+        url = f"{self.base_url}/catalog"
+        params = {"format": "json", "nodata": "404", "level": "element"}
+        started = time.perf_counter()
+        try:
+            with httpx.Client(timeout=self.timeout, follow_redirects=True) as client:
+                response = client.get(url, params=params)
+        except httpx.HTTPError as exc:
+            elapsed_ms = int((time.perf_counter() - started) * 1000)
+            return {
+                "ok": False,
+                "url": url,
+                "status_code": 0,
+                "elapsed_ms": elapsed_ms,
+                "elements": [],
+                "error": "NRL 서비스에 연결할 수 없습니다",
+            }
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        elements: list[str] = []
+        if response.status_code < 400:
+            try:
+                data = response.json()
+                from .questions import as_list
+
+                for node in as_list(data.get("NRLCatalog", {}).get("element")):
+                    name = node.get("name") if isinstance(node, dict) else None
+                    if name:
+                        elements.append(str(name))
+            except Exception:
+                pass
+        return {
+            "ok": 200 <= response.status_code < 400,
+            "url": url,
+            "status_code": response.status_code,
+            "elapsed_ms": elapsed_ms,
+            "elements": elements,
+            "error": None if 200 <= response.status_code < 400 else "NRL 서비스가 오류를 반환했습니다",
+        }
+
     def _cached_json(self, key: str, loader) -> Any:
         redis = get_redis()
         try:

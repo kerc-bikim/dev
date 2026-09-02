@@ -43,7 +43,7 @@ cd pdcc_web/apps/web && npm install && npm run dev -- --host 0.0.0.0 --port 3000
 
 ## M1 NRL
 
-로그인 후 센서·기록계를 고르면 서버가 NRL catalog를 프록시하고, 고유값이 2개 이상인 설정만 질문합니다. `GET /api/nrl/combine` 으로 StationXML-Response를 미리 봅니다. 브라우저는 EarthScope에 직접 붙지 않습니다. 자세한 내용: [`docs/adr/0003-nrl-proxy.md`](docs/adr/0003-nrl-proxy.md).
+로그인 후 센서·기록계를 고르면 서버가 NRL catalog를 프록시하고, 고유값이 2개 이상인 설정만 질문합니다. `GET /api/nrl/combine` 으로 StationXML-Response를 미리 봅니다. 브라우저는 EarthScope에 직접 붙지 않습니다. 검색·별칭·Certimus 안내는 [`docs/adr/0009-nrl-search.md`](docs/adr/0009-nrl-search.md).
 
 | 이름 | 기본 | 설명 |
 |------|------|------|

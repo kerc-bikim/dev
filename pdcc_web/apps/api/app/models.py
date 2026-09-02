@@ -142,5 +142,25 @@ class EditUndo(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class NrlAlias(Base):
+    __tablename__ = "nrl_aliases"
+    __table_args__ = (UniqueConstraint("query", name="uq_nrl_aliases_query"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    query: Mapped[str] = mapped_column(String(64), nullable=False)
+    manufacturer: Mapped[str] = mapped_column(String(128), nullable=False)
+    model: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+
+
+class NrlExcluded(Base):
+    __tablename__ = "nrl_excluded"
+    __table_args__ = (UniqueConstraint("query", name="uq_nrl_excluded_query"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    query: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    message: Mapped[str] = mapped_column(String(512), nullable=False)
+
+
 def new_session_token() -> str:
     return secrets.token_urlsafe(32)
