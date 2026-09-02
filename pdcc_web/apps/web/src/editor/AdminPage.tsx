@@ -228,13 +228,13 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
   async function refresh() {
     const [dashData, libraryData, aliasData, excludedData, orgData, userData, projectData] =
       await Promise.all([
-      apiGet<AdminDashboard>("/api/admin/dashboard"),
-      apiGet<NrlLibraryStatus>("/api/nrl/library"),
-      apiGet<{ aliases: NrlAliasRule[] }>("/api/admin/nrl/aliases"),
-      apiGet<{ excluded: NrlExcludedRule[] }>("/api/admin/nrl/excluded"),
-      apiGet<{ orgs: OrgInfo[] }>("/api/admin/orgs"),
-      apiGet<{ users: UserInfo[] }>("/api/admin/users"),
-      apiGet<{ projects: Project[] }>("/api/projects"),
+        apiGet<AdminDashboard>("/api/admin/dashboard"),
+        apiGet<NrlLibraryStatus>("/api/nrl/library"),
+        apiGet<{ aliases: NrlAliasRule[] }>("/api/admin/nrl/aliases"),
+        apiGet<{ excluded: NrlExcludedRule[] }>("/api/admin/nrl/excluded"),
+        apiGet<{ orgs: OrgInfo[] }>("/api/admin/orgs"),
+        apiGet<{ users: UserInfo[] }>("/api/admin/users"),
+        apiGet<{ projects: Project[] }>("/api/projects"),
       ]);
     setDashboard(dashData);
     setNrlLibrary(libraryData);
