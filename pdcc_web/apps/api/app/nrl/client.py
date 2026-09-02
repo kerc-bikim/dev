@@ -121,7 +121,14 @@ def nrl_snapshot_from_redis(redis) -> dict:
     except Exception:
         cache_count = 0
         cache_bytes = 0
-    if source not in {"online", "cache", "offline"}:
+    mode = nrl_mode()
+    library = None
+    if mode == "offline":
+        from .offline import get_offline_library
+
+        library = get_offline_library().status()
+        source = "zip" if library["available"] else "offline"
+    elif source not in {"online", "cache", "offline", "zip"}:
         if cache_count > 0:
             source = "cache"
         elif last_ok_at:
@@ -129,7 +136,7 @@ def nrl_snapshot_from_redis(redis) -> dict:
         else:
             source = None
     return {
-        "mode": settings.nrl_mode,
+        "mode": mode,
         "source": source,
         "badge": nrl_badge(source) if source else None,
         "base_url": settings.nrl_base_url,
@@ -137,6 +144,7 @@ def nrl_snapshot_from_redis(redis) -> dict:
         "last_ok_at": last_ok_at,
         "cache_count": cache_count,
         "cache_bytes": cache_bytes,
+        "library": library,
     }
 
 
@@ -167,8 +175,18 @@ def mark_nrl_using_cache(redis) -> None:
     mark_nrl_live_failed(redis, has_cache=True)
 
 
+def nrl_mode() -> str:
+    mode = (settings.nrl_mode or "online").strip().lower()
+    return mode if mode in {"online", "cache-first", "offline"} else "online"
+
+
 def nrl_badge(source: str) -> str:
-    return {"online": "온라인", "cache": "캐시 사용", "offline": "NRL 장애"}.get(source, source)
+    return {
+        "online": "온라인",
+        "cache": "캐시 사용",
+        "offline": "NRL 장애",
+        "zip": "오프라인 zip",
+    }.get(source, source)
 
 
 class NrlClient:
@@ -295,6 +313,15 @@ class NrlClient:
     ) -> dict:
         if level not in CATALOG_LEVELS:
             raise NrlError(f"알 수 없는 catalog level: {level}", 400)
+        if nrl_mode() == "offline":
+            from .offline import get_offline_library
+
+            return get_offline_library().catalog(
+                level=level,
+                element=element,
+                manufacturer=manufacturer,
+                model=model,
+            )
         params: dict[str, Any] = {
             "format": "json",
             "nodata": "404",
@@ -315,6 +342,11 @@ class NrlClient:
         return self._cached_json(cache_key, load)
 
     def prefix_lookup(self) -> list[dict]:
+        if nrl_mode() == "offline":
+            from .offline import get_offline_library
+
+            return get_offline_library().prefix_lookup()
+
         def load() -> list[dict]:
             data = self._get("/prefix-lookup", {"format": "json"}).json()
             if isinstance(data, list):
@@ -334,6 +366,10 @@ class NrlClient:
     def combine(self, instconfig: str, fmt: str) -> tuple[bytes, str]:
         instconfig = validate_instconfig(instconfig)
         fmt = validate_format(fmt)
+        if nrl_mode() == "offline":
+            from .offline import get_offline_library
+
+            return get_offline_library().combine(instconfig, fmt)
         cache_key = combine_cache_key(instconfig, fmt)
 
         def load() -> dict:

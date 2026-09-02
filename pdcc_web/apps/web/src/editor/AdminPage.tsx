@@ -5,6 +5,7 @@ import {
   apiPut,
   type AdminDashboard,
   type MemberInfo,
+  type NrlLibraryStatus,
   type OrgInfo,
   type Project,
   type UserInfo,
@@ -90,7 +91,13 @@ function Dashboard({ data }: { data: AdminDashboard }) {
           <span
             className={
               "badge " +
-              (data.nrl.source === "online" ? "ok" : data.nrl.source === "cache" ? "warn" : data.nrl.source === "offline" ? "bad" : "")
+              (data.nrl.source === "online" || data.nrl.source === "zip"
+                ? "ok"
+                : data.nrl.source === "cache"
+                  ? "warn"
+                  : data.nrl.source === "offline"
+                    ? "bad"
+                    : "")
             }
           >
             {nrlLabel}
@@ -188,6 +195,7 @@ function Dashboard({ data }: { data: AdminDashboard }) {
 
 export function AdminPage({ onHome }: { onHome: () => void }) {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
+  const [nrlLibrary, setNrlLibrary] = useState<NrlLibraryStatus | null>(null);
   const [orgs, setOrgs] = useState<OrgInfo[]>([]);
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -207,13 +215,15 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
   const [busy, setBusy] = useState(false);
 
   async function refresh() {
-    const [dashData, orgData, userData, projectData] = await Promise.all([
+    const [dashData, libraryData, orgData, userData, projectData] = await Promise.all([
       apiGet<AdminDashboard>("/api/admin/dashboard"),
+      apiGet<NrlLibraryStatus>("/api/nrl/library"),
       apiGet<{ orgs: OrgInfo[] }>("/api/admin/orgs"),
       apiGet<{ users: UserInfo[] }>("/api/admin/users"),
       apiGet<{ projects: Project[] }>("/api/projects"),
     ]);
     setDashboard(dashData);
+    setNrlLibrary(libraryData);
     setOrgs(orgData.orgs);
     setUsers(userData.users);
     setProjects(projectData.projects);
@@ -329,6 +339,33 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
     }
   }
 
+  async function downloadNrlLibrary() {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await apiPost<NrlLibraryStatus>("/api/nrl/library/download");
+      setNrlLibrary(result);
+      await refresh();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setNrlMode(mode: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiPost("/api/nrl/mode", { mode });
+      await refresh();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="workbench admin-page">
       <div className="editor-top">
@@ -340,6 +377,36 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
       <p className="hint">운영 대시보드와 기관·사용자·역할을 여기서 봅니다. 관리자가 아니면 홈으로 돌아갑니다.</p>
       {error ? <p className="error">{error}</p> : null}
       {dashboard ? <Dashboard data={dashboard} /> : <p className="hint">대시보드를 불러오는 중…</p>}
+
+      <section className="nrl-card" id="admin-nrl-offline">
+        <h3>NRL 전체 zip 오프라인</h3>
+        <p className="hint">
+          {nrlLibrary?.available
+            ? `${nrlLibrary.responses}개 응답 · ${formatBytes(nrlLibrary.bytes)} · ${nrlLibrary.path}`
+            : nrlLibrary?.error || "서버에 전체 zip이 없습니다."}
+        </p>
+        <div className="wizard-nav">
+          <button type="button" disabled={busy} onClick={downloadNrlLibrary}>
+            EarthScope에서 전체 zip 받기
+          </button>
+          <button
+            type="button"
+            className={dashboard?.nrl.mode === "offline" ? "primary" : ""}
+            disabled={busy}
+            onClick={() => setNrlMode("offline")}
+          >
+            오프라인 사용
+          </button>
+          <button
+            type="button"
+            className={dashboard?.nrl.mode !== "offline" ? "primary" : ""}
+            disabled={busy}
+            onClick={() => setNrlMode("online")}
+          >
+            온라인 사용
+          </button>
+        </div>
+      </section>
 
       <section className="nrl-card">
         <h3>기관</h3>

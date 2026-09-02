@@ -219,7 +219,11 @@ export default function App() {
         {me && nrlStatus ? (
           <span
             className={
-              nrlStatus.source === "online" ? "ok" : nrlStatus.source === "cache" ? "warn" : "bad"
+              nrlStatus.source === "online" || nrlStatus.source === "zip"
+                ? "ok"
+                : nrlStatus.source === "cache"
+                  ? "warn"
+                  : "bad"
             }
           >
             NRL {nrlStatus.badge || nrlStatus.mode}
