@@ -37,6 +37,7 @@ ADR: 0004, 0007, 0008, 0013, 0026
 - 공식 validator (JAR 또는 Python 번호), `_unvalidated` XML
 - 대량 검증 작업 큐, 진행률, 재시도, 대기 취소
 - SEED 손실 확인 후 내보내기, RESP/RESP zip
+- dataless는 SEED Manual V2.4 제어 헤더(B010/B011/B030/B050–B058). 네트워크 2자, 디지털 B057, stage 0 감도 필수
 - 워커 `python -m app.jobs.runner`
 
 ADR: 0010, 0015, 0016, 0017, 0018, 0019

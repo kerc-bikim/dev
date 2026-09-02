@@ -19,6 +19,7 @@ NOTICES = (
     "긴 설명·코멘트는 잘립니다",
     "Identifier, 일부 Equipment 상세는 매핑되지 않을 수 있습니다",
     "왕복 변환 후 XML이 바이트 단위로 같지 않을 수 있습니다",
+    "SEED 2.4 네트워크 코드는 2자, 깊이는 0.1 m 단위입니다",
 )
 
 DROP_TAGS = {
@@ -31,6 +32,24 @@ DROP_TAGS = {
 }
 
 EQUIPMENT_KEEP = {"Type", "Description"}
+
+
+def _extra_decimal(value: str, places: int) -> bool:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return False
+    text = f"{number:.10f}".rstrip("0")
+    if "." not in text:
+        return False
+    return len(text.split(".", 1)[1]) > places
+
+
+def _one_decimal(value: str) -> str:
+    try:
+        return f"{float(value):.1f}"
+    except (TypeError, ValueError):
+        return value
 
 
 def loss_ack_token(xml: str) -> str:
@@ -91,6 +110,17 @@ def scan_seed_loss(xml: str) -> list[dict]:
     rows: list[dict] = []
     for net in root.findall(qname("Network")):
         net_code = net.get("code") or ""
+        if len(net_code) > 2:
+            rows.append(
+                _row(
+                    kind="error",
+                    code="E_SEED_NET",
+                    path=net_code,
+                    field="network",
+                    original=net_code,
+                    message="SEED 2.4 네트워크 코드는 2자입니다. StationXML 코드를 2자로 바꾸세요",
+                )
+            )
         rows.extend(_scan_container(net, net_code, None, None))
         for sta in net.findall(qname("Station")):
             sta_code = sta.get("code") or ""
@@ -105,13 +135,14 @@ def seed_loss_report(xml: str, network: str, project_id: int) -> dict:
     rows = scan_seed_loss(xml)
     issues = validate_project(xml, network, project_id, mode="full")
     summary = summarize(issues, xml_source="project", mode="full", network=network)
+    seed_errors = [row for row in rows if row["kind"] == "error"]
     return {
         "notices": list(NOTICES),
         "rows": rows,
         "trunc_count": sum(1 for row in rows if row["kind"] == "truncate"),
         "drop_count": sum(1 for row in rows if row["kind"] == "drop"),
         "ack": loss_ack_token(xml),
-        "can_export_seed": summary["can_export_seed"],
+        "can_export_seed": summary["can_export_seed"] and not seed_errors,
         "error_count": summary["error_count"],
         "filename": summary["filename"],
         "comment_max": COMMENT_MAX,
@@ -128,6 +159,39 @@ def _scan_container(
     rows: list[dict] = []
     path = _path(net, sta, cha)
     nslc = _nslc(cha)
+    if local(node.tag) == "Station":
+        site = node.find(qname("Site"))
+        name = child_text(site, "Name") if site is not None else ""
+        if name and any(ord(ch) >= 128 for ch in name):
+            rows.append(
+                _row(
+                    kind="drop",
+                    code="W_SEED_SITE",
+                    path=path,
+                    field="site",
+                    original=name,
+                    seed_value=sta or "",
+                    message="한글 사이트명은 SEED에 넣을 수 없어 관측소 코드로 대체됩니다",
+                    station=sta,
+                )
+            )
+    if local(node.tag) == "Channel":
+        depth = child_text(node, "Depth") or ""
+        if _extra_decimal(depth, 1):
+            rows.append(
+                _row(
+                    kind="truncate",
+                    code="W_SEED_PREC",
+                    path=path,
+                    field="depth",
+                    original=depth,
+                    seed_value=_one_decimal(depth),
+                    limit=1,
+                    message="SEED 2.4 깊이는 0.1 m 단위입니다",
+                    nslc=nslc,
+                    station=sta,
+                )
+            )
     for comment in node.findall(qname("Comment")):
         value = child_text(comment, "Value") or ""
         if len(value) > COMMENT_MAX:
@@ -236,6 +300,28 @@ def _scan_response(cha: etree._Element, net: str, sta: str) -> list[dict]:
     resp = cha.find(qname("Response"))
     if resp is None:
         return rows
+    for stage in resp.findall(qname("Stage")):
+        coef = stage.find(qname("Coefficients"))
+        fir = stage.find(qname("FIR"))
+        digital = False
+        if coef is not None:
+            kind = (child_text(coef, "CfTransferFunctionType") or "").upper()
+            digital = "DIGITAL" in kind or kind == "D"
+        if fir is not None:
+            digital = True
+        if digital and stage.find(qname("Decimation")) is None:
+            rows.append(
+                _row(
+                    kind="error",
+                    code="E_SEED_DECIM",
+                    path=path,
+                    field="decimation",
+                    original=stage.get("number") or "",
+                    message="SEED 2.4 디지털 단계에는 데시메이션이 필요합니다",
+                    nslc=nslc,
+                    station=sta,
+                )
+            )
     names: list[str] = []
     for fir in resp.findall(f".//{qname('FIR')}"):
         names.append(child_text(fir, "Name") or fir.get("name") or "")

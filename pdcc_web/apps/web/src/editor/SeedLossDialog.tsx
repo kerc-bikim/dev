@@ -4,6 +4,7 @@ import { apiGet, apiPost, type Job, type SeedLossReport } from "../api";
 const KIND_LABEL: Record<string, string> = {
   truncate: "잘림",
   drop: "제거",
+  error: "오류",
 };
 
 const FIELD_LABEL: Record<string, string> = {
@@ -18,6 +19,10 @@ const FIELD_LABEL: Record<string, string> = {
   dataavailability: "DataAvailability",
   externalreference: "ExternalReference",
   sourceid: "SourceID",
+  network: "네트워크",
+  site: "사이트명",
+  depth: "깊이",
+  decimation: "데시메이션",
 };
 
 export function SeedLossDialog({
@@ -74,6 +79,7 @@ export function SeedLossDialog({
           "긴 설명·코멘트는 잘립니다",
           "Identifier, 일부 Equipment 상세는 매핑되지 않을 수 있습니다",
           "왕복 변환 후 XML이 바이트 단위로 같지 않을 수 있습니다",
+          "SEED 2.4 네트워크 코드는 2자, 깊이는 0.1 m 단위입니다",
         ]).map((line) => (
           <li key={line}>{line}</li>
         ))}
