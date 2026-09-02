@@ -1,7 +1,5 @@
 # packages/stationxml
 
-StationXML 원문 저장·패치. 진실은 XML 원문이며 ObsPy Inventory는 뷰다.
-프로덕션 저장 경로에서 `Inventory.write()`로 전체 문서를 재생성하지 않는다.
+Inventory의 진실은 StationXML 원문입니다. ObsPy `Inventory`는 뷰이며, 저장 경로에서 `Inventory.write()`로 전체 문서를 재생성하지 않습니다.
 
-M0에서는 자리만 둔다. 화이트리스트 왕복은 당분간 `stationxml_manager` 의
-ADR 0002 코드를 참고한다.
+패치·가져오기·검증 구현은 `apps/api/app/inventory/`와 ADR [0001](../../docs/adr/0001-monorepo.md), [0011](../../docs/adr/0011-stationxml-import.md)입니다. 이 패키지 디렉터리는 공유 자리입니다.
