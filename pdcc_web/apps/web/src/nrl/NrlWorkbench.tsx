@@ -145,7 +145,11 @@ export function NrlWorkbench({
             <span
               className={
                 "badge " +
-                (nrlStatus.source === "online" ? "ok" : nrlStatus.source === "cache" ? "warn" : "bad")
+                (nrlStatus.source === "online" || nrlStatus.source === "zip"
+                  ? "ok"
+                  : nrlStatus.source === "cache"
+                    ? "warn"
+                    : "bad")
               }
             >
               {nrlStatus.badge}

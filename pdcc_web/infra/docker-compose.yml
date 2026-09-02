@@ -39,8 +39,14 @@ services:
       NRL_BASE_URL: ${NRL_BASE_URL:-https://service.earthscope.org/irisws/nrl/1}
       NRL_TIMEOUT_SEC: ${NRL_TIMEOUT_SEC:-30}
       NRL_CACHE_TTL_SEC: ${NRL_CACHE_TTL_SEC:-3600}
+      NRL_MODE: ${NRL_MODE:-online}
+      NRL_OFFLINE_ZIP: ${NRL_OFFLINE_ZIP:-/data/nrl/full_NRL_v2.stationxml.zip}
+      NRL_LIBRARY_TIMEOUT_SEC: ${NRL_LIBRARY_TIMEOUT_SEC:-900}
+      DATA_DIR: ${DATA_DIR:-/data}
     ports:
       - "8080:8080"
+    volumes:
+      - pdcc-data:/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,3 +82,4 @@ services:
 
 volumes:
   pdcc-pg:
+  pdcc-data:

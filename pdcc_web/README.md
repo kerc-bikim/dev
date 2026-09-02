@@ -50,9 +50,16 @@ cd pdcc_web/apps/web && npm install && npm run dev -- --host 0.0.0.0 --port 3000
 | `NRL_BASE_URL` | `https://service.earthscope.org/irisws/nrl/1` | NRL 서비스 |
 | `NRL_TIMEOUT_SEC` | `30` | 업스트림 제한 |
 | `NRL_CACHE_TTL_SEC` | `3600` | catalog·prefix Redis TTL |
-| `NRL_MODE` | `online` | `online` / `cache-first` / `offline`. 장애 시 stale 캐시로 Guralp 미리보기 |
+| `NRL_MODE` | `online` | `online` / `cache-first` / `offline`. offline은 전체 zip만 읽음 |
+| `NRL_OFFLINE_ZIP` | (없음) | EarthScope 전체 StationXML zip 경로 |
+| `NRL_LIBRARY_TIMEOUT_SEC` | `900` | 관리자의 전체 zip 다운로드 제한(초) |
 
 NRL은 API 기동 시 호출하지 않습니다. 업스트림이 죽거나 URL이 잘못되어도 캐시된 combine/catalog 는 그대로 쓰고, 상태 배지는 `캐시 사용`이 됩니다 (`docs/adr/0012-nrl-cache-fallback.md`).
+
+관리자는 `/admin`에서 EarthScope 전체 StationXML zip을 서버 볼륨에 받고 오프라인 모드로
+전환할 수 있습니다. 오프라인 모드의 탐색·검색·위저드·미리보기는 zip의 `index.txt` 결정
+트리와 개별 XML만 사용하며 EarthScope를 호출하지 않습니다
+(`docs/adr/0021-nrl-offline-zip.md`).
 
 ## M2 위저드·잠금
 
@@ -84,7 +91,6 @@ NRL은 API 기동 시 호출하지 않습니다. 업스트림이 죽거나 URL�
 
 | 이름 | 기본 | 설명 |
 |------|------|------|
-| `NRL_OFFLINE_ZIP` | (없음) | 오프라인 NRL zip 경로. 대시보드 디스크 칸 |
 | `DATA_DIR` | `.` | 디스크 사용률을 재는 볼륨 |
 
 ## 테스트

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     nrl_cache_ttl_sec: int = 3600
     nrl_mode: str = "online"
     nrl_offline_zip: str = ""
+    nrl_library_timeout_sec: float = 900.0
     data_dir: str = "."
     lock_ttl_sec: int = 300
     validator_jar: str = ""

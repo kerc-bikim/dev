@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from ..cache import get_redis
 from ..config import settings
 from ..models import NrlAlias, NrlExcluded
-from .client import NrlError, get_nrl_client, mark_nrl_using_cache
+from .client import NrlError, get_nrl_client, mark_nrl_using_cache, nrl_mode
 from .questions import as_list
 
 
@@ -34,15 +34,17 @@ def catalog_index(element: str) -> list[dict[str, str]]:
     redis = get_redis()
     key = f"pdcc:nrl:index:{element}"
     stale: list[dict[str, str]] | None = None
-    try:
-        raw = redis.get(key)
-        if raw:
-            return json.loads(raw)
-        raw_stale = redis.get(f"{key}:stale")
-        if raw_stale:
-            stale = json.loads(raw_stale)
-    except Exception:
-        stale = None
+    offline = nrl_mode() == "offline"
+    if not offline:
+        try:
+            raw = redis.get(key)
+            if raw:
+                return json.loads(raw)
+            raw_stale = redis.get(f"{key}:stale")
+            if raw_stale:
+                stale = json.loads(raw_stale)
+        except Exception:
+            stale = None
     try:
         rows: list[dict[str, str]] = []
         seen: set[tuple[str, str]] = set()
@@ -79,6 +81,8 @@ def catalog_index(element: str) -> list[dict[str, str]]:
             mark_nrl_using_cache(redis)
             return stale
         raise
+    if offline:
+        return rows
     try:
         redis.set(key, json.dumps(rows), ex=settings.nrl_cache_ttl_sec)
         redis.set(f"{key}:stale", json.dumps(rows), ex=30 * 24 * 3600)

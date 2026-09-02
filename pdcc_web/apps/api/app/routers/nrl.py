@@ -16,6 +16,7 @@ from ..nrl.client import (
     mark_nrl_using_cache,
     nrl_badge,
     nrl_cache_count,
+    nrl_mode,
     validate_format,
     validate_instconfig,
 )
@@ -34,6 +35,15 @@ class WizardIn(BaseModel):
     manufacturer: str = Field(min_length=1, max_length=128)
     model: str = Field(min_length=1, max_length=128)
     answers: dict[str, str] = Field(default_factory=dict)
+
+
+class NrlModeIn(BaseModel):
+    mode: str = Field(min_length=1, max_length=32)
+
+
+def _admin_only(user: User) -> None:
+    if user.role != ADMIN_ROLE:
+        raise HTTPException(status_code=403, detail="관리자만 NRL 오프라인 설정을 바꿀 수 있습니다")
 
 
 def _http(exc: NrlError) -> NoReturn:
@@ -138,6 +148,24 @@ def _probe_live(redis) -> bool | None:
 
 @router.get("/status")
 def nrl_status(_user: User = Depends(current_user)) -> dict:
+    mode = nrl_mode()
+    library = None
+    if mode == "offline":
+        from ..nrl.offline import get_offline_library
+
+        library = get_offline_library().status()
+        source = "zip" if library["available"] else "offline"
+        return {
+            "mode": mode,
+            "source": source,
+            "badge": nrl_badge(source),
+            "base_url": settings.nrl_base_url,
+            "cache_ttl_sec": settings.nrl_cache_ttl_sec,
+            "last_ok": bool(library["available"]),
+            "last_ok_at": None,
+            "cache_count": int(library["responses"]),
+            "library": library,
+        }
     redis = get_redis()
     cache_count = 0
     last_ok_at = None
@@ -166,7 +194,7 @@ def nrl_status(_user: User = Depends(current_user)) -> dict:
     else:
         source = "offline"
     return {
-        "mode": settings.nrl_mode,
+        "mode": mode,
         "source": source,
         "badge": nrl_badge(source),
         "base_url": settings.nrl_base_url,
@@ -175,6 +203,49 @@ def nrl_status(_user: User = Depends(current_user)) -> dict:
         "last_ok_at": last_ok_at,
         "cache_count": cache_count,
     }
+
+
+@router.get("/library")
+def nrl_library(user: User = Depends(current_user)) -> dict:
+    _admin_only(user)
+    from ..nrl.offline import get_offline_library
+
+    return get_offline_library().status()
+
+
+@router.post("/library")
+@router.post("/library/download")
+def nrl_library_download(user: User = Depends(current_user)) -> dict:
+    _admin_only(user)
+    from ..nrl.offline import download_library
+
+    try:
+        return download_library()
+    except NrlError as exc:
+        _http(exc)
+
+
+@router.post("/mode")
+def nrl_set_mode(body: NrlModeIn, user: User = Depends(current_user)) -> dict:
+    _admin_only(user)
+    mode = body.mode.strip().lower()
+    if mode not in {"online", "cache-first", "offline"}:
+        raise HTTPException(
+            status_code=400, detail="NRL 모드는 online, cache-first, offline 중 하나여야 합니다"
+        )
+    settings.nrl_mode = mode
+    redis = get_redis()
+    try:
+        if mode == "offline":
+            from ..nrl.offline import get_offline_library
+
+            available = get_offline_library().status()["available"]
+            redis.set("pdcc:nrl:source", "zip" if available else "offline")
+        else:
+            redis.delete("pdcc:nrl:probe_ok")
+    except Exception:
+        pass
+    return nrl_status(user)
 
 
 @router.post("/test")

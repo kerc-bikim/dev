@@ -212,6 +212,14 @@ export type NrlStatus = {
   last_ok: boolean;
   last_ok_at?: string | null;
   cache_count?: number;
+  library?: NrlLibraryStatus | null;
+};
+export type NrlLibraryStatus = {
+  available: boolean;
+  path: string;
+  bytes: number;
+  responses: number;
+  error?: string | null;
 };
 export type AdminDashboard = {
   user_count: number;
