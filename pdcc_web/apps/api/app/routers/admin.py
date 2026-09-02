@@ -16,7 +16,15 @@ from ..access import (
 from ..dashboard import build_dashboard
 from ..db import get_db
 from ..inventory.service import write_audit
-from ..models import Organization, Project, ProjectMember, User, hash_password
+from ..models import (
+    NrlAlias,
+    NrlExcluded,
+    Organization,
+    Project,
+    ProjectMember,
+    User,
+    hash_password,
+)
 from ..routers.auth import current_user
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -52,6 +60,47 @@ class MemberIn(BaseModel):
     project_id: int
 
 
+class NrlAliasIn(BaseModel):
+    query: str = Field(min_length=1, max_length=64)
+    manufacturer: str = Field(min_length=1, max_length=128)
+    model: str = Field(default="", max_length=128)
+
+
+class NrlExcludedIn(BaseModel):
+    query: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=128)
+    message: str = Field(min_length=1, max_length=512)
+
+
+def _required(value: str, label: str) -> str:
+    cleaned = value.strip()
+    if not cleaned:
+        raise HTTPException(status_code=400, detail=f"{label}을(를) 입력하세요")
+    return cleaned
+
+
+def _query(value: str) -> str:
+    return _required(value, "검색어").lower()
+
+
+def _alias_out(row: NrlAlias) -> dict:
+    return {
+        "id": row.id,
+        "query": row.query,
+        "manufacturer": row.manufacturer,
+        "model": row.model,
+    }
+
+
+def _excluded_out(row: NrlExcluded) -> dict:
+    return {
+        "id": row.id,
+        "query": row.query,
+        "name": row.name,
+        "message": row.message,
+    }
+
+
 def _org_or_404(db: Session, org_id: int | None) -> Organization:
     if org_id is None:
         org = db.scalar(select(Organization).order_by(Organization.id.asc()))
@@ -67,6 +116,183 @@ def _org_or_404(db: Session, org_id: int | None) -> Organization:
 @router.get("/dashboard")
 def admin_dashboard(db: Session = Depends(get_db), _admin: User = Depends(_admin)) -> dict:
     return build_dashboard(db)
+
+
+@router.get("/nrl/aliases")
+def list_nrl_aliases(db: Session = Depends(get_db), _admin: User = Depends(_admin)) -> dict:
+    rows = db.scalars(select(NrlAlias).order_by(NrlAlias.query, NrlAlias.id)).all()
+    return {"aliases": [_alias_out(row) for row in rows]}
+
+
+@router.post("/nrl/aliases")
+def create_nrl_alias(
+    body: NrlAliasIn, db: Session = Depends(get_db), admin: User = Depends(_admin)
+) -> dict:
+    query = _query(body.query)
+    if db.scalar(select(NrlAlias).where(NrlAlias.query == query)) is not None:
+        raise HTTPException(status_code=409, detail="같은 별칭 검색어가 있습니다")
+    row = NrlAlias(
+        query=query,
+        manufacturer=_required(body.manufacturer, "제조사"),
+        model=body.model.strip(),
+    )
+    db.add(row)
+    db.flush()
+    write_audit(
+        db,
+        project_id=None,
+        actor=admin.username,
+        action="nrl_alias_create",
+        target=query,
+        summary=f"NRL 별칭 생성 {query}",
+    )
+    db.commit()
+    db.refresh(row)
+    return _alias_out(row)
+
+
+@router.put("/nrl/aliases/{alias_id}")
+def update_nrl_alias(
+    alias_id: int,
+    body: NrlAliasIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(_admin),
+) -> dict:
+    row = db.get(NrlAlias, alias_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="별칭이 없습니다")
+    query = _query(body.query)
+    duplicate = db.scalar(
+        select(NrlAlias).where(NrlAlias.query == query, NrlAlias.id != alias_id)
+    )
+    if duplicate is not None:
+        raise HTTPException(status_code=409, detail="같은 별칭 검색어가 있습니다")
+    before = row.query
+    row.query = query
+    row.manufacturer = _required(body.manufacturer, "제조사")
+    row.model = body.model.strip()
+    write_audit(
+        db,
+        project_id=None,
+        actor=admin.username,
+        action="nrl_alias_update",
+        target=query,
+        summary=f"NRL 별칭 수정 {before} → {query}",
+    )
+    db.commit()
+    db.refresh(row)
+    return _alias_out(row)
+
+
+@router.delete("/nrl/aliases/{alias_id}")
+def delete_nrl_alias(
+    alias_id: int, db: Session = Depends(get_db), admin: User = Depends(_admin)
+) -> dict:
+    row = db.get(NrlAlias, alias_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="별칭이 없습니다")
+    query = row.query
+    db.delete(row)
+    write_audit(
+        db,
+        project_id=None,
+        actor=admin.username,
+        action="nrl_alias_delete",
+        target=query,
+        summary=f"NRL 별칭 삭제 {query}",
+    )
+    db.commit()
+    return {"ok": True, "query": query}
+
+
+@router.get("/nrl/excluded")
+def list_nrl_excluded(db: Session = Depends(get_db), _admin: User = Depends(_admin)) -> dict:
+    rows = db.scalars(select(NrlExcluded).order_by(NrlExcluded.query, NrlExcluded.id)).all()
+    return {"excluded": [_excluded_out(row) for row in rows]}
+
+
+@router.post("/nrl/excluded")
+def create_nrl_excluded(
+    body: NrlExcludedIn, db: Session = Depends(get_db), admin: User = Depends(_admin)
+) -> dict:
+    query = _query(body.query)
+    if db.scalar(select(NrlExcluded).where(NrlExcluded.query == query)) is not None:
+        raise HTTPException(status_code=409, detail="같은 제외 장비 검색어가 있습니다")
+    row = NrlExcluded(
+        query=query,
+        name=_required(body.name, "장비명"),
+        message=_required(body.message, "안내"),
+    )
+    db.add(row)
+    db.flush()
+    write_audit(
+        db,
+        project_id=None,
+        actor=admin.username,
+        action="nrl_excluded_create",
+        target=query,
+        summary=f"NRL 제외 장비 생성 {query}",
+    )
+    db.commit()
+    db.refresh(row)
+    return _excluded_out(row)
+
+
+@router.put("/nrl/excluded/{excluded_id}")
+def update_nrl_excluded(
+    excluded_id: int,
+    body: NrlExcludedIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(_admin),
+) -> dict:
+    row = db.get(NrlExcluded, excluded_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="제외 장비가 없습니다")
+    query = _query(body.query)
+    duplicate = db.scalar(
+        select(NrlExcluded).where(
+            NrlExcluded.query == query,
+            NrlExcluded.id != excluded_id,
+        )
+    )
+    if duplicate is not None:
+        raise HTTPException(status_code=409, detail="같은 제외 장비 검색어가 있습니다")
+    before = row.query
+    row.query = query
+    row.name = _required(body.name, "장비명")
+    row.message = _required(body.message, "안내")
+    write_audit(
+        db,
+        project_id=None,
+        actor=admin.username,
+        action="nrl_excluded_update",
+        target=query,
+        summary=f"NRL 제외 장비 수정 {before} → {query}",
+    )
+    db.commit()
+    db.refresh(row)
+    return _excluded_out(row)
+
+
+@router.delete("/nrl/excluded/{excluded_id}")
+def delete_nrl_excluded(
+    excluded_id: int, db: Session = Depends(get_db), admin: User = Depends(_admin)
+) -> dict:
+    row = db.get(NrlExcluded, excluded_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="제외 장비가 없습니다")
+    query = row.query
+    db.delete(row)
+    write_audit(
+        db,
+        project_id=None,
+        actor=admin.username,
+        action="nrl_excluded_delete",
+        target=query,
+        summary=f"NRL 제외 장비 삭제 {query}",
+    )
+    db.commit()
+    return {"ok": True, "query": query}
 
 
 @router.get("/orgs")

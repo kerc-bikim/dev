@@ -1,10 +1,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
+  apiDelete,
   apiGet,
   apiPost,
   apiPut,
   type AdminDashboard,
   type MemberInfo,
+  type NrlAliasRule,
+  type NrlExcludedRule,
   type NrlLibraryStatus,
   type OrgInfo,
   type Project,
@@ -200,6 +203,14 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [members, setMembers] = useState<MemberInfo[]>([]);
+  const [aliases, setAliases] = useState<NrlAliasRule[]>([]);
+  const [excluded, setExcluded] = useState<NrlExcludedRule[]>([]);
+  const [aliasQuery, setAliasQuery] = useState("");
+  const [aliasManufacturer, setAliasManufacturer] = useState("");
+  const [aliasModel, setAliasModel] = useState("");
+  const [excludedQuery, setExcludedQuery] = useState("");
+  const [excludedName, setExcludedName] = useState("");
+  const [excludedMessage, setExcludedMessage] = useState("");
   const [orgName, setOrgName] = useState("");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -215,15 +226,20 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
   const [busy, setBusy] = useState(false);
 
   async function refresh() {
-    const [dashData, libraryData, orgData, userData, projectData] = await Promise.all([
+    const [dashData, libraryData, aliasData, excludedData, orgData, userData, projectData] =
+      await Promise.all([
       apiGet<AdminDashboard>("/api/admin/dashboard"),
       apiGet<NrlLibraryStatus>("/api/nrl/library"),
+      apiGet<{ aliases: NrlAliasRule[] }>("/api/admin/nrl/aliases"),
+      apiGet<{ excluded: NrlExcludedRule[] }>("/api/admin/nrl/excluded"),
       apiGet<{ orgs: OrgInfo[] }>("/api/admin/orgs"),
       apiGet<{ users: UserInfo[] }>("/api/admin/users"),
       apiGet<{ projects: Project[] }>("/api/projects"),
-    ]);
+      ]);
     setDashboard(dashData);
     setNrlLibrary(libraryData);
+    setAliases(aliasData.aliases);
+    setExcluded(excludedData.excluded);
     setOrgs(orgData.orgs);
     setUsers(userData.users);
     setProjects(projectData.projects);
@@ -249,6 +265,109 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
       .then((data) => setMembers(data.members))
       .catch((err: Error) => setError(err.message));
   }, [projectId]);
+
+  async function refreshNrlRules() {
+    const [aliasData, excludedData] = await Promise.all([
+      apiGet<{ aliases: NrlAliasRule[] }>("/api/admin/nrl/aliases"),
+      apiGet<{ excluded: NrlExcludedRule[] }>("/api/admin/nrl/excluded"),
+    ]);
+    setAliases(aliasData.aliases);
+    setExcluded(excludedData.excluded);
+  }
+
+  async function onCreateAlias(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await apiPost("/api/admin/nrl/aliases", {
+        query: aliasQuery,
+        manufacturer: aliasManufacturer,
+        model: aliasModel,
+      });
+      setAliasQuery("");
+      setAliasManufacturer("");
+      setAliasModel("");
+      await refreshNrlRules();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveAlias(row: NrlAliasRule) {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiPut(`/api/admin/nrl/aliases/${row.id}`, row);
+      await refreshNrlRules();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteAlias(id: number) {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiDelete(`/api/admin/nrl/aliases/${id}`);
+      await refreshNrlRules();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onCreateExcluded(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await apiPost("/api/admin/nrl/excluded", {
+        query: excludedQuery,
+        name: excludedName,
+        message: excludedMessage,
+      });
+      setExcludedQuery("");
+      setExcludedName("");
+      setExcludedMessage("");
+      await refreshNrlRules();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveExcluded(row: NrlExcludedRule) {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiPut(`/api/admin/nrl/excluded/${row.id}`, row);
+      await refreshNrlRules();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteExcluded(id: number) {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiDelete(`/api/admin/nrl/excluded/${id}`);
+      await refreshNrlRules();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onCreateOrg(event: FormEvent) {
     event.preventDefault();
@@ -405,6 +524,211 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
           >
             온라인 사용
           </button>
+        </div>
+      </section>
+
+      <section className="nrl-card" id="admin-nrl-aliases">
+        <h3>NRL 검색 별칭</h3>
+        <p className="hint">저장한 별칭은 다음 NRL 검색부터 즉시 적용됩니다.</p>
+        <form className="project-create" onSubmit={onCreateAlias}>
+          <label>
+            검색어
+            <input
+              value={aliasQuery}
+              onChange={(event) => setAliasQuery(event.target.value)}
+              placeholder="예: metrozet"
+              required
+            />
+          </label>
+          <label>
+            NRL 제조사
+            <input
+              value={aliasManufacturer}
+              onChange={(event) => setAliasManufacturer(event.target.value)}
+              placeholder="예: EQMet"
+              required
+            />
+          </label>
+          <label>
+            모델(선택)
+            <input value={aliasModel} onChange={(event) => setAliasModel(event.target.value)} />
+          </label>
+          <button type="submit" className="primary" disabled={busy}>
+            별칭 추가
+          </button>
+        </form>
+        <div className="table-scroll">
+          <table className="confirm-table rule-table">
+            <thead>
+              <tr>
+                <th>검색어</th>
+                <th>NRL 제조사</th>
+                <th>모델</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {aliases.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    <input
+                      aria-label={`${row.query} 별칭 검색어`}
+                      value={row.query}
+                      onChange={(event) =>
+                        setAliases((current) =>
+                          current.map((item) =>
+                            item.id === row.id ? { ...item, query: event.target.value } : item
+                          )
+                        )
+                      }
+                    />
+                  </td>
+                  <td>
+                    <input
+                      aria-label={`${row.query} NRL 제조사`}
+                      value={row.manufacturer}
+                      onChange={(event) =>
+                        setAliases((current) =>
+                          current.map((item) =>
+                            item.id === row.id
+                              ? { ...item, manufacturer: event.target.value }
+                              : item
+                          )
+                        )
+                      }
+                    />
+                  </td>
+                  <td>
+                    <input
+                      aria-label={`${row.query} 모델`}
+                      value={row.model}
+                      onChange={(event) =>
+                        setAliases((current) =>
+                          current.map((item) =>
+                            item.id === row.id ? { ...item, model: event.target.value } : item
+                          )
+                        )
+                      }
+                    />
+                  </td>
+                  <td>
+                    <div className="wizard-nav">
+                      <button type="button" disabled={busy} onClick={() => saveAlias(row)}>
+                        저장
+                      </button>
+                      <button type="button" disabled={busy} onClick={() => deleteAlias(row.id)}>
+                        삭제
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="nrl-card" id="admin-nrl-excluded">
+        <h3>NRL 제외 장비</h3>
+        <p className="hint">
+          저장한 장비는 다음 검색부터 NRL 결과 대신 아래 안내를 표시합니다.
+        </p>
+        <form className="project-create" onSubmit={onCreateExcluded}>
+          <label>
+            검색어
+            <input
+              value={excludedQuery}
+              onChange={(event) => setExcludedQuery(event.target.value)}
+              placeholder="예: certimus"
+              required
+            />
+          </label>
+          <label>
+            장비명
+            <input
+              value={excludedName}
+              onChange={(event) => setExcludedName(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            검색 안내
+            <input
+              value={excludedMessage}
+              onChange={(event) => setExcludedMessage(event.target.value)}
+              required
+            />
+          </label>
+          <button type="submit" className="primary" disabled={busy}>
+            제외 장비 추가
+          </button>
+        </form>
+        <div className="table-scroll">
+          <table className="confirm-table rule-table">
+            <thead>
+              <tr>
+                <th>검색어</th>
+                <th>장비명</th>
+                <th>검색 안내</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {excluded.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    <input
+                      aria-label={`${row.query} 제외 검색어`}
+                      value={row.query}
+                      onChange={(event) =>
+                        setExcluded((current) =>
+                          current.map((item) =>
+                            item.id === row.id ? { ...item, query: event.target.value } : item
+                          )
+                        )
+                      }
+                    />
+                  </td>
+                  <td>
+                    <input
+                      aria-label={`${row.query} 장비명`}
+                      value={row.name}
+                      onChange={(event) =>
+                        setExcluded((current) =>
+                          current.map((item) =>
+                            item.id === row.id ? { ...item, name: event.target.value } : item
+                          )
+                        )
+                      }
+                    />
+                  </td>
+                  <td>
+                    <input
+                      aria-label={`${row.query} 검색 안내`}
+                      value={row.message}
+                      onChange={(event) =>
+                        setExcluded((current) =>
+                          current.map((item) =>
+                            item.id === row.id ? { ...item, message: event.target.value } : item
+                          )
+                        )
+                      }
+                    />
+                  </td>
+                  <td>
+                    <div className="wizard-nav">
+                      <button type="button" disabled={busy} onClick={() => saveExcluded(row)}>
+                        저장
+                      </button>
+                      <button type="button" disabled={busy} onClick={() => deleteExcluded(row.id)}>
+                        삭제
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
