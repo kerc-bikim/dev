@@ -94,9 +94,15 @@ def inspect_upload(raw: bytes, filename: str = "") -> dict:
         raise InventoryError("파일이 비어 있습니다", 400, "E_IMPORT")
     if len(raw) > settings.max_upload_bytes:
         raise InventoryError("파일이 너무 큽니다", 413, "E_UPLOAD_SIZE")
-    validate_upload_filename(filename)
     if raw[:2] == b"PK":
         raise InventoryError("zip은 아직 열 수 없습니다. StationXML, dataless SEED 또는 RESP를 선택하세요", 400, "E_IMPORT")
+    if (filename or "").lower().endswith(".mseed"):
+        raise InventoryError(
+            "파형 MiniSEED는 열 수 없습니다. dataless SEED를 선택하세요",
+            400,
+            "E_IMPORT",
+        )
+    validate_upload_filename(filename)
     stripped = raw.lstrip(b"\xef\xbb\xbf \t\r\n")
     name = (filename or "").lower()
     seed_name = name.endswith(".seed") or name.endswith(".dataless")
