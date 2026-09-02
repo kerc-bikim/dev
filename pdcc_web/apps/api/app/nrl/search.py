@@ -109,10 +109,10 @@ def search_nrl(db: Session, *, query: str, element: str) -> dict[str, Any]:
         return {"query": text, "hits": [], "excluded": excluded, "message": excluded["message"]}
     q = text.lower()
     aliases = db.scalars(select(NrlAlias)).all()
-    alias_mfrs: set[str] = set()
+    alias_targets: set[tuple[str, str]] = set()
     for alias in aliases:
         if q == alias.query.lower() or alias.query.lower() in q:
-            alias_mfrs.add(alias.manufacturer.lower())
+            alias_targets.add((alias.manufacturer.lower(), alias.model.lower()))
     index = catalog_index(element)
     hits: list[dict] = []
     seen: set[tuple[str, str]] = set()
@@ -122,12 +122,17 @@ def search_nrl(db: Session, *, query: str, element: str) -> dict[str, Any]:
         blob = f"{mfr} {model}".lower()
         via = "catalog"
         matched = q in blob
-        if mfr.lower() in alias_mfrs:
+        for alias_mfr, alias_model in alias_targets:
+            if mfr.lower() != alias_mfr:
+                continue
+            if alias_model and model.lower() != alias_model:
+                continue
+            if not alias_model and model:
+                # An alias without a model highlights the manufacturer row, not every model.
+                continue
             matched = True
             via = "alias"
-            if model:
-                # alias without a model should highlight the manufacturer row, not every model
-                continue
+            break
         if not matched:
             continue
         key = (mfr, model)

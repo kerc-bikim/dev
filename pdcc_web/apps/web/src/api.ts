@@ -203,6 +203,18 @@ export type MemberInfo = {
   role: string;
   active: boolean;
 };
+export type NrlAliasRule = {
+  id: number;
+  query: string;
+  manufacturer: string;
+  model: string;
+};
+export type NrlExcludedRule = {
+  id: number;
+  query: string;
+  name: string;
+  message: string;
+};
 export type NrlStatus = {
   mode: string;
   source?: string;

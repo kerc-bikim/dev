@@ -378,6 +378,10 @@ body {
   border-collapse: collapse;
   font-size: 13px;
 }
+.table-scroll { overflow-x: auto; }
+.rule-table { min-width: 720px; }
+.rule-table input { min-width: 130px; }
+.rule-table th:nth-child(3), .rule-table td:nth-child(3) { width: 42%; }
 .confirm-table th, .confirm-table td {
   border-bottom: 1px solid var(--border);
   padding: 6px 8px;
