@@ -18,8 +18,10 @@ from ..access import (
     require_view,
     visible_projects,
 )
+from ..config import settings
 from ..db import get_db
 from ..inventory.collab import get_draft
+from ..inventory.importers import validate_upload_filename
 from ..inventory.locks import LockError, acquire_lock
 from ..inventory.service import (
     apply_nrl,
@@ -48,6 +50,14 @@ def _http_inv(exc: InventoryError) -> NoReturn:
 
 def _http_lock(exc: LockError) -> NoReturn:
     raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+def _read_upload(file: UploadFile) -> bytes:
+    limit = max(0, settings.max_upload_bytes)
+    raw = file.file.read(limit + 1)
+    if len(raw) > limit:
+        raise InventoryError("파일이 너무 큽니다", 413, "E_UPLOAD_SIZE")
+    return raw
 
 
 class ProjectIn(BaseModel):
@@ -179,9 +189,9 @@ def post_import_file(
     user: User = Depends(current_user),
 ) -> dict:
     require_creator(user)
-    raw = file.file.read()
-    filename = file.filename or "upload.bin"
     try:
+        filename = validate_upload_filename(file.filename or "")
+        raw = _read_upload(file)
         project = import_project(
             db,
             user,

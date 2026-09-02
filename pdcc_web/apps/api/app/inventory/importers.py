@@ -21,13 +21,36 @@ from .xmlbuild import NETWORK_CODE_RE, InventoryError, list_inventory
 from .xmlutil import local, parse_root, qname
 
 WARNINGS_KIND = "import_warnings"
+ALLOWED_UPLOAD_SUFFIXES = (".xml", ".seed", ".dataless", ".resp")
+
+
+def validate_upload_filename(filename: str) -> str:
+    name = (filename or "").strip()
+    lowered = name.lower()
+    if (
+        not name
+        or "\x00" in name
+        or "/" in name
+        or "\\" in name
+        or ":" in name
+        or (
+            not lowered.endswith(ALLOWED_UPLOAD_SUFFIXES)
+            and not (lowered.startswith("resp.") and len(name) > len("resp."))
+        )
+    ):
+        raise InventoryError(
+            "허용된 확장자는 .xml, .seed, .dataless, .resp 입니다",
+            400,
+            "E_UPLOAD_EXTENSION",
+        )
+    return name
 
 
 def inspect_stationxml(raw: bytes) -> dict:
     if not raw or not raw.strip():
         raise InventoryError("파일이 비어 있습니다", 400, "E_IMPORT")
     if len(raw) > settings.max_upload_bytes:
-        raise InventoryError("파일이 너무 큽니다", 400, "E_IMPORT")
+        raise InventoryError("파일이 너무 큽니다", 413, "E_UPLOAD_SIZE")
     if raw[:2] == b"PK":
         raise InventoryError("zip은 아직 열 수 없습니다. StationXML을 선택하세요", 400, "E_IMPORT")
     stripped = raw.lstrip(b"\xef\xbb\xbf \t\r\n")
@@ -70,7 +93,8 @@ def inspect_upload(raw: bytes, filename: str = "") -> dict:
     if not raw or not raw.strip():
         raise InventoryError("파일이 비어 있습니다", 400, "E_IMPORT")
     if len(raw) > settings.max_upload_bytes:
-        raise InventoryError("파일이 너무 큽니다", 400, "E_IMPORT")
+        raise InventoryError("파일이 너무 큽니다", 413, "E_UPLOAD_SIZE")
+    validate_upload_filename(filename)
     if raw[:2] == b"PK":
         raise InventoryError("zip은 아직 열 수 없습니다. StationXML, dataless SEED 또는 RESP를 선택하세요", 400, "E_IMPORT")
     stripped = raw.lstrip(b"\xef\xbb\xbf \t\r\n")

@@ -41,6 +41,10 @@ cd pdcc_web/apps/web && npm install && npm run dev -- --host 0.0.0.0 --port 3000
 | `REDIS_URL` | `redis://redis:6379/0` | 세션·헬스 |
 | `DEV_BOOTSTRAP_ADMIN` | `false` | `admin`/`admin` 허용 |
 | `BACKUP_STATUS_FILE` | `${DATA_DIR}/backup-last-success` | 검증된 마지막 백업 성공 시각 표식 |
+| `MAX_UPLOAD_BYTES` | `20971520` | 프로젝트 가져오기 파일 최대 크기 |
+| `MAX_ZIP_BYTES` | `536870912` | NRL zip 다운로드·저장 최대 크기 |
+| `MAX_ZIP_UNCOMPRESSED_BYTES` | `2147483648` | NRL zip 전체 압축 해제 크기 상한 |
+| `MAX_ZIP_MEMBERS` | `100000` | NRL zip 항목 수 상한 |
 
 ## M1 NRL
 

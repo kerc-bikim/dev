@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     seed_organization: str = ""
     seed_label: str = ""
     max_upload_bytes: int = 20 * 1024 * 1024
+    max_zip_bytes: int = 512 * 1024 * 1024
+    max_zip_uncompressed_bytes: int = 2 * 1024 * 1024 * 1024
+    max_zip_members: int = 100_000
 
 
 settings = Settings()

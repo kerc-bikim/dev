@@ -3,6 +3,7 @@ from __future__ import annotations
 import configparser
 import copy
 import os
+import stat
 import threading
 import zipfile
 from dataclasses import dataclass, field
@@ -67,10 +68,36 @@ def _parser(raw: bytes, name: str) -> configparser.ConfigParser:
 
 
 def _safe_member(name: str) -> str:
-    normalized = str(PurePosixPath(name))
-    if normalized.startswith("/") or normalized == ".." or normalized.startswith("../"):
+    if not name or "\x00" in name or "\\" in name:
         raise NrlError("NRL zip에 안전하지 않은 경로가 있습니다", 503)
-    return normalized
+    path = PurePosixPath(name)
+    if (
+        path.is_absolute()
+        or any(part == ".." for part in path.parts)
+        or (path.parts and path.parts[0].endswith(":"))
+    ):
+        raise NrlError("NRL zip에 안전하지 않은 경로가 있습니다", 503)
+    return str(path)
+
+
+def _validated_member_names(archive: zipfile.ZipFile) -> set[str]:
+    infos = archive.infolist()
+    if len(infos) > max(0, settings.max_zip_members):
+        raise NrlError("NRL zip에 파일이 너무 많습니다", 413)
+    names: set[str] = set()
+    total_bytes = 0
+    for info in infos:
+        name = _safe_member(info.filename)
+        if name in names:
+            raise NrlError(f"NRL zip에 중복 경로가 있습니다: {name}", 503)
+        names.add(name)
+        mode = info.external_attr >> 16
+        if mode and stat.S_ISLNK(mode):
+            raise NrlError("NRL zip에 심볼릭 링크가 있습니다", 503)
+        total_bytes += info.file_size
+        if total_bytes > max(0, settings.max_zip_uncompressed_bytes):
+            raise NrlError("NRL zip 압축 해제 크기가 너무 큽니다", 413)
+    return names
 
 
 def _join_member(parent: str, child: str) -> str:
@@ -181,11 +208,15 @@ def _find_root(names: set[str]) -> str:
 
 def _build_index(path: Path) -> ArchiveIndex:
     try:
+        if path.stat().st_size > max(0, settings.max_zip_bytes):
+            raise NrlError("NRL zip 파일이 너무 큽니다", 413)
         archive = zipfile.ZipFile(path)
+    except NrlError:
+        raise
     except (OSError, zipfile.BadZipFile) as exc:
         raise NrlError("NRL 오프라인 zip을 열 수 없습니다", 503) from exc
     with archive:
-        names = {_safe_member(info.filename) for info in archive.infolist()}
+        names = _validated_member_names(archive)
         root = _find_root(names)
         elements: dict[str, ElementEntry] = {}
         responses: dict[str, str] = {}
@@ -477,8 +508,19 @@ def download_library() -> dict:
         ) as response:
             if response.status_code >= 400:
                 raise NrlError("EarthScope NRL 전체 zip 다운로드에 실패했습니다", 502)
+            content_length = response.headers.get("content-length")
+            if (
+                content_length
+                and content_length.isdigit()
+                and int(content_length) > max(0, settings.max_zip_bytes)
+            ):
+                raise NrlError("NRL zip 파일이 너무 큽니다", 413)
             with temporary.open("wb") as handle:
+                downloaded = 0
                 for chunk in response.iter_bytes(DOWNLOAD_CHUNK_BYTES):
+                    downloaded += len(chunk)
+                    if downloaded > max(0, settings.max_zip_bytes):
+                        raise NrlError("NRL zip 파일이 너무 큽니다", 413)
                     handle.write(chunk)
                 handle.flush()
                 os.fsync(handle.fileno())
