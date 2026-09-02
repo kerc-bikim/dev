@@ -23,6 +23,7 @@ from app.auth.credentials import CredentialResolver
 from app.collector.retry import RetryPolicy
 from app.collector.runner import PollOutcome, poll_device
 from app.config.settings import Settings, get_settings
+from app.health.service import HealthService
 from app.observability.logging import get_logger
 from app.repository.influx.points import build_points
 from app.repository.influx.sink import MetricSink
@@ -47,6 +48,10 @@ class TickReport:
     points_written: int = 0
     sink_failed: bool = False
     errors: dict[str, int] = field(default_factory=dict)
+    opened: int = 0
+    resolved: int = 0
+    escalated: int = 0
+    severities: dict[str, int] = field(default_factory=dict)
 
 
 class CollectorScheduler:
@@ -60,6 +65,7 @@ class CollectorScheduler:
         resolver: CredentialResolver | None = None,
         owner: str | None = None,
         sleep=asyncio.sleep,
+        health: HealthService | None = None,
     ) -> None:
         self.session_factory = session_factory
         self.sink = sink
@@ -68,6 +74,8 @@ class CollectorScheduler:
         self.resolver = resolver or CredentialResolver()
         self.owner = owner or default_owner()
         self.sleep = sleep
+        # 판정 엔진. 수집만 시험하고 싶을 때는 None 으로 둔다.
+        self.health = health
         self._semaphore = asyncio.Semaphore(self.settings.max_concurrent_polls)
         # 진행 중인 장비를 다시 집지 않기 위한 표시. Lease 는 DB, 이것은 프로세스 안이다.
         self._in_flight: set[str] = set()
@@ -101,9 +109,14 @@ class CollectorScheduler:
     def _persist(self, outcome: PollOutcome, report: TickReport) -> None:
         device = outcome.device
         result = outcome.result
+        health_points: list = []
 
         with self.session_factory() as session:
             try:
+                # 낡은 값 판정은 이번 수집이 상태를 갱신하기 **전**의 마지막 성공 시각을
+                # 근거로 한다. 갱신 후 값을 보면 방금 성공했으니 항상 최신으로 보인다.
+                previous_success_at = self._last_success_at(session, device.device_id)
+
                 repo.record_poll_run(session, device, result)
                 state = repo.update_runtime_state(
                     session,
@@ -116,6 +129,18 @@ class CollectorScheduler:
                     repo.upsert_capabilities(
                         session, device.device_id, result.capabilities.states
                     )
+                consecutive_failures = state.consecutive_failures or 0
+
+                if self.health is not None:
+                    health_points = self._evaluate_health(
+                        session,
+                        device,
+                        result,
+                        consecutive_failures,
+                        report,
+                        last_success_at=previous_success_at,
+                    )
+
                 repo.schedule_next_poll(
                     session,
                     device.device_id,
@@ -124,7 +149,6 @@ class CollectorScheduler:
                 )
                 repo.release_lease(session, device.device_id, self.owner)
                 session.commit()
-                consecutive_failures = state.consecutive_failures or 0
             except Exception:  # noqa: BLE001 - 한 장비의 기록 실패로 Tick 을 죽이지 않는다
                 session.rollback()
                 logger.exception(
@@ -135,6 +159,7 @@ class CollectorScheduler:
         points = build_points(
             result, device.tags, consecutive_failures=consecutive_failures
         )
+        points.extend(health_points)
         if not self.sink.write(points):
             # 적재 실패는 수집 실패와 다르다. 장비는 정상인데 우리 저장소가 문제다.
             report.sink_failed = True
@@ -147,6 +172,50 @@ class CollectorScheduler:
             report.failed += 1
             code = result.error_code.value if result.error_code else "UNKNOWN"
             report.errors[code] = report.errors.get(code, 0) + 1
+
+    @staticmethod
+    def _last_success_at(session, device_id):
+        from app.db.models import DeviceRuntimeState
+
+        runtime = session.get(DeviceRuntimeState, device_id)
+        return repo.as_utc(runtime.last_success_at) if runtime else None
+
+    def _evaluate_health(
+        self,
+        session,
+        device: DueDevice,
+        result,
+        consecutive_failures: int,
+        report: TickReport,
+        *,
+        last_success_at,
+    ) -> list:
+        """상태 판정. 판정에 필요한 장비·관측소 행이 없으면 건너뛴다."""
+        from app.db.models import Device as DeviceRow
+        from app.db.models import Station as StationRow
+
+        device_row = session.get(DeviceRow, device.device_id)
+        station_row = session.get(StationRow, device.station_id)
+        if device_row is None or station_row is None:
+            return []
+
+        health_report = self.health.evaluate(
+            session,
+            device_row,
+            station_row,
+            result,
+            consecutive_failures=consecutive_failures,
+            tags=device.tags,
+            poll_interval_minutes=device.poll_interval_minutes,
+            last_success_at=last_success_at,
+        )
+
+        report.opened += len(health_report.opened)
+        report.resolved += len(health_report.resolved)
+        report.escalated += len(health_report.escalated)
+        key = health_report.overall.value
+        report.severities[key] = report.severities.get(key, 0) + 1
+        return health_report.points
 
     # ------------------------------------------------------------------ 실행
 
@@ -191,6 +260,10 @@ class CollectorScheduler:
                 "points": report.points_written,
                 "sink_failed": report.sink_failed,
                 "errors": report.errors,
+                "opened": report.opened,
+                "resolved": report.resolved,
+                "escalated": report.escalated,
+                "severities": report.severities,
             },
         )
         return report

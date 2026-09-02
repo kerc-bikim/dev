@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routers import contracts, devices, health
+from app.api.routers import contracts, devices, health, health_status
 from app.config.settings import get_settings
 from app.metrics.catalog import load_catalog
 from app.metrics.status import load_status_mappings
@@ -55,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(contracts.router)
     app.include_router(devices.router)
+    app.include_router(health_status.router)
     return app
 
 
