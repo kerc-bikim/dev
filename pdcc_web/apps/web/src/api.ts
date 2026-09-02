@@ -34,6 +34,10 @@ export type ChannelSummary = {
   code: string;
   start: string | null;
   end: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  elevation?: number | null;
+  depth?: number | null;
   azimuth: number | null;
   dip: number | null;
   sample_rate: number | null;
@@ -71,12 +75,55 @@ export type Project = {
   stations: StationSummary[];
   nrl_applied: boolean;
   lock?: LockInfo | null;
+  can_undo?: boolean;
+  draft?: { updated_at: string | null; base_updated_at: string; conflict: boolean } | null;
 };
+export type EquipmentSet = {
+  id: number;
+  name: string;
+  notes: string;
+  sensor_instconfig: string;
+  datalogger_instconfig: string;
+  channels: string[];
+  nrl_version: string;
+  stale: boolean;
+};
+export type VersionInfo = {
+  id: number;
+  number: number;
+  actor: string;
+  action: string;
+  summary: string;
+  created_at: string | null;
+};
+export type FieldDiff = { path: string; a?: string; b?: string; server?: string; mine?: string };
+export type ValidationIssue = {
+  code: string;
+  message: string;
+  path: string;
+  field: string;
+  station: string | null;
+  start: string | null;
+  nslc: string | null;
+};
+
+export class ApiError extends Error {
+  status: number;
+  payload: unknown;
+  constructor(message: string, status: number, payload: unknown) {
+    super(message);
+    this.status = status;
+    this.payload = payload;
+  }
+}
 
 export async function readError(response: Response): Promise<string> {
   try {
-    const body = (await response.json()) as { detail?: string };
+    const body = (await response.json()) as { detail?: string | { message?: string } };
     if (typeof body.detail === "string") return body.detail;
+    if (body.detail && typeof body.detail === "object" && body.detail.message) {
+      return body.detail.message;
+    }
   } catch {
     /* ignore */
   }
@@ -85,7 +132,19 @@ export async function readError(response: Response): Promise<string> {
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { credentials: "include", ...init });
-  if (!response.ok) throw new Error(await readError(response));
+  if (!response.ok) {
+    let payload: unknown = null;
+    let message = `요청 실패 (${response.status})`;
+    try {
+      payload = await response.json();
+      const detail = (payload as { detail?: string | { message?: string } }).detail;
+      if (typeof detail === "string") message = detail;
+      else if (detail && typeof detail === "object" && detail.message) message = detail.message;
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(message, response.status, payload);
+  }
   return (await response.json()) as T;
 }
 
@@ -94,6 +153,14 @@ export const apiGet = api;
 export function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return api<T>(path, {
     method: "POST",
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+export function apiPut<T>(path: string, body?: unknown): Promise<T> {
+  return api<T>(path, {
+    method: "PUT",
     headers: body === undefined ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });

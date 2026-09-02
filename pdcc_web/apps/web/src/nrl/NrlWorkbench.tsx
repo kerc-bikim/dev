@@ -154,6 +154,22 @@ export function NrlWorkbench({
           >
             채널에 적용
           </button>
+          <button
+            type="button"
+            disabled={!cascade || disabled || busy}
+            onClick={() => {
+              const name = window.prompt("장비 세트 이름", "광대역 표준세트");
+              if (!name || !sensor) return;
+              apiPost("/api/equipment-sets", {
+                name,
+                sensor_instconfig: sensor,
+                datalogger_instconfig: datalogger || "",
+                channels: siblings.map((ch) => ch.code),
+              }).catch((err: Error) => setError(err.message));
+            }}
+          >
+            장비 세트로 저장
+          </button>
         </section>
       ) : null}
       <section className="nrl-card">
