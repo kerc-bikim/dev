@@ -78,6 +78,8 @@ export type Project = {
   operator: string | null;
   status: string;
   updated_at: string | null;
+  archived_at?: string | null;
+  archived_by?: string | null;
   station_count: number;
   channel_count: number;
   stations: StationSummary[];

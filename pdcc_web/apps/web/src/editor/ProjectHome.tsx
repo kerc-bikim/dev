@@ -15,6 +15,8 @@ export function ProjectHome({
   me?: Me;
 }) {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [archivedProjects, setArchivedProjects] = useState<Project[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [name, setName] = useState("YZ 상시망");
   const [network, setNetwork] = useState("YZ");
@@ -111,9 +113,70 @@ export function ProjectHome({
     }
   }
 
+  async function archiveProject(project: Project) {
+    if (
+      !window.confirm(
+        `${project.name} 프로젝트를 보관할까요? 목록에서 숨겨지며 관리자만 복원할 수 있습니다.`
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await apiPost(`/api/projects/${project.id}/archive`);
+      setProjects((rows) => rows.filter((row) => row.id !== project.id));
+      if (memberProject?.id === project.id) setMemberProject(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleArchived() {
+    if (showArchived) {
+      setShowArchived(false);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const data = await apiGet<{ projects: Project[] }>("/api/projects?archived=true");
+      setArchivedProjects(data.projects);
+      setShowArchived(true);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function restoreProject(project: Project) {
+    if (!window.confirm(`${project.name} 프로젝트를 복원할까요?`)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const restored = await apiPost<Project>(`/api/projects/${project.id}/restore`);
+      setArchivedProjects((rows) => rows.filter((row) => row.id !== project.id));
+      setProjects((rows) => [restored, ...rows]);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="workbench">
-      <h2>프로젝트</h2>
+      <div className="section-heading">
+        <h2>프로젝트</h2>
+        {isAdmin ? (
+          <button type="button" disabled={busy} onClick={toggleArchived}>
+            {showArchived ? "보관 목록 닫기" : "보관된 프로젝트"}
+          </button>
+        ) : null}
+      </div>
       <p className="hint">
         {canCreate
           ? "StationXML, dataless SEED, RESP를 열거나 빈 네트워크를 만든 뒤 관측소 위저드를 씁니다."
@@ -181,14 +244,57 @@ export function ProjectHome({
               {project.my_role ? ` · ${ROLE_LABEL[project.my_role] || project.my_role}` : ""}
             </span>
           </button>
-          {isAdmin ? (
-            <button type="button" className="member-btn" onClick={(e) => openMembers(e, project)}>
-              멤버
-            </button>
-          ) : null}
+          <div className="project-actions">
+            {isAdmin ? (
+              <button type="button" onClick={(e) => openMembers(e, project)}>
+                멤버
+              </button>
+            ) : null}
+            {project.can_edit ? (
+              <button
+                type="button"
+                className="danger-btn"
+                disabled={busy}
+                onClick={() => archiveProject(project)}
+              >
+                보관
+              </button>
+            ) : null}
+          </div>
           </div>
         ))}
       </div>
+      {showArchived ? (
+        <section className="nrl-card archive-list">
+          <h3>보관된 프로젝트</h3>
+          <p className="hint">보관된 프로젝트는 일반 목록과 편집 화면에서 숨겨집니다.</p>
+          <div className="project-grid">
+            {archivedProjects.map((project) => (
+              <div key={project.id} className="project-card archived-project">
+                <strong>{project.name}</strong>
+                <span>
+                  {project.network_code} · {project.station_count} 관측소 · {project.channel_count} 채널
+                </span>
+                <span className="hint">
+                  {project.archived_at
+                    ? `보관 ${project.archived_at.slice(0, 16).replace("T", " ")}`
+                    : "보관됨"}
+                  {project.archived_by ? ` · ${project.archived_by}` : ""}
+                </span>
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={busy}
+                  onClick={() => restoreProject(project)}
+                >
+                  복원
+                </button>
+              </div>
+            ))}
+          </div>
+          {archivedProjects.length === 0 ? <p className="hint">보관된 프로젝트가 없습니다.</p> : null}
+        </section>
+      ) : null}
       {memberProject ? (
         <section className="nrl-card">
           <h3>{memberProject.name} 멤버</h3>

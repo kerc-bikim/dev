@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..access import (
     add_member,
     member_out,
+    require_admin,
     require_creator,
     require_edit,
     require_manage_members,
@@ -35,7 +36,7 @@ from ..inventory.validator import has_errors, validate_project, xml_filename
 from ..inventory.xmlbuild import InventoryError
 from ..jobs.service import enqueue_resp_export, enqueue_seed_export, job_out
 from ..inventory.xmlslice import slice_stationxml
-from ..models import ProjectMember, User
+from ..models import Project, ProjectMember, User, utcnow
 from ..routers.auth import current_user
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -115,8 +116,14 @@ class MemberIn(BaseModel):
 
 
 @router.get("")
-def list_projects(db: Session = Depends(get_db), user: User = Depends(current_user)) -> dict:
-    rows = visible_projects(db, user)
+def list_projects(
+    archived: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> dict:
+    if archived:
+        require_admin(user)
+    rows = visible_projects(db, user, archived=archived)
     return {"projects": [project_out(row, user, db=db) for row in rows]}
 
 
@@ -196,6 +203,50 @@ def get_project(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
     project = require_view(db, project_id, user)
+    return project_out(project, user, db=db)
+
+
+@router.post("/{project_id}/archive")
+def archive_project(
+    project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
+) -> dict:
+    project = require_edit(db, project_id, user)
+    project.archived_at = utcnow()
+    project.archived_by = user.username
+    write_audit(
+        db,
+        project_id=project.id,
+        actor=user.username,
+        action="project_archive",
+        target=project.network_code,
+        summary="프로젝트 보관",
+    )
+    db.commit()
+    return {"ok": True, "project_id": project.id}
+
+
+@router.post("/{project_id}/restore")
+def restore_project(
+    project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
+) -> dict:
+    require_admin(user)
+    project = db.get(Project, project_id)
+    if project is None or project.archived_at is None:
+        raise HTTPException(status_code=404, detail="보관된 프로젝트가 없습니다")
+    archived_by = project.archived_by or ""
+    project.archived_at = None
+    project.archived_by = None
+    write_audit(
+        db,
+        project_id=project.id,
+        actor=user.username,
+        action="project_restore",
+        target=project.network_code,
+        summary="프로젝트 복원",
+        details=f"archived_by={archived_by}" if archived_by else "",
+    )
+    db.commit()
+    db.refresh(project)
     return project_out(project, user, db=db)
 
 

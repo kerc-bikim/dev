@@ -68,6 +68,17 @@ def ensure_schema(engine: Engine | None = None) -> None:
         if "details" not in audit_cols:
             with eng.begin() as conn:
                 conn.execute(text("ALTER TABLE audit_logs ADD COLUMN details TEXT DEFAULT ''"))
+    if "projects" in inspector.get_table_names():
+        project_cols = {column["name"] for column in inspector.get_columns("projects")}
+        project_stmts: list[str] = []
+        if "archived_at" not in project_cols:
+            project_stmts.append("ALTER TABLE projects ADD COLUMN archived_at TIMESTAMP")
+        if "archived_by" not in project_cols:
+            project_stmts.append("ALTER TABLE projects ADD COLUMN archived_by VARCHAR(64)")
+        if project_stmts:
+            with eng.begin() as conn:
+                for stmt in project_stmts:
+                    conn.execute(text(stmt))
     if "users" not in inspector.get_table_names():
         return
     cols = {column["name"] for column in inspector.get_columns("users")}

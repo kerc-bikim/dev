@@ -75,6 +75,8 @@ def project_out(
         "operator": project.operator,
         "status": project.status,
         "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+        "archived_at": project.archived_at.isoformat() if project.archived_at else None,
+        "archived_by": project.archived_by,
         "station_count": len(stations),
         "channel_count": sum(len(sta["channels"]) for sta in stations),
         "stations": stations,

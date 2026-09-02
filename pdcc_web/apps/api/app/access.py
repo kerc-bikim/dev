@@ -79,7 +79,11 @@ def add_member(db: Session, project: Project, user: User, role: str) -> ProjectM
 
 def require_view(db: Session, project_id: int, user: User) -> Project:
     project = db.get(Project, project_id)
-    if project is None or project_role(db, project, user) is None:
+    if (
+        project is None
+        or project.archived_at is not None
+        or project_role(db, project, user) is None
+    ):
         raise HTTPException(status_code=404, detail="프로젝트가 없습니다")
     return project
 
@@ -99,8 +103,21 @@ def require_manage_members(db: Session, project_id: int, user: User) -> Project:
     return project
 
 
-def visible_projects(db: Session, user: User) -> list[Project]:
-    query = select(Project).order_by(Project.updated_at.desc())
+def visible_projects(
+    db: Session, user: User, *, archived: bool = False
+) -> list[Project]:
+    if archived:
+        query = (
+            select(Project)
+            .where(Project.archived_at.is_not(None))
+            .order_by(Project.archived_at.desc())
+        )
+    else:
+        query = (
+            select(Project)
+            .where(Project.archived_at.is_(None))
+            .order_by(Project.updated_at.desc())
+        )
     if is_admin(user):
         return list(db.scalars(query).all())
     member_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user.id)
