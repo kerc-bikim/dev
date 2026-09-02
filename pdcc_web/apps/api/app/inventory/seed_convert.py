@@ -18,7 +18,7 @@ from obspy import read_inventory
 
 from ..config import settings
 from .xmlbuild import InventoryError, _issue
-from .xmlutil import dumps, local, parse_root
+from .xmlutil import dumps, local, parse_root, qname
 
 log = logging.getLogger("pdcc.seed_convert")
 
@@ -283,3 +283,107 @@ def _seed_field_warnings(raw: bytes) -> list[dict]:
                     )
                 )
     return notes
+
+
+def dataless_filename(xml: str, network: str, when=None) -> str:
+    from datetime import datetime, timezone
+
+    stamp = when or datetime.now(timezone.utc)
+    date = stamp.strftime("%Y%m%d")
+    net = (network or "XX").strip() or "XX"
+    stations: list[str] = []
+    try:
+        root = parse_root(xml)
+    except etree.XMLSyntaxError:
+        return f"{net}.{date}.dataless"
+    for node in root.findall(f".//{qname('Station')}"):
+        code = (node.get("code") or "").strip()
+        if code and code not in stations:
+            stations.append(code)
+    if len(stations) == 1:
+        return f"{net}.{stations[0]}.{date}.dataless"
+    return f"{net}.{date}.dataless"
+
+
+def convert_xml_to_dataless(
+    xml: str,
+    *,
+    organization: str | None = None,
+    label: str | None = None,
+) -> tuple[bytes, str]:
+    """StationXML 원문 → dataless SEED. 원문 문자열은 바꾸지 않는다."""
+    from .seed_write import SeedWriteError, inventory_to_seed_bytes, prepare_seed_inventory
+
+    org = (organization or settings.seed_organization or "").strip() or "PDCC Web"
+    lab = (label or settings.seed_label or "").strip() or "dataless"
+    jar = converter_jar_path()
+    if jar:
+        try:
+            data = _run_converter_xml_to_seed(jar, xml, organization=org, label=lab)
+            if classify_seed(data) == "dataless":
+                return data, "converter"
+            log.warning("seed converter jar produced non-dataless output, falling back to ObsPy")
+        except Exception as exc:
+            log.warning("xml→seed converter jar failed, falling back to ObsPy: %s", exc)
+
+    try:
+        inv = read_inventory(BytesIO(xml.encode("utf-8")), format="STATIONXML")
+    except Exception as exc:
+        raise InventoryError("StationXML을 읽지 못해 SEED를 만들지 못했습니다", 422, "E_EXPORT") from exc
+    prepare_seed_inventory(inv)
+    try:
+        data = inventory_to_seed_bytes(inv, organization=org, label=lab)
+    except SeedWriteError as exc:
+        raise InventoryError(str(exc), 400, "E_EXPORT") from exc
+    except Exception as exc:
+        raise InventoryError(f"SEED 응답 단계를 쓰지 못했습니다: {exc}", 400, "E_EXPORT") from exc
+    if classify_seed(data) != "dataless":
+        raise InventoryError("dataless SEED가 만들어지지 않았습니다", 500, "E_EXPORT")
+    return data, "obspy"
+
+
+def _run_converter_xml_to_seed(
+    jar: str, xml: str, *, organization: str, label: str
+) -> bytes:
+    with tempfile.TemporaryDirectory() as tmp:
+        src = Path(tmp) / "input.xml"
+        dest = Path(tmp) / "output.dataless"
+        src.write_text(xml, encoding="utf-8")
+        attempts = (
+            [
+                "java",
+                "-jar",
+                jar,
+                "--input",
+                str(src),
+                "--output",
+                str(dest),
+                "--organization",
+                organization,
+                "--label",
+                label,
+            ],
+            ["java", "-jar", jar, "-i", str(src), "-o", str(dest)],
+        )
+        last_err = ""
+        for cmd in attempts:
+            try:
+                proc = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=settings.converter_timeout_sec,
+                    check=False,
+                )
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                last_err = str(exc)
+                continue
+            if dest.is_file() and dest.stat().st_size > 0:
+                return dest.read_bytes()
+            last_err = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()
+        suffix = f": {last_err[:200]}" if last_err else ""
+        raise InventoryError(
+            f"SEED converter가 dataless를 만들지 못했습니다{suffix}",
+            400,
+            "E_EXPORT",
+        )

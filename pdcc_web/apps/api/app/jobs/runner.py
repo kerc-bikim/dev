@@ -7,9 +7,10 @@ import logging
 import time
 
 from ..db import SessionLocal
+from ..inventory.xmlbuild import InventoryError
 from ..models import Job, Project, utcnow
 from .queue import dequeue_job, worker_heartbeat
-from .service import run_validate_snapshot
+from .service import run_seed_export, run_validate_snapshot
 
 log = logging.getLogger("pdcc.worker")
 
@@ -25,7 +26,7 @@ def process_job(job_id: str) -> None:
             return
         job.status = "running"
         job.progress = 10
-        job.message = "검증 중"
+        job.message = "SEED 변환 중" if job.kind == "dataless" else "검증 중"
         job.started_at = utcnow()
         job.error = None
         db.commit()
@@ -41,9 +42,12 @@ def process_job(job_id: str) -> None:
         try:
             job.progress = 40
             db.commit()
-            if job.kind != "validate":
+            if job.kind == "validate":
+                result = run_validate_snapshot(db, job, project)
+            elif job.kind == "dataless":
+                result = run_seed_export(db, job, project)
+            else:
                 raise RuntimeError(f"지원하지 않는 작업: {job.kind}")
-            result = run_validate_snapshot(db, job, project)
             job.progress = 80
             db.commit()
             job.result_json = json.dumps(result, ensure_ascii=False)
@@ -52,10 +56,19 @@ def process_job(job_id: str) -> None:
             job.message = "완료"
             job.finished_at = utcnow()
             db.commit()
+        except InventoryError as exc:
+            log.warning("job %s failed: %s", job_id, exc)
+            job.status = "failed"
+            job.error = str(exc)
+            job.message = "실패"
+            job.progress = 100
+            job.finished_at = utcnow()
+            db.commit()
         except Exception:
             log.exception("job %s crashed", job_id)
+            fail = "SEED 변환 중 오류가 났습니다" if job.kind == "dataless" else "검증 중 오류가 났습니다"
             job.status = "failed"
-            job.error = "검증 중 오류가 났습니다"
+            job.error = fail
             job.message = "실패"
             job.progress = 100
             job.finished_at = utcnow()

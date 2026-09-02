@@ -127,8 +127,11 @@ def test_seed_loss_api_and_ack_gate(client):
     assert wrong.status_code == 409
     assert wrong.json()["detail"]["code"] == "E_LOSS_ACK"
     ok = client.post(f"/api/projects/{project_id}/export/seed?loss_ack={ack}")
-    assert ok.status_code == 501
-    assert "변환기" in ok.json()["detail"]
+    assert ok.status_code == 200, ok.text
+    body = ok.json()
+    assert body["kind"] == "dataless"
+    assert body["status"] == "queued"
+    assert body["downloadable"] is False
 
 
 def test_unvalidated_still_blocks_before_ack(client):

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ApiError, apiGet, apiPost, type SeedLossReport } from "../api";
+import { apiGet, apiPost, type Job, type SeedLossReport } from "../api";
 
 const KIND_LABEL: Record<string, string> = {
   truncate: "잘림",
@@ -50,13 +50,11 @@ export function SeedLossDialog({
     setBusy(true);
     setError(null);
     try {
-      await apiPost(`/api/projects/${projectId}/export/seed?loss_ack=${encodeURIComponent(report.ack)}`);
-      setDone("dataless SEED 작업을 넣었습니다");
+      const job = await apiPost<Job>(
+        `/api/projects/${projectId}/export/seed?loss_ack=${encodeURIComponent(report.ack)}`
+      );
+      setDone(`dataless SEED 작업을 넣었습니다 (${job.id.slice(0, 8)}…). 작업 벨에서 받아 주세요.`);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 501) {
-        setDone("손실 목록을 확인했습니다. dataless SEED 변환기는 이 배포에 아직 없습니다");
-        return;
-      }
       setError((err as Error).message);
     } finally {
       setBusy(false);
