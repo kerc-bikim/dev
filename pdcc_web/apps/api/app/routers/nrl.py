@@ -17,6 +17,7 @@ from ..nrl.client import (
     nrl_badge,
     nrl_cache_count,
     nrl_mode,
+    set_nrl_mode,
     validate_format,
     validate_instconfig,
 )
@@ -228,31 +229,33 @@ def nrl_library_download(user: User = Depends(current_user)) -> dict:
 @router.post("/mode")
 def nrl_set_mode(body: NrlModeIn, user: User = Depends(current_user)) -> dict:
     _admin_only(user)
-    mode = body.mode.strip().lower()
-    if mode not in {"online", "cache-first", "offline"}:
-        raise HTTPException(
-            status_code=400, detail="NRL 모드는 online, cache-first, offline 중 하나여야 합니다"
-        )
-    settings.nrl_mode = mode
-    redis = get_redis()
     try:
-        if mode == "offline":
-            from ..nrl.offline import get_offline_library
-
-            available = get_offline_library().status()["available"]
-            redis.set("pdcc:nrl:source", "zip" if available else "offline")
-        else:
-            redis.delete("pdcc:nrl:probe_ok")
-    except Exception:
-        pass
+        set_nrl_mode(body.mode)
+    except NrlError as exc:
+        _http(exc)
     return nrl_status(user)
+
+
+@router.post("/catalog/refresh")
+def nrl_catalog_refresh(user: User = Depends(current_user)) -> dict:
+    _admin_only(user)
+    try:
+        return get_nrl_client().refresh_catalog()
+    except NrlError as exc:
+        _http(exc)
 
 
 @router.post("/test")
 def nrl_test(user: User = Depends(current_user)) -> dict:
     if user.role != ADMIN_ROLE:
         raise HTTPException(status_code=403, detail="관리자만 NRL 연결을 시험할 수 있습니다")
-    return get_nrl_client().probe()
+    result = get_nrl_client().probe()
+    if not result.get("ok"):
+        try:
+            result["last_ok_at"] = get_redis().get("pdcc:nrl:last_ok_at")
+        except Exception:
+            result["last_ok_at"] = None
+    return result
 
 
 def _configurations(catalog: dict) -> list[dict]:

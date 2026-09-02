@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { apiGet, apiPost, apiText, type ChannelSummary, type Me, type NrlStatus, type ResponseCurve } from "../api";
+import { apiGet, apiPost, apiText, type ChannelSummary, type Me, type NrlStatus, type NrlTestResult, type ResponseCurve } from "../api";
 import { NrlPanel } from "./NrlPanel";
 import { ResponseCurveChart } from "./ResponseCurveChart";
 
@@ -169,12 +169,14 @@ export function NrlWorkbench({
             disabled={busy}
             onClick={() => {
               setBusy(true);
-              apiPost<{ ok: boolean; status_code: number; elapsed_ms: number; url: string; elements?: string[] }>(
-                "/api/nrl/test"
-              )
+              apiPost<NrlTestResult>("/api/nrl/test")
                 .then((data) =>
                   setTestResult(
-                    `${data.ok ? "성공" : "실패"} HTTP ${data.status_code} · ${data.elapsed_ms} ms · ${data.url}`
+                    `${data.ok ? "성공" : "실패"} HTTP ${data.status_code} · ${data.elapsed_ms} ms · ${data.url}` +
+                      (data.elements?.length ? ` · ${data.elements.slice(0, 6).join(", ")}` : "") +
+                      (!data.ok && data.last_ok_at
+                        ? ` · 최근 성공 캐시 ${data.last_ok_at.replace("T", " ").replace("Z", " UTC")}`
+                        : "")
                   )
                 )
                 .catch((err: Error) => setTestResult(err.message))

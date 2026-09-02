@@ -25,6 +25,8 @@ META_LAST_OK = "pdcc:nrl:last_ok"
 META_LAST_OK_AT = "pdcc:nrl:last_ok_at"
 META_SOURCE = "pdcc:nrl:source"
 META_PROBE = "pdcc:nrl:probe_ok"
+META_MODE = "pdcc:nrl:mode"
+NRL_MODES = frozenset({"online", "cache-first", "offline"})
 CACHE_KEY_PREFIXES = (
     "pdcc:nrl:catalog:",
     "pdcc:nrl:combine:",
@@ -185,8 +187,38 @@ def mark_nrl_using_cache(redis) -> None:
 
 
 def nrl_mode() -> str:
+    try:
+        raw = get_redis().get(META_MODE)
+        if isinstance(raw, bytes):
+            raw = raw.decode()
+        if raw in NRL_MODES:
+            return str(raw)
+    except Exception:
+        pass
     mode = (settings.nrl_mode or "online").strip().lower()
-    return mode if mode in {"online", "cache-first", "offline"} else "online"
+    return mode if mode in NRL_MODES else "online"
+
+
+def set_nrl_mode(mode: str) -> str:
+    value = (mode or "").strip().lower()
+    if value not in NRL_MODES:
+        raise NrlError("NRL 모드는 online, cache-first, offline 중 하나여야 합니다", 400)
+    if value == "offline":
+        from .offline import get_offline_library
+
+        if not get_offline_library().status().get("available"):
+            raise NrlError("오프라인 NRL zip이 없습니다. 관리자 화면에서 전체 라이브러리를 받으세요", 400)
+    settings.nrl_mode = value
+    redis = get_redis()
+    _redis_set(redis, META_MODE, value)
+    try:
+        if value == "offline":
+            redis.set(META_SOURCE, "zip")
+        else:
+            redis.delete(META_PROBE)
+    except Exception:
+        pass
+    return value
 
 
 def nrl_badge(source: str) -> str:
@@ -282,7 +314,7 @@ class NrlClient:
     def _cached_json(self, key: str, loader) -> Any:
         redis = get_redis()
         fresh, stale = self._read_cached(redis, key)
-        mode = (settings.nrl_mode or "online").strip().lower()
+        mode = nrl_mode()
 
         if mode == "offline":
             cached = fresh if fresh is not None else stale
@@ -290,6 +322,12 @@ class NrlClient:
                 mark_nrl_using_cache(redis)
                 return cached
             raise NrlError(CACHE_MISS_DETAIL, 503)
+
+        if mode == "cache-first":
+            cached = fresh if fresh is not None else stale
+            if cached is not None:
+                mark_nrl_using_cache(redis)
+                return cached
 
         if fresh is not None:
             return fresh
@@ -395,6 +433,32 @@ class NrlClient:
 
         data = self._cached_json(cache_key, load)
         return data["body"].encode("utf-8"), data["content_type"]
+
+    def refresh_catalog(self) -> dict:
+        if nrl_mode() == "offline":
+            raise NrlError("오프라인 모드에서는 카탈로그를 새로고침하지 않습니다", 409)
+        redis = get_redis()
+        try:
+            for key in list(redis.scan_iter(match="pdcc:nrl:catalog:*")):
+                redis.delete(key)
+            redis.delete("pdcc:nrl:prefix")
+            redis.delete("pdcc:nrl:prefix:stale")
+        except Exception:
+            log.debug("nrl catalog cache clear skipped", exc_info=True)
+        data = self.catalog(level="element")
+        prefixes = self.prefix_lookup()
+        from .questions import as_list
+
+        elements: list[str] = []
+        for node in as_list(data.get("NRLCatalog", {}).get("element")):
+            name = node.get("name") if isinstance(node, dict) else None
+            if name:
+                elements.append(str(name))
+        return {
+            "ok": True,
+            "elements": elements,
+            "prefix_count": len(prefixes) if isinstance(prefixes, list) else 0,
+        }
 
 
 _client: NrlClient | None = None

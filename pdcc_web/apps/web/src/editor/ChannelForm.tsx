@@ -142,7 +142,10 @@ export function ChannelForm({
       <label>
         <span>
           깊이 (m){" "}
-          <Hint text="지면 아래 센서 깊이(m)이며 0 이상입니다." chapter="chapter-7" />
+          <Hint
+            text="지면 기준 센서 깊이(m). 고도에 더하면 지표면 고도입니다."
+            chapter="chapter-7"
+          />
         </span>
         <input
           data-field="depth"

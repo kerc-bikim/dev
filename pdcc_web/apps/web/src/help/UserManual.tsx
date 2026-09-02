@@ -123,7 +123,7 @@ export function UserManual({ onClose }: { onClose: () => void }) {
         <dl className="manual-fields">
           <div><dt>코드</dt><dd>3자 SEED 채널 코드입니다. 예: BHZ, BHN, BHE.</dd></div>
           <div><dt>location</dt><dd>0–2자 위치 코드입니다. 공백과 00은 서로 다른 코드입니다.</dd></div>
-          <div><dt>깊이</dt><dd>지면 아래 센서 깊이(m)이며 음수를 쓰지 않습니다.</dd></div>
+          <div><dt>깊이</dt><dd>지면 기준 센서 깊이(m). 고도에 더하면 지표면 고도입니다.</dd></div>
           <div><dt>방위각</dt><dd>북쪽 0°, 동쪽 90° 기준의 수평 방향입니다.</dd></div>
           <div><dt>경사</dt><dd>수평 0°, 위쪽 +90°, 아래쪽 -90°입니다. 수직 지진계는 보통 -90°입니다.</dd></div>
           <div><dt>샘플링</dt><dd>채널 최종 샘플률(Hz)이며 Q330HR NRL 설정과 일치해야 합니다.</dd></div>

@@ -94,6 +94,10 @@ def _backup_status() -> dict:
         return {"last_success_at": None, "confirmed": False}
 
 
+def backup_status() -> dict:
+    return _backup_status()
+
+
 def _failed_jobs(db: Session) -> list[dict]:
     rows = db.scalars(
         select(Job)
