@@ -52,7 +52,7 @@ def download_job(
     job_id: str, db: Session = Depends(get_db), user: User = Depends(current_user)
 ):
     job = _visible_job(db, job_id, user)
-    if job.kind == "dataless":
+    if job.kind in {"dataless", "resp"}:
         try:
             require_edit(db, job.project_id, user)
         except HTTPException:

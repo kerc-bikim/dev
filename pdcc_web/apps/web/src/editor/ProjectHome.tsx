@@ -116,7 +116,7 @@ export function ProjectHome({
       <h2>프로젝트</h2>
       <p className="hint">
         {canCreate
-          ? "StationXML 또는 dataless SEED를 열거나 빈 네트워크를 만든 뒤 관측소 위저드를 씁니다."
+          ? "StationXML, dataless SEED, RESP를 열거나 빈 네트워크를 만든 뒤 관측소 위저드를 씁니다."
           : "조회자는 속한 프로젝트만 보고 StationXML을 받을 수 있습니다."}
       </p>
       {canCreate ? (
@@ -148,7 +148,7 @@ export function ProjectHome({
           ref={fileRef}
           id="open-xml-file"
           type="file"
-          accept=".xml,.seed,.dataless,text/xml,application/xml"
+          accept=".xml,.seed,.dataless,.resp,.RESP,text/xml,application/xml,text/plain"
           hidden
           onChange={onOpenFile}
         />
@@ -173,7 +173,9 @@ export function ProjectHome({
               {project.has_original
                 ? project.original_kind === "dataless"
                   ? " · 원본 dataless 보관"
-                  : " · 원본 보관"
+                  : project.original_kind === "resp"
+                    ? " · 원본 RESP 보관"
+                    : " · 원본 보관"
                 : ""}
               {project.nrl_applied ? " · NRL 적용됨" : " · 응답 없음"}
               {project.my_role ? ` · ${ROLE_LABEL[project.my_role] || project.my_role}` : ""}
@@ -232,7 +234,7 @@ export function ProjectHome({
       {projects.length === 0 ? (
         <ul className="empty-hints">
           <li>새 프로젝트로 빈 네트워크를 만드세요.</li>
-          <li>파일 열기로 StationXML 또는 dataless SEED를 가져오세요.</li>
+          <li>파일 열기로 StationXML, dataless SEED 또는 RESP를 가져오세요.</li>
           <li>관측소 위저드는 프로젝트를 연 뒤에 씁니다.</li>
         </ul>
       ) : null}

@@ -11,6 +11,7 @@ import {
   type Project,
   type StationSummary,
   type ValidationIssue,
+  type ValidateResult,
 } from "../api";
 import { NrlWorkbench } from "../nrl/NrlWorkbench";
 import { MergeDialog } from "./MergeDialog";
@@ -48,6 +49,7 @@ export function EditorPage({
   const [canSeed, setCanSeed] = useState(false);
   const [xmlName, setXmlName] = useState<string | null>(null);
   const [seedLossOpen, setSeedLossOpen] = useState(false);
+  const [respNotice, setRespNotice] = useState<string | null>(null);
   const issueModeRef = useRef(issueMode);
   issueModeRef.current = issueMode;
 
@@ -246,6 +248,25 @@ export function EditorPage({
     setSeedLossOpen(true);
   }
 
+  async function exportResp(scope: "channel" | "station") {
+    setError(null);
+    setRespNotice(null);
+    const params = new URLSearchParams();
+    if (selected) {
+      params.set("station", selected.code);
+      if (selected.start) params.set("start", selected.start);
+    }
+    if (scope === "channel" && channel?.nslc) params.set("nslc", channel.nslc);
+    try {
+      const job = await apiPost<Job>(`/api/projects/${projectId}/export/resp?${params.toString()}`);
+      setRespNotice(
+        `RESP 작업을 넣었습니다 (${job.id.slice(0, 8)}…). 작업 벨에서 받아 주세요.`
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
   async function resumeDraft() {
     const data = await apiGet<{
       draft: { stations: StationSummary[]; conflict: boolean } | null;
@@ -338,7 +359,11 @@ export function EditorPage({
         </button>
         {project.has_original ? (
           <button type="button" id="original-file-btn" onClick={() => downloadOriginal()}>
-            {project.original_kind === "dataless" ? "원본 SEED" : "원본 파일"}
+            {project.original_kind === "dataless"
+              ? "원본 SEED"
+              : project.original_kind === "resp"
+                ? "원본 RESP"
+                : "원본 파일"}
           </button>
         ) : null}
         <button
@@ -355,6 +380,34 @@ export function EditorPage({
           onClick={() => exportSeed()}
         >
           dataless SEED
+        </button>
+        <button
+          type="button"
+          id="export-resp-btn"
+          disabled={readOnly || !channel}
+          title={
+            readOnly
+              ? "조회자는 StationXML만 받을 수 있습니다"
+              : canSeed
+                ? "선택한 채널 RESP. 편집된 감도를 반영합니다."
+                : "오류가 있으면 RESP는 막힙니다. 먼저 검증하세요."
+          }
+          onClick={() => exportResp("channel")}
+        >
+          RESP
+        </button>
+        <button
+          type="button"
+          id="export-resp-station-btn"
+          disabled={readOnly || !selected}
+          title={
+            readOnly
+              ? "조회자는 StationXML만 받을 수 있습니다"
+              : "선택한 관측소의 채널별 RESP zip"
+          }
+          onClick={() => exportResp("station")}
+        >
+          RESP zip
         </button>
       </div>
       {lock && !viewerOnly ? (
@@ -382,6 +435,11 @@ export function EditorPage({
         </p>
       ) : null}
       {error ? <p className="error">{error}</p> : null}
+      {respNotice ? (
+        <p className="hint" id="resp-export-notice">
+          {respNotice}
+        </p>
+      ) : null}
       {wizard ? (
         <StationWizard
           project={project}

@@ -33,7 +33,8 @@ from ..inventory.service import (
 from ..inventory.seed_loss import loss_ack_token, seed_loss_report
 from ..inventory.validator import has_errors, validate_project, xml_filename
 from ..inventory.xmlbuild import InventoryError
-from ..jobs.service import enqueue_seed_export, job_out
+from ..jobs.service import enqueue_resp_export, enqueue_seed_export, job_out
+from ..inventory.xmlslice import slice_stationxml
 from ..models import ProjectMember, User
 from ..routers.auth import current_user
 
@@ -291,6 +292,52 @@ def post_export_seed(
         project,
         job_id=str(uuid.uuid4()),
         xml=xml,
+    )
+    db.commit()
+    db.refresh(job)
+    return job_out(job)
+
+
+@router.post("/{project_id}/export/resp")
+def post_export_resp(
+    project_id: int,
+    station: str | None = Query(default=None),
+    start: str | None = Query(default=None),
+    nslc: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> dict:
+    project = require_edit(db, project_id, user)
+    xml = _project_xml(db, project, user)
+    issues = validate_project(xml, project.network_code, project.id, mode="full")
+    if has_errors(issues):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "E_UNVALIDATED",
+                "message": "검증 오류가 있어 RESP를 만들 수 없습니다",
+                "error_count": sum(1 for row in issues if row.get("level") == "error"),
+            },
+        )
+    try:
+        snapshot = slice_stationxml(
+            xml,
+            network=project.network_code,
+            station=station,
+            start=start,
+            nslc=nslc,
+        )
+    except InventoryError as exc:
+        _http_inv(exc)
+    target = nslc or station or project.network_code
+    job = enqueue_resp_export(
+        db,
+        user,
+        project,
+        job_id=str(uuid.uuid4()),
+        xml=xml,
+        snapshot=snapshot,
+        target=target,
     )
     db.commit()
     db.refresh(job)

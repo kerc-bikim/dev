@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..inventory.collab import get_draft, record_edit
 from ..inventory.importers import load_import_warnings
+from ..inventory.resp_convert import convert_xml_to_resp
 from ..inventory.seed_convert import convert_xml_to_dataless, dataless_filename
 from ..inventory.validator import summarize, validate_project
 from ..models import AuditLog, FileAsset, Job, Project, ProjectVersion, User
@@ -18,6 +19,7 @@ ACTIVE = {"queued", "running"}
 RETRYABLE = {"failed", "cancelled"}
 SEED_ASSET_KIND = "job_export"
 SEED_MEDIA = "application/vnd.fdsn.seed"
+RESP_ASSET_KIND = "job_export"
 
 
 class JobError(Exception):
@@ -148,6 +150,56 @@ def enqueue_seed_export(
     return job
 
 
+def enqueue_resp_export(
+    db: Session,
+    user: User,
+    project: Project,
+    *,
+    job_id: str,
+    xml: str,
+    snapshot: str,
+    target: str,
+) -> Job:
+    source = "draft" if get_draft(db, project.id, user.id) is not None else "project"
+    version = record_edit(
+        db,
+        project,
+        user,
+        before=project.xml_text,
+        after=xml,
+        action="export",
+        summary="RESP 내보내기",
+        undo=False,
+    )
+    job = Job(
+        id=job_id,
+        project_id=project.id,
+        user_id=user.id,
+        username=user.username,
+        kind="resp",
+        status="queued",
+        progress=0,
+        message="대기 중",
+        version_id=version.id,
+        xml_source=source,
+        xml_snapshot=snapshot,
+        result_json="",
+    )
+    db.add(job)
+    db.add(
+        AuditLog(
+            project_id=project.id,
+            actor=user.username,
+            action="export_resp",
+            target=target,
+            summary="RESP 변환 대기",
+        )
+    )
+    db.flush()
+    enqueue_job(job.id)
+    return job
+
+
 def run_validate_snapshot(db: Session, job: Job, project: Project) -> dict:
     issues = load_import_warnings(db, project.id) + validate_project(
         job.xml_snapshot,
@@ -207,6 +259,44 @@ def run_seed_export(db: Session, job: Job, project: Project) -> dict:
         "engine": engine,
         "sha256": digest,
         "bytes": len(data),
+        "downloadable": True,
+    }
+
+
+def run_resp_export(db: Session, job: Job, project: Project) -> dict:
+    data, filename, media, engine, nchan = convert_xml_to_resp(
+        job.xml_snapshot,
+        network=project.network_code,
+        organization=project.operator,
+        label=project.network_code,
+    )
+    digest = hashlib.sha256(data).hexdigest()
+    asset = FileAsset(
+        project_id=project.id,
+        kind=RESP_ASSET_KIND,
+        filename=filename,
+        media_type=media,
+        content=data,
+    )
+    db.add(asset)
+    db.flush()
+    db.add(
+        AuditLog(
+            project_id=project.id,
+            actor=job.username,
+            action="export_resp",
+            target=filename,
+            summary=f"RESP {engine} sha256:{digest[:16]}",
+        )
+    )
+    return {
+        "filename": filename,
+        "media_type": media,
+        "asset_id": asset.id,
+        "engine": engine,
+        "sha256": digest,
+        "bytes": len(data),
+        "channel_count": nchan,
         "downloadable": True,
     }
 

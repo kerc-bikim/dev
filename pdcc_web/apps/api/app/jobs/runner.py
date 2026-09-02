@@ -10,7 +10,18 @@ from ..db import SessionLocal
 from ..inventory.xmlbuild import InventoryError
 from ..models import Job, Project, utcnow
 from .queue import dequeue_job, worker_heartbeat
-from .service import run_seed_export, run_validate_snapshot
+from .service import run_resp_export, run_seed_export, run_validate_snapshot
+
+BUSY = {
+    "dataless": "SEED 변환 중",
+    "resp": "RESP 변환 중",
+    "validate": "검증 중",
+}
+FAIL = {
+    "dataless": "SEED 변환 중 오류가 났습니다",
+    "resp": "RESP 변환 중 오류가 났습니다",
+    "validate": "검증 중 오류가 났습니다",
+}
 
 log = logging.getLogger("pdcc.worker")
 
@@ -26,7 +37,7 @@ def process_job(job_id: str) -> None:
             return
         job.status = "running"
         job.progress = 10
-        job.message = "SEED 변환 중" if job.kind == "dataless" else "검증 중"
+        job.message = BUSY.get(job.kind, "작업 중")
         job.started_at = utcnow()
         job.error = None
         db.commit()
@@ -46,6 +57,8 @@ def process_job(job_id: str) -> None:
                 result = run_validate_snapshot(db, job, project)
             elif job.kind == "dataless":
                 result = run_seed_export(db, job, project)
+            elif job.kind == "resp":
+                result = run_resp_export(db, job, project)
             else:
                 raise RuntimeError(f"지원하지 않는 작업: {job.kind}")
             job.progress = 80
@@ -66,7 +79,7 @@ def process_job(job_id: str) -> None:
             db.commit()
         except Exception:
             log.exception("job %s crashed", job_id)
-            fail = "SEED 변환 중 오류가 났습니다" if job.kind == "dataless" else "검증 중 오류가 났습니다"
+            fail = FAIL.get(job.kind, "작업 중 오류가 났습니다")
             job.status = "failed"
             job.error = fail
             job.message = "실패"
