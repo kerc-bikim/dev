@@ -1,5 +1,38 @@
 export type Me = { username: string; role: string };
 export type Health = { ok: boolean; db: boolean; redis: boolean };
+export type OpsStatus = {
+  env: string;
+  allow_stub_login: boolean;
+  dev_bootstrap_admin: boolean;
+  session_cookie_secure: boolean;
+  session_cookie_samesite: string;
+  audit_retention_days: number;
+  app_secret_is_default: boolean;
+  username: string;
+  role: string;
+  production: boolean;
+};
+export type AuditRow = {
+  id: number;
+  project_id: number | null;
+  actor: string;
+  action: string;
+  target: string;
+  summary: string;
+  created_at: string | null;
+};
+export type AuditList = {
+  items: AuditRow[];
+  total: number;
+  limit: number;
+  offset: number;
+  retention_days: number;
+};
+export type RestoreResult = {
+  created: { id: number; name: string; network_code: string }[];
+  replaced: { id: number; name: string; network_code: string }[];
+  count: number;
+};
 export type WizardQuestion = { key: string; question: string; options: string[] };
 export type WizardMatch = {
   instconfig: string;
@@ -174,4 +207,10 @@ export async function apiText(path: string): Promise<string> {
   const response = await fetch(path, { credentials: "include" });
   if (!response.ok) throw new Error(await readError(response));
   return response.text();
+}
+
+export async function apiBlob(path: string): Promise<Blob> {
+  const response = await fetch(path, { credentials: "include" });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.blob();
 }

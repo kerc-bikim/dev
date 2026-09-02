@@ -36,7 +36,7 @@ cd pdcc_web/apps/web && npm install && npm run dev -- --host 0.0.0.0 --port 3000
 
 | 이름 | 기본 | 설명 |
 |------|------|------|
-| `APP_SECRET` | `dev-insecure-change-me` | 세션 서명. 배포 시 반드시 교체 |
+| `APP_SECRET` | `dev-insecure-change-me` | 세션 서명. 배포 시 반드시 교체. 프로덕션 기본값이면 기동 거부 |
 | `DATABASE_URL` | `postgresql+psycopg://pdcc:pdcc@postgres:5432/pdcc` | SQLAlchemy URL |
 | `REDIS_URL` | `redis://redis:6379/0` | 세션·헬스 |
 | `DEV_BOOTSTRAP_ADMIN` | `false` | `admin`/`admin` 허용 |
@@ -60,6 +60,33 @@ NRL은 API 기동 시 호출하지 않습니다.
 | 이름 | 기본 | 설명 |
 |------|------|------|
 | `LOCK_TTL_SEC` | `300` | 관측소 epoch 잠금 TTL |
+
+## M4 운영
+
+비밀·헬스·StationXML 백업·감사 로그. SEED/RESP 작업 큐는 M3. 자세한 내용: [`docs/adr/0006-operations.md`](docs/adr/0006-operations.md), [`infra/runbook.md`](infra/runbook.md).
+
+프로덕션은 `APP_ENV=production` 에서 `APP_SECRET` 기본값·스텁 로그인·`DEV_BOOTSTRAP_ADMIN` 을 거절하고 기동하지 않는다.
+
+```bash
+export APP_SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(48))")
+export POSTGRES_PASSWORD=...
+docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d --build
+```
+
+| 이름 | 기본 | 설명 |
+|------|------|------|
+| `APP_ENV` | `development` | `production` 이면 실패 폐쇄 |
+| `ALLOW_STUB_LOGIN` | `true` | 프로덕션에서는 false. stub 계정 |
+| `SESSION_COOKIE_SECURE` | 프로덕션 켜짐 | 세션 쿠키 Secure |
+| `SESSION_COOKIE_SAMESITE` | `lax` | `lax` / `strict` / `none` |
+| `CORS_ORIGINS` | 개발 localhost:3000 | 쉼표 구분 출처 |
+| `AUDIT_RETENTION_DAYS` | `365` | 감사 로그 보관 |
+
+헬스: `GET /health/live` (생존), `GET /health/ready` 와 `GET /health` (DB·Redis).
+
+백업: 로그인 후 `GET /api/ops/backup` (프로젝트 XML ZIP), `POST /api/ops/restore`. 웹 **운영** 메뉴 또는 `infra/backup.sh`. DB 덤프는 런북의 `pg_dump`.
+
+감사: `GET /api/ops/audit`. 사용자가 없으면 `POST /api/ops/bootstrap` 으로 최초 관리자.
 
 ## 테스트
 

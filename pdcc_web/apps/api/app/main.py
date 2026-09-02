@@ -7,35 +7,40 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .cache import get_redis, set_redis
-from .config import settings
 from .db import Base, SessionLocal, configure_engine, get_engine
+from .middleware import RequestContextMiddleware
 from .nrl.client import set_nrl_client
 from .routers.auth import router as auth_router
 from .routers.collab import router as collab_router
 from .routers.health import router as health_router
 from .routers.locks import router as locks_router
 from .routers.nrl import router as nrl_router
+from .routers.ops import purge_expired_audit, router as ops_router
 from .routers.projects import router as projects_router
+from .runtime import RequestIdFilter, apply_runtime_policy, cors_origin_list
 from .seed import seed_users
 
 log = logging.getLogger("pdcc.api")
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    format="%(asctime)s %(levelname)s %(name)s request_id=%(request_id)s: %(message)s",
 )
+for _handler in logging.getLogger().handlers:
+    _handler.addFilter(RequestIdFilter())
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    if settings.app_secret == "dev-insecure-change-me":
-        log.warning("APP_SECRET 가 기본값입니다. 배포 시 변경하세요.")
-    if settings.dev_bootstrap_admin:
-        log.warning("DEV_BOOTSTRAP_ADMIN=true — admin/admin 로그인이 허용됩니다.")
+    apply_runtime_policy()
     configure_engine()
     Base.metadata.create_all(bind=get_engine())
     db = SessionLocal()
     try:
         seed_users(db)
+        deleted = purge_expired_audit(db)
+        db.commit()
+        if deleted:
+            log.info("purged %s expired audit rows", deleted)
     finally:
         db.close()
     try:
@@ -56,15 +61,16 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=cors_origin_list(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RequestContextMiddleware)
 
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(nrl_router)
 app.include_router(projects_router)
 app.include_router(locks_router)
-app.include_router(collab_router)
+app.include_router(ops_router)
