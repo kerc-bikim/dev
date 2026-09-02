@@ -68,6 +68,8 @@ NRL은 API 기동 시 호출하지 않습니다. 업스트림이 죽거나 URL�
 
 편집기 **관측소 복제** 표에 엑셀 행을 붙여넣으면 원본 채널·응답을 복사해 관측소를 만듭니다. 코드가 비어 있는 행은 무시합니다. API는 `POST /api/projects/{id}/clone-stations` (`docs/adr/0013-station-clone.md`, S7).
 
+**검증**은 공식 검사를 작업 큐에 넣고 바로 돌아옵니다. 진행률은 상단과 작업 벨에 보이고, 이전 검사 결과는 유지됩니다. 편집은 그동안 계속할 수 있습니다. 끝나면 패널이 스냅샷 결과로 갱신됩니다 (`docs/adr/0016-bulk-validate.md`, S14). 실패한 작업은 같은 version id로 다시 돌립니다.
+
 | 이름 | 기본 | 설명 |
 |------|------|------|
 | `SEED_CONVERTER_JAR` | (없음) | 공식 stationxml-seed-converter. 없으면 ObsPy |

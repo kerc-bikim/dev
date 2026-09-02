@@ -3,6 +3,7 @@ import { readError, type Health, type Me, type NrlStatus } from "./api";
 import { AdminPage } from "./editor/AdminPage";
 import { EditorPage } from "./editor/EditorPage";
 import { ProjectHome } from "./editor/ProjectHome";
+import { JobBell } from "./jobs/JobBell";
 
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null);
@@ -156,6 +157,7 @@ export default function App() {
                 {showAdmin ? "홈" : "관리"}
               </button>
             ) : null}
+            <JobBell />
             <button type="button" onClick={onLogout} disabled={busy}>
               로그아웃
             </button>

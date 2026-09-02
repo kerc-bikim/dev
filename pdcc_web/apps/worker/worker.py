@@ -1,19 +1,15 @@
-"""M0 worker stub. M3에서 작업 큐를 붙인다."""
+"""PDCC worker. Redis 큐에서 대량 검증을 실행한다."""
 
 from __future__ import annotations
 
-import os
-import time
+import sys
+from pathlib import Path
 
-import redis
+API_ROOT = Path(__file__).resolve().parent.parent / "api"
+if str(API_ROOT) not in sys.path:
+    sys.path.insert(0, str(API_ROOT))
 
-
-def main() -> None:
-    url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-    client = redis.Redis.from_url(url, decode_responses=True)
-    while True:
-        client.set("pdcc:worker:heartbeat", "ok", ex=30)
-        time.sleep(10)
+from app.jobs.runner import main  # noqa: E402
 
 
 if __name__ == "__main__":

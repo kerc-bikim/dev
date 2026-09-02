@@ -57,6 +57,7 @@ export function ValidationPanel({
   source,
   mode,
   validating,
+  progress,
   filename,
   onJump,
 }: {
@@ -64,6 +65,7 @@ export function ValidationPanel({
   source: string;
   mode?: string;
   validating?: boolean;
+  progress?: number | null;
   filename?: string | null;
   onJump: (issue: ValidationIssue) => void;
 }) {
@@ -76,7 +78,9 @@ export function ValidationPanel({
         {mode === "full" ? " · 공식 검증" : " · 즉시 검사"}
         {filename ? ` · ${filename}` : ""}
         {issues.some((row) => row.source === "import") ? " · SEED 변환 경고" : ""}
-        {validating ? " · 검증 중…" : ""}
+        {validating
+          ? ` · 검증 중${progress != null ? ` ${progress}%` : ""}… 이전 결과를 유지`
+          : ""}
         . 항목을 누르면 해당 칸으로 이동합니다.
       </p>
       {issues.length === 0 ? (
