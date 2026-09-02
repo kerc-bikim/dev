@@ -1,0 +1,1943 @@
+{
+  "element": "datalogger",
+  "manufacturer": "Quanterra",
+  "model": "Q330HR",
+  "configurations": [
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR40_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 40 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR100_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 100 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR20_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 20 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADHR_LRbelow20_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADSR_LRbelow40_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR50_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 50 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR100_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 100 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR1_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 1 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR10_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 10 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADSR_LRbelow20_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR200_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 200 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADHR_LRbelow100_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADSR_LRbelow100_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR100_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 100 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR1_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 1 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR200_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 200 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR20_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 20 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADSR_LRbelow100_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADSR_LRall_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADHR_LRbelow20_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR100_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 100 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR10_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 10 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADSR_LRbelow20_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADSR_LRbelow20_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADSR_LRall_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR10_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 10 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR1_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 1 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADHR_LRbelow40_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR100_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 100 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR40_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 40 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR20_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 20 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADHR_LRbelow40_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADSR_LRall_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR200_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 200 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR200_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 200 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR20_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 20 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR50_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 50 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR200_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 200 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR50_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 50 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR10_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 10 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR40_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 40 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR50_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 50 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR40_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 40 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR50_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 50 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR50_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 50 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR100_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 100 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADHR_LRbelow20_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR10_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 10 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADHR_LRall_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR200_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 200 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR1_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 1 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADSR_LRbelow100_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR200_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 200 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR200_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 200 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADHR_LRbelow20_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR50_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 50 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR100_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 100 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR10_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 10 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR40_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 40 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADHR_LRall_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR200_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 200 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADSR_LRall_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR1_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 1 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR200_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 200 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADSR_LRbelow40_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR100_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 100 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR10_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 10 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADSR_LRbelow100_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR40_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 40 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR1_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 1 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADSR_LRbelow100_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADHR_LRbelow20_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR40_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 40 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR1_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 1 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADHR_LRbelow100_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADHR_LRbelow100_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR50_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 50 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR50_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 50 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR200_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 200 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR50_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 50 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADHR_LRbelow100_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR10_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 10 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADSR_LRall_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR20_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 20 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADHR_LRall_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR100_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 100 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR10_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 10 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR20_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 20 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADSR_LRbelow20_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR40_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 40 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR20_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 20 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR100_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 100 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR100_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 100 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR100_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 100 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR50_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 50 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR10_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 10 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADSR_LRbelow40_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR100_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 100 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADHR_LRall_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR20_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 20 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR1_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 1 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADHR_LRall_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR10_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 10 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR50_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 50 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR200_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 200 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADSR_LRall_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR1_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 1 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR40_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 40 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR40_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 40 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR20_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 20 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADSR_LRbelow40_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR40_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 40 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR20_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 20 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADHR_LRbelow100_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR1_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 1 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADHR_LRbelow40_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR1_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 1 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADSR_LRbelow20_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR100_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 100 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADSR_LRbelow100_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADHR_LRbelow40_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADSR_LRbelow40_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR20_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 20 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADHR_LRbelow40_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR100_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 100 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR20_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 20 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADSR_LRbelow40_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR40_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 40 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADHR_LRbelow20_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR10_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 10 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADHR_LRall_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR200_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 200 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADHR_LRbelow20_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR10_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 10 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADSR_LRall_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADSR_LRbelow40_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR50_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 50 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR50_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 50 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADSR_LRbelow100_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR200_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 200 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR200_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 200 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADSR_LRbelow20_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR40_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 40 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADHR_LRbelow40_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR1_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 1 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR20_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 20 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADHR_LRall_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR20_ADHR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 20 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADHR_LRbelow40_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR10_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 10 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR1_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 1 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR1_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 1 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR20_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 20 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADSR_LRbelow40_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR40_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 40 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADSR_LRbelow20_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR40_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 40 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR50_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 50 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADHR_LRbelow100_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADSR_LRbelow100_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR40_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 40 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "40 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR200_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 200 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "200 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADHR_LRbelow20_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR10_ADHR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 10 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.1_ADHR_LRall_DEDEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter DEC10",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR100_ADSR_LRbelow40_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 100 Hz; ADC_Type SR; Linear_Filter_Rates below40; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "100 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR1_ADSR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 1 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.1_ADHR_LRbelow40_DEVLP389",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.1 Hz; ADC_Type HR; Linear_Filter_Rates below40; Decimation_Filter VLP389",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below40",
+        "Decimation_Filter": "VLP389"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR20_ADSR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 20 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "20 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR10_ADSR_LRbelow100_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 10 Hz; ADC_Type SR; Linear_Filter_Rates below100; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "10 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR1_ADHR_LRall_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 1 Hz; ADC_Type HR; Linear_Filter_Rates all; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "1 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADSR_LRbelow20_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates below20; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR50_ADHR_LRbelow20_DENone",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 50 Hz; ADC_Type HR; Linear_Filter_Rates below20; Decimation_Filter None",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "50 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below20",
+        "Decimation_Filter": "None"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG20_FR0.01_ADHR_LRbelow100_DEDEC10-DEC10",
+      "description": "Quanterra; Q330HR; Preamp_Gain 20; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter DEC10-DEC10",
+      "parameters": {
+        "Preamp_Gain": "20",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "DEC10-DEC10"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADSR_LRall_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type SR; Linear_Filter_Rates all; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "SR",
+        "Linear_Filter_Rates": "all",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    },
+    {
+      "instconfig": "datalogger_Quanterra_Q330HR_PG1_FR0.01_ADHR_LRbelow100_DEVLP389-ULP379",
+      "description": "Quanterra; Q330HR; Preamp_Gain 1; Final_Sample_Rate 0.01 Hz; ADC_Type HR; Linear_Filter_Rates below100; Decimation_Filter VLP389-ULP379",
+      "parameters": {
+        "Preamp_Gain": "1",
+        "Final_Sample_Rate": "0.01 Hz",
+        "ADC_Type": "HR",
+        "Linear_Filter_Rates": "below100",
+        "Decimation_Filter": "VLP389-ULP379"
+      }
+    }
+  ]
+}
