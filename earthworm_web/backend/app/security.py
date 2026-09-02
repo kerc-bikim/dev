@@ -1,27 +1,83 @@
 from __future__ import annotations
 
-from fastapi import Header, HTTPException, Query, WebSocket
+from fastapi import HTTPException, Request
 
 from .config import settings
+from .services.auth import Actor, actor_from_api_key, actor_from_session, consume_ws_ticket
 
-OPEN_PATHS = {"/api/health"}
+OPEN_PATHS = {
+    "/api/health",
+    "/api/auth/login",
+    "/api/auth/bootstrap",
+    "/api/auth/status",
+}
+
+VIEWER_WRITE_ALLOW = {
+    ("POST", "/api/auth/logout"),
+    ("POST", "/api/auth/password"),
+    ("POST", "/api/auth/ws-ticket"),
+}
+
+SESSION_COOKIE = None  # resolved from settings at request time
 
 
-def check_key(key: str | None) -> None:
-    expected = (settings.API_KEY or "").strip()
-    if not expected:
-        raise HTTPException(status_code=503, detail="API 키가 설정되지 않았습니다")
-    if key != expected:
-        raise HTTPException(status_code=403, detail="API 키가 올바르지 않습니다")
+def cookie_name() -> str:
+    return settings.SESSION_COOKIE or "ew_session"
 
 
-def api_key_header(x_api_key: str | None = Header(default=None, alias="X-API-Key")) -> None:
-    check_key(x_api_key)
+def request_ip(request: Request) -> str | None:
+    return request.client.host if request.client else None
 
 
-async def ws_key(websocket: WebSocket, key: str | None = Query(default=None)) -> None:
-    try:
-        check_key(key)
-    except HTTPException:
-        await websocket.close(code=4403)
-        raise
+def actor_from_request(request: Request) -> Actor | None:
+    token = request.cookies.get(cookie_name())
+    actor = actor_from_session(token)
+    if actor:
+        return actor
+    # HTTP: header only. Query ?key= 는 사람·서비스 모두 거부(비밀번호 유출 경로).
+    key = request.headers.get("X-API-Key")
+    return actor_from_api_key(key)
+
+
+def ws_actor(ticket: str | None, key: str | None) -> Actor | None:
+    actor = consume_ws_ticket(ticket)
+    if actor:
+        return actor
+    return actor_from_api_key(key)
+
+
+def require_actor(request: Request) -> Actor:
+    actor = getattr(request.state, "actor", None)
+    if actor is None:
+        actor = actor_from_request(request)
+        request.state.actor = actor
+    if actor is None:
+        expected = (settings.API_KEY or "").strip()
+        if not expected and not request.cookies.get(cookie_name()):
+            # 키도 세션도 없음. 빈 키는 서비스 계정을 쓰지 않는다는 뜻이지 503이 아님.
+            raise HTTPException(401, "로그인이 필요합니다")
+        raise HTTPException(401, "로그인이 필요합니다")
+    return actor
+
+
+def require_roles(*roles: str):
+    def _dep(request: Request) -> Actor:
+        actor = require_actor(request)
+        if actor.role not in roles:
+            raise HTTPException(403, "권한이 없습니다")
+        return actor
+
+    return _dep
+
+
+def require_admin(request: Request) -> Actor:
+    return require_roles("admin")(request)
+
+
+def require_operator(request: Request) -> Actor:
+    return require_roles("admin", "operator")(request)
+
+
+# 기존 라우터 호환: 미들웨어가 이미 인증했다면 통과.
+def api_key_header(request: Request) -> Actor:
+    return require_actor(request)

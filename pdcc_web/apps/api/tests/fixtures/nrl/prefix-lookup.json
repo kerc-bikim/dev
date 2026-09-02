@@ -1,0 +1,302 @@
+[
+  {
+    "prefix": "AA",
+    "description": "Anti-Alias_Filter_Type",
+    "question": "What is the anti-alias filter type?"
+  },
+  {
+    "prefix": "AB",
+    "description": "ADC_Bits",
+    "question": "What is the ADC bit count?"
+  },
+  {
+    "prefix": "AD",
+    "description": "ADC_Type",
+    "question": "Which ADC type recorded this channel?"
+  },
+  {
+    "prefix": "AF",
+    "description": "Analog_Filter_Type",
+    "question": "What is the analog filter type?"
+  },
+  {
+    "prefix": "AL",
+    "description": "Approx_Lower_Bound",
+    "question": "What is the input amplitude lower bound for this approximation?"
+  },
+  {
+    "prefix": "AR",
+    "description": "ADC_Range",
+    "question": "What is the ADC range?"
+  },
+  {
+    "prefix": "AU",
+    "description": "Approx_Upper_Bound",
+    "question": "What is the input amplitude upper bound for this approximation?"
+  },
+  {
+    "prefix": "BV",
+    "description": "Board_Version",
+    "question": "What version is the datalogger board?"
+  },
+  {
+    "prefix": "CD",
+    "description": "Channel_Description",
+    "question": "Which is the channel description?"
+  },
+  {
+    "prefix": "CG",
+    "description": "Clip_Level",
+    "question": "What is the accelerometer clip level in +/-g?"
+  },
+  {
+    "prefix": "CH",
+    "description": "Channels",
+    "question": "What is the datalogger channel number(s)?"
+  },
+  {
+    "prefix": "CP",
+    "description": "Component",
+    "question": "Which sensor component is this?"
+  },
+  {
+    "prefix": "CR",
+    "description": "Configured_Sample_Rates",
+    "question": "What are the configured sample rates?"
+  },
+  {
+    "prefix": "CS",
+    "description": "Chip_Set",
+    "question": "Which chip set does this datalogger use?"
+  },
+  {
+    "prefix": "CT",
+    "description": "FIR_Cascade_Type",
+    "question": "What FIR cascade type is this?"
+  },
+  {
+    "prefix": "DE",
+    "description": "Decimation_Filter",
+    "question": "What is the decimation filter type?"
+  },
+  {
+    "prefix": "DF",
+    "description": "DC_Filter",
+    "question": "What is the DC removal/low pass filter setting?"
+  },
+  {
+    "prefix": "DG",
+    "description": "Digital/Software_Gain",
+    "question": "What is the software gain setting?"
+  },
+  {
+    "prefix": "DR",
+    "description": "Decimated_Sample_Rate",
+    "question": "What is the decimated sample rate?"
+  },
+  {
+    "prefix": "EB",
+    "description": "Extended_Bandwidth",
+    "question": "Is extended bandwidth filtering On or Off?"
+  },
+  {
+    "prefix": "EG",
+    "description": "Electronics_Generation",
+    "question": "What is the feedback electronics generation?"
+  },
+  {
+    "prefix": "FB",
+    "description": "Feedback_Loop_Board_Type",
+    "question": "What is the feedback electronics board type?"
+  },
+  {
+    "prefix": "FD",
+    "description": "Firmware_Date",
+    "question": "Is the firmware date before or after 2012-10-02?"
+  },
+  {
+    "prefix": "FL",
+    "description": "Frequency_Lower_Bound",
+    "question": "What is the frequency lower bound for this approximation?"
+  },
+  {
+    "prefix": "FP",
+    "description": "Final_Filter_Phase",
+    "question": "What is the final filter phase?"
+  },
+  {
+    "prefix": "FR",
+    "description": "Final_Sample_Rate",
+    "question": "What is the final sample rate?"
+  },
+  {
+    "prefix": "FT",
+    "description": "Feedback Type",
+    "question": "What is the sensor feedback type?"
+  },
+  {
+    "prefix": "FU",
+    "description": "Frequency_Upper_Bound",
+    "question": "What is the frequency lower bound for this approximation?"
+  },
+  {
+    "prefix": "FV",
+    "description": "Full-Scale_Voltage",
+    "question": "What is the full scale voltage?"
+  },
+  {
+    "prefix": "FW",
+    "description": "Firmware_Version",
+    "question": "What is the firmware version?"
+  },
+  {
+    "prefix": "GT",
+    "description": "Gain_Type",
+    "question": "Is the gain fixed or variable?"
+  },
+  {
+    "prefix": "HF",
+    "description": "High-Frequency_Corner",
+    "question": "What is the high-frequency corner?"
+  },
+  {
+    "prefix": "HR",
+    "description": "Highest_Configured_Sample_Rate",
+    "question": "What is the highest simultaneous sample rate configured?"
+  },
+  {
+    "prefix": "IT",
+    "description": "Input_Type",
+    "question": "What is the input voltage type?"
+  },
+  {
+    "prefix": "LF",
+    "description": "Low-Frequency_Corner",
+    "question": "What is the low-frequency corner?"
+  },
+  {
+    "prefix": "LP",
+    "description": "Long-Period_Corner",
+    "question": "What is the long-period corner?"
+  },
+  {
+    "prefix": "LR",
+    "description": "Linear_Filter_Rates",
+    "question": "To which sample rates are linear filters applied?"
+  },
+  {
+    "prefix": "MR",
+    "description": "Main_Sample_Rate",
+    "question": "What is the main sample rate?"
+  },
+  {
+    "prefix": "MV",
+    "description": "Model_Version",
+    "question": "Which version is this model?"
+  },
+  {
+    "prefix": "NS",
+    "description": "Number_of_Streams",
+    "question": "How many data stream ran simultaneously?"
+  },
+  {
+    "prefix": "OB",
+    "description": "Output_Bits",
+    "question": "How many output bits should be used?"
+  },
+  {
+    "prefix": "OS",
+    "description": "Onboard_Sensor",
+    "question": "Which onboard sensor does this datalogger use?"
+  },
+  {
+    "prefix": "OU",
+    "description": "Output_Units",
+    "question": "What are the final output units?"
+  },
+  {
+    "prefix": "OW",
+    "description": "Output_Wiring",
+    "question": "Is the output wiring single-ended or differential?"
+  },
+  {
+    "prefix": "PD",
+    "description": "Preamp_Db",
+    "question": "What is the preamp gain in dB?"
+  },
+  {
+    "prefix": "PG",
+    "description": "Preamp_Gain",
+    "question": "What is the preamp gain ratio?"
+  },
+  {
+    "prefix": "PP",
+    "description": "Peak-to-Peak_Voltage",
+    "question": "What is the peak-to-peak voltage?"
+  },
+  {
+    "prefix": "PR",
+    "description": "Primary_Sample_Rate",
+    "question": "What is the primary sample rate?"
+  },
+  {
+    "prefix": "RC",
+    "description": "Coil_Resistance",
+    "question": "What is the coil resistance in ohms?"
+  },
+  {
+    "prefix": "RS",
+    "description": "Shunt_Resistance",
+    "question": "What is the shunt resistance in ohms?"
+  },
+  {
+    "prefix": "SG",
+    "description": "Sensitivity",
+    "question": "What is the sensitivity?"
+  },
+  {
+    "prefix": "SM",
+    "description": "Sensitivity_Mode",
+    "question": "What is the sensitivity mode for this channel?"
+  },
+  {
+    "prefix": "SN",
+    "description": "Serial_Number",
+    "question": "What is the serial number range?"
+  },
+  {
+    "prefix": "SP",
+    "description": "Short-Period_Corner",
+    "question": "What is the short-period corner?"
+  },
+  {
+    "prefix": "ST",
+    "description": "Sensor_Type",
+    "question": "What property does this sensor measure?"
+  },
+  {
+    "prefix": "TG",
+    "description": "Transmission_Gain",
+    "question": "What is the transmission gain?"
+  },
+  {
+    "prefix": "TL",
+    "description": "Tap_Table_Lookup",
+    "question": "What is the tap table lookup number for this channel?"
+  },
+  {
+    "prefix": "TP",
+    "description": "Taps",
+    "question": "What are the taps (sample rate options in Hz) for this channel?"
+  },
+  {
+    "prefix": "WS",
+    "description": "Word_Size",
+    "question": "What is the output word size in bits?"
+  },
+  {
+    "prefix": "ZN",
+    "description": "Input_Impedance",
+    "question": "Is the input impedance high or low?"
+  }
+]

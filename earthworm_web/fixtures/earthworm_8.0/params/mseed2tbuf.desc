@@ -1,0 +1,5 @@
+modName mseed2tbuf
+modId   MOD_MSEED2TBUF
+instId  ${EW_INST_ID}
+tsec    90
+restartMe

@@ -4,9 +4,9 @@ import { Field } from "../components/Confirm";
 
 const STEPS = ["디렉터리", "설치 ID", "링 구성", "검증"];
 
-type Props = { onDone: () => void; toast: (m: string) => void };
+type Props = { onDone: () => void; toast: (m: string) => void; needBootstrap?: boolean };
 
-export function SetupWizard({ onDone, toast }: Props) {
+export function SetupWizard({ onDone, toast, needBootstrap }: Props) {
   const [step, setStep] = useState(0);
   const [home, setHome] = useState("");
   const [version, setVersion] = useState("");
@@ -17,6 +17,9 @@ export function SetupWizard({ onDone, toast }: Props) {
   const [rings, setRings] = useState<RingRow[]>([]);
   const [checks, setChecks] = useState<Check[]>([]);
   const [busy, setBusy] = useState(false);
+  const [adminUser, setAdminUser] = useState("");
+  const [adminName, setAdminName] = useState("");
+  const [adminPass, setAdminPass] = useState("");
 
   useEffect(() => {
     api<{
@@ -76,6 +79,16 @@ export function SetupWizard({ onDone, toast }: Props) {
       if (!v.ok) {
         toast("검증을 통과하지 못했습니다");
         return;
+      }
+      if (needBootstrap) {
+        await api("/api/auth/bootstrap", {
+          method: "POST",
+          body: JSON.stringify({
+            username: adminUser,
+            display_name: adminName || adminUser,
+            password: adminPass,
+          }),
+        });
       }
       await api("/api/setup/complete", { method: "POST" });
       toast("초기 설정 완료. 이후 메뉴가 열렸습니다.");
@@ -221,6 +234,13 @@ export function SetupWizard({ onDone, toast }: Props) {
             ))}
           </ul>
           <p className="lead">완료해도 startstop 은 자동 기동하지 않습니다. 대시보드에서 시작하세요.</p>
+          {needBootstrap && (
+            <div className="grid cols-2" style={{ marginBottom: 12 }}>
+              <Field label="관리자 로그인 ID" value={adminUser} onChange={setAdminUser} />
+              <Field label="표시 이름" value={adminName} onChange={setAdminName} />
+              <Field label="비밀번호 (10자 이상)" value={adminPass} onChange={setAdminPass} type="password" />
+            </div>
+          )}
           <div className="row">
             <button onClick={() => setStep(2)}>이전</button>
             <button className="primary" disabled={busy} onClick={() => void complete()}>

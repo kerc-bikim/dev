@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FDSNStationXML xmlns="http://www.fdsn.org/xml/station/1" schemaVersion="1.2">
+  <!-- keep-two-agencies -->
+  <Source>unit-test</Source>
+  <Sender>KERC</Sender>
+  <Module>stationxml_manager</Module>
+  <ModuleURI>https://example.local/stationxml</ModuleURI>
+  <Created>2020-01-01T00:00:00Z</Created>
+  <Network code="YZ" startDate="2009-04-10T00:00:00Z">
+    <Description>Two agency network</Description>
+    <Operator>
+      <Agency>First Agency</Agency>
+      <Agency>Second Agency</Agency>
+      <WebSite>https://example.local</WebSite>
+    </Operator>
+    <Station code="TEST1" startDate="2009-04-10T00:00:00Z">
+      <Latitude unit="DEGREES">1.0</Latitude>
+      <Longitude unit="DEGREES">2.0</Longitude>
+      <Elevation unit="METERS">3</Elevation>
+      <Site>
+        <Name>Two Agency Site</Name>
+      </Site>
+      <CreationDate>2009-04-10T00:00:00Z</CreationDate>
+      <Channel code="BHZ" locationCode="00" startDate="2009-04-10T00:00:00Z">
+        <Latitude unit="DEGREES">1.0</Latitude>
+        <Longitude unit="DEGREES">2.0</Longitude>
+        <Elevation unit="METERS">3</Elevation>
+        <Depth unit="METERS">0</Depth>
+        <Azimuth unit="DEGREES">0</Azimuth>
+        <Dip unit="DEGREES">-90</Dip>
+        <SampleRate>20</SampleRate>
+      </Channel>
+    </Station>
+  </Network>
+</FDSNStationXML>

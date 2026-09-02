@@ -47,7 +47,7 @@ export function SniffPage({ toast }: { toast: (m: string) => void }) {
       });
       setSession(res.session_id);
       setLines([]);
-      const ws = new WebSocket(wsUrl("/ws/sniff", { session: res.session_id }));
+      const ws = new WebSocket(await wsUrl("/ws/sniff", { session: res.session_id }));
       wsRef.current = ws;
       ws.onmessage = (ev) => {
         const msg = JSON.parse(ev.data) as { type: string; text?: string };

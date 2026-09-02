@@ -1,0 +1,78 @@
+name: pdcc-web
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pdcc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pdcc}
+      POSTGRES_DB: ${POSTGRES_DB:-pdcc}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pdcc-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pdcc} -d ${POSTGRES_DB:-pdcc}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      APP_SECRET: ${APP_SECRET:-dev-insecure-change-me}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://pdcc:pdcc@postgres:5432/pdcc}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      DEV_BOOTSTRAP_ADMIN: ${DEV_BOOTSTRAP_ADMIN:-false}
+      NRL_BASE_URL: ${NRL_BASE_URL:-https://service.earthscope.org/irisws/nrl/1}
+      NRL_TIMEOUT_SEC: ${NRL_TIMEOUT_SEC:-30}
+      NRL_CACHE_TTL_SEC: ${NRL_CACHE_TTL_SEC:-3600}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import json,urllib.request; d=json.load(urllib.request.urlopen('http://127.0.0.1:8080/health')); raise SystemExit(0 if d.get('ok') else 1)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pdcc-pg:

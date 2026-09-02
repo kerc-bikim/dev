@@ -1,0 +1,5 @@
+modName ewmseedarchiver
+modId   MOD_EWMSEEDARCHIVER
+instId  ${EW_INST_ID}
+tsec    90
+restartMe

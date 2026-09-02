@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MVP 범위</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #eb6c36;
+      --font-sans:     'Geist', 'Noto Sans KR', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem 2rem;
+    }
+    .frame { max-width: 1200px; width: 100%; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 720px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">MVP · Diagram Design</p>
+    <h1>한 창에서 우선 모듈을 적용하고 함께 기동하면 MVP다</h1>
+    <svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mvp-scope-title mvp-scope-desc">
+      <title id="mvp-scope-title">MVP 범위</title>
+      <desc id="mvp-scope-desc">MVP는 기존 마법사·제어·로그와 새 구성 보드를 잇는다. 기타 모듈 등록, getmenu, systemd 패키지는 밖으로 둔다.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+      </defs>
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+      <rect x="40" y="24" width="280" height="280" rx="8" fill="#ffffff" stroke="rgba(45,49,66,0.12)"/>
+      <text x="180" y="56" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">BASELINE</text>
+      <text x="180" y="88" text-anchor="middle" fill="#2d3142" font-size="16" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">이미 있는 전제</text>
+      <text x="180" y="128" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">마법사 · 파일 편집</text>
+      <text x="180" y="156" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">startstop · pau</text>
+      <text x="180" y="184" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">stopmodule · restart</text>
+      <text x="180" y="212" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">대시보드 · 로그 · 스니프</text>
+      <text x="180" y="252" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist Mono', monospace">clone API 유지</text>
+
+      <line x1="320" y1="164" x2="380" y2="164" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+
+      <rect x="380" y="24" width="280" height="280" rx="8" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
+      <text x="520" y="56" text-anchor="middle" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em" font-weight="600">MVP BUILD</text>
+      <text x="520" y="88" text-anchor="middle" fill="#2d3142" font-size="16" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">이번에 만든다</text>
+      <text x="520" y="128" text-anchor="middle" fill="#2d3142" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">작업자 로그인 · 3역할</text>
+      <text x="520" y="156" text-anchor="middle" fill="#2d3142" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">변경 이력 화면</text>
+      <text x="520" y="184" text-anchor="middle" fill="#2d3142" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">우선 12 · 구성 보드 적용</text>
+      <text x="520" y="212" text-anchor="middle" fill="#2d3142" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">시작 → 기존 제어</text>
+      <text x="520" y="252" text-anchor="middle" fill="#eb6c36" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">적용에 작업자 이름 필수</text>
+
+      <rect x="680" y="24" width="280" height="280" rx="8" fill="#ececec"/>
+      <text x="820" y="56" text-anchor="middle" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LATER</text>
+      <text x="820" y="88" text-anchor="middle" fill="#2d3142" font-size="16" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">MVP 밖</text>
+      <text x="820" y="128" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">기타 bin 등록</text>
+      <text x="820" y="156" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">getmenu · WEB_DOC</text>
+      <text x="820" y="184" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">SSO · systemd</text>
+      <text x="820" y="212" text-anchor="middle" fill="#4f5d75" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">StationXML 연동</text>
+      <text x="820" y="252" text-anchor="middle" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">우회: 파일 편집</text>
+
+      <text x="40" y="356" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">SCENE</text>
+      <text x="40" y="388" fill="#2d3142" font-size="13" font-family="'Geist', 'Noto Sans KR', sans-serif">로그인한 운영자가 보드를 적용·기동하고, 이력에 자기 이름이 남으면 MVP 수락.</text>
+      <text x="40" y="416" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">모듈 로그와 작업 이력은 다른 화면이다. pidpau 웹 버튼은 넣지 않는다.</text>
+    </svg>
+  </div>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>작업 이력 흐름</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #eb6c36;
+      --font-sans:     'Geist', 'Noto Sans KR', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem 2rem;
+    }
+    .frame { max-width: 1200px; width: 100%; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 720px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Audit · Diagram Design</p>
+    <h1>변경은 세션의 작업자 이름으로 남고, 줄은 고칠 수 없다</h1>
+    <svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="audit-flow-title audit-flow-desc">
+      <title id="audit-flow-title">작업 이력 흐름</title>
+      <desc id="audit-flow-desc">로그인한 작업자가 적용이나 기동을 하면 FastAPI 가 SQLite 이력에 이름과 동작을 남긴다. 모듈 로그 파일과 다른 화면이다. 이력 줄은 삭제하지 않는다.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+      </defs>
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+      <line x1="160" y1="80" x2="160" y2="420" stroke="rgba(45,49,66,0.20)" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="500" y1="80" x2="500" y2="420" stroke="rgba(45,49,66,0.20)" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="840" y1="80" x2="840" y2="420" stroke="rgba(45,49,66,0.20)" stroke-width="1" stroke-dasharray="3,3"/>
+
+      <text x="160" y="64" text-anchor="middle" fill="#2d3142" font-size="13" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">작업자</text>
+      <text x="500" y="64" text-anchor="middle" fill="#2d3142" font-size="13" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">FastAPI</text>
+      <text x="840" y="64" text-anchor="middle" fill="#2d3142" font-size="13" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">control.sqlite</text>
+
+      <line x1="160" y1="120" x2="496" y2="120" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <text x="328" y="108" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist Mono', monospace">login · session cookie</text>
+
+      <line x1="160" y1="200" x2="496" y2="200" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <text x="328" y="188" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist Mono', monospace">compose apply · pau</text>
+
+      <rect x="496" y="168" width="8" height="80" fill="rgba(45,49,66,0.06)" stroke="#4f5d75" stroke-width="0.8"/>
+
+      <line x1="504" y1="248" x2="836" y2="248" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+      <text x="670" y="236" text-anchor="middle" fill="#eb6c36" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">actor · action · target · result</text>
+
+      <rect x="800" y="280" width="80" height="56" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+      <text x="840" y="314" text-anchor="middle" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif">append</text>
+
+      <line x1="496" y1="360" x2="160" y2="360" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <text x="328" y="348" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist Mono', monospace">GET /api/audit 필터</text>
+
+      <text x="840" y="400" text-anchor="middle" fill="#4f5d75" font-size="11" font-family="'Geist', 'Noto Sans KR', sans-serif">UPDATE 없음</text>
+
+      <text x="40" y="456" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">NOT EW LOG</text>
+      <text x="160" y="456" fill="#4f5d75" font-size="12" font-family="'Geist', 'Noto Sans KR', sans-serif">모듈 *_YYYYMMDD.log 와 이력 화면은 분리한다. 비밀번호·AuthCode 는 detail 에 넣지 않는다.</text>
+    </svg>
+  </div>
+</body>
+</html>

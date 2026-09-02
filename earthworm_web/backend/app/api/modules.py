@@ -8,6 +8,7 @@ from ..services.app_store import load_app
 from ..services.clone import CloneError, clone_module, delete_clone
 from ..services.control import toggle_module
 from ..services.module_catalog import as_dict, catalog
+from ..services.schema import schema_payload
 from ..services.variables import apply_variables, current_variables
 
 router = APIRouter(prefix="/api", tags=["modules"], dependencies=[Depends(api_key_header)])
@@ -21,6 +22,11 @@ def require_setup() -> None:
 @router.get("/modules")
 def get_modules() -> dict:
     return {"modules": [as_dict(m) for m in catalog()]}
+
+
+@router.get("/modules/schema")
+def get_modules_schema() -> dict:
+    return schema_payload()
 
 
 @router.patch("/modules/{module_id}")

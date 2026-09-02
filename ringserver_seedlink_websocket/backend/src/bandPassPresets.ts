@@ -13,10 +13,26 @@ export type BandPassPreset = {
 
 export const BUILTIN_BANDPASS_PRESETS: BandPassPreset[] = [
   {
+    id: "infra-0.02-0.5",
+    name: "BP 0.02–0.5 Hz",
+    fminHz: 0.02,
+    fmaxHz: 0.5,
+    group: "builtin",
+    builtin: true,
+  },
+  {
     id: "seis-0.1-1",
     name: "BP 0.1–1 Hz",
     fminHz: 0.1,
     fmaxHz: 1.0,
+    group: "builtin",
+    builtin: true,
+  },
+  {
+    id: "infra-0.5-5",
+    name: "BP 0.5–5 Hz",
+    fminHz: 0.5,
+    fmaxHz: 5.0,
     group: "builtin",
     builtin: true,
   },
@@ -36,31 +52,21 @@ export const BUILTIN_BANDPASS_PRESETS: BandPassPreset[] = [
     group: "builtin",
     builtin: true,
   },
-  {
-    id: "infra-0.02-0.5",
-    name: "BP 0.02–0.5 Hz",
-    fminHz: 0.02,
-    fmaxHz: 0.5,
-    group: "builtin",
-    builtin: true,
-  },
-  {
-    id: "infra-0.5-5",
-    name: "BP 0.5–5 Hz",
-    fminHz: 0.5,
-    fmaxHz: 5.0,
-    group: "builtin",
-    builtin: true,
-  },
-  {
-    id: "infra-1-10",
-    name: "BP 1–10 Hz",
-    fminHz: 1.0,
-    fmaxHz: 10.0,
-    group: "builtin",
-    builtin: true,
-  },
 ];
+
+const REMOVED_PRESET_ALIASES: Record<string, string> = {
+  "infra-1-10": "seis-1-10",
+};
+
+export function remapBandPassPresetId(id: string | null | undefined): string | null {
+  if (!id) return null;
+  return REMOVED_PRESET_ALIASES[id] || id;
+}
+
+function compareByBand(a: BandPassPreset, b: BandPassPreset): number {
+  if (a.fminHz !== b.fminHz) return a.fminHz - b.fminHz;
+  return a.fmaxHz - b.fmaxHz;
+}
 
 export function mergeBandPassPresets(
   stored: BandPassPreset[] | undefined | null,
@@ -84,7 +90,9 @@ export function mergeBandPassPresets(
       builtin: false,
     });
   }
-  return [...byId.values()];
+  const builtin = [...byId.values()].filter((p) => p.builtin).sort(compareByBand);
+  const extras = [...byId.values()].filter((p) => !p.builtin).sort(compareByBand);
+  return [...builtin, ...extras];
 }
 
 export function sanitizeBandPassPresets(list: unknown): BandPassPreset[] | undefined {
@@ -125,7 +133,7 @@ export function resolveBandPass(
 ): { fminHz: number; fmaxHz: number } | null {
   if (!enabled || !presetId) return null;
   const list = presets?.length ? presets : BUILTIN_BANDPASS_PRESETS;
-  const p = list.find((x) => x.id === presetId);
+  const p = list.find((x) => x.id === remapBandPassPresetId(presetId));
   if (!p || !(p.fminHz > 0) || !(p.fmaxHz > p.fminHz)) return null;
   return { fminHz: p.fminHz, fmaxHz: p.fmaxHz };
 }
