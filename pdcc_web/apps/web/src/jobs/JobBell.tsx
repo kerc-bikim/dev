@@ -95,6 +95,21 @@ export function JobBell() {
                     받기
                   </button>
                 ) : null}
+                {job.status === "queued" ? (
+                  <button
+                    type="button"
+                    id={`job-cancel-${job.id}`}
+                    onClick={() =>
+                      apiPost<Job>(`/api/jobs/${job.id}/cancel`)
+                        .then((next) =>
+                          setJobs((prev) => prev.map((row) => (row.id === next.id ? next : row)))
+                        )
+                        .catch((err: Error) => setError(err.message))
+                    }
+                  >
+                    취소
+                  </button>
+                ) : null}
                 {job.status === "failed" ? (
                   <button
                     type="button"

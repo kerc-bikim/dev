@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { readError, type Health, type Me, type NrlStatus } from "./api";
+import { apiPost, readError, type Health, type Me, type Notice, type NrlStatus } from "./api";
 import { AdminPage } from "./editor/AdminPage";
 import { EditorPage } from "./editor/EditorPage";
 import { ProjectHome } from "./editor/ProjectHome";
@@ -26,6 +26,7 @@ export default function App() {
   const [adminHelpView, setAdminHelpView] = useState(
     () => window.location.pathname.startsWith("/help/admin")
   );
+  const [notices, setNotices] = useState<Notice[]>([]);
 
   const refreshHealth = useCallback(() => {
     fetch("/api/health", { credentials: "include" })
@@ -84,6 +85,25 @@ export default function App() {
     };
     load();
     const id = window.setInterval(load, 10000);
+    return () => window.clearInterval(id);
+  }, [me]);
+
+  useEffect(() => {
+    if (!me) {
+      setNotices([]);
+      return;
+    }
+    const load = () => {
+      fetch("/api/notices", { credentials: "include" })
+        .then(async (response) => {
+          if (!response.ok) return;
+          const body = (await response.json()) as { notices: Notice[] };
+          setNotices(body.notices || []);
+        })
+        .catch(() => undefined);
+    };
+    load();
+    const id = window.setInterval(load, 8000);
     return () => window.clearInterval(id);
   }, [me]);
 
@@ -212,6 +232,25 @@ export default function App() {
           ) : null}
         </div>
       </header>
+      {notices.length > 0 ? (
+        <div className="lock-banner" id="notice-banner" role="status">
+          {notices.map((notice) => (
+            <p key={notice.id}>
+              {notice.message}{" "}
+              <button
+                type="button"
+                onClick={() =>
+                  apiPost<{ notices: Notice[] }>(`/api/notices/${notice.id}/ack`)
+                    .then((data) => setNotices(data.notices || []))
+                    .catch(() => undefined)
+                }
+              >
+                확인
+              </button>
+            </p>
+          ))}
+        </div>
+      ) : null}
 
       {helpView ? (
         <main className="main">

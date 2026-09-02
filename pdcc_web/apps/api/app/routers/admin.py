@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -13,11 +14,16 @@ from ..access import (
     require_admin,
     user_out,
 )
-from ..dashboard import build_dashboard
+from ..config import settings
+from ..dashboard import backup_status, build_dashboard
 from ..db import get_db
+from ..inventory.locks import LockError, lock_snapshot, release_lock
 from ..inventory.service import write_audit
+from ..jobs.queue import cancel_queued
+from ..jobs.service import job_out
 from ..models import (
     AuditLog,
+    Job,
     NrlAlias,
     NrlExcluded,
     Organization,
@@ -25,7 +31,10 @@ from ..models import (
     ProjectMember,
     User,
     hash_password,
+    utcnow,
 )
+from ..notices import push_notice
+from ..nrl.client import nrl_mode
 from ..routers.auth import current_user
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -71,6 +80,11 @@ class NrlExcludedIn(BaseModel):
     query: str = Field(min_length=1, max_length=64)
     name: str = Field(min_length=1, max_length=128)
     message: str = Field(min_length=1, max_length=512)
+
+
+class UnlockIn(BaseModel):
+    station_path: str = Field(min_length=1, max_length=160)
+    reason: str = Field(min_length=1, max_length=512)
 
 
 def _required(value: str, label: str) -> str:
@@ -545,3 +559,172 @@ def admin_put_member(
     )
     db.commit()
     return member_out(row, user)
+
+
+def _admin_job(db: Session, job: Job) -> dict:
+    data = job_out(job)
+    project = db.get(Project, job.project_id)
+    data["project_name"] = project.name if project else None
+    data["network_code"] = project.network_code if project else None
+    return data
+
+
+@router.get("/jobs")
+def admin_list_jobs(
+    project_id: int | None = Query(default=None),
+    kind: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _admin: User = Depends(_admin),
+) -> dict:
+    stmt = select(Job).order_by(Job.created_at.desc()).limit(200)
+    if project_id is not None:
+        stmt = stmt.where(Job.project_id == project_id)
+    if kind:
+        stmt = stmt.where(Job.kind == kind.strip())
+    if status:
+        stmt = stmt.where(Job.status == status.strip())
+    rows = db.scalars(stmt).all()
+    return {"jobs": [_admin_job(db, row) for row in rows]}
+
+
+@router.get("/jobs/{job_id}/log")
+def admin_job_log(
+    job_id: str, db: Session = Depends(get_db), _admin: User = Depends(_admin)
+):
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="작업이 없습니다")
+    lines = [
+        f"id={job.id}",
+        f"project_id={job.project_id}",
+        f"kind={job.kind}",
+        f"status={job.status}",
+        f"username={job.username}",
+        f"message={job.message or ''}",
+        f"error={job.error or ''}",
+        f"created_at={job.created_at.isoformat() if job.created_at else ''}",
+        f"finished_at={job.finished_at.isoformat() if job.finished_at else ''}",
+        f"result={job.result_json or ''}",
+    ]
+    body = "\n".join(lines) + "\n"
+    filename = f"job-{job.id}.log"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-PDCC-Filename": filename,
+        },
+    )
+
+
+@router.post("/jobs/{job_id}/cancel")
+def admin_cancel_job(
+    job_id: str, db: Session = Depends(get_db), admin: User = Depends(_admin)
+) -> dict:
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="작업이 없습니다")
+    if job.status != "queued":
+        raise HTTPException(status_code=409, detail="대기 중인 작업만 취소할 수 있습니다")
+    cancel_queued(job.id)
+    job.status = "cancelled"
+    job.message = "관리자가 취소함"
+    job.finished_at = utcnow()
+    write_audit(
+        db,
+        project_id=job.project_id,
+        actor=admin.username,
+        action="job_cancel",
+        target=job.id,
+        summary=f"{job.kind} 작업 취소",
+    )
+    db.commit()
+    db.refresh(job)
+    return _admin_job(db, job)
+
+
+@router.post("/locks/unlock")
+def admin_force_unlock(
+    body: UnlockIn, db: Session = Depends(get_db), admin: User = Depends(_admin)
+) -> dict:
+    reason = body.reason.strip()
+    if not reason:
+        raise HTTPException(status_code=400, detail="강제 해제 사유를 입력하세요")
+    current = lock_snapshot(body.station_path)
+    if current is None:
+        raise HTTPException(status_code=404, detail="잠금이 없습니다")
+    holder_id = int(current["user_id"])
+    holder_name = str(current.get("username") or "")
+    project_id = int(current.get("project_id") or 0) or None
+    try:
+        release_lock(db, body.station_path, admin, force=True)
+    except LockError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    write_audit(
+        db,
+        project_id=project_id,
+        actor=admin.username,
+        action="unlock",
+        target=body.station_path,
+        summary="잠금 강제 해제",
+        details=reason,
+    )
+    if holder_id != admin.id:
+        push_notice(holder_id, "관리자가 잠금을 해제했습니다", kind="unlock")
+    db.commit()
+    return {
+        "ok": True,
+        "station_path": body.station_path,
+        "holder": holder_name,
+        "draft_kept": True,
+    }
+
+
+@router.get("/system")
+def admin_system(_admin: User = Depends(_admin)) -> dict:
+    return {
+        "upload": {
+            "max_upload_bytes": settings.max_upload_bytes,
+            "max_zip_bytes": settings.max_zip_bytes,
+            "max_zip_uncompressed_bytes": settings.max_zip_uncompressed_bytes,
+            "max_zip_members": settings.max_zip_members,
+        },
+        "timeouts": {
+            "nrl_sec": settings.nrl_timeout_sec,
+            "library_sec": settings.nrl_library_timeout_sec,
+            "converter_sec": settings.converter_timeout_sec,
+            "validator_sec": settings.validator_timeout_sec,
+        },
+        "seed": {
+            "organization": settings.seed_organization or "",
+            "label": settings.seed_label or "",
+        },
+        "session_ttl_sec": settings.session_ttl_sec,
+        "lock_ttl_sec": settings.lock_ttl_sec,
+        "nrl_mode": nrl_mode(),
+        "backup": backup_status(),
+        "citations": [
+            {
+                "name": "NRL",
+                "text": "Templeton (2017)",
+                "doi": "10.17611/S7159Q",
+            },
+            {
+                "name": "StationXML",
+                "text": "FDSN 표준",
+                "doi": "",
+            },
+            {
+                "name": "변환기/검증기",
+                "text": "IRIS/EarthScope 도구",
+                "doi": "",
+            },
+            {
+                "name": "코드",
+                "text": "PDCC Web 대체 구현. 배포 라이선스는 저장소 NOTICE를 따릅니다.",
+                "doi": "",
+            },
+        ],
+    }

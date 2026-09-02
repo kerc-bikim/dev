@@ -34,7 +34,9 @@ def catalog_index(element: str) -> list[dict[str, str]]:
     redis = get_redis()
     key = f"pdcc:nrl:index:{element}"
     stale: list[dict[str, str]] | None = None
-    offline = nrl_mode() == "offline"
+    mode = nrl_mode()
+    offline = mode == "offline"
+    cache_first = mode == "cache-first"
     if not offline:
         try:
             raw = redis.get(key)
@@ -43,6 +45,9 @@ def catalog_index(element: str) -> list[dict[str, str]]:
             raw_stale = redis.get(f"{key}:stale")
             if raw_stale:
                 stale = json.loads(raw_stale)
+                if cache_first and stale is not None:
+                    mark_nrl_using_cache(redis)
+                    return stale
         except Exception:
             stale = None
     try:

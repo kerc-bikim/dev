@@ -10,6 +10,7 @@ from ..cache import get_redis, session_key
 from ..config import settings
 from ..db import get_db
 from ..models import User, new_session_token, verify_password
+from ..notices import ack_notice, list_notices
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
@@ -100,3 +101,14 @@ def logout(request: Request, response: Response) -> dict:
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(current_user), db: Session = Depends(get_db)) -> UserOut:
     return _as_out(db, user)
+
+
+@router.get("/notices")
+def get_notices(user: User = Depends(current_user)) -> dict:
+    return {"notices": list_notices(user.id)}
+
+
+@router.post("/notices/{notice_id}/ack")
+def post_ack_notice(notice_id: str, user: User = Depends(current_user)) -> dict:
+    ack_notice(user.id, notice_id)
+    return {"ok": True, "notices": list_notices(user.id)}

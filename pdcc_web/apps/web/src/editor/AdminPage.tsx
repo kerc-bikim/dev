@@ -1,16 +1,20 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   apiDelete,
+  apiDownload,
   apiGet,
   apiPost,
   apiPut,
   type AdminDashboard,
+  type AdminJob,
+  type AdminSystem,
   type AuditLogInfo,
   type AuditLogPage,
   type MemberInfo,
   type NrlAliasRule,
   type NrlExcludedRule,
   type NrlLibraryStatus,
+  type NrlTestResult,
   type OrgInfo,
   type Project,
   type UserInfo,
@@ -49,6 +53,7 @@ const ACTION_LABEL: Record<string, string> = {
   nrl_excluded_delete: "NRL 제외 장비 삭제",
   project_archive: "프로젝트 보관",
   project_restore: "프로젝트 복원",
+  job_cancel: "작업 취소",
 };
 
 function formatBytes(value: number): string {
@@ -71,7 +76,19 @@ function formatRemain(sec: number): string {
   return rest ? `${hours}시간 ${rest}분 남음` : `${hours}시간 남음`;
 }
 
-function Dashboard({ data }: { data: AdminDashboard }) {
+function Dashboard({
+  data,
+  busy,
+  unlockReason,
+  onReason,
+  onUnlock,
+}: {
+  data: AdminDashboard;
+  busy: boolean;
+  unlockReason: string;
+  onReason: (value: string) => void;
+  onUnlock: (stationPath: string) => void;
+}) {
   const nrlLabel =
     data.nrl.badge ||
     (data.nrl.source === "online"
@@ -262,16 +279,17 @@ function Dashboard({ data }: { data: AdminDashboard }) {
       </h4>
       <table className="confirm-table" id="dash-long-locks">
         <thead>
-          <tr>
-            <th>관측소</th>
-            <th>편집자</th>
-            <th>남은 시간</th>
-          </tr>
+            <tr>
+              <th>관측소</th>
+              <th>편집자</th>
+              <th>남은 시간</th>
+              <th>강제 해제</th>
+            </tr>
         </thead>
         <tbody>
           {data.locks.length === 0 ? (
             <tr>
-              <td colSpan={3}>해당 잠금이 없습니다</td>
+              <td colSpan={4}>해당 잠금이 없습니다</td>
             </tr>
           ) : (
             data.locks.map((lock) => (
@@ -279,6 +297,23 @@ function Dashboard({ data }: { data: AdminDashboard }) {
                 <td>{lock.station_path}</td>
                 <td>{lock.username}</td>
                 <td>{formatRemain(lock.remaining_sec)}</td>
+                <td>
+                  <div className="wizard-nav">
+                    <input
+                      aria-label={`${lock.station_path} 강제 해제 사유`}
+                      placeholder="사유"
+                      value={unlockReason}
+                      onChange={(event) => onReason(event.target.value)}
+                    />
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => onUnlock(lock.station_path)}
+                    >
+                      강제 해제
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))
           )}
@@ -319,9 +354,16 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
   const [resetPassword, setResetPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [unlockReason, setUnlockReason] = useState("");
+  const [nrlTest, setNrlTest] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<AdminJob[]>([]);
+  const [jobProjectId, setJobProjectId] = useState<number | "">("");
+  const [jobKind, setJobKind] = useState("");
+  const [jobStatus, setJobStatus] = useState("");
+  const [system, setSystem] = useState<AdminSystem | null>(null);
 
   async function refresh() {
-    const [dashData, libraryData, aliasData, excludedData, orgData, userData, projectData] =
+    const [dashData, libraryData, aliasData, excludedData, orgData, userData, projectData, systemData] =
       await Promise.all([
         apiGet<AdminDashboard>("/api/admin/dashboard"),
         apiGet<NrlLibraryStatus>("/api/nrl/library"),
@@ -330,6 +372,7 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
         apiGet<{ orgs: OrgInfo[] }>("/api/admin/orgs"),
         apiGet<{ users: UserInfo[] }>("/api/admin/users"),
         apiGet<{ projects: Project[] }>("/api/projects"),
+        apiGet<AdminSystem>("/api/admin/system"),
       ]);
     setDashboard(dashData);
     setNrlLibrary(libraryData);
@@ -338,7 +381,22 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
     setOrgs(orgData.orgs);
     setUsers(userData.users);
     setProjects(projectData.projects);
+    setSystem(systemData);
     if (orgId === "" && orgData.orgs[0]) setOrgId(orgData.orgs[0].id);
+  }
+
+  async function refreshJobs(
+    project: number | "" = jobProjectId,
+    kind: string = jobKind,
+    status: string = jobStatus
+  ) {
+    const params = new URLSearchParams();
+    if (project !== "") params.set("project_id", String(project));
+    if (kind) params.set("kind", kind);
+    if (status) params.set("status", status);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const data = await apiGet<{ jobs: AdminJob[] }>(`/api/admin/jobs${query}`);
+    setJobs(data.jobs);
   }
 
   async function refreshAudit(project: number | "" = auditProjectId) {
@@ -351,6 +409,7 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
   useEffect(() => {
     refresh().catch((err: Error) => setError(err.message));
     refreshAudit().catch((err: Error) => setError(err.message));
+    refreshJobs().catch((err: Error) => setError(err.message));
     const id = window.setInterval(() => {
       apiGet<AdminDashboard>("/api/admin/dashboard")
         .then(setDashboard)
@@ -588,6 +647,99 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
     }
   }
 
+  async function testNrl() {
+    setBusy(true);
+    setError(null);
+    try {
+      const data = await apiPost<NrlTestResult>("/api/nrl/test");
+      const sample = (data.elements || []).slice(0, 6).join(", ");
+      const cache = data.ok
+        ? ""
+        : data.last_ok_at
+          ? ` · 최근 성공 캐시 ${formatWhen(data.last_ok_at)}`
+          : " · 최근 성공 캐시 없음";
+      setNrlTest(
+        `${data.ok ? "성공" : "실패"} HTTP ${data.status_code} · ${data.elapsed_ms} ms · ${data.url}` +
+          (sample ? ` · element ${sample}` : "") +
+          cache
+      );
+      await refresh();
+    } catch (err) {
+      setNrlTest((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function refreshCatalog() {
+    setBusy(true);
+    setError(null);
+    try {
+      const data = await apiPost<{ elements: string[]; prefix_count: number }>(
+        "/api/nrl/catalog/refresh"
+      );
+      setNrlTest(
+        `카탈로그 새로고침 · element ${data.elements.join(", ") || "없음"} · prefix ${data.prefix_count}`
+      );
+      await refresh();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function forceUnlock(stationPath: string) {
+    if (!unlockReason.trim()) {
+      setError("강제 해제 사유를 입력하세요");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await apiPost("/api/admin/locks/unlock", {
+        station_path: stationPath,
+        reason: unlockReason.trim(),
+      });
+      setUnlockReason("");
+      await refresh();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function downloadJobLog(jobId: string) {
+    try {
+      const { filename, blob } = await apiDownload(`/api/admin/jobs/${jobId}/log`);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || `job-${jobId}.log`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function cancelAdminJob(jobId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiPost(`/api/admin/jobs/${jobId}/cancel`);
+      await refreshJobs();
+      await refresh();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="workbench admin-page">
       <div className="editor-top">
@@ -600,7 +752,17 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
       </div>
       <p className="hint">운영 대시보드와 기관·사용자·역할을 여기서 봅니다. 관리자가 아니면 홈으로 돌아갑니다.</p>
       {error ? <p className="error">{error}</p> : null}
-      {dashboard ? <Dashboard data={dashboard} /> : <p className="hint">대시보드를 불러오는 중…</p>}
+      {dashboard ? (
+        <Dashboard
+          data={dashboard}
+          busy={busy}
+          unlockReason={unlockReason}
+          onReason={setUnlockReason}
+          onUnlock={forceUnlock}
+        />
+      ) : (
+        <p className="hint">대시보드를 불러오는 중…</p>
+      )}
 
       <section className="nrl-card" id="admin-audit-logs">
         <div className="section-heading">
@@ -689,8 +851,30 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
             : nrlLibrary?.error || "서버에 전체 zip이 없습니다."}
         </p>
         <div className="wizard-nav">
+          <button type="button" disabled={busy} onClick={testNrl}>
+            연결 테스트
+          </button>
+          <button type="button" disabled={busy} onClick={refreshCatalog}>
+            카탈로그 새로고침
+          </button>
           <button type="button" disabled={busy} onClick={downloadNrlLibrary}>
-            EarthScope에서 전체 zip 받기
+            전체 라이브러리 받기
+          </button>
+          <button
+            type="button"
+            className={dashboard?.nrl.mode === "online" ? "primary" : ""}
+            disabled={busy}
+            onClick={() => setNrlMode("online")}
+          >
+            온라인
+          </button>
+          <button
+            type="button"
+            className={dashboard?.nrl.mode === "cache-first" ? "primary" : ""}
+            disabled={busy}
+            onClick={() => setNrlMode("cache-first")}
+          >
+            캐시 우선
           </button>
           <button
             type="button"
@@ -698,16 +882,120 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
             disabled={busy}
             onClick={() => setNrlMode("offline")}
           >
-            오프라인 사용
+            오프라인
           </button>
-          <button
-            type="button"
-            className={dashboard?.nrl.mode !== "offline" ? "primary" : ""}
-            disabled={busy}
-            onClick={() => setNrlMode("online")}
-          >
-            온라인 사용
-          </button>
+        </div>
+        {nrlTest ? <p className="hint" id="admin-nrl-test-result">{nrlTest}</p> : null}
+      </section>
+
+      <section className="nrl-card" id="admin-jobs">
+        <h3>
+          작업 목록 <AdminHelpLink chapter={9} label="실패 작업 대응" />
+        </h3>
+        <p className="hint">프로젝트·유형·상태로 필터하고, 실패 로그를 받거나 대기 작업을 취소합니다.</p>
+        <div className="wizard-nav">
+          <label>
+            프로젝트
+            <select
+              id="admin-job-project"
+              value={jobProjectId}
+              onChange={(event) => {
+                const next = event.target.value ? Number(event.target.value) : "";
+                setJobProjectId(next);
+                refreshJobs(next, jobKind, jobStatus).catch((err: Error) => setError(err.message));
+              }}
+            >
+              <option value="">전체</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name} ({project.network_code})
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            유형
+            <select
+              id="admin-job-kind"
+              value={jobKind}
+              onChange={(event) => {
+                setJobKind(event.target.value);
+                refreshJobs(jobProjectId, event.target.value, jobStatus).catch((err: Error) =>
+                  setError(err.message)
+                );
+              }}
+            >
+              <option value="">전체</option>
+              <option value="validate">검증</option>
+              <option value="dataless">SEED</option>
+              <option value="resp">RESP</option>
+            </select>
+          </label>
+          <label>
+            상태
+            <select
+              id="admin-job-status"
+              value={jobStatus}
+              onChange={(event) => {
+                setJobStatus(event.target.value);
+                refreshJobs(jobProjectId, jobKind, event.target.value).catch((err: Error) =>
+                  setError(err.message)
+                );
+              }}
+            >
+              <option value="">전체</option>
+              <option value="queued">대기</option>
+              <option value="running">진행</option>
+              <option value="succeeded">완료</option>
+              <option value="failed">실패</option>
+              <option value="cancelled">취소</option>
+            </select>
+          </label>
+        </div>
+        <div className="table-scroll">
+          <table className="confirm-table" id="admin-job-table">
+            <thead>
+              <tr>
+                <th>시각</th>
+                <th>프로젝트</th>
+                <th>유형</th>
+                <th>상태</th>
+                <th>사용자</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>작업이 없습니다</td>
+                </tr>
+              ) : (
+                jobs.map((job) => (
+                  <tr key={job.id}>
+                    <td>{formatWhen(job.created_at)}</td>
+                    <td>{job.project_name || job.project_id}</td>
+                    <td>{job.kind}</td>
+                    <td>{job.status}</td>
+                    <td>{job.username}</td>
+                    <td className="wizard-nav">
+                      <button type="button" onClick={() => downloadJobLog(job.id)}>
+                        실패 로그
+                      </button>
+                      {job.status === "queued" ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => cancelAdminJob(job.id)}
+                        >
+                          취소
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -1120,6 +1408,62 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
             ))}
           </tbody>
         </table>
+      </section>
+      <section className="nrl-card" id="admin-system">
+        <h3>
+          시스템 <AdminHelpLink chapter={6} label="변환기 설정" />
+        </h3>
+        {system ? (
+          <>
+            <dl className="manual-fields" id="admin-system-limits">
+              <div>
+                <dt>업로드 한도</dt>
+                <dd>{formatBytes(system.upload.max_upload_bytes)}</dd>
+              </div>
+              <div>
+                <dt>zip 한도</dt>
+                <dd>
+                  {formatBytes(system.upload.max_zip_bytes)} · 항목 {system.upload.max_zip_members}개
+                </dd>
+              </div>
+              <div>
+                <dt>변환 타임아웃</dt>
+                <dd>
+                  converter {system.timeouts.converter_sec}s · validator {system.timeouts.validator_sec}s ·
+                  NRL {system.timeouts.nrl_sec}s
+                </dd>
+              </div>
+              <div>
+                <dt>SEED --organization / --label</dt>
+                <dd>
+                  {system.seed.organization || "(프로젝트 운영기관)"} /{" "}
+                  {system.seed.label || "(네트워크 코드)"}
+                </dd>
+              </div>
+              <div>
+                <dt>세션 만료</dt>
+                <dd>{Math.round(system.session_ttl_sec / 3600)}시간</dd>
+              </div>
+              <div>
+                <dt>마지막 백업 성공</dt>
+                <dd>
+                  {system.backup.confirmed ? formatWhen(system.backup.last_success_at) : "확인 기록 없음"}
+                </dd>
+              </div>
+            </dl>
+            <h4>라이선스·인용</h4>
+            <ul className="empty-hints" id="admin-citations">
+              {system.citations.map((row) => (
+                <li key={row.name}>
+                  {row.name}: {row.text}
+                  {row.doi ? ` · DOI ${row.doi}` : ""}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="hint">시스템 값을 불러오는 중…</p>
+        )}
       </section>
     </div>
   );

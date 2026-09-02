@@ -295,6 +295,37 @@ export type AdminDashboard = {
   }[];
   badges: { api_5xx: boolean; nrl: boolean; failed_jobs: boolean; disk: boolean };
 };
+export type AdminJob = Job & { project_name?: string | null; network_code?: string | null };
+export type AdminSystem = {
+  upload: {
+    max_upload_bytes: number;
+    max_zip_bytes: number;
+    max_zip_uncompressed_bytes: number;
+    max_zip_members: number;
+  };
+  timeouts: {
+    nrl_sec: number;
+    library_sec: number;
+    converter_sec: number;
+    validator_sec: number;
+  };
+  seed: { organization: string; label: string };
+  session_ttl_sec: number;
+  lock_ttl_sec: number;
+  nrl_mode: string;
+  backup: { last_success_at: string | null; confirmed: boolean };
+  citations: { name: string; text: string; doi: string }[];
+};
+export type Notice = { id: string; kind: string; message: string; created_at: string };
+export type NrlTestResult = {
+  ok: boolean;
+  url: string;
+  status_code: number;
+  elapsed_ms: number;
+  elements?: string[];
+  error?: string | null;
+  last_ok_at?: string | null;
+};
 
 export type AuditLogInfo = {
   id: number;
