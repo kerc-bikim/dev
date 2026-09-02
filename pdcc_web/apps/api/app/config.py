@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     lock_ttl_sec: int = 300
     validator_jar: str = ""
     validator_timeout_sec: float = 60.0
+    max_upload_bytes: int = 20 * 1024 * 1024
 
 
 settings = Settings()

@@ -78,6 +78,7 @@ export type Project = {
   lock?: LockInfo | null;
   can_undo?: boolean;
   draft?: { updated_at: string | null; base_updated_at: string; conflict: boolean } | null;
+  has_original?: boolean;
 };
 export type EquipmentSet = {
   id: number;
@@ -128,9 +129,13 @@ export type NrlSearchHit = {
 };
 export type NrlStatus = {
   mode: string;
+  source?: string;
+  badge?: string;
   base_url: string;
   cache_ttl_sec: number;
   last_ok: boolean;
+  last_ok_at?: string | null;
+  cache_count?: number;
 };
 
 export class ApiError extends Error {

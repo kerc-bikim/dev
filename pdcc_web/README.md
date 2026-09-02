@@ -50,8 +50,9 @@ cd pdcc_web/apps/web && npm install && npm run dev -- --host 0.0.0.0 --port 3000
 | `NRL_BASE_URL` | `https://service.earthscope.org/irisws/nrl/1` | NRL 서비스 |
 | `NRL_TIMEOUT_SEC` | `30` | 업스트림 제한 |
 | `NRL_CACHE_TTL_SEC` | `3600` | catalog·prefix Redis TTL |
+| `NRL_MODE` | `online` | `online` / `cache-first` / `offline`. 장애 시 stale 캐시로 Guralp 미리보기 |
 
-NRL은 API 기동 시 호출하지 않습니다.
+NRL은 API 기동 시 호출하지 않습니다. 업스트림이 죽거나 URL이 잘못되어도 캐시된 combine/catalog 는 그대로 쓰고, 상태 배지는 `캐시 사용`이 됩니다 (`docs/adr/0012-nrl-cache-fallback.md`).
 
 ## M2 위저드·잠금
 

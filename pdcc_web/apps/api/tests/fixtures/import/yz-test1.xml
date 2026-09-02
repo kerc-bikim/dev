@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FDSNStationXML xmlns="http://www.fdsn.org/xml/station/1" schemaVersion="1.2">
+  <Source>PDCC</Source>
+  <Created>2009-04-10T00:00:00Z</Created>
+  <Network code="YZ">
+    <Station code="TEST1" startDate="2009-04-10T00:00:00">
+      <Latitude>76.35</Latitude>
+      <Longitude>-41.84</Longitude>
+      <Elevation>80</Elevation>
+      <Site><Name>Test One</Name></Site>
+      <Channel code="BHE" locationCode="00" startDate="2009-04-10T00:00:00">
+        <Latitude>76.35</Latitude>
+        <Longitude>-41.84</Longitude>
+        <Elevation>80</Elevation>
+        <Depth>0</Depth>
+        <Azimuth>90</Azimuth>
+        <Dip>0</Dip>
+        <SampleRate>20</SampleRate>
+      </Channel>
+    </Station>
+  </Network>
+</FDSNStationXML>

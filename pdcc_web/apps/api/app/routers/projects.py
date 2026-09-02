@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..inventory.collab import get_draft
 from ..inventory.locks import LockError, acquire_lock
-from ..inventory.service import apply_nrl, create_project, project_out, run_wizard
+from ..inventory.service import apply_nrl, create_project, import_project, original_asset, project_out, run_wizard
 from ..inventory.validator import has_errors, validate_project, xml_filename
 from ..inventory.xmlbuild import InventoryError
 from ..models import Project, User
@@ -68,6 +68,13 @@ class ApplyIn(BaseModel):
     replace_existing: bool = True
 
 
+class ImportIn(BaseModel):
+    filename: str = Field(min_length=1, max_length=256)
+    xml_text: str = Field(min_length=1)
+    name: str | None = Field(default=None, max_length=128)
+    operator: str | None = Field(default=None, max_length=128)
+
+
 @router.get("")
 def list_projects(db: Session = Depends(get_db), user: User = Depends(current_user)) -> dict:
     rows = db.scalars(select(Project).order_by(Project.updated_at.desc())).all()
@@ -94,12 +101,49 @@ def post_project(
     return project_out(project, user, db=db)
 
 
+@router.post("/import")
+def post_import(
+    body: ImportIn, db: Session = Depends(get_db), user: User = Depends(current_user)
+) -> dict:
+    try:
+        project = import_project(
+            db,
+            user,
+            filename=body.filename,
+            raw=body.xml_text.encode("utf-8"),
+            name=body.name,
+            operator=body.operator,
+        )
+        db.commit()
+        db.refresh(project)
+    except InventoryError as exc:
+        db.rollback()
+        _http_inv(exc)
+    return project_out(project, user, db=db)
+
+
 @router.get("/{project_id}")
 def get_project(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
     project = _owned(db, project_id, user)
     return project_out(project, user, db=db)
+
+
+@router.get("/{project_id}/original")
+def get_original(
+    project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
+):
+    project = _owned(db, project_id, user)
+    asset = original_asset(db, project.id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="원본 파일이 없습니다")
+    filename = asset.filename.replace('"', "")
+    return Response(
+        content=asset.content,
+        media_type=asset.media_type or "application/xml",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/{project_id}/xml")

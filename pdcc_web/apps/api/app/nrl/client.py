@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import re
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -16,6 +17,19 @@ log = logging.getLogger("pdcc.nrl")
 ALLOWED_FORMATS = frozenset({"stationxml", "stationxml-resp", "resp"})
 INSTCONFIG_RE = re.compile(r"^[A-Za-z0-9_.:-]+$")
 CATALOG_LEVELS = frozenset({"element", "manufacturer", "model", "configuration"})
+STALE_TTL_SEC = 30 * 24 * 3600
+PROBE_CACHE_TTL_SEC = 30
+CACHE_MISS_DETAIL = "캐시에 없는 항목입니다. NRL이 복구된 뒤에 다시 시도하세요"
+META_LAST_OK = "pdcc:nrl:last_ok"
+META_LAST_OK_AT = "pdcc:nrl:last_ok_at"
+META_SOURCE = "pdcc:nrl:source"
+META_PROBE = "pdcc:nrl:probe_ok"
+CACHE_KEY_PREFIXES = (
+    "pdcc:nrl:catalog:",
+    "pdcc:nrl:combine:",
+    "pdcc:nrl:prefix",
+    "pdcc:nrl:index:",
+)
 
 
 class NrlError(Exception):
@@ -40,6 +54,65 @@ def validate_format(value: str) -> str:
     return fmt
 
 
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def combine_cache_key(instconfig: str, fmt: str) -> str:
+    digest = hashlib.sha256(f"{fmt}|{instconfig}".encode()).hexdigest()[:16]
+    return f"pdcc:nrl:combine:{digest}"
+
+
+def nrl_cache_count(redis) -> int:
+    seen: set[str] = set()
+    keys: list = []
+    try:
+        keys = list(redis.scan_iter(match="pdcc:nrl:*"))
+    except Exception:
+        try:
+            keys = list(redis.keys("pdcc:nrl:*"))
+        except Exception:
+            return 0
+    for key in keys:
+        text = key.decode() if isinstance(key, bytes) else str(key)
+        if text.endswith(":stale"):
+            text = text[: -len(":stale")]
+        if any(text.startswith(prefix) for prefix in CACHE_KEY_PREFIXES):
+            seen.add(text)
+    return len(seen)
+
+
+def _redis_set(redis, key: str, value: str, ex: int | None = None) -> None:
+    try:
+        if ex is None:
+            redis.set(key, value)
+        else:
+            redis.set(key, value, ex=ex)
+    except Exception:
+        log.debug("nrl cache write skipped", exc_info=True)
+
+
+def mark_nrl_live_ok(redis) -> None:
+    now = utc_now_iso()
+    _redis_set(redis, META_LAST_OK, "1")
+    _redis_set(redis, META_LAST_OK_AT, now)
+    _redis_set(redis, META_SOURCE, "online")
+    _redis_set(redis, META_PROBE, "1", ex=PROBE_CACHE_TTL_SEC)
+
+
+def mark_nrl_live_failed(redis, *, has_cache: bool) -> None:
+    _redis_set(redis, META_PROBE, "0", ex=PROBE_CACHE_TTL_SEC)
+    _redis_set(redis, META_SOURCE, "cache" if has_cache else "offline")
+
+
+def mark_nrl_using_cache(redis) -> None:
+    mark_nrl_live_failed(redis, has_cache=True)
+
+
+def nrl_badge(source: str) -> str:
+    return {"online": "온라인", "cache": "캐시 사용", "offline": "NRL 장애"}.get(source, source)
+
+
 class NrlClient:
     def __init__(self, base_url: str | None = None, timeout: float | None = None):
         self.base_url = (base_url or settings.nrl_base_url).rstrip("/")
@@ -60,14 +133,15 @@ class NrlClient:
             raise NrlError("NRL 서비스가 오류를 반환했습니다", 502)
         return response
 
-    def probe(self) -> dict:
+    def probe(self, timeout: float | None = None) -> dict:
         import time
 
         url = f"{self.base_url}/catalog"
         params = {"format": "json", "nodata": "404", "level": "element"}
         started = time.perf_counter()
+        wait = timeout if timeout is not None else self.timeout
         try:
-            with httpx.Client(timeout=self.timeout, follow_redirects=True) as client:
+            with httpx.Client(timeout=wait, follow_redirects=True) as client:
                 response = client.get(url, params=params)
         except httpx.HTTPError as exc:
             elapsed_ms = int((time.perf_counter() - started) * 1000)
@@ -101,19 +175,56 @@ class NrlClient:
             "error": None if 200 <= response.status_code < 400 else "NRL 서비스가 오류를 반환했습니다",
         }
 
-    def _cached_json(self, key: str, loader) -> Any:
-        redis = get_redis()
+    def _read_cached(self, redis, key: str) -> tuple[Any | None, Any | None]:
+        fresh = None
+        stale = None
         try:
             raw = redis.get(key)
+            if raw:
+                fresh = json.loads(raw)
+            raw_stale = redis.get(f"{key}:stale")
+            if raw_stale:
+                stale = json.loads(raw_stale)
         except Exception:
-            raw = None
-        if raw:
-            return json.loads(raw)
-        data = loader()
+            log.debug("nrl cache read skipped", exc_info=True)
+        return fresh, stale
+
+    def _write_cached(self, redis, key: str, data: Any) -> None:
+        blob = json.dumps(data)
+        _redis_set(redis, key, blob, ex=settings.nrl_cache_ttl_sec)
+        _redis_set(redis, f"{key}:stale", blob, ex=STALE_TTL_SEC)
+
+    def _cached_json(self, key: str, loader) -> Any:
+        redis = get_redis()
+        fresh, stale = self._read_cached(redis, key)
+        mode = (settings.nrl_mode or "online").strip().lower()
+
+        if mode == "offline":
+            cached = fresh if fresh is not None else stale
+            if cached is not None:
+                mark_nrl_using_cache(redis)
+                return cached
+            raise NrlError(CACHE_MISS_DETAIL, 503)
+
+        if fresh is not None:
+            return fresh
+
         try:
-            redis.set(key, json.dumps(data), ex=settings.nrl_cache_ttl_sec)
-        except Exception:
-            log.debug("nrl cache write skipped", exc_info=True)
+            data = loader()
+        except NrlError as exc:
+            cached = stale
+            has_cache = cached is not None or nrl_cache_count(redis) > 0
+            if cached is not None:
+                log.warning("nrl fallback to cache for %s", key)
+                mark_nrl_using_cache(redis)
+                return cached
+            if exc.status_code in (400, 404):
+                raise
+            mark_nrl_live_failed(redis, has_cache=has_cache)
+            raise NrlError(CACHE_MISS_DETAIL, 503) from exc
+
+        self._write_cached(redis, key, data)
+        mark_nrl_live_ok(redis)
         return data
 
     def catalog(
@@ -165,8 +276,7 @@ class NrlClient:
     def combine(self, instconfig: str, fmt: str) -> tuple[bytes, str]:
         instconfig = validate_instconfig(instconfig)
         fmt = validate_format(fmt)
-        digest = hashlib.sha256(f"{fmt}|{instconfig}".encode()).hexdigest()[:16]
-        cache_key = f"pdcc:nrl:combine:{digest}"
+        cache_key = combine_cache_key(instconfig, fmt)
 
         def load() -> dict:
             response = self._get(

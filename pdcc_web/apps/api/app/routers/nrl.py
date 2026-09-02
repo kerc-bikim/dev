@@ -9,7 +9,16 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import ADMIN_ROLE, User
-from ..nrl.client import NrlError, get_nrl_client, validate_format, validate_instconfig
+from ..nrl.client import (
+    NrlError,
+    get_nrl_client,
+    mark_nrl_live_ok,
+    mark_nrl_using_cache,
+    nrl_badge,
+    nrl_cache_count,
+    validate_format,
+    validate_instconfig,
+)
 from ..nrl.curve import CurveError, eval_response_curve, sample_rate_from_instconfig
 from ..nrl.questions import as_list, build_wizard
 from ..nrl.search import search_nrl
@@ -98,18 +107,73 @@ def nrl_search(
         _http(exc)
 
 
+def _probe_live(redis) -> bool | None:
+    cached = None
+    try:
+        cached = redis.get("pdcc:nrl:probe_ok")
+    except Exception:
+        cached = None
+    if cached is not None:
+        return cached == "1"
+    try:
+        probe = get_nrl_client().probe(timeout=min(2.0, settings.nrl_timeout_sec))
+        ok = bool(probe.get("ok"))
+    except TypeError:
+        probe = get_nrl_client().probe()
+        ok = bool(probe.get("ok"))
+    except Exception:
+        ok = False
+    try:
+        if ok:
+            mark_nrl_live_ok(redis)
+        elif nrl_cache_count(redis) > 0:
+            mark_nrl_using_cache(redis)
+        else:
+            redis.set("pdcc:nrl:probe_ok", "0", ex=30)
+            redis.set("pdcc:nrl:source", "offline")
+    except Exception:
+        pass
+    return ok
+
+
 @router.get("/status")
 def nrl_status(_user: User = Depends(current_user)) -> dict:
-    last_ok = False
+    redis = get_redis()
+    cache_count = 0
+    last_ok_at = None
+    source_meta = None
     try:
-        last_ok = bool(get_redis().get("pdcc:nrl:last_ok"))
+        cache_count = nrl_cache_count(redis)
+        last_ok_at = redis.get("pdcc:nrl:last_ok_at")
+        source_meta = redis.get("pdcc:nrl:source")
     except Exception:
-        last_ok = False
+        cache_count = 0
+    live = _probe_live(redis)
+    try:
+        source_meta = redis.get("pdcc:nrl:source") or source_meta
+        last_ok_at = redis.get("pdcc:nrl:last_ok_at") or last_ok_at
+        cache_count = nrl_cache_count(redis)
+    except Exception:
+        pass
+    if live:
+        source = "online"
+        try:
+            last_ok_at = redis.get("pdcc:nrl:last_ok_at") or last_ok_at
+        except Exception:
+            pass
+    elif source_meta == "cache" or cache_count > 0:
+        source = "cache"
+    else:
+        source = "offline"
     return {
         "mode": settings.nrl_mode,
+        "source": source,
+        "badge": nrl_badge(source),
         "base_url": settings.nrl_base_url,
         "cache_ttl_sec": settings.nrl_cache_ttl_sec,
-        "last_ok": last_ok,
+        "last_ok": bool(last_ok_at) or bool(live),
+        "last_ok_at": last_ok_at,
+        "cache_count": cache_count,
     }
 
 

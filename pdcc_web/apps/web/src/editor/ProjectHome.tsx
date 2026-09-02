@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { apiGet, apiPost, type Project } from "../api";
 
 export function ProjectHome({ onOpen }: { onOpen: (project: Project) => void }) {
@@ -8,6 +8,7 @@ export function ProjectHome({ onOpen }: { onOpen: (project: Project) => void }) 
   const [operator, setOperator] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     apiGet<{ projects: Project[] }>("/api/projects")
@@ -33,10 +34,32 @@ export function ProjectHome({ onOpen }: { onOpen: (project: Project) => void }) 
     }
   }
 
+  async function onOpenFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const xmlText = await file.text();
+      const project = await apiPost<Project>("/api/projects/import", {
+        filename: file.name,
+        xml_text: xmlText,
+        name: name.trim() || undefined,
+        operator: operator || null,
+      });
+      onOpen(project);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="workbench">
       <h2>프로젝트</h2>
-      <p className="hint">관측소 위저드와 NRL 적용은 프로젝트를 연 뒤에 합니다.</p>
+      <p className="hint">StationXML을 열거나 빈 네트워크를 만든 뒤 관측소 위저드를 씁니다.</p>
       <form className="project-create" onSubmit={onCreate}>
         <label>
           이름
@@ -53,6 +76,22 @@ export function ProjectHome({ onOpen }: { onOpen: (project: Project) => void }) 
         <button type="submit" className="primary" disabled={busy}>
           새 프로젝트
         </button>
+        <button
+          type="button"
+          id="open-xml-btn"
+          disabled={busy}
+          onClick={() => fileRef.current?.click()}
+        >
+          파일 열기
+        </button>
+        <input
+          ref={fileRef}
+          id="open-xml-file"
+          type="file"
+          accept=".xml,text/xml,application/xml"
+          hidden
+          onChange={onOpenFile}
+        />
       </form>
       {error ? <p className="error">{error}</p> : null}
       <div className="project-grid">
@@ -65,15 +104,23 @@ export function ProjectHome({ onOpen }: { onOpen: (project: Project) => void }) 
           >
             <strong>{project.name}</strong>
             <span>
-              {project.network_code} · {project.station_count} 관측소 · {project.channel_count}{" "}
-              채널
+              {project.network_code} · {project.status} · {project.station_count} 관측소 ·{" "}
+              {project.channel_count} 채널
             </span>
-            <span className="hint">{project.nrl_applied ? "NRL 적용됨" : "응답 없음"}</span>
+            <span className="hint">
+              {project.updated_at ? project.updated_at.slice(0, 16).replace("T", " ") : ""}
+              {project.has_original ? " · 원본 보관" : ""}
+              {project.nrl_applied ? " · NRL 적용됨" : " · 응답 없음"}
+            </span>
           </button>
         ))}
       </div>
       {projects.length === 0 ? (
-        <p className="hint">아직 프로젝트가 없습니다. 네트워크 코드를 넣고 만드세요.</p>
+        <ul className="empty-hints">
+          <li>새 프로젝트로 빈 네트워크를 만드세요.</li>
+          <li>파일 열기로 StationXML을 가져오세요.</li>
+          <li>관측소 위저드는 프로젝트를 연 뒤에 씁니다.</li>
+        </ul>
       ) : null}
     </div>
   );

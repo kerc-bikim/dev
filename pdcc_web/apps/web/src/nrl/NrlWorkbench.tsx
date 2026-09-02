@@ -86,10 +86,12 @@ export function NrlWorkbench({
       setPreview(xml);
       setCurve(nextCurve);
       setTab("curve");
+      apiGet<NrlStatus>("/api/nrl/status").then(setNrlStatus).catch(() => undefined);
     } catch (err) {
       setPreview(null);
       setCurve(null);
       setError((err as Error).message);
+      apiGet<NrlStatus>("/api/nrl/status").then(setNrlStatus).catch(() => undefined);
     } finally {
       setBusy(false);
     }
@@ -137,7 +139,24 @@ export function NrlWorkbench({
       <p className="hint">
         NRL v2는 서버가 대신 조회합니다. 고유값이 하나뿐인 설정은 묻지 않습니다. 기준 모델은
         Guralp CMG-3T, Quanterra Q330HR 입니다.
-        {nrlStatus ? ` · 모드 ${nrlStatus.mode}${nrlStatus.last_ok ? " · 캐시 있음" : ""}` : null}
+        {nrlStatus?.badge ? (
+          <>
+            {" "}
+            <span
+              className={
+                "badge " +
+                (nrlStatus.source === "online" ? "ok" : nrlStatus.source === "cache" ? "warn" : "bad")
+              }
+            >
+              {nrlStatus.badge}
+            </span>
+          </>
+        ) : nrlStatus ? (
+          ` · 모드 ${nrlStatus.mode}${nrlStatus.last_ok ? " · 캐시 있음" : ""}`
+        ) : null}
+        {nrlStatus?.source === "cache" && nrlStatus.last_ok_at
+          ? ` · 최근 성공 ${nrlStatus.last_ok_at.replace("T", " ").replace("Z", " UTC")}`
+          : null}
       </p>
       {me?.role === "admin" ? (
         <p className="wizard-nav">

@@ -57,7 +57,10 @@ def test_search_certimus_excluded(stub):
 def test_nrl_status_and_editor_cannot_test(stub):
     status = stub.get("/api/nrl/status")
     assert status.status_code == 200
-    assert status.json()["mode"] == "online"
+    body = status.json()
+    assert body["mode"] == "online"
+    assert body["source"] == "online"
+    assert body["badge"] == "온라인"
     denied = stub.post("/api/nrl/test")
     assert denied.status_code == 403
 
