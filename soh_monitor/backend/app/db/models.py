@@ -646,15 +646,23 @@ class DeviceRuntimeState(Timestamped, Base):
 
 
 class HealthState(UuidPrimaryKey, Timestamped, Base):
-    """분류별 현재 상태. 화면이 곧바로 읽는 표."""
+    """현재 상태. 화면이 곧바로 읽는 표.
+
+    Metric 단위 행과 분류 단위 집계 행이 함께 들어간다. 집계 행은 `metric_key` 가 빈
+    문자열이다. 화면은 분류 행으로 개요를 그리고, 상세에서 Metric 행을 펼친다.
+    """
 
     __tablename__ = "health_states"
-    __table_args__ = (UniqueConstraint("device_id", "category", "dimension_value"),)
+    __table_args__ = (
+        UniqueConstraint("device_id", "category", "metric_key", "dimension_value"),
+        Index("ix_health_states_device_category", "device_id", "category"),
+    )
 
     device_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("devices.id", ondelete="CASCADE"), nullable=False
     )
     category: Mapped[str] = mapped_column(String(32), nullable=False)
+    metric_key: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     dimension_value: Mapped[str] = mapped_column(String(32), nullable=False, default="")
     severity: Mapped[Severity] = mapped_column(
         _enum(Severity, "severity"), nullable=False, default=Severity.UNKNOWN
@@ -674,6 +682,18 @@ class Incident(UuidPrimaryKey, Timestamped, Base):
     __table_args__ = (
         Index("ix_incidents_status", "status"),
         Index("ix_incidents_device_status", "device_id", "status"),
+        # 같은 대상에 열려 있는 장애는 하나만 존재해야 한다. 같은 원인으로 장애가 계속
+        # 새로 생기면 알림이 폭주하고 이력이 쓸모없어진다. 코드가 아니라 DB 로 막는다.
+        Index(
+            "uq_incidents_open_target",
+            "device_id",
+            "category",
+            "metric_key",
+            "dimension_value",
+            unique=True,
+            postgresql_where=text("status <> 'RESOLVED'"),
+            sqlite_where=text("status <> 'RESOLVED'"),
+        ),
     )
 
     device_id: Mapped[uuid.UUID | None] = mapped_column(
