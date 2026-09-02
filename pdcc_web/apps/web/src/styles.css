@@ -531,6 +531,18 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .manual-chapter { scroll-margin-top: 16px; }
 .manual-chapter h3 { margin: 0 0 10px; font-size: 17px; }
 .manual-chapter p { margin: 8px 0; }
+.manual-chapter pre {
+  overflow-x: auto;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  font-size: 12px;
+}
+.manual-chapter code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 .manual-example {
   margin-top: 12px;
   padding: 10px 12px;

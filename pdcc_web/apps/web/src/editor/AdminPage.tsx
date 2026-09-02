@@ -15,6 +15,7 @@ import {
   type Project,
   type UserInfo,
 } from "../api";
+import { AdminHelpLink } from "../help/AdminManual";
 
 const ROLE_LABEL: Record<string, string> = {
   viewer: "조회자",
@@ -118,7 +119,9 @@ function Dashboard({ data }: { data: AdminDashboard }) {
           <strong id="dash-export-count">{data.export_count_today}</strong>
         </div>
         <div id="dash-backup-status">
-          <span>마지막 백업 성공</span>
+          <span>
+            마지막 백업 성공 <AdminHelpLink chapter={7} label="백업과 복구 확인" />
+          </span>
           <strong>{data.backup.confirmed ? formatWhen(data.backup.last_success_at) : "확인 기록 없음"}</strong>
         </div>
       </div>
@@ -127,7 +130,7 @@ function Dashboard({ data }: { data: AdminDashboard }) {
       </p>
       <div className="dash-nrl" id="dash-nrl">
         <p>
-          NRL{" "}
+          NRL <AdminHelpLink chapter={4} label="NRL 연결과 캐시" />{" "}
           <span
             className={
               "badge " +
@@ -177,7 +180,9 @@ function Dashboard({ data }: { data: AdminDashboard }) {
           </tr>
         </tbody>
       </table>
-      <h4>실패한 작업 최근 10개</h4>
+      <h4>
+        실패한 작업 최근 10개 <AdminHelpLink chapter={9} label="실패 작업 대응" />
+      </h4>
       <table className="confirm-table" id="dash-failed-jobs">
         <thead>
           <tr>
@@ -204,7 +209,9 @@ function Dashboard({ data }: { data: AdminDashboard }) {
           )}
         </tbody>
       </table>
-      <h4>잠금이 10분 이상 남은 관측소</h4>
+      <h4>
+        잠금이 10분 이상 남은 관측소 <AdminHelpLink chapter={8} label="잠금 강제 해제" />
+      </h4>
       <table className="confirm-table" id="dash-long-locks">
         <thead>
           <tr>
@@ -539,7 +546,9 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
         <button type="button" onClick={onHome}>
           프로젝트 목록
         </button>
-        <h2>관리자</h2>
+        <h2>
+          관리자 <AdminHelpLink chapter={1} label="관리자 운영" />
+        </h2>
       </div>
       <p className="hint">운영 대시보드와 기관·사용자·역할을 여기서 봅니다. 관리자가 아니면 홈으로 돌아갑니다.</p>
       {error ? <p className="error">{error}</p> : null}
@@ -623,7 +632,9 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
       </section>
 
       <section className="nrl-card" id="admin-nrl-offline">
-        <h3>NRL 전체 zip 오프라인</h3>
+        <h3>
+          NRL 전체 zip 오프라인 <AdminHelpLink chapter={4} label="NRL 오프라인 zip" />
+        </h3>
         <p className="hint">
           {nrlLibrary?.available
             ? `${nrlLibrary.responses}개 응답 · ${formatBytes(nrlLibrary.bytes)} · ${nrlLibrary.path}`
@@ -653,7 +664,9 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
       </section>
 
       <section className="nrl-card" id="admin-nrl-aliases">
-        <h3>NRL 검색 별칭</h3>
+        <h3>
+          NRL 검색 별칭 <AdminHelpLink chapter={5} label="NRL 검색 별칭" />
+        </h3>
         <p className="hint">저장한 별칭은 다음 NRL 검색부터 즉시 적용됩니다.</p>
         <form className="project-create" onSubmit={onCreateAlias}>
           <label>
@@ -754,7 +767,9 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
       </section>
 
       <section className="nrl-card" id="admin-nrl-excluded">
-        <h3>NRL 제외 장비</h3>
+        <h3>
+          NRL 제외 장비 <AdminHelpLink chapter={5} label="NRL 제외 장비" />
+        </h3>
         <p className="hint">
           저장한 장비는 다음 검색부터 NRL 결과 대신 아래 안내를 표시합니다.
         </p>
@@ -858,7 +873,9 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
       </section>
 
       <section className="nrl-card">
-        <h3>기관</h3>
+        <h3>
+          기관 <AdminHelpLink chapter={3} label="기관 관리" />
+        </h3>
         <form className="project-create" onSubmit={onCreateOrg}>
           <label>
             이름
@@ -887,7 +904,9 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
       </section>
 
       <section className="nrl-card">
-        <h3>사용자</h3>
+        <h3>
+          사용자 <AdminHelpLink chapter={3} label="사용자와 역할 관리" />
+        </h3>
         <form className="project-create" onSubmit={onCreateUser}>
           <label>
             아이디
@@ -991,7 +1010,9 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
       </section>
 
       <section className="nrl-card">
-        <h3>프로젝트 멤버</h3>
+        <h3>
+          프로젝트 멤버 <AdminHelpLink chapter={3} label="프로젝트 역할 관리" />
+        </h3>
         <form className="project-create" onSubmit={onAddMember}>
           <label>
             프로젝트

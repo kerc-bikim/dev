@@ -3,6 +3,7 @@ import { readError, type Health, type Me, type NrlStatus } from "./api";
 import { AdminPage } from "./editor/AdminPage";
 import { EditorPage } from "./editor/EditorPage";
 import { ProjectHome } from "./editor/ProjectHome";
+import { AdminManual } from "./help/AdminManual";
 import { UserManual } from "./help/UserManual";
 import { JobBell } from "./jobs/JobBell";
 
@@ -20,7 +21,10 @@ export default function App() {
     () => window.location.pathname.startsWith("/admin")
   );
   const [helpView, setHelpView] = useState(
-    () => window.location.pathname.startsWith("/help/user")
+    () => window.location.pathname.startsWith("/help/")
+  );
+  const [adminHelpView, setAdminHelpView] = useState(
+    () => window.location.pathname.startsWith("/help/admin")
   );
 
   const refreshHealth = useCallback(() => {
@@ -58,7 +62,8 @@ export default function App() {
   useEffect(() => {
     function onPop() {
       setAdminView(window.location.pathname.startsWith("/admin"));
-      setHelpView(window.location.pathname.startsWith("/help/user"));
+      setHelpView(window.location.pathname.startsWith("/help/"));
+      setAdminHelpView(window.location.pathname.startsWith("/help/admin"));
     }
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -114,9 +119,14 @@ export default function App() {
       await fetch("/api/logout", { method: "POST", credentials: "include" });
       setMe(null);
       setProjectId(null);
-      if (window.location.pathname.startsWith("/admin")) {
+      if (
+        window.location.pathname.startsWith("/admin") ||
+        window.location.pathname.startsWith("/help/admin")
+      ) {
         window.history.replaceState({}, "", "/");
         setAdminView(false);
+        setHelpView(false);
+        setAdminHelpView(false);
       }
     } finally {
       setBusy(false);
@@ -130,6 +140,7 @@ export default function App() {
     window.history.pushState({}, "", "/admin");
     setAdminView(true);
     setHelpView(false);
+    setAdminHelpView(false);
     setProjectId(null);
   }
 
@@ -137,14 +148,21 @@ export default function App() {
     window.history.pushState({}, "", "/");
     setAdminView(false);
     setHelpView(false);
+    setAdminHelpView(false);
     setProjectId(null);
   }
 
   function openHelp() {
     if (helpView) return;
-    window.history.pushState({ fromApp: true }, "", "/help/user");
+    const admin = showAdmin;
+    window.history.pushState(
+      { fromApp: true },
+      "",
+      admin ? "/help/admin/1#admin-chapter-1" : "/help/user"
+    );
     setAdminView(false);
     setHelpView(true);
+    setAdminHelpView(admin);
   }
 
   function closeHelp() {
@@ -154,6 +172,7 @@ export default function App() {
     }
     window.history.replaceState({}, "", "/");
     setHelpView(false);
+    setAdminHelpView(false);
     setAdminView(false);
   }
 
@@ -173,7 +192,7 @@ export default function App() {
         </div>
         <div className="controls">
           <button type="button" onClick={openHelp} aria-current={helpView ? "page" : undefined}>
-            도움말
+            {showAdmin || adminHelpView ? "관리자 도움말" : "도움말"}
           </button>
           {me ? (
             <>
@@ -196,7 +215,11 @@ export default function App() {
 
       {helpView ? (
         <main className="main">
-          <UserManual onClose={closeHelp} />
+          {adminHelpView ? (
+            <AdminManual onClose={closeHelp} />
+          ) : (
+            <UserManual onClose={closeHelp} />
+          )}
         </main>
       ) : me ? (
         <main className="main">
