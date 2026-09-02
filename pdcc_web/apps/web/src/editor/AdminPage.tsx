@@ -46,6 +46,8 @@ const ACTION_LABEL: Record<string, string> = {
   nrl_excluded_create: "NRL 제외 장비 생성",
   nrl_excluded_update: "NRL 제외 장비 수정",
   nrl_excluded_delete: "NRL 제외 장비 삭제",
+  project_archive: "프로젝트 보관",
+  project_restore: "프로젝트 복원",
 };
 
 function formatBytes(value: number): string {

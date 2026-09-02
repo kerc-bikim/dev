@@ -223,7 +223,15 @@ body {
   display: grid;
   gap: 6px;
 }
-.member-btn { justify-self: start; }
+.project-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.danger-btn { color: var(--danger); border-color: #8b1e1e; }
+.archive-list { margin-top: 16px; }
+.archived-project {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: default;
+}
+.archived-project .primary { justify-self: start; }
 .admin-page { display: grid; gap: 16px; }
 .dash-badges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .dash-stats {

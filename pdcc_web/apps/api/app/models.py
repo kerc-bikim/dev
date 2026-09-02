@@ -76,6 +76,8 @@ class Project(Base):
     network_code: Mapped[str] = mapped_column(String(8), nullable=False)
     operator: Mapped[str | None] = mapped_column(String(128), nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     xml_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
