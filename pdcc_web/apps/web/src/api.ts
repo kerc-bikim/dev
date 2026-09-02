@@ -34,6 +34,10 @@ export type ChannelSummary = {
   code: string;
   start: string | null;
   end: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  elevation?: number | null;
+  depth?: number | null;
   azimuth: number | null;
   dip: number | null;
   sample_rate: number | null;
@@ -93,6 +97,15 @@ export type VersionInfo = {
   created_at: string | null;
 };
 export type FieldDiff = { path: string; a?: string; b?: string; server?: string; mine?: string };
+export type ValidationIssue = {
+  code: string;
+  message: string;
+  path: string;
+  field: string;
+  station: string | null;
+  start: string | null;
+  nslc: string | null;
+};
 
 export class ApiError extends Error {
   status: number;

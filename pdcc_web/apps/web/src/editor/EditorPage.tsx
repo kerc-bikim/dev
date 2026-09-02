@@ -9,11 +9,14 @@ import {
   type LockInfo,
   type Project,
   type StationSummary,
+  type ValidationIssue,
 } from "../api";
 import { NrlWorkbench } from "../nrl/NrlWorkbench";
 import { MergeDialog } from "./MergeDialog";
 import { StationForm } from "./StationForm";
 import { StationWizard } from "./StationWizard";
+import { ChannelForm } from "./ChannelForm";
+import { ValidationPanel } from "./ValidationPanel";
 import { VersionPanel } from "./VersionPanel";
 
 export function EditorPage({
@@ -32,6 +35,18 @@ export function EditorPage({
   const [draftPrompt, setDraftPrompt] = useState(false);
   const [mergeFields, setMergeFields] = useState<FieldDiff[] | null>(null);
   const [viewStations, setViewStations] = useState<StationSummary[] | null>(null);
+  const [treeQuery, setTreeQuery] = useState("");
+  const [issues, setIssues] = useState<ValidationIssue[]>([]);
+  const [issueSource, setIssueSource] = useState("project");
+  const [focusField, setFocusField] = useState<string | null>(null);
+
+  const loadIssues = useCallback(async () => {
+    const data = await apiGet<{ issues: ValidationIssue[]; source: string }>(
+      `/api/projects/${projectId}/issues`
+    );
+    setIssues(data.issues);
+    setIssueSource(data.source);
+  }, [projectId]);
 
   const refresh = useCallback(async () => {
     const data = await apiGet<Project>(`/api/projects/${projectId}`);
@@ -39,8 +54,9 @@ export function EditorPage({
     setSelectedPath((prev) => prev ?? data.stations[0]?.station_path ?? null);
     setSelectedNslc((prev) => prev ?? data.stations[0]?.channels[0]?.nslc ?? null);
     if (data.draft) setDraftPrompt(true);
+    await loadIssues();
     return data;
-  }, [projectId]);
+  }, [projectId, loadIssues]);
 
   useEffect(() => {
     refresh()
@@ -108,12 +124,33 @@ export function EditorPage({
     }
   }
 
+  async function afterDraft() {
+    const data = await apiGet<{
+      draft: { stations: StationSummary[] } | null;
+    }>(`/api/projects/${projectId}/draft`);
+    if (data.draft?.stations) setViewStations(data.draft.stations);
+    await loadIssues();
+  }
+
+  function jumpToIssue(issue: ValidationIssue) {
+    if (issue.station && issue.start && project) {
+      const path = project.stations.find(
+        (row) => row.code === issue.station && row.start === issue.start
+      )?.station_path;
+      const fallback = stations.find((row) => row.code === issue.station)?.station_path;
+      if (path || fallback) setSelectedPath(path ?? fallback ?? null);
+    }
+    if (issue.nslc) setSelectedNslc(issue.nslc);
+    setFocusField(issue.field);
+  }
+
   async function resumeDraft() {
     const data = await apiGet<{
       draft: { stations: StationSummary[]; conflict: boolean } | null;
     }>(`/api/projects/${projectId}/draft`);
     if (data.draft?.stations) setViewStations(data.draft.stations);
     setDraftPrompt(false);
+    await loadIssues();
   }
 
   async function discardDraft() {
@@ -130,6 +167,7 @@ export function EditorPage({
       setProject(data.project);
       setViewStations(null);
       setMergeFields(null);
+      await loadIssues();
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         const detail = (err.payload as { detail?: { fields?: FieldDiff[] } }).detail;
@@ -234,7 +272,24 @@ export function EditorPage({
         <aside className="nrl-card tree">
           <h3>트리</h3>
           <p>{project.network_code}</p>
-          {stations.map((sta) => (
+          <label>
+            검색
+            <input
+              value={treeQuery}
+              onChange={(e) => setTreeQuery(e.target.value)}
+              placeholder="관측소·채널"
+            />
+          </label>
+          {stations
+            .filter((sta) => {
+              const q = treeQuery.trim().toUpperCase();
+              if (!q) return true;
+              if (sta.code.toUpperCase().includes(q) || (sta.site_name || "").toUpperCase().includes(q)) {
+                return true;
+              }
+              return sta.channels.some((ch) => ch.nslc.toUpperCase().includes(q) || ch.code.toUpperCase().includes(q));
+            })
+            .map((sta) => (
             <div key={sta.station_path}>
               <button
                 type="button"
@@ -245,7 +300,17 @@ export function EditorPage({
                 {sta.lock?.mine === false ? " · 잠금" : ""}
               </button>
               <ul>
-                {sta.channels.map((ch) => (
+                {sta.channels
+                  .filter((ch) => {
+                    const q = treeQuery.trim().toUpperCase();
+                    if (!q) return true;
+                    return (
+                      sta.code.toUpperCase().includes(q) ||
+                      ch.nslc.toUpperCase().includes(q) ||
+                      ch.code.toUpperCase().includes(q)
+                    );
+                  })
+                  .map((ch) => (
                   <li key={ch.nslc}>
                     <button
                       type="button"
@@ -268,12 +333,27 @@ export function EditorPage({
         <div>
           {selected ? (
             <StationForm
-              key={`${selected.station_path}-${selected.latitude}`}
+              key={selected.station_path}
               projectId={projectId}
               station={selected}
               disabled={readOnly}
+              focusField={focusField}
+              onDrafted={() => afterDraft().catch((err: Error) => setError(err.message))}
             />
           ) : null}
+          {selected && channel ? (
+            <ChannelForm
+              key={channel.nslc}
+              projectId={projectId}
+              station={selected.code}
+              start={selected.start}
+              channel={channel}
+              disabled={readOnly}
+              focusField={focusField}
+              onDrafted={() => afterDraft().catch((err: Error) => setError(err.message))}
+            />
+          ) : null}
+          <ValidationPanel issues={issues} source={issueSource} onJump={jumpToIssue} />
           <NrlWorkbench
             disabled={readOnly}
             apply={

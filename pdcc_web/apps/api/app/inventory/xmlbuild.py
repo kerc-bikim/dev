@@ -228,6 +228,10 @@ def list_inventory(xml: str, network: str, project_id: int) -> list[dict]:
                     "code": cha.get("code"),
                     "start": cha.get("startDate"),
                     "end": cha.get("endDate"),
+                    "latitude": _float(child_text(cha, "Latitude")),
+                    "longitude": _float(child_text(cha, "Longitude")),
+                    "elevation": _float(child_text(cha, "Elevation")),
+                    "depth": _float(child_text(cha, "Depth")),
                     "azimuth": _float(child_text(cha, "Azimuth")),
                     "dip": _float(child_text(cha, "Dip")),
                     "sample_rate": _float(child_text(cha, "SampleRate")),
@@ -253,6 +257,13 @@ def list_inventory(xml: str, network: str, project_id: int) -> list[dict]:
     return stations
 
 
+def _set_end_date(node: etree._Element, end: str | None) -> None:
+    if end:
+        node.set("endDate", end)
+    elif "endDate" in node.attrib:
+        del node.attrib["endDate"]
+
+
 def update_station(
     xml: str,
     *,
@@ -263,12 +274,19 @@ def update_station(
     longitude: float | None = None,
     elevation: float | None = None,
     site_name: str | None = None,
+    end: str | None = None,
+    set_end: bool = False,
     propagate: bool = True,
 ) -> str:
     if latitude is not None and (latitude < -90 or latitude > 90):
         raise InventoryError("위도는 -90 ~ 90 이어야 합니다", 400, "E_LAT")
     if longitude is not None and (longitude < -180 or longitude > 180):
         raise InventoryError("경도는 -180 ~ 180 이어야 합니다", 400, "E_LON")
+    if set_end and end:
+        start_t = _parse_time(start)
+        end_t = _parse_time(end)
+        if start_t and end_t and end_t <= start_t:
+            raise InventoryError("종료가 시작보다 앞섭니다", 400, "E_TIME_ORDER")
     root = parse_root(xml)
     net = _network(root, network)
     target = None
@@ -278,6 +296,16 @@ def update_station(
             break
     if target is None:
         raise InventoryError("관측소를 찾을 수 없습니다", 404)
+    if set_end:
+        _set_end_date(target, end)
+        others = [
+            sta
+            for sta in net.findall(qname("Station"))
+            if sta is not target and sta.get("code") == station
+        ]
+        for other in others:
+            if _overlaps(start, end, other.get("startDate", ""), other.get("endDate")):
+                raise InventoryError("같은 관측소의 기간이 겹칩니다", 400, "E_EPOCH_OVERLAP")
     if latitude is not None:
         set_child(target, "Latitude", str(latitude))
     if longitude is not None:
@@ -298,7 +326,218 @@ def update_station(
                 set_child(cha, "Longitude", str(longitude))
             if elevation is not None:
                 set_child(cha, "Elevation", str(elevation))
+            if set_end:
+                _set_end_date(cha, end)
     return dumps(root)
+
+
+def update_channel(
+    xml: str,
+    *,
+    network: str,
+    station: str,
+    start: str,
+    location: str,
+    channel: str,
+    new_location: str | None = None,
+    new_code: str | None = None,
+    depth: float | None = None,
+    azimuth: float | None = None,
+    dip: float | None = None,
+    sample_rate: float | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    elevation: float | None = None,
+    end: str | None = None,
+    set_end: bool = False,
+) -> str:
+    loc = location or ""
+    code = channel.strip().upper()
+    next_loc = loc if new_location is None else new_location.strip()
+    next_code = code if new_code is None else new_code.strip().upper()
+    if new_code is not None and not CHANNEL_CODE_RE.match(next_code):
+        raise InventoryError("채널 코드는 3자여야 합니다", 400, "E_CODE_CHA")
+    if new_location is not None and len(next_loc) > 2:
+        raise InventoryError("location은 0–2자여야 합니다", 400, "E_CODE_LOC")
+    if azimuth is not None and (azimuth < 0 or azimuth > 360):
+        raise InventoryError("방위각은 0 ~ 360 이어야 합니다", 400, "E_AZIMUTH")
+    if dip is not None and (dip < -90 or dip > 90):
+        raise InventoryError("경사는 -90 ~ 90 이어야 합니다", 400, "E_DIP")
+    if sample_rate is not None and sample_rate <= 0:
+        raise InventoryError("샘플링은 0보다 커야 합니다", 400, "E_RATE")
+    if depth is not None and depth < 0:
+        raise InventoryError("깊이는 0 이상이어야 합니다", 400, "E_DEPTH")
+    if latitude is not None and (latitude < -90 or latitude > 90):
+        raise InventoryError("위도는 -90 ~ 90 이어야 합니다", 400, "E_LAT")
+    if longitude is not None and (longitude < -180 or longitude > 180):
+        raise InventoryError("경도는 -180 ~ 180 이어야 합니다", 400, "E_LON")
+    root = parse_root(xml)
+    net = _network(root, network)
+    sta = None
+    for node in net.findall(qname("Station")):
+        if node.get("code") == station and (not start or node.get("startDate") == start):
+            sta = node
+            break
+    if sta is None:
+        raise InventoryError("관측소를 찾을 수 없습니다", 404)
+    target = _find_channel_el(sta, loc, code)
+    if target is None:
+        raise InventoryError("채널을 찾을 수 없습니다", 404)
+    if next_loc != loc or next_code != code:
+        clash = _find_channel_el(sta, next_loc, next_code)
+        if clash is not None and clash is not target:
+            raise InventoryError("같은 채널 코드가 이미 있습니다", 400, "E_CODE_CHA")
+        target.set("locationCode", next_loc)
+        target.set("code", next_code)
+    if depth is not None:
+        set_child(target, "Depth", str(depth))
+    if azimuth is not None:
+        set_child(target, "Azimuth", str(azimuth))
+    if dip is not None:
+        set_child(target, "Dip", str(dip))
+    if sample_rate is not None:
+        set_child(target, "SampleRate", str(sample_rate))
+    if latitude is not None:
+        set_child(target, "Latitude", str(latitude))
+    if longitude is not None:
+        set_child(target, "Longitude", str(longitude))
+    if elevation is not None:
+        set_child(target, "Elevation", str(elevation))
+    if set_end:
+        _set_end_date(target, end)
+    return dumps(root)
+
+
+def validate_inventory(xml: str, network: str, project_id: int) -> list[dict]:
+    issues: list[dict] = []
+    root = parse_root(xml)
+    try:
+        net = _network(root, network)
+    except InventoryError:
+        return [
+            {
+                "code": "E_CODE_NET",
+                "message": f"네트워크 {network}가 없습니다",
+                "path": network,
+                "field": "network",
+                "station": None,
+                "start": None,
+                "nslc": None,
+            }
+        ]
+    stations = list(net.findall(qname("Station")))
+    for i, sta in enumerate(stations):
+        code = sta.get("code") or ""
+        start = sta.get("startDate") or ""
+        prefix = f"{code}#{start}"
+        lat = _float(child_text(sta, "Latitude"))
+        lon = _float(child_text(sta, "Longitude"))
+        if lat is not None and (lat < -90 or lat > 90):
+            issues.append(_issue("E_LAT", "위도는 -90 ~ 90 이어야 합니다", prefix, "latitude", code, start, None))
+        if lon is not None and (lon < -180 or lon > 180):
+            issues.append(_issue("E_LON", "경도는 -180 ~ 180 이어야 합니다", prefix, "longitude", code, start, None))
+        if start:
+            end = sta.get("endDate")
+            if end:
+                try:
+                    start_t = _parse_time(start)
+                    end_t = _parse_time(end)
+                except InventoryError as exc:
+                    issues.append(
+                        _issue(exc.code or "E_TIME", str(exc), prefix, "end", code, start, None)
+                    )
+                else:
+                    if start_t and end_t and end_t <= start_t:
+                        issues.append(
+                            _issue("E_TIME_ORDER", "종료가 시작보다 앞섭니다", prefix, "end", code, start, None)
+                        )
+        for other in stations[i + 1 :]:
+            if other.get("code") != code:
+                continue
+            try:
+                overlap = _overlaps(start, sta.get("endDate"), other.get("startDate", ""), other.get("endDate"))
+            except InventoryError:
+                overlap = False
+            if overlap:
+                issues.append(
+                    _issue(
+                        "E_EPOCH_OVERLAP",
+                        "같은 관측소의 기간이 겹칩니다",
+                        prefix,
+                        "start",
+                        code,
+                        start,
+                        None,
+                    )
+                )
+        channels = list(sta.findall(qname("Channel")))
+        for j, cha in enumerate(channels):
+            loc = cha.get("locationCode") or ""
+            cha_code = cha.get("code") or ""
+            nslc = f"{loc}.{cha_code}" if loc else cha_code
+            cha_prefix = f"{prefix}/{nslc}"
+            az = _float(child_text(cha, "Azimuth"))
+            dip = _float(child_text(cha, "Dip"))
+            rate = _float(child_text(cha, "SampleRate"))
+            depth = _float(child_text(cha, "Depth"))
+            cha_lat = _float(child_text(cha, "Latitude"))
+            if az is not None and (az < 0 or az > 360):
+                issues.append(_issue("E_AZIMUTH", "방위각은 0 ~ 360 이어야 합니다", cha_prefix, "azimuth", code, start, nslc))
+            if dip is not None and (dip < -90 or dip > 90):
+                issues.append(_issue("E_DIP", "경사는 -90 ~ 90 이어야 합니다", cha_prefix, "dip", code, start, nslc))
+            if rate is not None and rate <= 0:
+                issues.append(_issue("E_RATE", "샘플링은 0보다 커야 합니다", cha_prefix, "sample_rate", code, start, nslc))
+            if depth is not None and depth < 0:
+                issues.append(_issue("E_DEPTH", "깊이는 0 이상이어야 합니다", cha_prefix, "depth", code, start, nslc))
+            if cha_lat is not None and (cha_lat < -90 or cha_lat > 90):
+                issues.append(_issue("E_LAT", "위도는 -90 ~ 90 이어야 합니다", cha_prefix, "latitude", code, start, nslc))
+            if cha_code and not CHANNEL_CODE_RE.match(cha_code):
+                issues.append(_issue("E_CODE_CHA", "채널 코드는 3자여야 합니다", cha_prefix, "code", code, start, nslc))
+            for other in channels[j + 1 :]:
+                if (other.get("locationCode") or "") != loc or (other.get("code") or "") != cha_code:
+                    continue
+                try:
+                    overlap = _overlaps(
+                        cha.get("startDate") or start,
+                        cha.get("endDate"),
+                        other.get("startDate") or start,
+                        other.get("endDate"),
+                    )
+                except InventoryError:
+                    overlap = False
+                if overlap:
+                    issues.append(
+                        _issue(
+                            "E_EPOCH_OVERLAP",
+                            "같은 채널의 기간이 겹칩니다",
+                            cha_prefix,
+                            "start",
+                            code,
+                            start,
+                            nslc,
+                        )
+                    )
+    return issues
+
+
+def _issue(
+    code: str,
+    message: str,
+    path: str,
+    field: str,
+    station: str | None,
+    start: str | None,
+    nslc: str | None,
+) -> dict:
+    return {
+        "code": code,
+        "message": message,
+        "path": path,
+        "field": field,
+        "station": station,
+        "start": start,
+        "nslc": nslc,
+    }
 
 
 def field_snapshot(xml: str, network: str, project_id: int) -> dict[str, str]:
@@ -309,10 +548,18 @@ def field_snapshot(xml: str, network: str, project_id: int) -> dict[str, str]:
         out[f"{prefix}/longitude"] = "" if sta["longitude"] is None else str(sta["longitude"])
         out[f"{prefix}/elevation"] = "" if sta["elevation"] is None else str(sta["elevation"])
         out[f"{prefix}/site_name"] = sta["site_name"] or ""
+        out[f"{prefix}/end"] = sta["end"] or ""
         for cha in sta["channels"]:
-            out[f"{prefix}/{cha['nslc']}.has_response"] = "1" if cha["has_response"] else "0"
-            out[f"{prefix}/{cha['nslc']}.azimuth"] = "" if cha["azimuth"] is None else str(cha["azimuth"])
-            out[f"{prefix}/{cha['nslc']}.dip"] = "" if cha["dip"] is None else str(cha["dip"])
+            nslc = cha["nslc"]
+            out[f"{prefix}/{nslc}.has_response"] = "1" if cha["has_response"] else "0"
+            out[f"{prefix}/{nslc}.azimuth"] = "" if cha["azimuth"] is None else str(cha["azimuth"])
+            out[f"{prefix}/{nslc}.dip"] = "" if cha["dip"] is None else str(cha["dip"])
+            out[f"{prefix}/{nslc}.depth"] = "" if cha["depth"] is None else str(cha["depth"])
+            out[f"{prefix}/{nslc}.sample_rate"] = (
+                "" if cha["sample_rate"] is None else str(cha["sample_rate"])
+            )
+            out[f"{prefix}/{nslc}.location"] = cha["location"] or ""
+            out[f"{prefix}/{nslc}.code"] = cha["code"] or ""
     return out
 
 
@@ -353,6 +600,8 @@ def apply_field_choices(
                 set_child(sta_s, tag, text)
                 for cha in sta_s.findall(qname("Channel")):
                     set_child(cha, tag, text)
+        elif field == "end":
+            _set_end_date(sta_s, sta_d.get("endDate"))
         elif field == "site_name":
             site_d = sta_d.find(qname("Site"))
             name = child_text(site_d, "Name") if site_d is not None else None
@@ -362,20 +611,42 @@ def apply_field_choices(
                     site_s = el("Site")
                     sta_s.append(site_s)
                 set_child(site_s, "Name", name)
-        elif field.endswith(".has_response"):
-            nslc = field[: -len(".has_response")]
-            loc, _, code = nslc.partition(".")
+        elif "." in field:
+            nslc, _, attr = field.rpartition(".")
+            loc, code = _split_nslc(nslc)
             cha_s = _find_channel_el(sta_s, loc, code)
             cha_d = _find_channel_el(sta_d, loc, code)
             if cha_s is None or cha_d is None:
                 continue
-            existing = cha_s.find(qname("Response"))
-            if existing is not None:
-                cha_s.remove(existing)
-            src = cha_d.find(qname("Response"))
-            if src is not None:
-                cha_s.append(namespaced_copy(src))
+            if attr == "has_response":
+                existing = cha_s.find(qname("Response"))
+                if existing is not None:
+                    cha_s.remove(existing)
+                src = cha_d.find(qname("Response"))
+                if src is not None:
+                    cha_s.append(namespaced_copy(src))
+            elif attr in {"azimuth", "dip", "depth", "sample_rate"}:
+                tag = {
+                    "azimuth": "Azimuth",
+                    "dip": "Dip",
+                    "depth": "Depth",
+                    "sample_rate": "SampleRate",
+                }[attr]
+                text = child_text(cha_d, tag)
+                if text is not None:
+                    set_child(cha_s, tag, text)
+            elif attr == "location":
+                cha_s.set("locationCode", cha_d.get("locationCode") or "")
+            elif attr == "code":
+                cha_s.set("code", cha_d.get("code") or "")
     return dumps(root_server)
+
+
+def _split_nslc(nslc: str) -> tuple[str, str]:
+    if "." in nslc:
+        loc, _, code = nslc.rpartition(".")
+        return loc, code
+    return "", nslc
 
 
 def _find_station_el(root: etree._Element, network: str, station: str, start: str) -> etree._Element | None:
