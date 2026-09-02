@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import NoReturn
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -20,6 +20,7 @@ from ..inventory.collab import (
     version_out,
 )
 from ..inventory.service import project_out, write_audit
+from ..inventory.validator import summarize, validate_project
 from ..inventory.xmlbuild import (
     InventoryError,
     apply_field_choices,
@@ -28,7 +29,6 @@ from ..inventory.xmlbuild import (
     list_inventory,
     update_channel,
     update_station,
-    validate_inventory,
 )
 from ..models import EquipmentSet, Project, ProjectVersion, User, utcnow
 from ..nrl.client import get_nrl_client, validate_instconfig
@@ -74,6 +74,7 @@ class DraftIn(BaseModel):
     azimuth: float | None = None
     dip: float | None = None
     sample_rate: float | None = None
+    sensitivity: float | None = None
 
 
 class MergeIn(BaseModel):
@@ -240,6 +241,7 @@ def put_draft(
                 azimuth=body.azimuth,
                 dip=body.dip,
                 sample_rate=body.sample_rate,
+                sensitivity=body.sensitivity,
                 latitude=body.latitude,
                 longitude=body.longitude,
                 elevation=body.elevation,
@@ -295,15 +297,40 @@ def read_draft(
 
 @router.get("/api/projects/{project_id}/issues")
 def list_issues(
+    project_id: int,
+    mode: str = Query(default="quick"),
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> dict:
+    project = _owned(db, project_id, user)
+    row = get_draft(db, project.id, user.id)
+    xml = row.xml_text if row is not None else project.xml_text
+    try:
+        issues = validate_project(xml, project.network_code, project.id, mode=mode)
+    except InventoryError as exc:
+        _http_inv(exc)
+    return summarize(
+        issues,
+        xml_source="draft" if row is not None else "project",
+        mode=mode,
+        network=project.network_code,
+    )
+
+
+@router.post("/api/projects/{project_id}/validate")
+def post_validate(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
     project = _owned(db, project_id, user)
     row = get_draft(db, project.id, user.id)
     xml = row.xml_text if row is not None else project.xml_text
-    return {
-        "issues": validate_inventory(xml, project.network_code, project.id),
-        "source": "draft" if row is not None else "project",
-    }
+    issues = validate_project(xml, project.network_code, project.id, mode="full")
+    return summarize(
+        issues,
+        xml_source="draft" if row is not None else "project",
+        mode="full",
+        network=project.network_code,
+    )
 
 
 @router.post("/api/projects/{project_id}/draft/discard")

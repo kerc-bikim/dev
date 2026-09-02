@@ -25,6 +25,9 @@ export function ChannelForm({
   const [azimuth, setAzimuth] = useState(String(channel.azimuth ?? ""));
   const [dip, setDip] = useState(String(channel.dip ?? ""));
   const [sampleRate, setSampleRate] = useState(String(channel.sample_rate ?? ""));
+  const [sensitivity, setSensitivity] = useState(
+    channel.sensitivity == null ? "" : String(channel.sensitivity)
+  );
   const [error, setError] = useState<string | null>(null);
   const first = useRef<HTMLInputElement | null>(null);
 
@@ -35,6 +38,7 @@ export function ChannelForm({
     setAzimuth(String(channel.azimuth ?? ""));
     setDip(String(channel.dip ?? ""));
     setSampleRate(String(channel.sample_rate ?? ""));
+    setSensitivity(channel.sensitivity == null ? "" : String(channel.sensitivity));
   }, [channel]);
 
   useEffect(() => {
@@ -50,6 +54,7 @@ export function ChannelForm({
     const dp = dip === "" ? null : Number(dip);
     const rate = sampleRate === "" ? null : Number(sampleRate);
     const dep = depth === "" ? null : Number(depth);
+    const sens = sensitivity === "" ? null : Number(sensitivity);
     if (code && !/^[A-Za-z0-9]{3}$/.test(code)) {
       setError("채널 코드는 3자여야 합니다");
       return;
@@ -74,6 +79,14 @@ export function ChannelForm({
       setError("깊이는 0 이상이어야 합니다");
       return;
     }
+    if (sens !== null && Number.isNaN(sens)) {
+      setError("감도는 숫자여야 합니다");
+      return;
+    }
+    if (sens !== null && !channel.has_response) {
+      setError("응답이 없어 감도를 바꿀 수 없습니다");
+      return;
+    }
     setError(null);
     try {
       await apiPut(`/api/projects/${projectId}/draft`, {
@@ -87,6 +100,7 @@ export function ChannelForm({
         azimuth: az,
         dip: dp,
         sample_rate: rate,
+        sensitivity: sens,
       });
       onDrafted?.();
     } catch (err) {
@@ -162,6 +176,18 @@ export function ChannelForm({
           value={sampleRate}
           disabled={disabled}
           onChange={(e) => setSampleRate(e.target.value)}
+          onBlur={saveDraft}
+        />
+      </label>
+      <label>
+        <span>
+          감도 <Hint text="InstrumentSensitivity. 공식 검증 412는 이 값과 단계 게인 곱을 비교합니다." />
+        </span>
+        <input
+          data-field="sensitivity"
+          value={sensitivity}
+          disabled={disabled || !channel.has_response}
+          onChange={(e) => setSensitivity(e.target.value)}
           onBlur={saveDraft}
         />
       </label>

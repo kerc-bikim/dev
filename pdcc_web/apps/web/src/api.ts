@@ -41,6 +41,7 @@ export type ChannelSummary = {
   azimuth: number | null;
   dip: number | null;
   sample_rate: number | null;
+  sensitivity?: number | null;
   has_response: boolean;
   nslc: string;
 };
@@ -105,6 +106,19 @@ export type ValidationIssue = {
   station: string | null;
   start: string | null;
   nslc: string | null;
+  level?: "error" | "warning";
+  source?: string;
+  official?: string | null;
+};
+export type ValidateResult = {
+  issues: ValidationIssue[];
+  source: string;
+  mode: string;
+  error_count: number;
+  warning_count: number;
+  can_export_seed: boolean;
+  filename: string;
+  engine?: string;
 };
 export type NrlSearchHit = {
   element: string;
@@ -186,4 +200,16 @@ export async function apiText(path: string): Promise<string> {
   const response = await fetch(path, { credentials: "include" });
   if (!response.ok) throw new Error(await readError(response));
   return response.text();
+}
+
+export async function apiDownload(
+  path: string
+): Promise<{ filename: string; blob: Blob }> {
+  const response = await fetch(path, { credentials: "include" });
+  if (!response.ok) throw new Error(await readError(response));
+  const header = response.headers.get("X-PDCC-Filename") || "";
+  const disp = response.headers.get("Content-Disposition") || "";
+  const match = /filename="?([^";]+)"?/.exec(disp);
+  const filename = header || match?.[1] || "download.bin";
+  return { filename, blob: await response.blob() };
 }

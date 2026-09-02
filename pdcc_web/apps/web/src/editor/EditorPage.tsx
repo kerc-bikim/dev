@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiError,
+  apiDownload,
   apiGet,
   apiPost,
-  apiText,
   type ChannelSummary,
   type FieldDiff,
   type LockInfo,
   type Project,
   type StationSummary,
+  type ValidateResult,
   type ValidationIssue,
 } from "../api";
 import { NrlWorkbench } from "../nrl/NrlWorkbench";
@@ -31,21 +32,32 @@ export function EditorPage({
   const [error, setError] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [selectedNslc, setSelectedNslc] = useState<string | null>(null);
-  const [xml, setXml] = useState<string | null>(null);
   const [draftPrompt, setDraftPrompt] = useState(false);
   const [mergeFields, setMergeFields] = useState<FieldDiff[] | null>(null);
   const [viewStations, setViewStations] = useState<StationSummary[] | null>(null);
   const [treeQuery, setTreeQuery] = useState("");
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [issueSource, setIssueSource] = useState("project");
+  const [issueMode, setIssueMode] = useState("quick");
   const [focusField, setFocusField] = useState<string | null>(null);
+  const [validating, setValidating] = useState(false);
+  const [canSeed, setCanSeed] = useState(false);
+  const [xmlName, setXmlName] = useState<string | null>(null);
+  const issueModeRef = useRef(issueMode);
+  issueModeRef.current = issueMode;
 
   const loadIssues = useCallback(async () => {
-    const data = await apiGet<{ issues: ValidationIssue[]; source: string }>(
-      `/api/projects/${projectId}/issues`
+    const mode = issueModeRef.current === "full" ? "full" : "quick";
+    const data = await apiGet<ValidateResult>(
+      `/api/projects/${projectId}/issues?mode=${mode}`
     );
     setIssues(data.issues);
     setIssueSource(data.source);
+    setIssueMode(data.mode);
+    if (mode === "full") {
+      setCanSeed(data.can_export_seed);
+      setXmlName(data.filename);
+    }
   }, [projectId]);
 
   const refresh = useCallback(async () => {
@@ -144,6 +156,52 @@ export function EditorPage({
     setFocusField(issue.field);
   }
 
+  async function runValidate() {
+    setValidating(true);
+    setError(null);
+    try {
+      const data = await apiPost<ValidateResult>(`/api/projects/${projectId}/validate`);
+      setIssues(data.issues);
+      setIssueSource(data.source);
+      setIssueMode(data.mode);
+      setCanSeed(data.can_export_seed);
+      setXmlName(data.filename);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setValidating(false);
+    }
+  }
+
+  async function downloadXml() {
+    setError(null);
+    try {
+      const { filename, blob } = await apiDownload(
+        `/api/projects/${projectId}/xml?source=draft`
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setXmlName(filename);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function exportSeed() {
+    setError(null);
+    try {
+      await apiPost(`/api/projects/${projectId}/export/seed`);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
   async function resumeDraft() {
     const data = await apiGet<{
       draft: { stations: StationSummary[]; conflict: boolean } | null;
@@ -215,15 +273,20 @@ export function EditorPage({
         <button type="button" disabled={readOnly} onClick={commitDraft}>
           초안 저장
         </button>
+        <button type="button" id="validate-btn" onClick={() => runValidate()}>
+          {validating ? "검증 중…" : "검증"}
+        </button>
+        <button type="button" onClick={() => downloadXml()}>
+          StationXML
+        </button>
         <button
           type="button"
-          onClick={() =>
-            apiText(`/api/projects/${projectId}/xml`)
-              .then(setXml)
-              .catch((err: Error) => setError(err.message))
-          }
+          id="export-seed-btn"
+          disabled={!canSeed}
+          title={canSeed ? "dataless SEED" : "오류가 있으면 SEED를 만들 수 없습니다. 먼저 검증하세요."}
+          onClick={() => exportSeed()}
         >
-          StationXML
+          dataless SEED
         </button>
       </div>
       {lock ? (
@@ -353,7 +416,14 @@ export function EditorPage({
               onDrafted={() => afterDraft().catch((err: Error) => setError(err.message))}
             />
           ) : null}
-          <ValidationPanel issues={issues} source={issueSource} onJump={jumpToIssue} />
+          <ValidationPanel
+            issues={issues}
+            source={issueSource}
+            mode={issueMode}
+            validating={validating}
+            filename={xmlName}
+            onJump={jumpToIssue}
+          />
           <NrlWorkbench
             disabled={readOnly}
             apply={
@@ -376,7 +446,7 @@ export function EditorPage({
           />
         </div>
       </div>
-      {xml ? <pre className="xml">{xml}</pre> : null}
+      {xmlName ? <p className="hint">마지막 StationXML 파일명: {xmlName}</p> : null}
     </div>
   );
 }

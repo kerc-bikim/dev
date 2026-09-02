@@ -25,6 +25,9 @@ pdcc_web/apps/web/dist/
 pdcc_web/apps/api/.pytest_cache/
 pdcc_web/apps/api/.venv/
 
+# Optional IRIS stationxml-validator binary (not vendored)
+pdcc_web/infra/jars/*.jar
+
 
 # redis dumps
 *.rdb

@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     nrl_cache_ttl_sec: int = 3600
     nrl_mode: str = "online"
     lock_ttl_sec: int = 300
+    validator_jar: str = ""
+    validator_timeout_sec: float = 60.0
 
 
 settings = Settings()

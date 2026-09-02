@@ -260,6 +260,12 @@ body {
 .issue-list { list-style: none; padding: 0; margin: 0; }
 .issue-list li { margin: 4px 0; }
 .issue-list code { color: var(--danger); margin-right: 6px; }
+.issue-list .warn code { color: #d29922; }
+.issue-heading { margin: 12px 0 4px; font-size: 13px; }
+.issue-heading.error { color: var(--danger); }
+.issue-heading.warn { color: #d29922; }
+.issue-row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.issue-num { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; white-space: nowrap; }
 .nrl-search {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -281,6 +287,10 @@ body {
   padding: 8px 10px;
   font-size: 14px;
   width: 100%;
+}
+.nrl-card input:focus {
+  outline: 2px solid var(--accent);
+  border-color: var(--accent);
 }
 .check { display: flex; align-items: center; gap: 8px; color: var(--fg); }
 .confirm-table {

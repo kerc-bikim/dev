@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from typing import NoReturn
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
+from ..inventory.collab import get_draft
 from ..inventory.locks import LockError, acquire_lock
 from ..inventory.service import apply_nrl, create_project, project_out, run_wizard
+from ..inventory.validator import has_errors, validate_project, xml_filename
 from ..inventory.xmlbuild import InventoryError
 from ..models import Project, User
 from ..routers.auth import current_user
@@ -102,10 +104,49 @@ def get_project(
 
 @router.get("/{project_id}/xml")
 def get_project_xml(
-    project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
+    project_id: int,
+    source: str = Query(default="project"),
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
 ):
     project = _owned(db, project_id, user)
-    return Response(content=project.xml_text, media_type="application/xml")
+    row = get_draft(db, project.id, user.id)
+    use_draft = source == "draft" and row is not None
+    xml = row.xml_text if use_draft else project.xml_text
+    issues = validate_project(xml, project.network_code, project.id, mode="full")
+    filename = xml_filename(project.network_code, issues)
+    return Response(
+        content=xml,
+        media_type="application/xml",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-PDCC-Filename": filename,
+            "X-PDCC-Error-Count": str(sum(1 for row in issues if row.get("level") == "error")),
+        },
+    )
+
+
+@router.post("/{project_id}/export/seed")
+def post_export_seed(
+    project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
+) -> dict:
+    project = _owned(db, project_id, user)
+    row = get_draft(db, project.id, user.id)
+    xml = row.xml_text if row is not None else project.xml_text
+    issues = validate_project(xml, project.network_code, project.id, mode="full")
+    if has_errors(issues):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "E_UNVALIDATED",
+                "message": "검증 오류가 있어 dataless SEED를 만들 수 없습니다",
+                "error_count": sum(1 for row in issues if row.get("level") == "error"),
+            },
+        )
+    raise HTTPException(
+        status_code=501,
+        detail="dataless SEED 변환기는 이 배포에 아직 없습니다",
+    )
 
 
 @router.post("/{project_id}/wizard")
