@@ -20,6 +20,7 @@ from ..inventory.collab import (
     upsert_draft,
     version_out,
 )
+from ..inventory.importers import load_import_warnings
 from ..inventory.service import project_out, write_audit
 from ..inventory.validator import summarize, validate_project
 from ..inventory.xmlbuild import (
@@ -300,7 +301,9 @@ def list_issues(
     row = get_draft(db, project.id, user.id)
     xml = row.xml_text if row is not None else project.xml_text
     try:
-        issues = validate_project(xml, project.network_code, project.id, mode=mode)
+        issues = load_import_warnings(db, project.id) + validate_project(
+            xml, project.network_code, project.id, mode=mode
+        )
     except InventoryError as exc:
         _http_inv(exc)
     return summarize(
@@ -318,7 +321,9 @@ def post_validate(
     project = require_view(db, project_id, user)
     row = get_draft(db, project.id, user.id)
     xml = row.xml_text if row is not None else project.xml_text
-    issues = validate_project(xml, project.network_code, project.id, mode="full")
+    issues = load_import_warnings(db, project.id) + validate_project(
+        xml, project.network_code, project.id, mode="full"
+    )
     return summarize(
         issues,
         xml_source="draft" if row is not None else "project",

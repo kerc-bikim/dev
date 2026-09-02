@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..access import EDITOR_ROLE, ROLES, add_member, project_role, can_edit_role
 from ..models import AuditLog, FileAsset, Project, User, utcnow
 from .collab import get_draft, latest_undo, record_edit
-from .importers import inspect_stationxml
+from .importers import inspect_upload, original_kind_of, store_import_warnings
 from ..nrl.client import get_nrl_client, validate_instconfig
 from ..nrl.curve import sample_rate_from_instconfig
 from .locks import acquire_lock, lock_snapshot, require_lock
@@ -82,6 +82,8 @@ def project_out(
         "can_undo": False,
         "draft": None,
         "has_original": False,
+        "original_kind": None,
+        "original_filename": None,
     }
     if db is not None:
         data["can_undo"] = latest_undo(db, project.id, user.id) is not None
@@ -92,7 +94,10 @@ def project_out(
                 "base_updated_at": draft.base_updated_at,
                 "conflict": draft.base_updated_at != data["updated_at"],
             }
-        data["has_original"] = original_asset(db, project.id) is not None
+        asset = original_asset(db, project.id)
+        data["has_original"] = asset is not None
+        data["original_kind"] = original_kind_of(asset)
+        data["original_filename"] = asset.filename if asset is not None else None
         role = project_role(db, project, user)
         data["my_role"] = role
         data["can_edit"] = can_edit_role(role)
@@ -141,7 +146,7 @@ def import_project(
     name: str | None = None,
     operator: str | None = None,
 ) -> Project:
-    info = inspect_stationxml(raw)
+    info = inspect_upload(raw, filename)
     code = info["network_code"]
     title = (name or "").strip() or f"{code} 가져오기"
     project = Project(
@@ -161,10 +166,12 @@ def import_project(
             project_id=project.id,
             kind="original",
             filename=(filename or "station.xml")[:256],
-            media_type="application/xml",
+            media_type=info.get("media_type") or "application/xml",
             content=raw,
         )
     )
+    if info.get("warnings"):
+        store_import_warnings(db, project.id, info["warnings"])
     record_edit(
         db,
         project,

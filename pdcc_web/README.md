@@ -62,9 +62,15 @@ NRL은 API 기동 시 호출하지 않습니다. 업스트림이 죽거나 URL�
 |------|------|------|
 | `LOCK_TTL_SEC` | `300` | 관측소 epoch 잠금 TTL |
 
-## M3 복제
+## M3 가져오기·복제
+
+홈 **파일 열기**는 StationXML 1.2와 dataless SEED를 받습니다. SEED는 converter(JAR가 있으면) 또는 ObsPy로 StationXML로 바꾼 뒤 프로젝트를 만들고, 원문 바이트는 덮어쓰지 않습니다. 변환 경고는 검사 패널에 남습니다 (`docs/adr/0015-seed-import.md`, S2).
 
 편집기 **관측소 복제** 표에 엑셀 행을 붙여넣으면 원본 채널·응답을 복사해 관측소를 만듭니다. 코드가 비어 있는 행은 무시합니다. API는 `POST /api/projects/{id}/clone-stations` (`docs/adr/0013-station-clone.md`, S7).
+
+| 이름 | 기본 | 설명 |
+|------|------|------|
+| `SEED_CONVERTER_JAR` | (없음) | 공식 stationxml-seed-converter. 없으면 ObsPy |
 
 ## M0 사용자·역할
 

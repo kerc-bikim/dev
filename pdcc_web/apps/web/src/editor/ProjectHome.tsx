@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
-import { apiGet, apiPost, apiPut, type Me, type MemberInfo, type Project, type UserInfo } from "../api";
+import { apiGet, apiPost, apiPut, apiUpload, type Me, type MemberInfo, type Project, type UserInfo } from "../api";
 
 const ROLE_LABEL: Record<string, string> = {
   viewer: "조회자",
@@ -65,13 +65,11 @@ export function ProjectHome({
     setBusy(true);
     setError(null);
     try {
-      const xmlText = await file.text();
-      const project = await apiPost<Project>("/api/projects/import", {
-        filename: file.name,
-        xml_text: xmlText,
-        name: name.trim() || undefined,
-        operator: operator || null,
-      });
+      const form = new FormData();
+      form.append("file", file);
+      if (name.trim()) form.append("name", name.trim());
+      if (operator) form.append("operator", operator);
+      const project = await apiUpload<Project>("/api/projects/import-file", form);
       onOpen(project);
     } catch (err) {
       setError((err as Error).message);
@@ -118,7 +116,7 @@ export function ProjectHome({
       <h2>프로젝트</h2>
       <p className="hint">
         {canCreate
-          ? "StationXML을 열거나 빈 네트워크를 만든 뒤 관측소 위저드를 씁니다."
+          ? "StationXML 또는 dataless SEED를 열거나 빈 네트워크를 만든 뒤 관측소 위저드를 씁니다."
           : "조회자는 속한 프로젝트만 보고 StationXML을 받을 수 있습니다."}
       </p>
       {canCreate ? (
@@ -150,7 +148,7 @@ export function ProjectHome({
           ref={fileRef}
           id="open-xml-file"
           type="file"
-          accept=".xml,text/xml,application/xml"
+          accept=".xml,.seed,.dataless,text/xml,application/xml"
           hidden
           onChange={onOpenFile}
         />
@@ -172,7 +170,11 @@ export function ProjectHome({
             </span>
             <span className="hint">
               {project.updated_at ? project.updated_at.slice(0, 16).replace("T", " ") : ""}
-              {project.has_original ? " · 원본 보관" : ""}
+              {project.has_original
+                ? project.original_kind === "dataless"
+                  ? " · 원본 dataless 보관"
+                  : " · 원본 보관"
+                : ""}
               {project.nrl_applied ? " · NRL 적용됨" : " · 응답 없음"}
               {project.my_role ? ` · ${ROLE_LABEL[project.my_role] || project.my_role}` : ""}
             </span>
@@ -230,7 +232,7 @@ export function ProjectHome({
       {projects.length === 0 ? (
         <ul className="empty-hints">
           <li>새 프로젝트로 빈 네트워크를 만드세요.</li>
-          <li>파일 열기로 StationXML을 가져오세요.</li>
+          <li>파일 열기로 StationXML 또는 dataless SEED를 가져오세요.</li>
           <li>관측소 위저드는 프로젝트를 연 뒤에 씁니다.</li>
         </ul>
       ) : null}

@@ -1,12 +1,25 @@
-"""StationXML 가져오기. 원문은 FileAsset 에 보관하고 편집 XML 과 덮어쓰지 않습니다."""
+"""StationXML·dataless SEED 가져오기. 원문은 FileAsset 에 보관하고 편집 XML 과 덮어쓰지 않습니다."""
 
 from __future__ import annotations
 
+import json
+
 from lxml import etree
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from ..config import settings
+from ..models import FileAsset
+from .seed_convert import (
+    SEED_MEDIA,
+    convert_dataless_to_xml,
+    looks_like_resp,
+    looks_like_seed,
+)
 from .xmlbuild import NETWORK_CODE_RE, InventoryError, list_inventory
 from .xmlutil import local, parse_root, qname
+
+WARNINGS_KIND = "import_warnings"
 
 
 def inspect_stationxml(raw: bytes) -> dict:
@@ -42,8 +55,78 @@ def inspect_stationxml(raw: bytes) -> dict:
         raise InventoryError("네트워크 코드가 올바르지 않습니다", 400, "E_CODE_NET")
     stations = list_inventory(text, code, 0)
     return {
+        "kind": "stationxml",
         "network_code": code,
         "xml_text": text,
         "station_count": len(stations),
         "channel_count": sum(len(sta["channels"]) for sta in stations),
+        "media_type": "application/xml",
+        "warnings": [],
     }
+
+
+def inspect_upload(raw: bytes, filename: str = "") -> dict:
+    if not raw or not raw.strip():
+        raise InventoryError("파일이 비어 있습니다", 400, "E_IMPORT")
+    if len(raw) > settings.max_upload_bytes:
+        raise InventoryError("파일이 너무 큽니다", 400, "E_IMPORT")
+    if raw[:2] == b"PK":
+        raise InventoryError("zip은 아직 열 수 없습니다. StationXML 또는 dataless SEED를 선택하세요", 400, "E_IMPORT")
+    stripped = raw.lstrip(b"\xef\xbb\xbf \t\r\n")
+    name = (filename or "").lower()
+    seed_name = name.endswith(".seed") or name.endswith(".dataless")
+    if stripped.startswith(b"<"):
+        info = inspect_stationxml(raw)
+        return info
+    if looks_like_resp(raw) and not looks_like_seed(raw) and not seed_name:
+        raise InventoryError("RESP 가져오기는 아직 없습니다. dataless SEED 또는 StationXML을 선택하세요", 400, "E_IMPORT")
+    if looks_like_seed(raw) or seed_name:
+        xml, notes = convert_dataless_to_xml(raw)
+        info = inspect_stationxml(xml.encode("utf-8"))
+        info["kind"] = "dataless"
+        info["media_type"] = SEED_MEDIA
+        info["warnings"] = notes
+        return info
+    raise InventoryError(
+        "StationXML이 아닙니다. dataless SEED 또는 StationXML을 선택하세요",
+        400,
+        "E_IMPORT",
+    )
+
+
+def original_kind_of(asset: FileAsset | None) -> str | None:
+    if asset is None:
+        return None
+    media = (asset.media_type or "").lower()
+    name = (asset.filename or "").lower()
+    if "seed" in media or name.endswith(".seed") or name.endswith(".dataless"):
+        return "dataless"
+    return "stationxml"
+
+
+def store_import_warnings(db: Session, project_id: int, warnings: list[dict]) -> None:
+    payload = json.dumps(warnings, ensure_ascii=False).encode("utf-8")
+    db.add(
+        FileAsset(
+            project_id=project_id,
+            kind=WARNINGS_KIND,
+            filename="import-warnings.json",
+            media_type="application/json",
+            content=payload,
+        )
+    )
+
+
+def load_import_warnings(db: Session, project_id: int) -> list[dict]:
+    row = db.scalars(
+        select(FileAsset)
+        .where(FileAsset.project_id == project_id, FileAsset.kind == WARNINGS_KIND)
+        .order_by(FileAsset.id.desc())
+    ).first()
+    if row is None:
+        return []
+    try:
+        data = json.loads(row.content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return []
+    return data if isinstance(data, list) else []
