@@ -39,6 +39,26 @@ def _ensure_stub2() -> None:
         db.close()
 
 
+def _add_member(project_id: int, username: str, role: str = "editor") -> None:
+    from app.models import ProjectMember
+
+    db = SessionLocal()
+    try:
+        user = db.scalar(select(User).where(User.username == username))
+        assert user is not None
+        exists = db.scalar(
+            select(ProjectMember).where(
+                ProjectMember.project_id == project_id,
+                ProjectMember.user_id == user.id,
+            )
+        )
+        if exists is None:
+            db.add(ProjectMember(project_id=project_id, user_id=user.id, role=role))
+            db.commit()
+    finally:
+        db.close()
+
+
 def _login(client, username: str, password: str) -> None:
     ok = client.post("/api/login", json={"username": username, "password": password})
     assert ok.status_code == 200
@@ -131,6 +151,7 @@ def test_second_user_is_read_only_while_locked(stub, redis_client):
     assert created.status_code == 200
     path = created.json()["station_path"]
     _ensure_stub2()
+    _add_member(project["id"], "stub2")
     _login(stub, "stub2", "stub2")
     blocked = stub.post(
         f"/api/projects/{project['id']}/lock",
@@ -166,6 +187,7 @@ def test_locks_are_per_project(stub):
     first = stub.post(f"/api/projects/{p1['id']}/wizard", json=later)
     assert first.status_code == 200
     _ensure_stub2()
+    _add_member(p1["id"], "stub2")
     _login(stub, "stub2", "stub2")
     p2 = _project(stub)
     second = stub.post(f"/api/projects/{p2['id']}/wizard", json=later)

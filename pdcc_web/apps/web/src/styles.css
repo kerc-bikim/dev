@@ -219,6 +219,21 @@ body {
   padding: 14px;
   background: var(--panel);
 }
+.project-card-wrap {
+  display: grid;
+  gap: 6px;
+}
+.member-btn { justify-self: start; }
+.admin-page { display: grid; gap: 16px; }
+.project-create select, .admin-page select {
+  background: var(--input-bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  width: 100%;
+}
 .empty-hints {
   color: var(--muted);
   padding-left: 20px;

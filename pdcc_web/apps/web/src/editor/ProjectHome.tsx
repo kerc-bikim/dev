@@ -1,20 +1,44 @@
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
-import { apiGet, apiPost, type Project } from "../api";
+import { ChangeEvent, FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
+import { apiGet, apiPost, apiPut, type Me, type MemberInfo, type Project, type UserInfo } from "../api";
 
-export function ProjectHome({ onOpen }: { onOpen: (project: Project) => void }) {
+const ROLE_LABEL: Record<string, string> = {
+  viewer: "조회자",
+  editor: "편집자",
+  admin: "관리자",
+};
+
+export function ProjectHome({
+  onOpen,
+  me,
+}: {
+  onOpen: (project: Project) => void;
+  me?: Me;
+}) {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [users, setUsers] = useState<UserInfo[]>([]);
   const [name, setName] = useState("YZ 상시망");
   const [network, setNetwork] = useState("YZ");
   const [operator, setOperator] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [memberProject, setMemberProject] = useState<Project | null>(null);
+  const [members, setMembers] = useState<MemberInfo[]>([]);
+  const [memberUserId, setMemberUserId] = useState<number | "">("");
+  const [memberRole, setMemberRole] = useState("viewer");
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const canCreate = me?.role !== "viewer";
+  const isAdmin = me?.role === "admin";
 
   useEffect(() => {
     apiGet<{ projects: Project[] }>("/api/projects")
       .then((data) => setProjects(data.projects))
       .catch((err: Error) => setError(err.message));
-  }, []);
+    if (isAdmin) {
+      apiGet<{ users: UserInfo[] }>("/api/admin/users")
+        .then((data) => setUsers(data.users))
+        .catch(() => undefined);
+    }
+  }, [isAdmin]);
 
   async function onCreate(event: FormEvent) {
     event.preventDefault();
@@ -56,10 +80,48 @@ export function ProjectHome({ onOpen }: { onOpen: (project: Project) => void }) 
     }
   }
 
+  async function openMembers(event: MouseEvent, project: Project) {
+    event.stopPropagation();
+    setError(null);
+    setMemberProject(project);
+    try {
+      const data = await apiGet<{ members: MemberInfo[] }>(`/api/projects/${project.id}/members`);
+      setMembers(data.members);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function addMember(event: FormEvent) {
+    event.preventDefault();
+    if (!memberProject || memberUserId === "") return;
+    setBusy(true);
+    setError(null);
+    try {
+      await apiPut(`/api/projects/${memberProject.id}/members`, {
+        user_id: memberUserId,
+        role: memberRole,
+      });
+      const data = await apiGet<{ members: MemberInfo[] }>(
+        `/api/projects/${memberProject.id}/members`
+      );
+      setMembers(data.members);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="workbench">
       <h2>프로젝트</h2>
-      <p className="hint">StationXML을 열거나 빈 네트워크를 만든 뒤 관측소 위저드를 씁니다.</p>
+      <p className="hint">
+        {canCreate
+          ? "StationXML을 열거나 빈 네트워크를 만든 뒤 관측소 위저드를 씁니다."
+          : "조회자는 속한 프로젝트만 보고 StationXML을 받을 수 있습니다."}
+      </p>
+      {canCreate ? (
       <form className="project-create" onSubmit={onCreate}>
         <label>
           이름
@@ -93,11 +155,12 @@ export function ProjectHome({ onOpen }: { onOpen: (project: Project) => void }) 
           onChange={onOpenFile}
         />
       </form>
+      ) : null}
       {error ? <p className="error">{error}</p> : null}
       <div className="project-grid">
         {projects.map((project) => (
+          <div key={project.id} className="project-card-wrap">
           <button
-            key={project.id}
             type="button"
             className="project-card"
             onClick={() => onOpen(project)}
@@ -111,10 +174,59 @@ export function ProjectHome({ onOpen }: { onOpen: (project: Project) => void }) 
               {project.updated_at ? project.updated_at.slice(0, 16).replace("T", " ") : ""}
               {project.has_original ? " · 원본 보관" : ""}
               {project.nrl_applied ? " · NRL 적용됨" : " · 응답 없음"}
+              {project.my_role ? ` · ${ROLE_LABEL[project.my_role] || project.my_role}` : ""}
             </span>
           </button>
+          {isAdmin ? (
+            <button type="button" className="member-btn" onClick={(e) => openMembers(e, project)}>
+              멤버
+            </button>
+          ) : null}
+          </div>
         ))}
       </div>
+      {memberProject ? (
+        <section className="nrl-card">
+          <h3>{memberProject.name} 멤버</h3>
+          <form className="project-create" onSubmit={addMember}>
+            <label>
+              사용자
+              <select
+                value={memberUserId}
+                onChange={(e) => setMemberUserId(e.target.value ? Number(e.target.value) : "")}
+              >
+                <option value="">선택</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.display_name} ({user.username})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              역할
+              <select value={memberRole} onChange={(e) => setMemberRole(e.target.value)}>
+                <option value="viewer">조회자</option>
+                <option value="editor">편집자</option>
+                <option value="admin">관리자</option>
+              </select>
+            </label>
+            <button type="submit" className="primary" disabled={busy}>
+              추가
+            </button>
+            <button type="button" onClick={() => setMemberProject(null)}>
+              닫기
+            </button>
+          </form>
+          <ul className="empty-hints">
+            {members.map((row) => (
+              <li key={row.user_id}>
+                {row.display_name} ({row.username}) · {ROLE_LABEL[row.role] || row.role}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {projects.length === 0 ? (
         <ul className="empty-hints">
           <li>새 프로젝트로 빈 네트워크를 만드세요.</li>

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..access import require_edit, require_view
 from ..db import get_db
 from ..inventory.collab import (
     conflict_fields,
@@ -30,16 +31,9 @@ from ..inventory.xmlbuild import (
     update_channel,
     update_station,
 )
-from ..models import EquipmentSet, Project, ProjectVersion, User, utcnow
+from ..models import EquipmentSet, ProjectVersion, User, utcnow
 from ..nrl.client import get_nrl_client, validate_instconfig
 from ..routers.auth import current_user
-
-
-def _owned(db: Session, project_id: int, user: User) -> Project:
-    project = db.get(Project, project_id)
-    if project is None:
-        raise HTTPException(status_code=404, detail="프로젝트가 없습니다")
-    return project
 
 router = APIRouter(tags=["collab"])
 
@@ -147,7 +141,7 @@ def delete_set(
 def list_versions(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
-    _owned(db, project_id, user)
+    require_view(db, project_id, user)
     rows = db.scalars(
         select(ProjectVersion)
         .where(ProjectVersion.project_id == project_id)
@@ -164,7 +158,7 @@ def diff_versions(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_view(db, project_id, user)
     a = db.get(ProjectVersion, left)
     b = db.get(ProjectVersion, right)
     if a is None or b is None or a.project_id != project.id or b.project_id != project.id:
@@ -183,7 +177,7 @@ def restore_version(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_edit(db, project_id, user)
     row = db.get(ProjectVersion, version_id)
     if row is None or row.project_id != project.id:
         raise HTTPException(status_code=404, detail="버전이 없습니다")
@@ -223,7 +217,7 @@ def put_draft(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_edit(db, project_id, user)
     source = get_draft(db, project.id, user.id)
     xml = source.xml_text if source is not None else project.xml_text
     try:
@@ -279,7 +273,7 @@ def put_draft(
 def read_draft(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_view(db, project_id, user)
     row = get_draft(db, project.id, user.id)
     if row is None:
         return {"draft": None}
@@ -302,7 +296,7 @@ def list_issues(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_view(db, project_id, user)
     row = get_draft(db, project.id, user.id)
     xml = row.xml_text if row is not None else project.xml_text
     try:
@@ -321,7 +315,7 @@ def list_issues(
 def post_validate(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_view(db, project_id, user)
     row = get_draft(db, project.id, user.id)
     xml = row.xml_text if row is not None else project.xml_text
     issues = validate_project(xml, project.network_code, project.id, mode="full")
@@ -337,7 +331,7 @@ def post_validate(
 def discard_draft(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_edit(db, project_id, user)
     row = get_draft(db, project.id, user.id)
     if row is not None:
         db.delete(row)
@@ -349,7 +343,7 @@ def discard_draft(
 def commit_draft(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_edit(db, project_id, user)
     row = get_draft(db, project.id, user.id)
     if row is None:
         raise HTTPException(status_code=404, detail="초안이 없습니다")
@@ -391,7 +385,7 @@ def merge_draft(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_edit(db, project_id, user)
     row = get_draft(db, project.id, user.id)
     if row is None:
         raise HTTPException(status_code=404, detail="초안이 없습니다")
@@ -427,7 +421,7 @@ def merge_draft(
 def post_undo(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
-    project = _owned(db, project_id, user)
+    project = require_edit(db, project_id, user)
     row = latest_undo(db, project.id, user.id)
     if row is None:
         raise HTTPException(status_code=404, detail="취소할 편집이 없습니다")
