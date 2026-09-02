@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     nrl_library_timeout_sec: float = 900.0
     data_dir: str = "."
     backup_status_file: str = ""
+    monitor_api_5xx_window_sec: int = 15 * 60
+    monitor_nrl_failure_threshold: int = 3
     lock_ttl_sec: int = 300
     validator_jar: str = ""
     validator_timeout_sec: float = 60.0

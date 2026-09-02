@@ -11,6 +11,7 @@ import httpx
 
 from ..cache import get_redis
 from ..config import settings
+from ..monitoring import nrl_failure_snapshot, record_nrl_failure, reset_nrl_failures
 
 log = logging.getLogger("pdcc.nrl")
 
@@ -135,6 +136,10 @@ def nrl_snapshot_from_redis(redis) -> dict:
             source = "online"
         else:
             source = None
+    failures = nrl_failure_snapshot(
+        redis,
+        threshold=max(1, settings.monitor_nrl_failure_threshold),
+    )
     return {
         "mode": mode,
         "source": source,
@@ -145,6 +150,7 @@ def nrl_snapshot_from_redis(redis) -> dict:
         "cache_count": cache_count,
         "cache_bytes": cache_bytes,
         "library": library,
+        **failures,
     }
 
 
@@ -164,15 +170,18 @@ def mark_nrl_live_ok(redis) -> None:
     _redis_set(redis, META_LAST_OK_AT, now)
     _redis_set(redis, META_SOURCE, "online")
     _redis_set(redis, META_PROBE, "1", ex=PROBE_CACHE_TTL_SEC)
+    reset_nrl_failures(redis)
 
 
 def mark_nrl_live_failed(redis, *, has_cache: bool) -> None:
     _redis_set(redis, META_PROBE, "0", ex=PROBE_CACHE_TTL_SEC)
     _redis_set(redis, META_SOURCE, "cache" if has_cache else "offline")
+    record_nrl_failure(redis)
 
 
 def mark_nrl_using_cache(redis) -> None:
-    mark_nrl_live_failed(redis, has_cache=True)
+    _redis_set(redis, META_PROBE, "0", ex=PROBE_CACHE_TTL_SEC)
+    _redis_set(redis, META_SOURCE, "cache")
 
 
 def nrl_mode() -> str:
@@ -292,7 +301,7 @@ class NrlClient:
             has_cache = cached is not None or nrl_cache_count(redis) > 0
             if cached is not None:
                 log.warning("nrl fallback to cache for %s", key)
-                mark_nrl_using_cache(redis)
+                mark_nrl_live_failed(redis, has_cache=True)
                 return cached
             if exc.status_code in (400, 404):
                 raise

@@ -7,9 +7,19 @@ from datetime import timedelta
 from app.config import settings
 from app.dashboard import LONG_LOCK_SEC
 from app.db import SessionLocal
+from app.monitoring import Api5xxMonitoringMiddleware
 from app.models import FileAsset, Job, StationLock, User, utcnow
-from app.nrl.client import META_LAST_OK_AT, META_SOURCE, combine_cache_key
+from app.nrl.client import (
+    META_LAST_OK_AT,
+    META_SOURCE,
+    combine_cache_key,
+    mark_nrl_live_failed,
+    mark_nrl_live_ok,
+)
 from app.seed import seed_users
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from fastapi.testclient import TestClient
 from sqlalchemy import select
 from tests.test_wizard import _project
 
@@ -156,7 +166,14 @@ def test_admin_dashboard_counts_and_red_badges(client, redis_client, tmp_path, m
     assert body["nrl"]["badge"] == "NRL 장애"
     assert body["nrl"]["last_ok_at"] == "2026-08-01T00:00:00Z"
     assert body["nrl"]["cache_count"] >= 1
-    assert body["badges"] == {"nrl": True, "failed_jobs": True, "disk": True}
+    assert body["badges"] == {
+        "api_5xx": False,
+        "nrl": True,
+        "failed_jobs": True,
+        "disk": True,
+    }
+    assert body["monitoring"]["worker_failures"]["count"] >= 1
+    assert {alert["kind"] for alert in body["alerts"]} == {"worker_failure"}
     failed = {row["id"]: row for row in body["failed_jobs"]}
     assert failed_id in failed
     assert failed[failed_id]["error"] == f"converter JAR가 없습니다 {token}"
@@ -215,3 +232,58 @@ def test_dashboard_does_not_confirm_missing_or_invalid_backup(client, tmp_path, 
     invalid = client.get("/api/admin/dashboard")
     assert invalid.status_code == 200, invalid.text
     assert invalid.json()["backup"] == {"last_success_at": None, "confirmed": False}
+
+
+def test_dashboard_alerts_on_api_5xx(client, redis_client):
+    _enable_admin(client)
+    monitored = FastAPI()
+    monitored.add_middleware(Api5xxMonitoringMiddleware)
+
+    @monitored.get("/forced-service-error")
+    def forced_service_error():
+        return JSONResponse({"detail": "forced"}, status_code=503)
+
+    with TestClient(monitored) as monitored_client:
+        response = monitored_client.get("/forced-service-error")
+    assert response.status_code == 503
+
+    dashboard = client.get("/api/admin/dashboard")
+    assert dashboard.status_code == 200, dashboard.text
+    body = dashboard.json()
+    assert body["badges"]["api_5xx"] is True
+    assert body["monitoring"]["api_5xx"]["count"] == 1
+    assert body["monitoring"]["api_5xx"]["last_path"] == "/forced-service-error"
+    assert body["monitoring"]["api_5xx"]["last_status"] == 503
+    assert body["alerts"][0]["kind"] == "api_5xx"
+
+
+def test_dashboard_alerts_on_consecutive_nrl_failures_and_resets(client, redis_client):
+    _enable_admin(client)
+
+    mark_nrl_live_failed(redis_client, has_cache=True)
+    mark_nrl_live_failed(redis_client, has_cache=True)
+    before_threshold = client.get("/api/admin/dashboard").json()
+    assert before_threshold["monitoring"]["nrl"]["consecutive_failures"] == 2
+    assert "nrl_consecutive_failure" not in {
+        alert["kind"] for alert in before_threshold["alerts"]
+    }
+
+    mark_nrl_live_failed(redis_client, has_cache=True)
+    active = client.get("/api/admin/dashboard").json()
+    assert active["badges"]["nrl"] is True
+    assert active["monitoring"]["nrl"]["consecutive_failures"] == 3
+    nrl_alert = next(
+        alert
+        for alert in active["alerts"]
+        if alert["kind"] == "nrl_consecutive_failure"
+    )
+    assert nrl_alert["count"] == 3
+    assert nrl_alert["last_at"]
+
+    mark_nrl_live_ok(redis_client)
+    recovered = client.get("/api/admin/dashboard").json()
+    assert recovered["monitoring"]["nrl"]["consecutive_failures"] == 0
+    assert recovered["badges"]["nrl"] is False
+    assert "nrl_consecutive_failure" not in {
+        alert["kind"] for alert in recovered["alerts"]
+    }

@@ -237,6 +237,12 @@ pg_restore --list "$BACKUP_DIR"/pdcc-*.dump >/dev/null`}</code></pre>
           들어갑니다. 대기 상태가 계속되면 worker가 실행 중인지, Redis 연결과 worker heartbeat가
           정상인지 확인합니다. 반복 실패 작업은 원본과 오류 시각을 보존한 뒤 조사합니다.
         </p>
+        <p>
+          대시보드의 <strong>운영 알림</strong>에는 최근 API 5xx, 실패 상태 worker 작업, NRL
+          연속 실패가 표시됩니다. API 5xx는 마지막 메서드·경로·상태 코드로 API 로그를 찾고, NRL
+          연속 실패는 기본 3회부터 알립니다. NRL 실시간 요청이 다시 성공하면 연속 실패 알림은
+          자동으로 해제됩니다.
+        </p>
       </section>
 
       <section id="admin-chapter-10" className="manual-chapter">
