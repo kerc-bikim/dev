@@ -29,6 +29,7 @@ from ..inventory.service import (
     run_wizard,
     write_audit,
 )
+from ..inventory.seed_loss import loss_ack_token, seed_loss_report
 from ..inventory.validator import has_errors, validate_project, xml_filename
 from ..inventory.xmlbuild import InventoryError
 from ..models import ProjectMember, User
@@ -235,13 +236,29 @@ def get_project_xml(
     )
 
 
-@router.post("/{project_id}/export/seed")
-def post_export_seed(
+def _project_xml(db: Session, project, user: User) -> str:
+    row = get_draft(db, project.id, user.id)
+    return row.xml_text if row is not None else project.xml_text
+
+
+@router.get("/{project_id}/export/seed-loss")
+def get_export_seed_loss(
     project_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
 ) -> dict:
+    project = require_view(db, project_id, user)
+    xml = _project_xml(db, project, user)
+    return seed_loss_report(xml, project.network_code, project.id)
+
+
+@router.post("/{project_id}/export/seed")
+def post_export_seed(
+    project_id: int,
+    loss_ack: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> dict:
     project = require_edit(db, project_id, user)
-    row = get_draft(db, project.id, user.id)
-    xml = row.xml_text if row is not None else project.xml_text
+    xml = _project_xml(db, project, user)
     issues = validate_project(xml, project.network_code, project.id, mode="full")
     if has_errors(issues):
         raise HTTPException(
@@ -252,6 +269,29 @@ def post_export_seed(
                 "error_count": sum(1 for row in issues if row.get("level") == "error"),
             },
         )
+    report = seed_loss_report(xml, project.network_code, project.id)
+    if (loss_ack or "") != loss_ack_token(xml):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "E_LOSS_ACK",
+                "message": "손실 목록을 본 뒤에만 dataless SEED를 만들 수 있습니다",
+                "notices": report["notices"],
+                "rows": report["rows"],
+                "trunc_count": report["trunc_count"],
+                "drop_count": report["drop_count"],
+                "ack": report["ack"],
+            },
+        )
+    write_audit(
+        db,
+        project_id=project.id,
+        actor=user.username,
+        action="export_seed",
+        target=project.network_code,
+        summary="SEED 변환 손실 확인",
+    )
+    db.commit()
     raise HTTPException(
         status_code=501,
         detail="dataless SEED 변환기는 이 배포에 아직 없습니다",
