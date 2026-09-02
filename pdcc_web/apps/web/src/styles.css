@@ -382,6 +382,29 @@ body {
 .rule-table { min-width: 720px; }
 .rule-table input { min-width: 130px; }
 .rule-table th:nth-child(3), .rule-table td:nth-child(3) { width: 42%; }
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.section-heading p { margin: 4px 0 0; }
+.audit-table { min-width: 860px; }
+.audit-table th:not(:last-child), .audit-table td:not(:last-child) { white-space: nowrap; }
+.audit-table td:last-child { min-width: 340px; }
+.audit-target, .audit-details {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  word-break: break-all;
+  white-space: normal;
+}
+.audit-details {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 .confirm-table th, .confirm-table td {
   border-bottom: 1px solid var(--border);
   padding: 6px 8px;

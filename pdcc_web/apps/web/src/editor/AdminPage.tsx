@@ -5,6 +5,8 @@ import {
   apiPost,
   apiPut,
   type AdminDashboard,
+  type AuditLogInfo,
+  type AuditLogPage,
   type MemberInfo,
   type NrlAliasRule,
   type NrlExcludedRule,
@@ -18,6 +20,32 @@ const ROLE_LABEL: Record<string, string> = {
   viewer: "조회자",
   editor: "편집자",
   admin: "관리자",
+};
+
+const ACTION_LABEL: Record<string, string> = {
+  create: "생성",
+  import: "가져오기",
+  clone: "복제",
+  nrl: "NRL 적용",
+  restore: "버전 복원",
+  save: "저장",
+  merge: "머지",
+  undo: "실행 취소",
+  member: "멤버 변경",
+  member_remove: "멤버 해제",
+  unlock: "잠금 해제",
+  org_create: "기관 생성",
+  user_create: "사용자 생성",
+  user_deactivate: "사용자 비활성",
+  user_activate: "사용자 활성",
+  user_password: "비밀번호 재설정",
+  user_role: "역할 변경",
+  nrl_alias_create: "NRL 별칭 생성",
+  nrl_alias_update: "NRL 별칭 수정",
+  nrl_alias_delete: "NRL 별칭 삭제",
+  nrl_excluded_create: "NRL 제외 장비 생성",
+  nrl_excluded_update: "NRL 제외 장비 수정",
+  nrl_excluded_delete: "NRL 제외 장비 삭제",
 };
 
 function formatBytes(value: number): string {
@@ -205,6 +233,9 @@ function Dashboard({ data }: { data: AdminDashboard }) {
 
 export function AdminPage({ onHome }: { onHome: () => void }) {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLogInfo[]>([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditProjectId, setAuditProjectId] = useState<number | "">("");
   const [nrlLibrary, setNrlLibrary] = useState<NrlLibraryStatus | null>(null);
   const [orgs, setOrgs] = useState<OrgInfo[]>([]);
   const [users, setUsers] = useState<UserInfo[]>([]);
@@ -253,8 +284,16 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
     if (orgId === "" && orgData.orgs[0]) setOrgId(orgData.orgs[0].id);
   }
 
+  async function refreshAudit(project: number | "" = auditProjectId) {
+    const query = project === "" ? "" : `?project_id=${project}`;
+    const data = await apiGet<AuditLogPage>(`/api/admin/audit-logs${query}`);
+    setAuditLogs(data.audit_logs);
+    setAuditTotal(data.total);
+  }
+
   useEffect(() => {
     refresh().catch((err: Error) => setError(err.message));
+    refreshAudit().catch((err: Error) => setError(err.message));
     const id = window.setInterval(() => {
       apiGet<AdminDashboard>("/api/admin/dashboard")
         .then(setDashboard)
@@ -503,6 +542,83 @@ export function AdminPage({ onHome }: { onHome: () => void }) {
       <p className="hint">운영 대시보드와 기관·사용자·역할을 여기서 봅니다. 관리자가 아니면 홈으로 돌아갑니다.</p>
       {error ? <p className="error">{error}</p> : null}
       {dashboard ? <Dashboard data={dashboard} /> : <p className="hint">대시보드를 불러오는 중…</p>}
+
+      <section className="nrl-card" id="admin-audit-logs">
+        <div className="section-heading">
+          <div>
+            <h3>감사 로그</h3>
+            <p className="hint">
+              최근 기록 {auditLogs.length}건 / 전체 {auditTotal}건 · NRL 적용 기록은 instconfig를
+              함께 보관합니다.
+            </p>
+          </div>
+          <div className="wizard-nav">
+            <label>
+              프로젝트
+              <select
+                id="audit-project-filter"
+                value={auditProjectId}
+                onChange={(event) => {
+                  const next = event.target.value ? Number(event.target.value) : "";
+                  setAuditProjectId(next);
+                  refreshAudit(next).catch((err: Error) => setError(err.message));
+                }}
+              >
+                <option value="">전체</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name} ({project.network_code})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => refreshAudit().catch((err: Error) => setError(err.message))}
+            >
+              새로고침
+            </button>
+          </div>
+        </div>
+        <div className="table-scroll">
+          <table className="confirm-table audit-table">
+            <thead>
+              <tr>
+                <th>시각</th>
+                <th>프로젝트</th>
+                <th>사용자</th>
+                <th>작업</th>
+                <th>내용</th>
+              </tr>
+            </thead>
+            <tbody>
+              {auditLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>감사 기록이 없습니다</td>
+                </tr>
+              ) : (
+                auditLogs.map((row) => (
+                  <tr key={row.id}>
+                    <td>{formatWhen(row.created_at)}</td>
+                    <td>{row.project_name || "시스템"}</td>
+                    <td>{row.actor}</td>
+                    <td>{ACTION_LABEL[row.action] || row.action}</td>
+                    <td>
+                      <strong>{row.summary}</strong>
+                      {row.target ? <span className="audit-target">대상: {row.target}</span> : null}
+                      {row.details ? (
+                        <code className="audit-details">
+                          {row.details.replace(/^instconfig=/, "instconfig: ")}
+                        </code>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section className="nrl-card" id="admin-nrl-offline">
         <h3>NRL 전체 zip 오프라인</h3>

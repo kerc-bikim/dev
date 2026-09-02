@@ -62,10 +62,15 @@ def ensure_schema(engine: Engine | None = None) -> None:
     eng = engine or get_engine()
     Base.metadata.create_all(bind=eng)
     inspector = inspect(eng)
+    dialect = eng.dialect.name
+    if "audit_logs" in inspector.get_table_names():
+        audit_cols = {column["name"] for column in inspector.get_columns("audit_logs")}
+        if "details" not in audit_cols:
+            with eng.begin() as conn:
+                conn.execute(text("ALTER TABLE audit_logs ADD COLUMN details TEXT DEFAULT ''"))
     if "users" not in inspector.get_table_names():
         return
     cols = {column["name"] for column in inspector.get_columns("users")}
-    dialect = eng.dialect.name
     stmts: list[str] = []
     if "active" not in cols:
         default = "1" if dialect == "sqlite" else "TRUE"
