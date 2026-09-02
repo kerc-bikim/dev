@@ -43,6 +43,7 @@ services:
       NRL_OFFLINE_ZIP: ${NRL_OFFLINE_ZIP:-/data/nrl/full_NRL_v2.stationxml.zip}
       NRL_LIBRARY_TIMEOUT_SEC: ${NRL_LIBRARY_TIMEOUT_SEC:-900}
       DATA_DIR: ${DATA_DIR:-/data}
+      BACKUP_STATUS_FILE: ${BACKUP_STATUS_FILE:-/data/backup-last-success}
     ports:
       - "8080:8080"
     volumes:

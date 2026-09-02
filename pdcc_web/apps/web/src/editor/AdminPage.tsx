@@ -87,7 +87,14 @@ function Dashboard({ data }: { data: AdminDashboard }) {
           <span>오늘 내보내기</span>
           <strong id="dash-export-count">{data.export_count_today}</strong>
         </div>
+        <div id="dash-backup-status">
+          <span>마지막 백업 성공</span>
+          <strong>{data.backup.confirmed ? formatWhen(data.backup.last_success_at) : "확인 기록 없음"}</strong>
+        </div>
       </div>
+      <p className="hint">
+        백업 성공 시각은 데이터베이스 덤프 검증을 마친 운영 절차가 기록한 값입니다.
+      </p>
       <div className="dash-nrl" id="dash-nrl">
         <p>
           NRL{" "}

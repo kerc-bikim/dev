@@ -257,6 +257,10 @@ export type AdminDashboard = {
     exports_bytes: number;
     nrl_zip_bytes: number;
   };
+  backup: {
+    last_success_at: string | null;
+    confirmed: boolean;
+  };
   badges: { nrl: boolean; failed_jobs: boolean; disk: boolean };
 };
 
