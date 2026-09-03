@@ -53,3 +53,5 @@ make test
 ```
 
 `BlockSize` 테스트 그룹이 `-B` 경로를 검사합니다.
+
+아키텍처 개요는 [docs/architecture/](docs/architecture/README.md) 입니다.
