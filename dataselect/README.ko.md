@@ -51,6 +51,8 @@ dataselect -B 512 -Ps -ts 2024-01-01T00:00:00 -te 2024-01-01T01:00:00 -o out.mse
 
 전체 옵션은 `dataselect -h` 또는 [doc/dataselect.md](doc/dataselect.md) 를 참고하세요.
 
+구조·결정 기록은 [docs/architecture/](docs/architecture/README.md) (C4, arc42, ADR) 입니다.
+
 ## 원본이 버전업된 경우
 
 `-B` 구현은 `src/local.c` / `src/local.h` 에 있고, 원본 `src/dataselect.c` 에는 `LOCAL` 표시 훅만 있습니다. EarthScope dataselect 를 새로 가져올 때는 그 훅을 다시 붙이면 됩니다. 절차는 [UPSTREAM.md](UPSTREAM.md) 를 참고하세요.

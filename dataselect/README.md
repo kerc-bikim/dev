@@ -12,6 +12,7 @@ a newer EarthScope dataselect.
 
 For usage information see the [dataselect manual](doc/dataselect.md) in the
 'doc' directory.  Korean usage notes: [README.ko.md](README.ko.md).
+Architecture (C4, arc42, ADR): [docs/architecture/](docs/architecture/README.md).
 
 ## -B example
 
