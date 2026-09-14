@@ -32,6 +32,8 @@ dataselect -B 512 -o output.mseed input.mseed
 
 miniSEED 2는 요청한 길이로 고정(패딩 포함)되고, **출력 파일마다** 채널(SourceID) 기준으로 시퀀스 번호를 **000001**부터 다시 매깁니다. SDS 날짜 파일이 바뀌면 번호가 이어지지 않고 다시 1부터 시작합니다. miniSEED 3 고정 헤더에는 시퀀스가 없습니다. `-B` 없이 복사하면 원본 바이트(시퀀스 포함)를 유지합니다.
 
+miniSEED 2는 요청한 길이로 고정(패딩 포함)되고, 채널(SourceID)마다 출력 시각 순으로 시퀀스 번호를 **000001**부터 다시 매깁니다. miniSEED 3 고정 헤더에는 시퀀스가 없습니다. `-B` 없이 복사하면 원본 바이트(시퀀스 포함)를 유지합니다.
+
 miniSEED 2는 요청한 길이로 고정(패딩 포함)되고, miniSEED 3은 그 길이를 최대값으로 씁니다.
 
 unpack/pack 할 수 없는 인코딩이거나 헤더가 블록보다 크면, 원본을 그대로 섞어 쓰지 않고 오류로 종료합니다. Steim으로 다시 압축할 때 이어 붙인 샘플 차이가 인코딩 한도를 넘으면 같은 오류가 납니다.
@@ -50,6 +52,8 @@ dataselect -B 512 -Ps -ts 2024-01-01T00:00:00 -te 2024-01-01T01:00:00 -o out.mse
 ```
 
 전체 옵션은 `dataselect -h` 또는 [doc/dataselect.md](doc/dataselect.md) 를 참고하세요.
+
+구조·결정 기록은 [docs/architecture/](docs/architecture/README.md) (C4, arc42, ADR) 입니다.
 
 ## 원본이 버전업된 경우
 

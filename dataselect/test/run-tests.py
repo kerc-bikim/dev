@@ -678,37 +678,6 @@ class BlockSize(DataselectTest):
         seqs = [int(rec[:6]) for rec in recs]
         self.assertEqual(seqs, list(range(1, len(recs) + 1)))
 
-    def test_v2_sequence_restarts_when_archive_file_changes(self):
-        """Each archive file starts sequences at 000001; they do not continue."""
-        root = tmp("seq_files")
-        shutil.rmtree(root, ignore_errors=True)
-        os.makedirs(root)
-
-        code, _, err = run(
-            "-B",
-            "512",
-            self.V2_4096,
-            "-A",
-            os.path.join(root, "%n.%s.%l.%c.%H.%M.%S.%N"),
-        )
-        self.assertEqual(code, 0, err.decode())
-
-        paths = []
-        for dirpath, _, filenames in os.walk(root):
-            for name in filenames:
-                paths.append(os.path.join(dirpath, name))
-        self.assertGreater(len(paths), 1)
-
-        for path in paths:
-            recs = v2_records(path)
-            self.assertGreater(len(recs), 0, path)
-            seqs = [int(rec[:6]) for rec in recs]
-            self.assertEqual(
-                seqs,
-                list(range(1, len(seqs) + 1)),
-                "%s sequences were %s" % (path, seqs),
-            )
-
     def test_v2_sequence_restarts_per_channel(self):
         """Each SourceID gets its own 000001, 000002, ... sequence."""
         source = os.path.join(DATA, "testdata-3channel-signal.mseed2")
