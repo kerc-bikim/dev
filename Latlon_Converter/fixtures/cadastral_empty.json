@@ -1,0 +1,19 @@
+{
+  "response": {
+    "service": {
+      "name": "data",
+      "version": "2.0",
+      "operation": "GetFeature",
+      "time": "21(ms)"
+    },
+    "status": "NOT_FOUND",
+    "record": { "total": "0", "current": "0" },
+    "page": { "size": "1", "page": "1", "total": "0" },
+    "result": {
+      "featureCollection": {
+        "type": "FeatureCollection",
+        "features": []
+      }
+    }
+  }
+}

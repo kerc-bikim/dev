@@ -1,0 +1,52 @@
+{
+  "response": {
+    "service": {
+      "name": "address",
+      "version": "2.0",
+      "operation": "getAddress",
+      "time": "17(ms)"
+    },
+    "status": "OK",
+    "input": {
+      "point": { "x": "127.02505", "y": "37.50435" },
+      "crs": "EPSG:4326",
+      "type": "PARCEL"
+    },
+    "result": [
+      {
+        "zipcode": "06236",
+        "type": "parcel",
+        "text": "서울특별시 강남구 역삼동 808",
+        "structure": {
+          "level0": "대한민국",
+          "level1": "서울특별시",
+          "level2": "강남구",
+          "level3": "",
+          "level4L": "역삼동",
+          "level4LC": "1168010100",
+          "level4A": "역삼1동",
+          "level4AC": "1168064000",
+          "level5": "808",
+          "detail": ""
+        }
+      },
+      {
+        "zipcode": "06236",
+        "type": "road",
+        "text": "서울특별시 강남구 테헤란로 305",
+        "structure": {
+          "level0": "대한민국",
+          "level1": "서울특별시",
+          "level2": "강남구",
+          "level3": "",
+          "level4L": "역삼동",
+          "level4LC": "1168010100",
+          "level4A": "역삼1동",
+          "level4AC": "1168064000",
+          "level5": "테헤란로 305",
+          "detail": ""
+        }
+      }
+    ]
+  }
+}

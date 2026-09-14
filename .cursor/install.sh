@@ -35,8 +35,8 @@ fi
 
 # ---------------------------------------------------------------------------
 # 2. Shared Python virtualenv (PPSD backend, recvQSCD20, earthworm_web backend,
-#    stationxml_manager, seedlinkToMp3)
-#    All four requirements files pin a consistent stack (obspy 1.4.1,
+#    stationxml_manager, Latlon_Converter, seedlinkToMp3)
+#    All requirements files pin a consistent stack (obspy 1.4.1,
 #    numpy 1.26.4, fastapi 0.115.6, pydantic 2.10.4, ...), so they coexist in a
 #    single shared venv. setuptools is pinned <81 (PPSD_v1 requirements) so
 #    ObsPy 1.4's pkg_resources import keeps working on Python 3.12.
@@ -48,6 +48,7 @@ python3 -m venv .venv
   -r recvQSCD20/requirements.txt \
   -r earthworm_web/backend/requirements.txt \
   -r stationxml_manager/requirements.txt \
+  -r Latlon_Converter/requirements.txt \
   scipy==1.13.1 soundfile==0.12.1 requests==2.32.3 pytest==8.3.4
 
 # ---------------------------------------------------------------------------

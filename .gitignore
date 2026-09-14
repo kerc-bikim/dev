@@ -41,5 +41,11 @@ pdcc_web/apps/api/.pytest_cache/
 pdcc_web/apps/api/.venv/
 
 
+# 좌표 → 지번 변환
+Latlon_Converter/.env
+Latlon_Converter/*.sqlite
+Latlon_Converter/out/
+Latlon_Converter/.pytest_cache/
+
 # redis dumps
 *.rdb

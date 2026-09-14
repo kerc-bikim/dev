@@ -1,0 +1,28 @@
+{
+  "fields": {
+    "totalCount": "1",
+    "pageNo": "1",
+    "numOfRows": "10",
+    "ladfrlVOList": [
+      {
+        "pnu": "4215038023200120003",
+        "ldCode": "4215038023",
+        "ldCodeNm": "강원특별자치도 강릉시 왕산면 대기리",
+        "regstrSeCode": "2",
+        "regstrSeCodeNm": "임야대장",
+        "mnnmSlno": "12-3",
+        "lndcgrCode": "0005",
+        "lndcgrCodeNm": "임야",
+        "lndpclAr": "85471",
+        "posesnSeCode": "3302",
+        "posesnSeCodeNm": "국유지",
+        "cnrsPsnCo": "1",
+        "posesnChgCauseCodeNm": "소유권보존",
+        "posesnChgDe": "19721130",
+        "ladFrtlSc": "5560",
+        "ladFrtlScNm": "1:6000",
+        "lastUpdtDt": "2025-08-31"
+      }
+    ]
+  }
+}

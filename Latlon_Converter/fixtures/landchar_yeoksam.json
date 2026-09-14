@@ -1,0 +1,26 @@
+{
+  "landCharacteristicss": {
+    "totalCount": "1",
+    "pageNo": "1",
+    "numOfRows": "10",
+    "field": [
+      {
+        "pnu": "1168010100108080000",
+        "ldCodeNm": "서울특별시 강남구 역삼동",
+        "mnnmSlno": "808",
+        "stdrYear": "2025",
+        "lndcgrCode": "0008",
+        "lndcgrCodeNm": "대",
+        "lndpclAr": "1223.4",
+        "prposArea1Nm": "일반상업지역",
+        "prposArea2Nm": "지정되지않음",
+        "ladUseSittnNm": "상업용",
+        "tpgrphHgCodeNm": "평지",
+        "tpgrphFrmCodeNm": "가로장방",
+        "roadSideCodeNm": "광대한면",
+        "pblntfPclnd": "73680000",
+        "lastUpdtDt": "2025-05-31"
+      }
+    ]
+  }
+}

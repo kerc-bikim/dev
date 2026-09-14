@@ -1,0 +1,28 @@
+{
+  "fields": {
+    "totalCount": "1",
+    "pageNo": "1",
+    "numOfRows": "10",
+    "ladfrlVOList": [
+      {
+        "pnu": "1168010100108080000",
+        "ldCode": "1168010100",
+        "ldCodeNm": "서울특별시 강남구 역삼동",
+        "regstrSeCode": "1",
+        "regstrSeCodeNm": "토지대장",
+        "mnnmSlno": "808",
+        "lndcgrCode": "0008",
+        "lndcgrCodeNm": "대",
+        "lndpclAr": "1223.4",
+        "posesnSeCode": "3301",
+        "posesnSeCodeNm": "개인",
+        "cnrsPsnCo": "1",
+        "posesnChgCauseCodeNm": "매매",
+        "posesnChgDe": "20180417",
+        "ladFrtlSc": "5505",
+        "ladFrtlScNm": "1:500",
+        "lastUpdtDt": "2025-08-31"
+      }
+    ]
+  }
+}

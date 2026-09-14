@@ -1,0 +1,29 @@
+{
+  "comment": "mock 프로바이더가 좌표로 찾아 재생하는 응답 묶음. 실제 브이월드 응답 스키마를 그대로 쓴다.",
+  "match_tolerance_deg": 0.001,
+  "points": [
+    {
+      "label": "서울 강남 역삼동 808 (개인 소유, 일반상업지역)",
+      "lat": 37.50435,
+      "lon": 127.02505,
+      "cadastral": "cadastral_yeoksam.json",
+      "geocoder": "geocoder_yeoksam.json",
+      "ledger": "ladfrl_yeoksam.json",
+      "characteristics": "landchar_yeoksam.json"
+    },
+    {
+      "label": "강릉 왕산면 대기리 산 12-3 (국유지, 임야대장)",
+      "lat": 37.7519,
+      "lon": 128.8761,
+      "cadastral": "cadastral_mountain.json",
+      "ledger": "ladfrl_mountain.json",
+      "characteristics": "landchar_mountain.json"
+    },
+    {
+      "label": "동해 해상 (필지 없음)",
+      "lat": 36.0,
+      "lon": 130.5,
+      "cadastral": "cadastral_empty.json"
+    }
+  ]
+}
