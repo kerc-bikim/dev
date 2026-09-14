@@ -1,0 +1,30 @@
+{
+  "response": {
+    "resultCode": "00",
+    "resultMsg": "NORMAL SERVICE",
+    "fields": {
+      "totalCount": "1",
+      "pageNo": "1",
+      "numOfRows": "10",
+      "field": [
+        {
+          "pnu": "4215038023200120003",
+          "ldCodeNm": "강원특별자치도 강릉시 왕산면 대기리",
+          "mnnmSlno": "산 12-3",
+          "stdrYear": "2025",
+          "lndcgrCode": "0005",
+          "lndcgrCodeNm": "임야",
+          "lndpclAr": "85471",
+          "prposArea1Nm": "보전관리지역",
+          "prposArea2Nm": "지정되지않음",
+          "ladUseSittnNm": "자연림",
+          "tpgrphHgCodeNm": "고지",
+          "tpgrphFrmCodeNm": "부정형",
+          "roadSideCodeNm": "맹지",
+          "pblntfPclnd": "4300",
+          "lastUpdtDt": "2025-05-31"
+        }
+      ]
+    }
+  }
+}
