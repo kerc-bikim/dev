@@ -28,10 +28,15 @@ export function PPSDChart({ data, height = 560, compact = false }: Props) {
 
     const render = () => {
       const totalW = container.clientWidth || 720;
-      const totalH = height;
+      const totalH = container.clientHeight || height;
+      const mobile = totalW < 600;
       const m = compact
-        ? { top: 22, right: 62, bottom: 34, left: 50 }
-        : { top: 34, right: 82, bottom: 46, left: 64 };
+        ? mobile
+          ? { top: 28, right: 50, bottom: 40, left: 48 }
+          : { top: 22, right: 62, bottom: 34, left: 50 }
+        : mobile
+          ? { top: 42, right: 58, bottom: 48, left: 52 }
+          : { top: 34, right: 82, bottom: 46, left: 64 };
       const plotW = Math.max(10, totalW - m.left - m.right);
       const plotH = Math.max(10, totalH - m.top - m.bottom);
 
@@ -279,14 +284,22 @@ export function PPSDChart({ data, height = 560, compact = false }: Props) {
     render();
     const ro = new ResizeObserver(() => render());
     ro.observe(container);
-    return () => ro.disconnect();
+    window.addEventListener("resize", render);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", render);
+    };
   }, [data, height, compact, probMin, probMax]);
 
   return (
     <div
       ref={containerRef}
-      className="chart-container"
-      style={{ position: "relative", width: "100%", height }}
+      className={`chart-container ${compact ? "compact-chart" : "full-chart"}`}
+      style={{
+        position: "relative",
+        width: "100%",
+        ...(compact ? { height } : undefined),
+      }}
     >
       <canvas ref={canvasRef} style={{ position: "absolute" }} />
       <svg

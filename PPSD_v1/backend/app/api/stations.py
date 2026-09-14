@@ -38,8 +38,19 @@ def get_stations(network: str = Query(..., min_length=1)):
 def get_channels(
     network: str = Query(..., min_length=1),
     station: str = Query(..., min_length=1),
+    location: str | None = Query(
+        None, description="FDSN location code; empty for --; * and ? wildcards allowed"
+    ),
+    channel: str | None = Query(
+        None, description="FDSN channel code; * and ? wildcards allowed"
+    ),
 ):
     try:
-        return list_channels(network=network, station=station)
+        return list_channels(
+            network=network,
+            station=station,
+            location=location,
+            channel=channel,
+        )
     except FDSNError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

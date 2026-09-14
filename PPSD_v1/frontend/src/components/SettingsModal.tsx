@@ -54,6 +54,28 @@ export function SettingsModal({ onClose }: Props) {
             바꿀 수 있습니다.) 취소(✕)하거나 바깥을 클릭하면 변경이 버려집니다.
           </p>
 
+          <div className="section">
+            <h3>Station input</h3>
+            <div className="field">
+              <label>Input mode</label>
+              <select
+                value={draft.input_mode}
+                onChange={(e) =>
+                  patch({
+                    input_mode: e.target.value === "manual" ? "manual" : "dropdown",
+                  })
+                }
+              >
+                <option value="dropdown">Dropdown</option>
+                <option value="manual">Manual</option>
+              </select>
+            </div>
+            <p className="hint">
+              관측소·채널을 FDSN 목록에서 고를지(Dropdown), 코드를 직접 입력할지
+              (Manual) 정합니다. 각 탭을 열 때 이 값이 초기 모드가 됩니다.
+            </p>
+          </div>
+
           {/* Percentiles (heatmap) */}
           <div className="section">
             <h3>Percentiles (Single / Multi)</h3>

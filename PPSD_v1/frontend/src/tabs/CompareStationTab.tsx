@@ -42,7 +42,9 @@ export function CompareStationTab() {
     ...EMPTY_AXIS_RANGE,
     ...yLimitsForType("acceleration"),
   });
-  const [manualMode, setManualMode] = useState(false);
+  const [manualMode, setManualMode] = useState(
+    () => settings.input_mode === "manual"
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<CompareData | null>(null);

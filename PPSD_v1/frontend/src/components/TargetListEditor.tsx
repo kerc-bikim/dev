@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { api, ChannelInfo, NetworkInfo, StationInfo } from "../api/client";
 import { channelId } from "../utils/time";
+import { ManualNslcInput } from "./ManualNslcInput";
+import {
+  formatNslc,
+  locChaKey,
+  nslcIsCompleteExact,
+  parseNslcInput,
+} from "../utils/nslc";
 
 export interface ChannelTarget {
   network: string;
@@ -18,6 +25,9 @@ export interface StationRow {
   selectedChannels: string[];
   manualLocation?: string;
   manualChannel?: string;
+  manualQuery?: string;
+  /** Set when this row was created from another row's wildcard search. */
+  searchOriginId?: string;
   label?: string;
   color?: string;
 }
@@ -26,6 +36,8 @@ const DEFAULT_COLORS = [
   "#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6",
   "#1abc9c", "#e67e22", "#34495e", "#e91e63", "#00bcd4",
 ];
+
+const MAX_TARGETS = 20;
 
 let _rowId = 0;
 function newRowId() {
@@ -66,6 +78,106 @@ export function expandRowsToTargets(
     }
   }
   return targets;
+}
+
+function channelsFromRow(row: StationRow): ChannelInfo[] {
+  return row.selectedChannels.map((chKey) => {
+    const [location, channel] = chKey.split("|");
+    return {
+      network: row.network,
+      station: row.station,
+      location: location ?? "",
+      channel: channel ?? "",
+    };
+  });
+}
+
+function applySelectedToRows(
+  rows: StationRow[],
+  originId: string,
+  selected: ChannelInfo[],
+  opts: { singleStation: boolean; singleChannel: boolean; showColors: boolean }
+): StationRow[] {
+  let picked = selected;
+  if (opts.singleChannel) picked = selected.slice(0, 1);
+  if (opts.singleStation && picked.length > 0) {
+    const first = picked[0];
+    picked = picked.filter(
+      (c) => c.network === first.network && c.station === first.station
+    );
+    if (opts.singleChannel) picked = picked.slice(0, 1);
+  }
+  if (picked.length > MAX_TARGETS) picked = picked.slice(0, MAX_TARGETS);
+
+  const origin = rows.find((r) => r.id === originId);
+  if (!origin) return rows;
+
+  const withoutSpawned = rows.filter((r) => r.searchOriginId !== originId);
+
+  const groups = new Map<string, ChannelInfo[]>();
+  for (const c of picked) {
+    const key = `${c.network}|${c.station}`;
+    const list = groups.get(key) ?? [];
+    list.push(c);
+    groups.set(key, list);
+  }
+
+  if (groups.size === 0) {
+    return withoutSpawned.map((r) =>
+      r.id === originId
+        ? { ...r, selectedChannels: [], searchOriginId: undefined }
+        : r
+    );
+  }
+
+  const entries = [...groups.entries()];
+  const [firstKey, firstChs] = entries[0];
+  const [net, sta] = firstKey.split("|");
+  const originUpdated: StationRow = {
+    ...origin,
+    network: net,
+    station: sta,
+    selectedChannels: firstChs.map(locChaKey),
+    searchOriginId: undefined,
+  };
+
+  if (opts.singleStation || entries.length === 1) {
+    return withoutSpawned.map((r) => (r.id === originId ? originUpdated : r));
+  }
+
+  const originIdx = withoutSpawned.findIndex((r) => r.id === originId);
+  const existingSpawned = rows.filter((r) => r.searchOriginId === originId);
+  const spawned: StationRow[] = entries.slice(1).map(([key, chs], i) => {
+    const [n, s] = key.split("|");
+    const prev = existingSpawned.find((r) => r.network === n && r.station === s);
+    if (prev) {
+      return {
+        ...prev,
+        selectedChannels: chs.map(locChaKey),
+      };
+    }
+    return {
+      id: newRowId(),
+      network: n,
+      station: s,
+      selectedChannels: chs.map(locChaKey),
+      searchOriginId: originId,
+      color: opts.showColors
+        ? DEFAULT_COLORS[(originIdx + 1 + i) % DEFAULT_COLORS.length]
+        : undefined,
+      manualQuery: formatNslc({
+        network: n,
+        station: s,
+        location: chs.length === 1 ? chs[0].location : "*",
+        channel: chs.length === 1 ? chs[0].channel : "*",
+      }),
+    };
+  });
+
+  const next = [...withoutSpawned];
+  next[originIdx] = originUpdated;
+  next.splice(originIdx + 1, 0, ...spawned);
+  return next;
 }
 
 export function TargetListEditor({
@@ -115,7 +227,7 @@ export function TargetListEditor({
   };
 
   const removeRow = (id: string) => {
-    onChange(rows.filter((r) => r.id !== id));
+    onChange(rows.filter((r) => r.id !== id && r.searchOriginId !== id));
   };
 
   const addRow = () => {
@@ -132,6 +244,12 @@ export function TargetListEditor({
     ]);
   };
 
+  const selectedForRow = (row: StationRow): ChannelInfo[] => {
+    if (row.searchOriginId) return channelsFromRow(row);
+    const spawned = rows.filter((r) => r.searchOriginId === row.id);
+    return [...channelsFromRow(row), ...spawned.flatMap(channelsFromRow)];
+  };
+
   return (
     <div>
       {error && <div className="error" style={{ marginBottom: 10 }}>{error}</div>}
@@ -140,6 +258,18 @@ export function TargetListEditor({
         const chKey = `${row.network}|${row.station}`;
         const channels = channelsByKey[chKey] ?? [];
         const stations = stationsByNet[row.network] ?? [];
+        const firstCh = row.selectedChannels[0];
+        const [firstLoc, firstCha] = firstCh ? firstCh.split("|") : ["", ""];
+        const query =
+          row.manualQuery ??
+          (row.network
+            ? formatNslc({
+                network: row.network,
+                station: row.station,
+                location: firstLoc || row.manualLocation || "",
+                channel: firstCha || row.manualChannel || "",
+              })
+            : "");
 
         return (
           <div key={row.id} className="target-row">
@@ -157,178 +287,152 @@ export function TargetListEditor({
             </div>
 
             {manualMode ? (
-              <div className="row-2">
-                <div className="field">
-                  <label>Network</label>
-                  <input
-                    type="text"
-                    value={row.network}
-                    onChange={(e) =>
-                      updateRow(row.id, {
-                        network: e.target.value.toUpperCase(),
-                        selectedChannels: [],
-                      })
-                    }
-                    placeholder="IU"
-                  />
-                </div>
-                <div className="field">
-                  <label>Station</label>
-                  <input
-                    type="text"
-                    value={row.station}
-                    onChange={(e) =>
-                      updateRow(row.id, {
-                        station: e.target.value.toUpperCase(),
-                        selectedChannels: [],
-                      })
-                    }
-                    placeholder="ANMO"
-                  />
-                </div>
-              </div>
+              row.searchOriginId ? (
+                <p className="hint">
+                  와일드카드 검색으로 추가된 스테이션입니다. 채널 선택은 검색을
+                  실행한 위 항목에서 체크박스로 변경하세요.
+                </p>
+              ) : (
+              <ManualNslcInput
+                query={query}
+                singleSelect={singleChannel}
+                singleStation={singleStation}
+                onQueryChange={(text) => {
+                  const parsed = parseNslcInput(text);
+                  if (parsed && nslcIsCompleteExact(parsed)) {
+                    onChange(
+                      applySelectedToRows(
+                        rows.map((r) =>
+                          r.id === row.id ? { ...r, manualQuery: text } : r
+                        ),
+                        row.id,
+                        [
+                          {
+                            network: parsed.network,
+                            station: parsed.station,
+                            location: parsed.location,
+                            channel: parsed.channel,
+                          },
+                        ],
+                        { singleStation, singleChannel, showColors }
+                      )
+                    );
+                    return;
+                  }
+                  updateRow(row.id, { manualQuery: text });
+                }}
+                selected={selectedForRow(row)}
+                onSelectedChange={(selected) => {
+                  onChange(
+                    applySelectedToRows(rows, row.id, selected, {
+                      singleStation,
+                      singleChannel,
+                      showColors,
+                    })
+                  );
+                }}
+              />
+              )
             ) : (
-              <div className="row-2">
-                <div className="field">
-                  <label>Network {loading === "networks" && "…"}</label>
-                  <select
-                    value={row.network}
-                    onChange={(e) => {
-                      const network = e.target.value;
-                      loadStations(network);
-                      updateRow(row.id, {
-                        network,
-                        station: "",
-                        selectedChannels: [],
-                      });
-                    }}
-                  >
-                    <option value="">-- select --</option>
-                    {networks.map((n) => (
-                      <option key={n.code} value={n.code}>
-                        {n.code}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field">
-                  <label>Station</label>
-                  <select
-                    value={row.station}
-                    onChange={(e) => {
-                      const station = e.target.value;
-                      loadChannels(row.network, station);
-                      updateRow(row.id, { station, selectedChannels: [] });
-                    }}
-                    disabled={!row.network}
-                  >
-                    <option value="">-- select --</option>
-                    {stations.map((s) => (
-                      <option key={s.code} value={s.code}>
-                        {s.code}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {manualMode ? (
-              <div className="row-2">
-                <div className="field">
-                  <label>Location</label>
-                  <input
-                    type="text"
-                    value={row.manualLocation ?? ""}
-                    onChange={(e) => {
-                      const manualLocation = e.target.value;
-                      const manualChannel = row.manualChannel ?? "";
-                      updateRow(row.id, {
-                        manualLocation,
-                        selectedChannels:
-                          manualChannel
-                            ? [`${manualLocation}|${manualChannel}`]
-                            : [],
-                      });
-                    }}
-                    placeholder="00"
-                  />
-                </div>
-                <div className="field">
-                  <label>Channel</label>
-                  <input
-                    type="text"
-                    value={row.manualChannel ?? ""}
-                    onChange={(e) => {
-                      const manualChannel = e.target.value.toUpperCase();
-                      const manualLocation = row.manualLocation ?? "";
-                      updateRow(row.id, {
-                        manualChannel,
-                        selectedChannels:
-                          manualChannel
-                            ? [`${manualLocation}|${manualChannel}`]
-                            : [],
-                      });
-                    }}
-                    placeholder="BHZ"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="field">
-                <label>
-                  {singleChannel ? "Channel" : "Channels (Ctrl+click for multiple)"}{" "}
-                  {loading === `channels-${chKey}` && "…"}
-                </label>
-                {singleChannel ? (
-                  <select
-                    value={row.selectedChannels[0] ?? ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      updateRow(row.id, {
-                        selectedChannels: val ? [val] : [],
-                      });
-                    }}
-                    disabled={!row.station}
-                  >
-                    <option value="">-- select --</option>
-                    {channels.map((c) => {
-                      const val = `${c.location}|${c.channel}`;
-                      return (
-                        <option key={val} value={val}>
-                          {(c.location || "--") + "." + c.channel}
-                          {c.sample_rate ? ` @ ${c.sample_rate} Hz` : ""}
+              <>
+                <div className="row-2">
+                  <div className="field">
+                    <label>Network {loading === "networks" && "…"}</label>
+                    <select
+                      value={row.network}
+                      onChange={(e) => {
+                        const network = e.target.value;
+                        loadStations(network);
+                        updateRow(row.id, {
+                          network,
+                          station: "",
+                          selectedChannels: [],
+                        });
+                      }}
+                    >
+                      <option value="">-- select --</option>
+                      {networks.map((n) => (
+                        <option key={n.code} value={n.code}>
+                          {n.code}
                         </option>
-                      );
-                    })}
-                  </select>
-                ) : (
-                  <select
-                    multiple
-                    size={4}
-                    className="multi-select"
-                    value={row.selectedChannels}
-                    onChange={(e) => {
-                      const selected = Array.from(
-                        e.target.selectedOptions,
-                        (o) => o.value
-                      );
-                      updateRow(row.id, { selectedChannels: selected });
-                    }}
-                    disabled={!row.station}
-                  >
-                    {channels.map((c) => {
-                      const val = `${c.location}|${c.channel}`;
-                      return (
-                        <option key={val} value={val}>
-                          {(c.location || "--") + "." + c.channel}
-                          {c.sample_rate ? ` @ ${c.sample_rate} Hz` : ""}
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Station</label>
+                    <select
+                      value={row.station}
+                      onChange={(e) => {
+                        const station = e.target.value;
+                        loadChannels(row.network, station);
+                        updateRow(row.id, { station, selectedChannels: [] });
+                      }}
+                      disabled={!row.network}
+                    >
+                      <option value="">-- select --</option>
+                      {stations.map((s) => (
+                        <option key={s.code} value={s.code}>
+                          {s.code}
                         </option>
-                      );
-                    })}
-                  </select>
-                )}
-              </div>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="field">
+                  <label>
+                    {singleChannel ? "Channel" : "Channels (Ctrl+click for multiple)"}{" "}
+                    {loading === `channels-${chKey}` && "…"}
+                  </label>
+                  {singleChannel ? (
+                    <select
+                      value={row.selectedChannels[0] ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        updateRow(row.id, {
+                          selectedChannels: val ? [val] : [],
+                        });
+                      }}
+                      disabled={!row.station}
+                    >
+                      <option value="">-- select --</option>
+                      {channels.map((c) => {
+                        const val = `${c.location}|${c.channel}`;
+                        return (
+                          <option key={val} value={val}>
+                            {(c.location || "--") + "." + c.channel}
+                            {c.sample_rate ? ` @ ${c.sample_rate} Hz` : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  ) : (
+                    <select
+                      multiple
+                      size={4}
+                      className="multi-select"
+                      value={row.selectedChannels}
+                      onChange={(e) => {
+                        const selected = Array.from(
+                          e.target.selectedOptions,
+                          (o) => o.value
+                        );
+                        updateRow(row.id, { selectedChannels: selected });
+                      }}
+                      disabled={!row.station}
+                    >
+                      {channels.map((c) => {
+                        const val = `${c.location}|${c.channel}`;
+                        return (
+                          <option key={val} value={val}>
+                            {(c.location || "--") + "." + c.channel}
+                            {c.sample_rate ? ` @ ${c.sample_rate} Hz` : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  )}
+                </div>
+              </>
             )}
 
             {showColors && (

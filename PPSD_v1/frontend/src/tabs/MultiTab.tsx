@@ -29,7 +29,9 @@ export function MultiTab() {
     ...DEFAULT_PLOT_OPTIONS,
     ...settingsToPlotDefaults(settings),
   }));
-  const [manualMode, setManualMode] = useState(false);
+  const [manualMode, setManualMode] = useState(
+    () => settings.input_mode === "manual"
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<BatchPPSDItem[] | null>(null);
