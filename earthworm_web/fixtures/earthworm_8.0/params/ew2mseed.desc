@@ -1,0 +1,5 @@
+modName ew2mseed
+modId   MOD_EW2MSEED
+instId  ${EW_INST_ID}
+tsec    90
+restartMe

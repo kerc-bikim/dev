@@ -1,0 +1,35 @@
+# 지역 Edge Collector 이미지.
+# 관리 API·Web 리소스를 넣지 않는다. 지역 서버에 필요 없는 코드는 공격면만 늘린다.
+#
+#   docker build -f deploy/docker/Dockerfile.edge -t soh-edge .
+
+FROM python:3.12-slim AS builder
+ENV PIP_NO_CACHE_DIR=1
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+COPY backend/requirements.txt /tmp/requirements.txt
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip \
+    && /opt/venv/bin/pip install -r /tmp/requirements.txt
+
+FROM python:3.12-slim AS runtime
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    SOH_EDGE_SPOOL_PATH=/var/lib/soh-edge
+COPY --from=builder /opt/venv /opt/venv
+
+WORKDIR /app
+COPY contracts /app/contracts
+COPY backend/app /app/backend/app
+COPY backend/alembic.ini /app/backend/alembic.ini
+
+RUN useradd --create-home --uid 10002 sohedge \
+    && mkdir -p /var/lib/soh-edge \
+    && chown -R sohedge:sohedge /app /var/lib/soh-edge
+USER sohedge
+WORKDIR /app/backend
+
+VOLUME ["/var/lib/soh-edge"]
+CMD ["python", "-m", "app.main_edge"]

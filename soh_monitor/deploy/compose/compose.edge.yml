@@ -1,0 +1,46 @@
+# 지역 Edge Collector.
+#
+#   docker compose -f deploy/compose/compose.edge.yml --env-file edge.env up -d
+#
+# Edge 에는 PostgreSQL·InfluxDB·Grafana 를 두지 않는다. 중앙으로 Outbound 연결만 쓰고,
+# 외부에 포트를 열지 않는다.
+
+name: soh-edge
+
+services:
+  edge-agent:
+    image: ${SOH_IMAGE_EDGE:-soh-edge:latest}
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.edge
+    restart: unless-stopped
+    environment:
+      SOH_APP_ENV: ${SOH_APP_ENV:-production}
+      SOH_LOG_LEVEL: ${SOH_LOG_LEVEL:-INFO}
+      SOH_EDGE_ID: ${SOH_EDGE_ID:?SOH_EDGE_ID 가 필요하다}
+      SOH_CENTRAL_URL: ${SOH_CENTRAL_URL:?중앙 주소가 필요하다}
+      SOH_EDGE_SPOOL_PATH: /var/lib/soh-edge
+      SOH_EDGE_SPOOL_LIMIT_BYTES: ${SOH_EDGE_SPOOL_LIMIT_BYTES:-5368709120}
+      SOH_EDGE_HEARTBEAT_SECONDS: ${SOH_EDGE_HEARTBEAT_SECONDS:-30}
+      SOH_EDGE_UPLOAD_TIMEOUT_SECONDS: ${SOH_EDGE_UPLOAD_TIMEOUT_SECONDS:-30}
+      SOH_MAX_CONCURRENT_POLLS: ${SOH_MAX_CONCURRENT_POLLS:-10}
+      SOH_DEVICE_CREDENTIAL_KEY_FILE: /run/secrets/device_credential_key
+    secrets: [device_credential_key]
+    volumes:
+      # ACK 받지 못한 데이터가 여기 남는다. 컨테이너를 갈아도 유실되지 않도록 볼륨으로 둔다.
+      - edge-spool:/var/lib/soh-edge
+      # 중앙이 발급한 Edge 전용 클라이언트 인증서.
+      - ${SOH_EDGE_CERT_DIR:-./certs}:/etc/soh-edge/certs:ro
+    # 지역 기록계 대역과 중앙으로만 나가면 된다. 들어오는 포트는 열지 않는다.
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+volumes:
+  edge-spool:
+
+secrets:
+  device_credential_key:
+    file: ${SOH_SECRET_DIR:-./secrets}/device_credential_key

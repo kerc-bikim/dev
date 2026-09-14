@@ -30,6 +30,7 @@ export type {
   BandPassPreset,
 } from "./realtime/bandPassPresets";
 import type { BandPassPreset } from "./realtime/bandPassPresets";
+import type { SpectrogramSettings } from "./render/spectrogramSettings";
 
 export type AppSettings = {
   ringserverUrl: string;
@@ -48,6 +49,7 @@ export type AppSettings = {
   bandPassEnabled: boolean;
   bandPassPresetId: string | null;
   bandPassPresets: BandPassPreset[];
+  spectrogram: SpectrogramSettings;
 };
 
 export type LayoutPayload = {
@@ -61,6 +63,7 @@ export type LayoutPayload = {
   bandPassEnabled?: boolean;
   bandPassPresetId?: string | null;
   bandPassPresets?: BandPassPreset[];
+  spectrogram?: SpectrogramSettings;
 };
 
 export type LayoutItem = {

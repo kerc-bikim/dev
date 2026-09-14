@@ -9,11 +9,13 @@ import { scnlKey } from "../types";
 import {
   mergeBandPassPresets,
   BUILTIN_BANDPASS_PRESETS,
+  remapBandPassPresetId,
 } from "../realtime/bandPassPresets";
 import { api } from "../api/client";
 import { bufferStore } from "../buffer/ringBuffer";
 import { ReconnectController } from "../realtime/reconnectController";
 import { DEFAULT_CANVAS_COLORS } from "../theme/theme";
+import { sanitizeSpectrogramSettings } from "../render/spectrogramSettings";
 
 export type PanelState = {
   scnl: SCNL;
@@ -92,6 +94,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (settings.bandPassPresetId === undefined) {
       settings.bandPassPresetId = null;
     }
+    settings.bandPassPresetId = remapBandPassPresetId(settings.bandPassPresetId);
     if (
       settings.bandPassEnabled &&
       settings.bandPassPresetId &&
@@ -100,6 +103,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       settings.bandPassEnabled = false;
       settings.bandPassPresetId = null;
     }
+    settings.spectrogram = sanitizeSpectrogramSettings(settings.spectrogram);
     const limits = await api.getLimits();
     const layouts = await api.listLayouts();
     const controller = new ReconnectController({
@@ -125,6 +129,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   saveSettings: async (partial, opts) => {
     const prev = get().settings;
     const settings = await api.saveSettings({ ...partial, protocol: "datalink" });
+    settings.spectrogram = sanitizeSpectrogramSettings(settings.spectrogram);
     const applyLive = opts?.applyLive !== false;
     const controller = get().controller;
     controller?.setDuration(settings.durationSec);
@@ -250,6 +255,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     if (layout.payload.bandPassPresetId !== undefined) {
       patch.bandPassPresetId = layout.payload.bandPassPresetId;
+    }
+    if (layout.payload.spectrogram) {
+      patch.spectrogram = sanitizeSpectrogramSettings(layout.payload.spectrogram);
     }
     patch.protocol = "datalink";
     if (Object.keys(patch).length) await get().saveSettings(patch, { applyLive: false });

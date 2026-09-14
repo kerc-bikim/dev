@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import { useAppStore } from "../../store/appStore";
 import { SharedWaveformRenderer, PANEL_ROW_MIN_PX } from "../../render/sharedWebglPlot";
 import { PanelFftCanvas } from "./PanelFftCanvas";
+import { PanelSpectrogramCanvas } from "./PanelSpectrogramCanvas";
 import type { SCNL, XAxisRightAnchor } from "../../types";
 import { scnlKey } from "../../types";
 import { bufferStore, resolveWindowEndMs } from "../../buffer/ringBuffer";
@@ -31,6 +32,9 @@ type ViewWindow = {
   startMs: number;
   endMs: number;
 };
+
+/** 우클릭 순환: 웨이브폼 → FFT → Spectrogram */
+type AnalysisMode = "fft" | "spec";
 
 const MIN_ZOOM_SEC = 0.5;
 const ZOOM_DRAG_THRESHOLD_PX = 6;
@@ -229,7 +233,9 @@ export function WaveformStack() {
     endLabel: "--:--:--",
     ticks: [],
   });
-  const [fftKeys, setFftKeys] = useState<Set<string>>(() => new Set());
+  const [analysisModes, setAnalysisModes] = useState<Map<string, AnalysisMode>>(
+    () => new Map(),
+  );
   /** 일시정지 중 줌/팬 뷰 스택 (마지막이 현재 뷰) */
   const [zoomStack, setZoomStack] = useState<ViewWindow[]>([]);
   const [displayView, setDisplayView] = useState<ViewWindow | null>(null);
@@ -239,7 +245,7 @@ export function WaveformStack() {
   const panelsRef = useRef(panels);
   const settingsRef = useRef(settings);
   const globalPausedRef = useRef(globalPaused);
-  const fftKeysRef = useRef(fftKeys);
+  const analysisModesRef = useRef(analysisModes);
   const zoomStackRef = useRef(zoomStack);
   /** 일시정지 진입 시점의 기본(줌 전) 창 */
   const frozenBaseRef = useRef<ViewWindow | null>(null);
@@ -251,7 +257,7 @@ export function WaveformStack() {
   panelsRef.current = panels;
   settingsRef.current = settings;
   globalPausedRef.current = globalPaused;
-  fftKeysRef.current = fftKeys;
+  analysisModesRef.current = analysisModes;
   zoomStackRef.current = zoomStack;
 
   const resolveView = (
@@ -288,7 +294,7 @@ export function WaveformStack() {
   const drawFrame = (
     p: typeof panels,
     s: NonNullable<typeof settings>,
-    fft: Set<string>,
+    modes: Map<string, AnalysisMode>,
     stack: ViewWindow[] = zoomStackRef.current,
   ) => {
     const paused = globalPausedRef.current;
@@ -296,7 +302,7 @@ export function WaveformStack() {
     const durationSec = viewDurationSec(view);
     const specs = p.map((x) => ({
       scnl: x.scnl,
-      hideWave: fft.has(scnlKey(x.scnl)),
+      hideWave: modes.has(scnlKey(x.scnl)),
     }));
     const bp = resolveBandPass(
       s.bandPassEnabled,
@@ -317,11 +323,13 @@ export function WaveformStack() {
     refreshOverlays(p, view, s.amplitudeMode, bp);
   };
 
-  const toggleFft = (key: string) => {
-    setFftKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+  const cycleAnalysis = (key: string) => {
+    setAnalysisModes((prev) => {
+      const next = new Map(prev);
+      const cur = next.get(key);
+      if (cur === "fft") next.set(key, "spec");
+      else if (cur === "spec") next.delete(key);
+      else next.set(key, "fft");
       return next;
     });
   };
@@ -338,7 +346,7 @@ export function WaveformStack() {
       frozenBaseRef.current = base;
       setZoomStack([]);
       zoomStackRef.current = [];
-      drawFrame(panelsRef.current, settings, fftKeysRef.current, []);
+      drawFrame(panelsRef.current, settings, analysisModesRef.current, []);
     } else {
       frozenBaseRef.current = null;
       setZoomStack([]);
@@ -347,18 +355,18 @@ export function WaveformStack() {
       gestureRef.current = null;
       pointersRef.current.clear();
       lastTapRef.current = null;
-      drawFrame(panelsRef.current, settings, fftKeysRef.current, []);
+      drawFrame(panelsRef.current, settings, analysisModesRef.current, []);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [globalPaused]);
 
   useEffect(() => {
     const keys = new Set(panels.map((p) => scnlKey(p.scnl)));
-    setFftKeys((prev) => {
+    setAnalysisModes((prev) => {
       let changed = false;
-      const next = new Set<string>();
-      for (const k of prev) {
-        if (keys.has(k)) next.add(k);
+      const next = new Map<string, AnalysisMode>();
+      for (const [k, v] of prev) {
+        if (keys.has(k)) next.set(k, v);
         else changed = true;
       }
       return changed ? next : prev;
@@ -377,7 +385,7 @@ export function WaveformStack() {
       const p = panelsRef.current;
       if (!s || !rendererRef.current) return;
       rendererRef.current.resize(true);
-      drawFrame(p, s, fftKeysRef.current);
+      drawFrame(p, s, analysisModesRef.current);
     };
 
     const onWinResize = () => redraw();
@@ -406,13 +414,13 @@ export function WaveformStack() {
     if (!settings || !rendererRef.current) return;
     const specs = panels.map((p) => ({
       scnl: p.scnl,
-      hideWave: fftKeys.has(scnlKey(p.scnl)),
+      hideWave: analysisModes.has(scnlKey(p.scnl)),
     }));
     rendererRef.current.setBackground(readPlotBackgroundHex(previewTheme, previewMode));
     rendererRef.current.setPanels(specs, waveformColors);
-    drawFrame(panels, settings, fftKeys);
+    drawFrame(panels, settings, analysisModes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panels, settings, fftKeys, previewTheme, previewMode, waveformColors, plotBg]);
+  }, [panels, settings, analysisModes, previewTheme, previewMode, waveformColors, plotBg]);
 
   useEffect(() => {
     if (!settings) return;
@@ -437,11 +445,11 @@ export function WaveformStack() {
         );
         return;
       }
-      drawFrame(panels, settings, fftKeys);
+      drawFrame(panels, settings, analysisModes);
     }, settings.refreshIntervalMs);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panels, settings, globalPaused, fftKeys, zoomStack]);
+  }, [panels, settings, globalPaused, analysisModes, zoomStack]);
 
   const clientXToRatio = (clientX: number) => {
     const el = wrapRef.current;
@@ -462,14 +470,14 @@ export function WaveformStack() {
     if (viewsNearlyEqual(clamped, base)) {
       zoomStackRef.current = [];
       setZoomStack([]);
-      drawFrame(p, s, fftKeysRef.current, []);
+      drawFrame(p, s, analysisModesRef.current, []);
       return;
     }
     // 연속 제스처(핀치/팬)는 스택 최상단을 갱신
     const stack = [clamped];
     zoomStackRef.current = stack;
     setZoomStack(stack);
-    drawFrame(p, s, fftKeysRef.current, stack);
+    drawFrame(p, s, analysisModesRef.current, stack);
   };
 
   const pushBoxZoom = (x0: number, x1: number) => {
@@ -494,7 +502,7 @@ export function WaveformStack() {
     const stack = [...zoomStackRef.current, next];
     zoomStackRef.current = stack;
     setZoomStack(stack);
-    drawFrame(p, s, fftKeysRef.current, stack);
+    drawFrame(p, s, analysisModesRef.current, stack);
   };
 
   const resetZoom = () => {
@@ -504,7 +512,7 @@ export function WaveformStack() {
     zoomStackRef.current = [];
     setZoomStack([]);
     setDragSel(null);
-    drawFrame(p, s, fftKeysRef.current, []);
+    drawFrame(p, s, analysisModesRef.current, []);
   };
 
   const pointerDist = (a: PointerSample, b: PointerSample) => {
@@ -778,12 +786,15 @@ export function WaveformStack() {
           {panels.length > 0 && (
             <div className="wave-overlays">
               {overlays.map((o, idx) => {
-                const isFft = fftKeys.has(o.key);
+                const mode = analysisModes.get(o.key);
+                const isFft = mode === "fft";
+                const isSpec = mode === "spec";
+                const isAnalysis = isFft || isSpec;
                 return (
                   <div
                     key={o.key}
                     className={`wave-panel-overlay ${selected === o.key ? "selected" : ""} ${
-                      isFft ? "fft-mode" : ""
+                      isAnalysis ? "fft-mode" : ""
                     } ${
                       globalPaused
                         ? zoomStack.length > 0
@@ -791,11 +802,11 @@ export function WaveformStack() {
                           : "paused-zoom"
                         : ""
                     }`}
-                    draggable={!isFft && !globalPaused}
+                    draggable={!isAnalysis && !globalPaused}
                     title={
                       globalPaused
                         ? "모바일: 핀치 아웃 줌인 · 핀치 인 줌아웃 · 더블탭 초기화 · 줌 후 드래그 이동 / 데스크톱: 드래그 줌인 · 더블클릭 초기화"
-                        : "우클릭: 웨이브폼 ↔ FFT 전환"
+                        : "우클릭: 웨이브폼 → FFT → Spectrogram"
                     }
                     onDragStart={() => {
                       dragIndex.current = idx;
@@ -816,7 +827,7 @@ export function WaveformStack() {
                     onContextMenu={(e) => {
                       e.preventDefault();
                       setSelected(o.key);
-                      toggleFft(o.key);
+                      cycleAnalysis(o.key);
                     }}
                   >
                     {isFft && displayView && (
@@ -826,12 +837,20 @@ export function WaveformStack() {
                         durationSec={viewDurationSec(displayView)}
                       />
                     )}
+                    {isSpec && displayView && (
+                      <PanelSpectrogramCanvas
+                        panelKey={o.key}
+                        windowEndMs={displayView.endMs}
+                        durationSec={viewDurationSec(displayView)}
+                      />
+                    )}
                     <div className="wave-scnl-badge" title={scnlKey(o.scnl)}>
                       <div className="wave-scnl-name">
                         {scnlBadge(o.scnl)}
                         {isFft && <span className="fft-badge"> FFT</span>}
+                        {isSpec && <span className="fft-badge"> SPEC</span>}
                       </div>
-                      {!isFft && (
+                      {!isAnalysis && (
                         <div
                           className={`wave-scnl-minmax ${o.hasData ? "" : "no-data"}`.trim()}
                         >

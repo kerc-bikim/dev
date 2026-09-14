@@ -1,0 +1,5 @@
+modName pick_ew
+modId   MOD_PICK_EW
+instId  INST_WILDCARD
+tsec    90
+restartMe

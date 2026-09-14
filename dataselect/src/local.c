@@ -1,10 +1,15 @@
 /***************************************************************************
  * local.c - Local -B (output record/block size) extension.
  *
- * Unpacks each contributing record and re-packs it to a caller-chosen
+ * Unpacks contributing records and re-packs them to a caller-chosen
  * miniSEED record length.  Sample times and values are unchanged.
  * miniSEED 2 records are padded to the exact length; miniSEED 3 uses
- * the value as a maximum.  Input records are never merged.
+ * the value as a maximum.
+ *
+ * Continuous samples of the same channel are buffered until a record
+ * fills, then written.  A short (padded) record is written only at a
+ * time gap, a stream change, or the end of output.  Overlapping
+ * records are not merged.
  *
  * Packing failures (unsupported encoding, header larger than the
  * requested length, partial pack) are fatal: the original record is
@@ -15,6 +20,7 @@
  ***************************************************************************/
 
 #include <inttypes.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -182,6 +188,14 @@ local_pack_fail_is_fatal (void)
   return outputreclen > 0;
 }
 
+static void
+local_pack_reset (void)
+{
+  if (packmsr)
+    msr3_free (&packmsr);
+  packcap = 0;
+}
+
 void
 local_set_counters (uint64_t *recs, uint64_t *bytes)
 {
@@ -198,11 +212,31 @@ local_pack_begin (const uint8_t *srcbuf, uint8_t formatversion)
   wrote_this_pack = 0;
 }
 
-void
-local_prepare_pack (MS3Record *msr)
+int
+local_pack_flush (void (*handler) (char *, int, void *), void *handlerdata,
+                  MS3Record **msrslot, int8_t verbose)
 {
-  if (outputreclen > 0 && msr)
-    msr->reclen = outputreclen;
+  int rv;
+
+  if (!packmsr)
+    return 0;
+
+  if (packmsr->numsamples > 0)
+  {
+    rv = local_pack_commit (handler, handlerdata, msrslot, MSF_FLUSHDATA, verbose);
+    if (rv)
+      return -1;
+
+    if (packmsr && packmsr->numsamples > 0)
+    {
+      ms_log (2, "Error packing remaining samples for %s\n", packmsr->sid);
+      local_pack_reset ();
+      return -1;
+    }
+  }
+
+  local_pack_reset ();
+  return 0;
 }
 
 int

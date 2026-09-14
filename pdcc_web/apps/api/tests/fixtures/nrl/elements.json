@@ -1,0 +1,18 @@
+{
+  "NRLCatalog": {
+    "element": [
+      {
+        "name": "datalogger"
+      },
+      {
+        "name": "integrated"
+      },
+      {
+        "name": "sensor"
+      },
+      {
+        "name": "soh"
+      }
+    ]
+  }
+}

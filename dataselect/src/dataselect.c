@@ -67,9 +67,10 @@
  * trimming is required the data record is written to the appropriate
  * output file. In this way only the minimal number of records needing
  * modification (trimming) are repacked.
- * >>> LOCAL: When -B specifies an output record/block size, every record
- * is unpacked and re-packed to that length (one input record may become
- * several smaller records).
+ * >>> LOCAL: When -B specifies an output record/block size, records
+ * are unpacked and re-packed to that length.  Continuous samples of
+ * the same channel are gathered until a record fills; a short record
+ * is written at a gap, stream change, or the end of output.
  * <<< LOCAL
  *
  ***************************************************************************/
@@ -855,6 +856,10 @@ writetraces (MS3TraceList *mstl)
   WriterData writerdata;
 
   writerdata.errflagp = &errflag;
+  writerdata.ofp = NULL;
+  writerdata.recptr = NULL;
+  writerdata.msr = NULL;
+  writerdata.flp = NULL;
   /* >>> LOCAL */
   local_set_counters (&totalrecsout, &totalbytesout);
   /* <<< LOCAL */
@@ -895,6 +900,8 @@ writetraces (MS3TraceList *mstl)
       setvbuf (ofp, NULL, _IOFBF, 1024 * 1024);
     }
   }
+
+  writerdata.ofp = ofp;
 
   /* Re-link records into write lists, from per-segment lists to per-ID lists.
    * This allows (later) sorting of data records as logical groups regardless
@@ -1122,6 +1129,14 @@ writetraces (MS3TraceList *mstl)
 
     id = id->next[0];
   } /* Done looping through MS3TraceIDs */
+
+  /* >>> LOCAL: write any samples still buffered by -B packing. */
+  if (local_outputreclen () > 0)
+  {
+    if (local_pack_flush (writerecord, &writerdata, &writerdata.msr, verbose - 1))
+      errflag = 1;
+  }
+  /* <<< LOCAL */
 
   /* Close all open input & output files and remove backups if requested */
   flp = filelist;
@@ -1414,6 +1429,28 @@ trimrecord (MS3RecordPtr *recptr, char *recordbuf, WriterData *writerdata)
 
   /* >>> LOCAL */
   local_prepare_pack (msr);
+
+  if (local_outputreclen () > 0)
+  {
+    nstime_t nstimetol = 0;
+    nstime_t nsperiod = 0;
+
+    segtolerance (msr->samprate, &nsperiod, &nstimetol);
+    if (nstimetol < 0)
+      nstimetol = 0;
+
+    if (local_pack_feed (msr, nstimetol, writerecord, writerdata,
+                         &writerdata->msr, verbose - 1))
+    {
+      writerdata->msr = recptr->msr;
+      msr3_free (&msr);
+      return -3;
+    }
+
+    writerdata->msr = recptr->msr;
+    msr3_free (&msr);
+    return 0;
+  }
   /* <<< LOCAL */
 
   /* Pack the data record into the global record buffer used by writetraces() */
@@ -1509,6 +1546,10 @@ writerecord (char *record, int reclen, void *handlerdata)
   /* Write to a single output file if specified */
   if (writerdata->ofp)
   {
+    /* >>> LOCAL: sequence is per output file; stamp before this fwrite. */
+    local_stamp_v2_sequence ((uint8_t *)record, reclen, writerdata->msr->formatversion,
+                             writerdata->msr->sid, outputfile ? outputfile : "-");
+    /* <<< LOCAL */
     if (fwrite (record, reclen, 1, writerdata->ofp) != 1)
     {
       ms_log (2, "Cannot write to '%s'\n", outputfile);

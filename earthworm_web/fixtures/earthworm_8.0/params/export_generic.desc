@@ -1,0 +1,5 @@
+modName export_generic
+modId   MOD_EXPORT_GENERIC
+instId  ${EW_INST_ID}
+tsec    90
+restartMe

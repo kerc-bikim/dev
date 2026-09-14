@@ -1,4 +1,4 @@
-export type BandPassGroup = "seismic" | "infrasound" | "custom";
+export type BandPassGroup = "builtin" | "custom";
 
 export type BandPassPreset = {
   id: string;
@@ -12,35 +12,19 @@ export type BandPassPreset = {
 
 export const BUILTIN_BANDPASS_PRESETS: BandPassPreset[] = [
   {
-    id: "seis-0.1-1",
-    name: "BP 0.1–1 Hz",
-    fminHz: 0.1,
-    fmaxHz: 1.0,
-    group: "seismic",
-    builtin: true,
-  },
-  {
-    id: "seis-1-5",
-    name: "BP 1–5 Hz",
-    fminHz: 1.0,
-    fmaxHz: 5.0,
-    group: "seismic",
-    builtin: true,
-  },
-  {
-    id: "seis-1-10",
-    name: "BP 1–10 Hz",
-    fminHz: 1.0,
-    fmaxHz: 10.0,
-    group: "seismic",
-    builtin: true,
-  },
-  {
     id: "infra-0.02-0.5",
     name: "BP 0.02–0.5 Hz",
     fminHz: 0.02,
     fmaxHz: 0.5,
-    group: "infrasound",
+    group: "builtin",
+    builtin: true,
+  },
+  {
+    id: "seis-0.1-1",
+    name: "BP 0.1–1 Hz",
+    fminHz: 0.1,
+    fmaxHz: 1.0,
+    group: "builtin",
     builtin: true,
   },
   {
@@ -48,18 +32,41 @@ export const BUILTIN_BANDPASS_PRESETS: BandPassPreset[] = [
     name: "BP 0.5–5 Hz",
     fminHz: 0.5,
     fmaxHz: 5.0,
-    group: "infrasound",
+    group: "builtin",
     builtin: true,
   },
   {
-    id: "infra-1-10",
+    id: "seis-1-5",
+    name: "BP 1–5 Hz",
+    fminHz: 1.0,
+    fmaxHz: 5.0,
+    group: "builtin",
+    builtin: true,
+  },
+  {
+    id: "seis-1-10",
     name: "BP 1–10 Hz",
     fminHz: 1.0,
     fmaxHz: 10.0,
-    group: "infrasound",
+    group: "builtin",
     builtin: true,
   },
 ];
+
+/** 그룹 통합 후 사라진 중복 프리셋 */
+const REMOVED_PRESET_ALIASES: Record<string, string> = {
+  "infra-1-10": "seis-1-10",
+};
+
+export function remapBandPassPresetId(id: string | null | undefined): string | null {
+  if (!id) return null;
+  return REMOVED_PRESET_ALIASES[id] || id;
+}
+
+function compareByBand(a: BandPassPreset, b: BandPassPreset): number {
+  if (a.fminHz !== b.fminHz) return a.fminHz - b.fminHz;
+  return a.fmaxHz - b.fmaxHz;
+}
 
 /** builtin 유지 + 커스텀 병합 (builtin id는 코드 정의가 우선) */
 export function mergeBandPassPresets(
@@ -84,7 +91,9 @@ export function mergeBandPassPresets(
       builtin: false,
     });
   }
-  return [...byId.values()];
+  const builtin = [...byId.values()].filter((p) => p.builtin).sort(compareByBand);
+  const extras = [...byId.values()].filter((p) => !p.builtin).sort(compareByBand);
+  return [...builtin, ...extras];
 }
 
 export function sanitizeBandPassPresets(list: unknown): BandPassPreset[] | undefined {
@@ -95,10 +104,7 @@ export function sanitizeBandPassPresets(list: unknown): BandPassPreset[] | undef
     const p = raw as Record<string, unknown>;
     const id = typeof p.id === "string" ? p.id.trim() : "";
     if (!id) continue;
-    const group =
-      p.group === "seismic" || p.group === "infrasound" || p.group === "custom"
-        ? p.group
-        : "custom";
+    const group = p.group === "custom" ? "custom" : "builtin";
     const fmin = Number(p.fminHz);
     const fmax = Number(p.fmaxHz);
     if (!(fmin > 0) || !(fmax > fmin) || fmax > 1e6) continue;
@@ -128,7 +134,7 @@ export function resolveBandPass(
 ): { fminHz: number; fmaxHz: number } | null {
   if (!enabled || !presetId) return null;
   const list = presets?.length ? presets : BUILTIN_BANDPASS_PRESETS;
-  const p = list.find((x) => x.id === presetId);
+  const p = list.find((x) => x.id === remapBandPassPresetId(presetId));
   if (!p || !(p.fminHz > 0) || !(p.fmaxHz > p.fminHz)) return null;
   return { fminHz: p.fminHz, fmaxHz: p.fmaxHz };
 }

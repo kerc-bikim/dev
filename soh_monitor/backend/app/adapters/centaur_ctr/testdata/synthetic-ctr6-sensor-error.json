@@ -1,0 +1,214 @@
+{
+  "instrumentId": "centaur-6__0613",
+  "timestamp": "2026-08-27T03:00:00.000Z",
+  "channels": [
+    {
+      "name": "instrumentStatus",
+      "value": "error",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "config/commitState",
+      "value": "committed",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "instrument/systemInfo/firmwareStatus",
+      "value": "ok",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "systemSoftwareVersion",
+      "value": "3.2.8",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "temperature",
+      "value": 31.89,
+      "units": "degreesCelsius",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "powerSupply/voltage",
+      "value": 12.845,
+      "units": "V",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "system/current",
+      "value": 0.3621,
+      "units": "A",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "timeStatus",
+      "value": "time ok",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "timing/phaseLock",
+      "value": "fine lock",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "timing/timeQuality",
+      "value": 100,
+      "units": "percentage",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "timing/timeError",
+      "value": 426,
+      "units": "nanoseconds",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "timing/timeUncertainty",
+      "value": 1242,
+      "units": "nanoseconds",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "timing/lastLockTime",
+      "value": "2026-08-27T02:59:30.000Z",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "gps/numberOfSatellites",
+      "value": 9,
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "instrument/earthLocation",
+      "value": {
+        "latitude": 37.577,
+        "longitude": 126.995,
+        "elevation": 62.0
+      },
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "controller/store/storePercentageUsed",
+      "value": 43.8,
+      "units": "percentage",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "controller/store/storeRecordingStatus",
+      "value": "recording",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "dataArchive/status",
+      "value": "ok",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "dataArchive/status/events",
+      "value": "ok",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "media/status/removableSD",
+      "value": "ok",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "media/freeSpace/removableSD",
+      "value": 25769786368,
+      "units": "bytes",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "digitizer/sensor/status#_0",
+      "value": "error",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "sensor/controlLines/state#_0",
+      "value": "expected",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "digitizer/sensor/massPosition#_0_1",
+      "value": 3800000,
+      "units": "microVolts",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "digitizer/sensor/massPosition#_0_2",
+      "value": -4100000,
+      "units": "microVolts",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "digitizer/sensor/massPosition#_0_3",
+      "value": -43866,
+      "units": "microVolts",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "digitizer/sensor/status#_1",
+      "value": "ok",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "sensor/controlLines/state#_1",
+      "value": "expected",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "digitizer/sensor/massPosition#_1_1",
+      "value": -54752,
+      "units": "microVolts",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "digitizer/sensor/massPosition#_1_2",
+      "value": -56923,
+      "units": "microVolts",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "digitizer/sensor/massPosition#_1_3",
+      "value": -59091,
+      "units": "microVolts",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "externalSoh/voltage#_1",
+      "value": 1609028,
+      "units": "microVolts",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "externalSoh/voltage#_2",
+      "value": 2009527,
+      "units": "microVolts",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
+      "name": "externalSoh/voltage#_3",
+      "value": 2410026,
+      "units": "microVolts",
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    }
+  ]
+}

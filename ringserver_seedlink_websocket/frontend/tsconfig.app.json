@@ -27,5 +27,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "../shared/bandPassPresets.ts"]
+  "include": ["src", "../shared/bandPassPresets.ts", "../shared/spectrogramSettings.ts"]
 }

@@ -1,0 +1,31 @@
+<Response xmlns="http://www.fdsn.org/xml/station/1">
+  <InstrumentSensitivity>
+    <Value>9.9e8</Value>
+    <Frequency>1</Frequency>
+    <InputUnits>
+      <Name>m/s</Name>
+    </InputUnits>
+    <OutputUnits>
+      <Name>count</Name>
+    </OutputUnits>
+  </InstrumentSensitivity>
+  <Stage number="1">
+    <PolesZeros>
+      <PzTransferFunctionType>LAPLACE (RADIANS/SECOND)</PzTransferFunctionType>
+      <NormalizationFactor>1</NormalizationFactor>
+      <NormalizationFrequency>1</NormalizationFrequency>
+      <Zero>
+        <Real>0</Real>
+        <Imaginary>0</Imaginary>
+      </Zero>
+      <Pole>
+        <Real>-0.05</Real>
+        <Imaginary>0.05</Imaginary>
+      </Pole>
+    </PolesZeros>
+    <StageGain>
+      <Value>2000</Value>
+      <Frequency>1</Frequency>
+    </StageGain>
+  </Stage>
+</Response>

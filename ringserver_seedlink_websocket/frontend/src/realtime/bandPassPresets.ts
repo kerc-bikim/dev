@@ -4,6 +4,7 @@ export {
   sanitizeBandPassPresets,
   resolveBandPass,
   clampBandPassToNyquist,
+  remapBandPassPresetId,
   type BandPassGroup,
   type BandPassPreset,
 } from "../../../shared/bandPassPresets";

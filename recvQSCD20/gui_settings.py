@@ -35,7 +35,7 @@ SETTING_UI_SPECS: Dict[str, Tuple[str, str, str, Optional[float], Optional[float
     ),
     "bin_save_dir": (
         "바이너리 저장 디렉터리",
-        "QCDX 바이너리(.QSCD20.bin)가 저장되는 폴더입니다. "
+        "QSCD20.replay 재생 파일이 저장되는 폴더입니다. "
         "상대 경로이면 프로그램(작업) 디렉터리 기준입니다. 기본: bin",
         "path",
         None,
@@ -50,7 +50,7 @@ SETTING_UI_SPECS: Dict[str, Tuple[str, str, str, Optional[float], Optional[float
     ),
     "default_time_window_sec": (
         "기본 표시 구간(초)",
-        "Live·File Viewer 시간 콤보의 기본 선택값(초)입니다.",
+        "Live·File View 시간 콤보의 기본 선택값(초)입니다.",
         "int",
         30,
         7200,
@@ -64,10 +64,9 @@ SETTING_UI_SPECS: Dict[str, Tuple[str, str, str, Optional[float], Optional[float
     ),
     "default_panels": (
         "기본 ON 차트 패널",
-        "프로그램 시작 시 체크될 차트 ID를 쉼표로 구분합니다. "
-        "예: diff, max, pga (가능: wmma_ud, wmma_ns, wmma_ew, tmm_ud, tmm_ns, tmm_ew) "
+        "프로그램 시작 시 켜둘 차트입니다. Detail View·File View의 표시 차트 선택과 같은 항목입니다. "
         "— 프로그램을 다시 시작해야 반영됩니다.",
-        "str_list",
+        "panel_ids",
         None,
         None,
     ),
@@ -117,16 +116,10 @@ SETTING_UI_SPECS: Dict[str, Tuple[str, str, str, Optional[float], Optional[float
         1,
         500,
     ),
-    "live_log_verbose": (
-        "Live 상세 로그",
-        "켜면 패킷마다 여러 줄 상세 로그, 끄면 한 줄 요약 로그를 기록합니다.",
-        "bool",
-        None,
-        None,
-    ),
     "recv_delay_alert_sec": (
         "수신 지연 경고(초)",
-        "선택 관측소 기준 이 시간(초) 이상 패킷이 없으면 최종 수신 라벨이 빨갛게 깜빡입니다.",
+        "이 시간(초) 이상 패킷이 없으면 Detail View 최종 수신 라벨이 빨갛게 깜빡이고, "
+        "Live 카드 LATENCY가 빨간색으로 지연 초를 표시합니다.",
         "int",
         1,
         3600,
@@ -153,6 +146,13 @@ SETTING_UI_SPECS: Dict[str, Tuple[str, str, str, Optional[float], Optional[float
         "int",
         1,
         1000,
+    ),
+    "display_tz": (
+        "시간 표시",
+        "차트·로그 뷰어에 표시할 시각입니다. 로그 파일과 QSCD 데이터 값은 항상 UTC로 저장됩니다. 기본: KST",
+        "choice",
+        None,
+        None,
     ),
 }
 
@@ -255,6 +255,7 @@ class GuiSettings:
     recv_alert_blink_ms: int = 500
     sock_timeout_sec: float = 0.5
     sock_timeout_count: int = 120
+    display_tz: str = "KST"
 
     def resolved_log_dir(self) -> str:
         return resolve_data_dir(self.log_save_dir)
@@ -315,6 +316,8 @@ def validate_settings(s: GuiSettings, valid_panel_ids: Optional[List[str]] = Non
         raise ValueError("패킷 배치 처리 상한은 1 이상이어야 합니다.")
     if s.bin_flush_every < 1:
         raise ValueError("바이너리 flush 주기는 1 이상이어야 합니다.")
+    if str(s.display_tz).strip().upper() not in ("KST", "UTC"):
+        raise ValueError("시간 표시는 KST 또는 UTC 여야 합니다.")
 
 
 def settings_to_dict(s: GuiSettings) -> Dict[str, Any]:
@@ -335,6 +338,8 @@ def settings_from_dict(data: Dict[str, Any]) -> GuiSettings:
     if s.time_window_choices and s.default_time_window_sec not in s.time_window_choices:
         s.default_time_window_sec = s.time_window_choices[0]
     s.sock_timeout_sec = max(MIN_SOCK_TIMEOUT_SEC, float(s.sock_timeout_sec))
+    tz = str(s.display_tz or "KST").strip().upper()
+    s.display_tz = "UTC" if tz == "UTC" else "KST"
     return s
 
 

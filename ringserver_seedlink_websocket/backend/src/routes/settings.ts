@@ -6,6 +6,7 @@ import {
   type AppSettings,
 } from "../defaults.js";
 import { sanitizeBandPassPresets } from "../bandPassPresets.js";
+import { sanitizeSpectrogramSettings } from "../spectrogramSettings.js";
 
 function clampSettings(partial: Partial<AppSettings>): Partial<AppSettings> {
   const next = { ...partial };
@@ -43,6 +44,9 @@ function clampSettings(partial: Partial<AppSettings>): Partial<AppSettings> {
     const sanitized = sanitizeBandPassPresets(next.bandPassPresets);
     if (sanitized) next.bandPassPresets = sanitized;
     else delete next.bandPassPresets;
+  }
+  if (next.spectrogram !== undefined) {
+    next.spectrogram = sanitizeSpectrogramSettings(next.spectrogram);
   }
   return next;
 }

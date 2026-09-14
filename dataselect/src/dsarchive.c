@@ -31,6 +31,10 @@
 
 #include "dsarchive.h"
 
+/* >>> LOCAL */
+#include "local.h"
+/* <<< LOCAL */
+
 /* Maximum number of open files */
 int ds_maxopenfiles = 0;
 int ds_openfilecount = 0;
@@ -368,6 +372,10 @@ ds_streamproc (DataStream *datastream, MS3Record *msr, int reclen, int verbose,
   {
     if (dsverbose >= 3)
       fprintf (stderr, "Writing data record to data stream file %s\n", filename);
+
+    /* >>> LOCAL: restart miniSEED 2 sequences for each archive file. */
+    local_stamp_v2_sequence ((uint8_t *)msr->record, reclen, msr->formatversion, msr->sid, filename);
+    /* <<< LOCAL */
 
     /* Write the record, looping to handle partial writes */
     written = 0;

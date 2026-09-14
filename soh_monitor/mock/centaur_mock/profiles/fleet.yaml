@@ -1,0 +1,64 @@
+# 개발용 가상 관측소 묶음.
+#
+# 실제 배치에서는 기록계마다 IP 가 다르다. 개발 Compose 에서는 장비마다 네트워크 별칭을
+# 주어 서로 다른 주소로 접근하게 하고, 이 파일은 "어떤 장비인가" 만 정의한다.
+
+devices:
+  - instrumentId: centaur-6__0242
+    stationCode: A01
+    model: CTR4-6S
+    firmware: "3.2.8"
+    serial: "0242"
+    channelCount: 6
+    payloadScenario: NORMAL
+    transportScenario: OK
+
+  - instrumentId: centaur-3__0117
+    stationCode: A02
+    model: CTR4-3S
+    firmware: "3.2.8"
+    serial: "0117"
+    channelCount: 3
+    externalSohChannels: 3
+    payloadScenario: THREE_CHANNEL
+    transportScenario: OK
+
+  - instrumentId: centaur-6__0311
+    stationCode: B01
+    model: CTR4-6S
+    firmware: "3.2.8"
+    serial: "0311"
+    channelCount: 6
+    payloadScenario: GPS_UNLOCKED
+    transportScenario: OK
+
+  - instrumentId: centaur-6__0455
+    stationCode: B02
+    model: CTR4-6H
+    firmware: "3.2.8"
+    serial: "0455"
+    channelCount: 6
+    payloadScenario: NO_SD_CARD
+    transportScenario: OK
+
+  - instrumentId: centaur-3__0088
+    stationCode: C01
+    model: CTR2-3
+    firmware: "2.9.4"
+    serial: "0088"
+    channelCount: 3
+    removableSlot: false
+    externalSohChannels: 0
+    payloadScenario: OLD_FIRMWARE
+    envelopeShape: flat_map
+    transportScenario: OK
+
+  - instrumentId: centaur-6__0501
+    stationCode: C02
+    model: CTR4-6S
+    firmware: "3.3.0"
+    serial: "0501"
+    channelCount: 6
+    payloadScenario: NORMAL
+    transportScenario: SLOW_RESPONSE
+    latencyMs: 3000

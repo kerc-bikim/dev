@@ -1,0 +1,19 @@
+# Datasource 를 손으로 만들지 않는다. 컨테이너를 재생성해도 같은 구성이 복원되어야 한다.
+apiVersion: 1
+
+datasources:
+  - name: SOH InfluxDB
+    uid: soh-influx
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    isDefault: true
+    jsonData:
+      version: Flux
+      organization: ${SOH_INFLUX_ORG}
+      defaultBucket: ${SOH_INFLUX_BUCKET}
+      httpMode: POST
+      timeout: 30
+    secureJsonData:
+      token: ${SOH_INFLUX_TOKEN}
+    editable: false

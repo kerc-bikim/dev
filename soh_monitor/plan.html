@@ -1,0 +1,2119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>관측소 SOH 통합 모니터링 — 계획서</title>
+  <style>
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --ink: #17212b;
+  --muted: #566270;
+  --line: #d3dae1;
+  --accent: #0d5c63;
+  --accent-soft: #dceceb;
+  --code-bg: #eef2f4;
+  --table-head: #e6eef0;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #e2eeef 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #e8eef4 0%, transparent 50%),
+    var(--bg);
+  line-height: 1.65;
+}
+.wrap {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+header.doc-header {
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 1.25rem;
+  margin-bottom: 2rem;
+}
+header.doc-header .eyebrow {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 0.4rem;
+}
+h1 {
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  line-height: 1.25;
+  margin: 0 0 0.75rem;
+}
+.meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+article h1 { display: none; }
+article h2 {
+  margin-top: 2.4rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--line);
+  font-size: 1.35rem;
+  color: var(--accent);
+}
+article h3 {
+  margin-top: 1.6rem;
+  font-size: 1.1rem;
+}
+article h4 { margin-top: 1.2rem; }
+p, li { font-size: 0.98rem; }
+a { color: var(--accent); }
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 2rem 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+  margin: 1rem 0 1.4rem;
+  font-size: 0.9rem;
+}
+th, td {
+  border: 1px solid var(--line);
+  padding: 0.55rem 0.7rem;
+  vertical-align: top;
+  text-align: left;
+}
+th { background: var(--table-head); }
+code, pre {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 0.86rem;
+}
+code {
+  background: var(--code-bg);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  background: #17212b;
+  color: #e6eef2;
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+blockquote {
+  margin: 1rem 0;
+  padding: 0.6rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+}
+footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+@media (max-width: 640px) {
+  .wrap { padding: 1.5rem 0.9rem 3rem; }
+  table { display: block; overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="doc-header">
+      <p class="eyebrow">Recorder SOH · Monitoring Plan</p>
+      <h1>관측소 SOH 통합 모니터링 — 계획서</h1>
+      <p class="meta">Nanometrics Centaur CTR 1차 · FastAPI + React · InfluxDB + Grafana · 구현 전 확정 계획</p>
+    </header>
+    <article>
+<h1 id="관측소-soh-통합-모니터링-계획서">관측소 SOH 통합 모니터링 — 계획서</h1>
+<p>Nanometrics <strong>Centaur CTR</strong> 계열 기록계의 SOH(State of Health)를 설정한 분 주기로 수집해 InfluxDB에 적재하고, Grafana로 관측소를 통합 감시하는 시스템의 <strong>구현 전 확정 계획</strong>이다.</p>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1차 대상 장비</td>
+<td>Nanometrics Centaur CTR2 / CTR3 / CTR4 (3채널 · 6채널)</td>
+</tr>
+<tr>
+<td>수집 인터페이스</td>
+<td>Centaur HTTP SOH API <code>GET /api/v1/instruments/soh</code></td>
+</tr>
+<tr>
+<td>확장 대상</td>
+<td>Centaur Gen5(StrataOS), 타 제조사 기록계</td>
+</tr>
+<tr>
+<td>수집 경로</td>
+<td>중앙 직접 수집(DIRECT) + 지역 Edge Collector(EDGE)</td>
+</tr>
+<tr>
+<td>저장</td>
+<td>설정·이력 PostgreSQL · 시계열 InfluxDB</td>
+</tr>
+<tr>
+<td>표출</td>
+<td>관리 Web(React) + Grafana</td>
+</tr>
+<tr>
+<td>스택</td>
+<td>백엔드 FastAPI · 프론트엔드 React + Vite + TypeScript (이 저장소 <code>earthworm_web</code> / <code>stationxml_manager</code> 와 동일)</td>
+</tr>
+<tr>
+<td>배포</td>
+<td>Docker Compose 기반 모노레포 (중앙 / Edge 분리)</td>
+</tr>
+<tr>
+<td>UI 언어</td>
+<td>한국어</td>
+</tr>
+</tbody>
+</table>
+<p>구현 착수 순서와 완료 판정은 <a href="#15-세부-작업-마일스톤">15절 세부 작업 마일스톤</a>을 따른다. 근거는 <a href="#19-근거-centaur-사용자-가이드">19절</a>.</p>
+<p>현재 상태: <strong>M0(저장소 골격)·M1(계약 확정)·M2(Centaur CTR Adapter)·M3(중앙 직접 수집)·M4(상태 판정) 완료.</strong> 작업별 실제 진행 상태는 <a href="docs/progress.md"><code>docs/progress.md</code></a> 에 있다. 이 문서는 계획 원본이며, 구현이 계획과 달라진 부분은 <code>progress.md</code> 에 기록한다.</p>
+<hr />
+<h2 id="1-목표">1. 목표</h2>
+<ol>
+<li>수십 대의 Centaur CTR에서 설정한 분 주기로 SOH를 수집한다.</li>
+<li>운영 판단에 필요한 항목만 표준화해 InfluxDB에 적재한다.</li>
+<li>관측소 등록·수집 항목 설정·임계값 설정을 화면에서 처리한다. 장비 추가 시 코드를 고치지 않는다.</li>
+<li>Grafana에서 전체 관측소 상태를 한 화면에서 파악한다.</li>
+<li>관측소망이 중앙에서 직접 닿지 않는 지역은 Edge Collector로 수집한다.</li>
+<li>중앙이 끊겨도 지역 수집이 멈추지 않고, 복구 후 누락분이 자동 채워진다.</li>
+<li>Gen5와 타 제조사 기록계를 <strong>Adapter 추가만으로</strong> 같은 화면·같은 대시보드에 편입한다.</li>
+</ol>
+<h3 id="비목표-mvp-제외">비목표 (MVP 제외)</h3>
+<ul>
+<li>Gen5 실제 Adapter, 타 제조사 실제 Adapter (계약과 확장 지점만 준비)</li>
+<li>Adapter 런타임 Hot Reload / 동적 플러그인 로딩</li>
+<li>Edge 자동 HA Failover (수동 절체까지만)</li>
+<li>Kubernetes, 다중 조직 Tenant</li>
+<li>기록계 원격 설정 변경·펌웨어 업그레이드</li>
+<li>장애 예측·이상탐지 분석</li>
+</ul>
+<hr />
+<h2 id="2-아키텍처">2. 아키텍처</h2>
+<pre><code>지역 A 내부망                              중앙
+┌───────────────────────────┐        ┌──────────────────────────────┐
+│ Centaur CTR × N           │        │ nginx (443)                  │
+│        ▲ HTTP SOH         │        │  ├─ web (React 정적)         │
+│        │                  │        │  ├─ api (FastAPI)            │
+│ edge-agent                │        │  └─ grafana                  │
+│  ├─ CTR Adapter           │        │                              │
+│  ├─ scheduler             │  HTTPS │ collector (DIRECT 수집)      │
+│  ├─ local spool (SQLite)  │ ─────► │ postgres · influxdb          │
+│  └─ uploader / heartbeat  │Outbound└──────────────────────────────┘
+└───────────────────────────┘         Inbound 연결 없음
+</code></pre>
+<p>수집 경로는 두 가지이며 <strong>같은 Adapter와 같은 표준 Metric</strong>을 쓴다.</p>
+<pre><code>DIRECT : collector ──────────────► Centaur CTR ──► 표준 Metric ──► InfluxDB
+EDGE   : edge-agent ─► Centaur CTR ──► 표준 Metric ──► spool ──► 중앙 Ingest ──► InfluxDB
+</code></pre>
+<p>핵심 경계는 하나다.</p>
+<pre><code>제조사 원본 SOH → Recorder Adapter → 표준 Metric → 상태 판정 → InfluxDB / Grafana
+</code></pre>
+<p><code>collector</code>, <code>edge-agent</code>, 상태 판정 엔진, DB 스키마, Grafana 대시보드는 제조사 원본 필드명을 <strong>알지 못한다.</strong> 그래서 Gen5·타 제조사 추가 범위가 Adapter와 일부 상세 패널로 한정된다.</p>
+<hr />
+<h2 id="3-기술-스택-결정">3. 기술 스택 결정</h2>
+<table>
+<thead>
+<tr>
+<th>영역</th>
+<th>선택</th>
+<th>근거</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>백엔드</td>
+<td>Python 3.11 + FastAPI + Pydantic v2</td>
+<td>이 저장소 <code>earthworm_web</code> · <code>stationxml_manager</code> · PPSD 와 동일. 운영 인력이 같은 스택을 유지</td>
+</tr>
+<tr>
+<td>동시 수집</td>
+<td><code>asyncio</code> + <code>httpx.AsyncClient</code> + Semaphore</td>
+<td>100대 × 1분 주기여도 평균 초당 2건 미만. 비동기 I/O로 충분</td>
+</tr>
+<tr>
+<td>Edge Agent</td>
+<td>동일 Python 코드베이스, 별도 이미지</td>
+<td>Adapter 코드를 중앙과 100% 공유</td>
+</tr>
+<tr>
+<td>설정 DB</td>
+<td>PostgreSQL 16</td>
+<td>관계 무결성, Advisory Lock으로 중복 Poll 방지</td>
+</tr>
+<tr>
+<td>시계열 DB</td>
+<td>InfluxDB 2.x</td>
+<td>Grafana 연동, 보존정책·다운샘플링</td>
+</tr>
+<tr>
+<td>Edge Spool</td>
+<td>SQLite(WAL) + gzip Segment</td>
+<td>별도 DB 서버 없이 전원 차단 복구 보장</td>
+</tr>
+<tr>
+<td>프론트엔드</td>
+<td>React 18 + Vite + TypeScript + TanStack Query</td>
+<td>저장소 관례</td>
+</tr>
+<tr>
+<td>시각화</td>
+<td>Grafana 11 (코드 Provisioning)</td>
+<td>대시보드를 Git으로 관리</td>
+</tr>
+<tr>
+<td>배포</td>
+<td>Docker Compose</td>
+<td>중앙/Edge 각각 단일 명령 실행</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Go가 아니라 FastAPI를 택한 이유는 성능이 아니라 <strong>저장소 일관성과 유지보수 인력</strong>이다. 이 규모에서 병목은 언어가 아니라 기록계 응답 지연이며, 그것은 비동기 처리와 Timeout으로 해결한다.</p>
+</blockquote>
+<hr />
+<h2 id="4-모노레포-구조">4. 모노레포 구조</h2>
+<p>이 저장소의 최상위 프로젝트 관례(<code>earthworm_web/</code>, <code>stationxml_manager/</code>)에 맞춰 <code>soh_monitor/</code> 하위에 둔다.</p>
+<pre><code>soh_monitor/
+├─ plan.md / plan.html / README.md
+├─ contracts/                       # 모든 계약의 단일 원본
+│  ├─ metrics/catalog.yaml          # 표준 Metric 카탈로그
+│  ├─ metrics/status-mappings.yaml  # 제조사 상태문자열 → 표준 상태
+│  ├─ openapi/openapi.yaml          # FastAPI에서 생성 후 커밋
+│  ├─ adapter/manifest.schema.json
+│  └─ edge/{config,ingest}.schema.json
+│
+├─ backend/
+│  ├─ app/
+│  │  ├─ main_api.py                # api 프로세스
+│  │  ├─ main_collector.py          # collector 프로세스 (DIRECT)
+│  │  ├─ main_edge.py               # edge-agent 프로세스
+│  │  ├─ domain/                    # station device edge metric profile health incident
+│  │  ├─ adapters/
+│  │  │  ├─ contract.py             # RecorderAdapter 추상 계약
+│  │  │  ├─ registry.py
+│  │  │  ├─ centaur_ctr/            # 1차 구현
+│  │  │  │  ├─ adapter.py client.py parser.py mapper.py capabilities.py
+│  │  │  │  ├─ manifest.json
+│  │  │  │  └─ testdata/*.json      # 익명화 실장비 응답
+│  │  │  └─ mock_recorder/          # 확장성 검증용 가상 제조사
+│  │  ├─ collector/                 # scheduler poller retry lease
+│  │  ├─ edgeagent/                 # configsync spool uploader heartbeat
+│  │  ├─ health/                    # evaluator state_machine rules
+│  │  ├─ repository/                # postgres influx spool
+│  │  ├─ api/                       # routers deps schemas
+│  │  ├─ auth/ audit/ config/ observability/
+│  │  └─ migrations/                # Alembic
+│  ├─ tests/{unit,integration,fixtures}
+│  ├─ requirements.txt
+│  └─ pytest.ini
+│
+├─ frontend/
+│  ├─ src/{app,api,components,features,pages,routes,schemas,generated}
+│  └─ package.json vite.config.ts tsconfig.json
+│
+├─ mock/centaur_mock/               # 가상 Centaur CTR 서버
+├─ deploy/
+│  ├─ docker/Dockerfile.{backend,web,edge}
+│  ├─ compose/compose.{central,edge,dev,test}.yml
+│  ├─ grafana/{provisioning,dashboards}
+│  ├─ influxdb/init/
+│  ├─ nginx/nginx.conf
+│  └─ examples/{central,edge}.env.example
+├─ scripts/                         # build_plan_html.py, gen_api_client.sh, seed_demo.py
+├─ tests/{e2e,load}
+├─ docs/{architecture,adapter-development,edge-deployment,operations}
+└─ Makefile
+</code></pre>
+<p>모듈 의존 방향은 한 방향으로 고정한다.</p>
+<pre><code>domain ◄── adapters
+       ◄── collector / edgeagent
+       ◄── health
+       ◄── api
+       ◄── repository
+</code></pre>
+<ul>
+<li>Adapter는 DB를 모른다. 원본 → 표준 Metric 변환만 한다.</li>
+<li>Collector는 제조사 JSON 구조를 모른다.</li>
+<li>Health Engine은 CTR 원본 경로를 모른다.</li>
+<li>Frontend는 기록계·InfluxDB에 직접 접속하지 않는다.</li>
+</ul>
+<hr />
+<h2 id="5-표준-soh-metric-카탈로그">5. 표준 SOH Metric 카탈로그</h2>
+<p><code>contracts/metrics/catalog.yaml</code>이 단일 원본이며, 여기서 백엔드 상수·프론트 타입·DB Seed를 생성한다.</p>
+<h3 id="공통-metric-mvp-적재-대상">공통 Metric (MVP 적재 대상)</h3>
+<table>
+<thead>
+<tr>
+<th>분류</th>
+<th>Metric</th>
+<th>단위</th>
+<th>Centaur CTR 원본</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>연결</td>
+<td><code>connectivity.reachable</code></td>
+<td>bool</td>
+<td>수집기 생성</td>
+</tr>
+<tr>
+<td>연결</td>
+<td><code>connectivity.latency_ms</code></td>
+<td>ms</td>
+<td>수집기 생성</td>
+</tr>
+<tr>
+<td>연결</td>
+<td><code>connectivity.consecutive_failures</code></td>
+<td>count</td>
+<td>수집기 생성</td>
+</tr>
+<tr>
+<td>장비</td>
+<td><code>device.overall_status</code></td>
+<td>status</td>
+<td><code>instrumentStatus</code></td>
+</tr>
+<tr>
+<td>장비</td>
+<td><code>device.configuration_status</code></td>
+<td>status</td>
+<td><code>config/commitState</code></td>
+</tr>
+<tr>
+<td>장비</td>
+<td><code>device.firmware_status</code></td>
+<td>status</td>
+<td><code>instrument/systemInfo/firmwareStatus</code></td>
+</tr>
+<tr>
+<td>장비</td>
+<td><code>device.firmware_version</code></td>
+<td>text</td>
+<td><code>systemSoftwareVersion</code></td>
+</tr>
+<tr>
+<td>장비</td>
+<td><code>device.temperature_c</code></td>
+<td>°C</td>
+<td><code>temperature</code></td>
+</tr>
+<tr>
+<td>전원</td>
+<td><code>power.input_voltage_v</code></td>
+<td>V</td>
+<td><code>powerSupply/voltage</code></td>
+</tr>
+<tr>
+<td>전원</td>
+<td><code>power.current_a</code></td>
+<td>A</td>
+<td><code>system/current</code></td>
+</tr>
+<tr>
+<td>전원</td>
+<td><code>power.consumption_w</code></td>
+<td>W</td>
+<td>전압 × 전류</td>
+</tr>
+<tr>
+<td>시각</td>
+<td><code>timing.status</code></td>
+<td>status</td>
+<td><code>timeStatus</code></td>
+</tr>
+<tr>
+<td>시각</td>
+<td><code>timing.phase_lock</code></td>
+<td>status</td>
+<td><code>timing/phaseLock</code></td>
+</tr>
+<tr>
+<td>시각</td>
+<td><code>timing.quality_percent</code></td>
+<td>%</td>
+<td><code>timing/timeQuality</code></td>
+</tr>
+<tr>
+<td>시각</td>
+<td><code>timing.error_ns</code></td>
+<td>ns</td>
+<td><code>timing/timeError</code></td>
+</tr>
+<tr>
+<td>시각</td>
+<td><code>timing.uncertainty_ns</code></td>
+<td>ns</td>
+<td><code>timing/timeUncertainty</code></td>
+</tr>
+<tr>
+<td>시각</td>
+<td><code>timing.last_lock_at</code></td>
+<td>UTC</td>
+<td><code>timing/lastLockTime</code></td>
+</tr>
+<tr>
+<td>GNSS</td>
+<td><code>gnss.satellite_count</code></td>
+<td>count</td>
+<td><code>gps/numberOfSatellites</code></td>
+</tr>
+<tr>
+<td>GNSS</td>
+<td><code>gnss.latitude</code> / <code>gnss.longitude</code> / <code>gnss.elevation_m</code></td>
+<td>deg / m</td>
+<td><code>instrument/earthLocation</code></td>
+</tr>
+<tr>
+<td>센서</td>
+<td><code>sensor.status</code></td>
+<td>status</td>
+<td><code>digitizer/sensor/status#_0</code>, <code>#_1</code></td>
+</tr>
+<tr>
+<td>센서</td>
+<td><code>sensor.control_state</code></td>
+<td>status</td>
+<td><code>sensor/controlLines/state#_0</code>, <code>#_1</code></td>
+</tr>
+<tr>
+<td>센서</td>
+<td><code>sensor.mass_position_v</code></td>
+<td>V</td>
+<td>축별 Mass Position — <strong>M-1에서 실장비 경로 확정</strong></td>
+</tr>
+<tr>
+<td>저장소</td>
+<td><code>storage.used_percent</code></td>
+<td>%</td>
+<td><code>controller/store/storePercentageUsed</code></td>
+</tr>
+<tr>
+<td>저장소</td>
+<td><code>storage.recording_status</code></td>
+<td>status</td>
+<td><code>controller/store/storeRecordingStatus</code></td>
+</tr>
+<tr>
+<td>저장소</td>
+<td><code>storage.sd_status</code></td>
+<td>status</td>
+<td><code>media/status/removableSD</code></td>
+</tr>
+<tr>
+<td>저장소</td>
+<td><code>storage.sd_free_bytes</code></td>
+<td>bytes</td>
+<td><code>media/freeSpace/removableSD</code> (미장착 시 −1)</td>
+</tr>
+<tr>
+<td>아카이브</td>
+<td><code>archive.continuous_status</code></td>
+<td>status</td>
+<td><code>dataArchive/status</code></td>
+</tr>
+<tr>
+<td>아카이브</td>
+<td><code>archive.event_status</code></td>
+<td>status</td>
+<td><code>dataArchive/status/events</code></td>
+</tr>
+<tr>
+<td>외부 SOH</td>
+<td><code>external_soh.value</code></td>
+<td>설정 단위</td>
+<td><code>externalSoh/voltage#_1</code>~<code>#_3</code> (µV)</td>
+</tr>
+<tr>
+<td>데이터</td>
+<td><code>acquisition.latest_sample_age_seconds</code></td>
+<td>s</td>
+<td>SeedLink/FDSN 별도 검사</td>
+</tr>
+<tr>
+<td>데이터</td>
+<td><code>acquisition.gap_duration_seconds</code></td>
+<td>s</td>
+<td>SeedLink/FDSN 별도 검사</td>
+</tr>
+<tr>
+<td>데이터</td>
+<td><code>acquisition.channel_active</code></td>
+<td>bool</td>
+<td>SeedLink/FDSN 별도 검사</td>
+</tr>
+</tbody>
+</table>
+<h3 id="표준-상태-값">표준 상태 값</h3>
+<pre><code>OK · WARNING · CRITICAL · UNKNOWN · DISABLED · MAINTENANCE
+</code></pre>
+<p><code>UNSUPPORTED</code>(장비가 그 기능이 없음)와 <code>UNKNOWN</code>(수집 실패로 모름)을 절대 <code>OK</code>로 접지 않는다. Grafana에도 두 값을 구분해 표시한다.</p>
+<h3 id="제조사-전용-metric">제조사 전용 Metric</h3>
+<p>공통에 억지로 끼워 넣지 않고 별도 이름공간에 둔다. 공통 대시보드는 이를 쓰지 않는다.</p>
+<pre><code>vendor.nanometrics.centaur.vco_control
+vendor.nanometrics.centaur.buffer_used_percent
+</code></pre>
+<h3 id="센서-상태-판정-주의">센서 상태 판정 주의</h3>
+<p>Centaur의 센서 상태는 사실상 <strong>Mass Position 임계값</strong>이 근거다. 센서 미연결이나 파형 정지를 잡지 못한다(펌웨어 릴리스 노트에 명시된 알려진 제약). 따라서 <code>sensor.status = OK</code>만으로 정상이라 판단하지 않고, SeedLink/FDSN 기반 <code>acquisition.*</code> 검사를 함께 본다.</p>
+<hr />
+<h2 id="6-데이터-모델">6. 데이터 모델</h2>
+<h3 id="postgresql-주요-테이블">PostgreSQL 주요 테이블</h3>
+<pre><code>manufacturers            device_models          adapter_definitions
+adapter_versions         adapter_metric_mappings
+
+stations                 devices                device_endpoints
+sensors                  sensor_axes            external_soh_channels
+device_capabilities
+
+collection_profiles      metric_definitions     profile_metrics
+device_metric_overrides
+
+edge_collectors          edge_assignments       edge_ingest_batches
+edge_runtime_states
+
+poll_runs                device_runtime_states  health_states
+incidents                incident_events        maintenance_windows
+
+users                    roles                  audit_logs
+</code></pre>
+<p>핵심 제약:</p>
+<ul>
+<li><code>devices.collection_mode ∈ {DIRECT, EDGE}</code>, <code>EDGE</code>면 <code>edge_id</code> 필수</li>
+<li><code>edge_assignments</code>는 활성 상태에서 <code>device_id</code> Unique — 두 Edge가 같은 장비를 동시 수집하지 못한다</li>
+<li>기록계 접속 비밀번호는 <code>device_endpoints.credential_reference</code>로만 저장(암호화 저장소 참조). 평문 컬럼 없음</li>
+<li>관측소 삭제는 물리 삭제 대신 <code>retired</code></li>
+<li>제조사별 전용 테이블을 만들지 않는다</li>
+</ul>
+<h3 id="influxdb">InfluxDB</h3>
+<p>Measurement:</p>
+<pre><code>recorder_poll  recorder_device  recorder_power  recorder_timing  recorder_gnss
+recorder_sensor  recorder_storage  recorder_archive  recorder_external_soh
+recorder_acquisition  recorder_health  recorder_vendor_metric  edge_health
+</code></pre>
+<p>Tag:</p>
+<pre><code>station_id station_code device_id manufacturer product_family generation model
+sensor_port channel axis region collection_mode
+</code></pre>
+<p>IP·펌웨어 버전은 변동값이므로 Tag로 쓰지 않는다(Cardinality·이력 왜곡 방지). <code>recorder_vendor_metric</code>은 카탈로그에 등록된 <code>metric_key</code>만 허용한다.</p>
+<p>시간 필드는 두 개를 둔다.</p>
+<pre><code>observed_at : 기록계를 관측한 시각 (Point timestamp)
+received_at : 중앙이 수신한 시각 (Field)
+</code></pre>
+<p>Edge가 하루 뒤 복구돼도 Grafana에는 원래 관측 시각으로 채워진다. 단 <strong>현재 상태(health_states)는 <code>observed_at</code>이 기존보다 최신일 때만 갱신</strong>해, 늦게 도착한 과거 데이터가 현재 상태를 되돌리지 못하게 한다.</p>
+<p>보존정책: 원본 180일 · 5분 집계 2년 · 1시간 집계 5년. 장애 이력은 PostgreSQL에 영구 보관.</p>
+<hr />
+<h2 id="7-edge-collector-설계">7. Edge Collector 설계</h2>
+<h3 id="store-and-forward">Store-and-Forward</h3>
+<pre><code>Centaur 수집 → 표준 Metric → 로컬 Spool 기록 → Batch 업로드 → 중앙 ACK → Spool 삭제
+</code></pre>
+<p><strong>로컬 기록을 먼저</strong> 한다. 전송 실패 후 복구를 시도하는 순서보다 유실 위험이 낮다.</p>
+<p>Spool 상태: <code>PENDING → UPLOADING → ACKNOWLEDGED → FAILED</code></p>
+<p>MVP 기본값:</p>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Spool 한도</td>
+<td>5 GB (경고 80%, 장애 90%)</td>
+</tr>
+<tr>
+<td>최소 보관</td>
+<td>7일 (권장 30일)</td>
+</tr>
+<tr>
+<td>Batch 크기</td>
+<td>최대 1,000 Poll 또는 5 MB, gzip</td>
+</tr>
+<tr>
+<td>업로드 Timeout</td>
+<td>30초</td>
+</tr>
+<tr>
+<td>Heartbeat</td>
+<td>30초</td>
+</tr>
+<tr>
+<td>삭제 우선순위</td>
+<td>ACK 완료분 → 오래된 정상 Metric → 집계 가능분. 장애 이벤트는 최후까지 보존</td>
+</tr>
+</tbody>
+</table>
+<h3 id="프로토콜">프로토콜</h3>
+<pre><code>POST /api/v1/edge/enroll            일회용 Token → 클라이언트 인증서 발급
+POST /api/v1/edge/heartbeat         상태 보고
+GET  /api/v1/edge/config?currentVersion=N   설정 동기화
+POST /api/v1/edge/ingest/batches    데이터 업로드 (gzip)
+POST /api/v1/edge/tasks/{id}/result 연결 시험 등 원격 작업 결과
+</code></pre>
+<p>중복 제거 키: <code>edge_id</code> + <code>sequence</code> + <code>batch_id</code> + <code>poll_id</code>. 같은 Batch를 여러 번 보내도 한 번만 반영된다.</p>
+<p>설정 적용은 원자적으로 한다. 다운로드 → 서명·Schema 검증 → 장비 중복 할당 검사 → 일괄 적용 → 결과 보고, 실패 시 이전 버전 Rollback. 중앙이 끊긴 동안에는 마지막 성공 설정으로 계속 수집하고 Adapter 자동 업데이트는 하지 않는다.</p>
+<h3 id="네트워크보안">네트워크·보안</h3>
+<ul>
+<li>중앙 → Edge Inbound 연결 없음. Edge → 중앙 HTTPS 443 Outbound만</li>
+<li>Edge → 할당된 기록계 IP 대역만 접근, Edge 간 통신 차단</li>
+<li>Edge별 개별 클라이언트 인증서(mTLS), 만료 전 자동 갱신, 폐기 시 즉시 차단</li>
+<li>연결 시험 API는 SSRF 차단을 위해 사설망/승인 대역만 허용</li>
+</ul>
+<h3 id="장애-상관관계">장애 상관관계</h3>
+<table>
+<thead>
+<tr>
+<th>상황</th>
+<th>표시</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>기록계 1대 무응답</td>
+<td>해당 기록계 <code>OFFLINE</code></td>
+</tr>
+<tr>
+<td>Edge 정상 · 여러 기록계 무응답</td>
+<td>각 기록계 개별 장애</td>
+</tr>
+<tr>
+<td>Edge ↔ 중앙 통신 불가</td>
+<td><code>EDGE COMMUNICATION LOST</code></td>
+</tr>
+<tr>
+<td>Edge 서버 중단</td>
+<td><code>EDGE OFFLINE</code> + 하위 기록계 <code>UNKNOWN / EDGE UNREACHABLE</code></td>
+</tr>
+<tr>
+<td>업로드만 실패</td>
+<td><code>UPLOAD DEGRADED</code></td>
+</tr>
+<tr>
+<td>Spool 임계</td>
+<td><code>EDGE STORAGE WARNING/CRITICAL</code></td>
+</tr>
+<tr>
+<td>설정 적용 실패</td>
+<td><code>EDGE CONFIG ERROR</code></td>
+</tr>
+<tr>
+<td>Edge 시각 오차</td>
+<td><code>EDGE CLOCK ERROR</code></td>
+</tr>
+</tbody>
+</table>
+<p>Edge 하나가 죽었을 때 하위 수십 개 기록계 장애 알림이 쏟아지지 않도록 <strong>하위 장애를 억제하고 Edge 단일 알림</strong>으로 올린다.</p>
+<hr />
+<h2 id="8-상태-판정과-알림">8. 상태 판정과 알림</h2>
+<pre><code>표준 Metric → 단위 변환 → 프로파일 임계값 → 지속시간/연속횟수 → Hysteresis
+           → 상태 전이 → Incident 생성·복구 → recorder_health 적재 → Grafana Alert
+</code></pre>
+<p>Grafana가 장비별 임계값을 직접 계산하지 않는다. 백엔드가 판정해 <code>recorder_health.severity</code>를 적재하고 Grafana는 그 값만 감시한다. 임계값 설정이 화면·DB 한 곳에만 존재하게 하려는 것이다.</p>
+<p>MVP 기본 규칙:</p>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>주의</th>
+<th>장애</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>기록계 통신</td>
+<td>2회 연속 실패</td>
+<td>3회 연속 실패</td>
+</tr>
+<tr>
+<td>Edge Heartbeat</td>
+<td>2회 누락</td>
+<td>3회 누락</td>
+</tr>
+<tr>
+<td>내부 저장소</td>
+<td>80%</td>
+<td>90%</td>
+</tr>
+<tr>
+<td>Recording 상태</td>
+<td>1회 비정상</td>
+<td>2회 연속</td>
+</tr>
+<tr>
+<td>Timing / GNSS</td>
+<td>1회 비정상</td>
+<td>2회 연속</td>
+</tr>
+<tr>
+<td>센서</td>
+<td>기록계 Warning</td>
+<td>기록계 Error</td>
+</tr>
+<tr>
+<td>SD카드</td>
+<td>상태 이상</td>
+<td>Error / Not Present</td>
+</tr>
+<tr>
+<td>설정 Commit</td>
+<td>—</td>
+<td><code>uncommitted</code> 지속</td>
+</tr>
+<tr>
+<td>Edge Spool</td>
+<td>80%</td>
+<td>90%</td>
+</tr>
+<tr>
+<td>데이터 지연</td>
+<td>수집주기 × 2</td>
+<td>수집주기 × 3</td>
+</tr>
+</tbody>
+</table>
+<p>전압·온도·Mass Position은 공통 기준을 쓰지 않는다. 12V 배터리 / 24V / 태양광 관측소는 서로 다른 프로파일을 적용한다. GNSS Duty Cycle 장비는 위성 수만으로 장애를 만들지 않는다. 유지보수 시간대에는 알림을 억제하고 상태만 <code>MAINTENANCE</code>로 기록한다.</p>
+<hr />
+<h2 id="9-api-목록-mvp">9. API 목록 (MVP)</h2>
+<pre><code>POST   /api/v1/auth/login | logout        GET /api/v1/auth/me
+
+GET    /api/v1/stations                   POST /api/v1/stations
+GET    /api/v1/stations/{id}              PUT  /api/v1/stations/{id}
+POST   /api/v1/stations/import            GET  /api/v1/stations/{id}/current-health
+
+POST   /api/v1/stations/{id}/devices      PUT  /api/v1/devices/{id}
+POST   /api/v1/devices/{id}/probe         POST /api/v1/devices/{id}/test-connection
+POST   /api/v1/devices/{id}/poll-now      GET  /api/v1/devices/{id}/capabilities
+GET    /api/v1/devices/{id}/soh-preview   # 민감정보 제거 후 원본 미리보기
+
+GET    /api/v1/edges                      POST /api/v1/edges
+POST   /api/v1/edges/{id}/enrollment-token
+POST   /api/v1/edges/{id}/assignments     DELETE /api/v1/edges/{id}/assignments/{deviceId}
+GET    /api/v1/edges/{id}/health
+
+GET/POST/PUT /api/v1/collection-profiles  GET/POST/PUT /api/v1/metric-profiles
+GET    /api/v1/metric-catalog             GET  /api/v1/adapters
+
+GET    /api/v1/fleet/summary              GET  /api/v1/incidents
+POST   /api/v1/incidents/{id}/acknowledge POST /api/v1/maintenance-windows
+GET    /api/v1/poll-runs                  GET  /api/v1/audit-logs
+</code></pre>
+<p>권한: <code>ADMIN</code>(전체 설정) · <code>OPERATOR</code>(장애 확인·유지보수) · <code>VIEWER</code>(조회).</p>
+<hr />
+<h2 id="10-화면-구성-mvp">10. 화면 구성 (MVP)</h2>
+<pre><code>/login
+/overview            통합 현황 (상태 집계 · 지도 · 현재 장애 · Direct/Edge 구분)
+/stations            목록 (통신·전원·시각·센서·저장소·데이터 컬럼, 필터, 일괄 작업)
+/stations/new        등록 마법사
+/stations/:id        상세 (요약/전원/시각·GNSS/센서/저장소/데이터/외부SOH/수집이력/설정/장애)
+/edges               Edge 목록
+/edges/:id           Edge 상세 (할당 장비 · Spool · 설정버전 · 인증서)
+/profiles            수집·Metric 프로파일
+/incidents           장애 목록·확인
+/settings            사용자·알림·감사 로그
+</code></pre>
+<p>등록 마법사 흐름:</p>
+<pre><code>기본정보 → 제조사/모델 선택 → 수집방식(DIRECT/EDGE) → 접속정보 → 연결 시험
+→ 장비 자동 탐지(모델·펌웨어·채널·Capability) → 센서 설정 → 외부 SOH 변환식
+→ 프로파일·알림 → 검토 → 저장 및 첫 수집
+</code></pre>
+<p>제조사 선택 UI는 처음부터 노출하되 미구현 Adapter는 <code>준비 중</code>으로 비활성화한다. Adapter Manifest의 JSON Schema로 제조사별 접속 입력 폼을 동적으로 생성해, 새 Adapter가 화면 코드를 고치지 않아도 등록 가능하게 한다.</p>
+<hr />
+<h2 id="11-grafana">11. Grafana</h2>
+<pre><code>01-fleet-overview        전체 상태 · Geomap · 카테고리 Matrix · 현재 장애
+02-station-detail        관측소 단위 시계열 전체
+03-centaur-ctr-detail    CTR 전용 (Vendor Metric 포함)
+04-edge-fleet            Edge 상태 · Spool · 업로드 · 버전 · 인증서
+05-collector-operations  Poll 처리량 · 성공률 · Timeout · Influx Write 오류
+06-data-quality          채널별 Sample Age · Gap · 가용률
+</code></pre>
+<p>Datasource와 Dashboard는 손으로 만들지 않고 <code>deploy/grafana/provisioning</code>으로 코드 관리한다. 알림: Recorder Offline · Edge Offline · Timing Error · Recording Stopped · Storage Critical · Edge Spool Critical · Influx Write Failure.</p>
+<hr />
+<h2 id="12-docker-구성">12. Docker 구성</h2>
+<h3 id="중앙-composecentralyml">중앙 <code>compose.central.yml</code></h3>
+<pre><code>nginx(443) · web · api · collector · migrate · postgres · influxdb · grafana
+</code></pre>
+<p>네트워크 3분할: <code>public-net</code>(nginx) / <code>app-net</code>(web·api·collector·grafana) / <code>data-net</code>(api·collector·postgres·influxdb·grafana). PostgreSQL·InfluxDB 포트는 외부에 공개하지 않는다.</p>
+<h3 id="edge-composeedgeyml">Edge <code>compose.edge.yml</code></h3>
+<pre><code>edge-agent (volume: edge-spool, certs, edge.env)
+</code></pre>
+<p>Edge에는 PostgreSQL·InfluxDB·Grafana를 두지 않는다. Health Endpoint는 <code>127.0.0.1</code>에만 바인딩한다.</p>
+<h3 id="개발-composedevyml">개발 <code>compose.dev.yml</code></h3>
+<p><code>centaur-mock</code> 추가. 시나리오 전환 가능:</p>
+<pre><code>NORMAL · GPS_UNLOCKED · LOW_VOLTAGE · SENSOR_ERROR · STORE_FULL
+NO_SD_CARD · SLOW_RESPONSE · INVALID_JSON · OFFLINE
+</code></pre>
+<p>이미지 태그: <code>soh-api</code> · <code>soh-collector</code> · <code>soh-edge</code> · <code>soh-web</code>. Edge 이미지에는 API·Web 리소스를 넣지 않는다.</p>
+<hr />
+<h2 id="13-테스트-전략">13. 테스트 전략</h2>
+<table>
+<thead>
+<tr>
+<th>계층</th>
+<th>대상</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>단위</td>
+<td>CTR 파싱, 펌웨어별 Mapping, 단위 변환, 상태 Mapping, 임계값·Hysteresis, 외부 SOH 변환식, 스케줄 계산, Spool 상태 전이, 중복 Batch 판정</td>
+</tr>
+<tr>
+<td>Adapter 계약</td>
+<td>정상 · 느린 응답 · 연결 실패 · 인증 실패 · 비정상 JSON · 필드 누락 · 3/6채널 · SD 미장착 · GPS Unlock · Instrument ID 불일치</td>
+</tr>
+<tr>
+<td>통합</td>
+<td>Migration, Influx Write/Query, Poll 중복 방지, 재시도·Offline 판정, Incident 생성·복구, 유지보수 억제, Edge Backfill</td>
+</tr>
+<tr>
+<td>E2E</td>
+<td>로그인 → 등록 → 연결 시험 → 첫 수집 → 장애 발생 → 복구, 권한별 버튼 제한</td>
+</tr>
+<tr>
+<td>부하</td>
+<td>100대 1분 주기, 느린 장비 20%, 동시 Timeout, Influx 중단, 재시작 후 스케줄 복구</td>
+</tr>
+</tbody>
+</table>
+<p>모든 Adapter는 동일한 계약 테스트를 통과해야 등록된다. 실장비 응답은 익명화해 <code>testdata/</code>에 Fixture로 보관하고, 이것이 회귀 방지의 기준이 된다.</p>
+<hr />
+<h2 id="14-마일스톤-개요">14. 마일스톤 개요</h2>
+<pre><code>M-1 장비 조사 ──► M0 골격 ──► M1 계약 확정 ──┬─► M2 CTR Adapter ──► M3 Direct Collector ──► M4 상태판정
+                                              │                                                │
+                                              └─► M5 관리 API ──► M6 Frontend ────────────────┤
+                                                                                               ▼
+                                                        M7 Edge Agent ──► M8 Edge 통합 ──► M9 Grafana
+                                                                                               ▼
+                                                                        M10 운영 강화 ──► M11 확장성 검증
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>마일스톤</th>
+<th>성격</th>
+<th>선행</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M-1</td>
+<td>장비·환경 조사</td>
+<td>필수 선행, 코드 없음</td>
+<td>—</td>
+</tr>
+<tr>
+<td>M0</td>
+<td>저장소 골격과 개발환경</td>
+<td>기반</td>
+<td>—</td>
+</tr>
+<tr>
+<td>M1</td>
+<td>계약 확정 (Metric·DB·OpenAPI·Adapter)</td>
+<td>기반, 이후 전 단계 참조</td>
+<td>M0</td>
+</tr>
+<tr>
+<td>M2</td>
+<td>Centaur CTR Adapter + Mock 기록계</td>
+<td>핵심</td>
+<td>M-1, M1</td>
+</tr>
+<tr>
+<td>M3</td>
+<td>Direct Collector + InfluxDB 적재</td>
+<td>핵심</td>
+<td>M2</td>
+</tr>
+<tr>
+<td>M4</td>
+<td>상태 판정 엔진 + 장애 이력</td>
+<td>핵심</td>
+<td>M3</td>
+</tr>
+<tr>
+<td>M5</td>
+<td>관리 API (인증·CRUD·프로파일)</td>
+<td>핵심</td>
+<td>M1</td>
+</tr>
+<tr>
+<td>M6</td>
+<td>관리 Frontend 1차</td>
+<td>핵심</td>
+<td>M5</td>
+</tr>
+<tr>
+<td>M7</td>
+<td>Edge Agent (Spool·업로드·설정동기화)</td>
+<td>핵심</td>
+<td>M3</td>
+</tr>
+<tr>
+<td>M8</td>
+<td>중앙 Ingest·Edge 관리화면·장애 상관관계</td>
+<td>핵심</td>
+<td>M4, M6, M7</td>
+</tr>
+<tr>
+<td>M9</td>
+<td>Grafana Provisioning + 알림</td>
+<td>표출</td>
+<td>M4, M8</td>
+</tr>
+<tr>
+<td>M10</td>
+<td>운영 강화 + 파일럿</td>
+<td>출시</td>
+<td>M9</td>
+</tr>
+<tr>
+<td>M11</td>
+<td>확장성 검증 (Gen5·타 제조사 준비)</td>
+<td>확장</td>
+<td>M10</td>
+</tr>
+</tbody>
+</table>
+<p>병렬 트랙: M2~M4(수집)와 M5~M6(관리 화면)은 M1 계약이 고정된 뒤 동시에 진행할 수 있다. M7 Edge는 M3 Poll 결과 모델이 확정되면 착수 가능하다.</p>
+<hr />
+<h2 id="15-세부-작업-마일스톤">15. 세부 작업 마일스톤</h2>
+<p>각 작업은 <code>산출물</code>과 <code>완료 판정</code>을 함께 둔다. 완료 판정은 "구현했다"가 아니라 <strong>관측 가능한 결과</strong>로 쓴다.</p>
+<h3 id="공통-완료-정의-dod">공통 완료 정의 (DoD)</h3>
+<p>모든 작업에 공통 적용한다.</p>
+<ol>
+<li>단위 테스트 추가 및 통과</li>
+<li><code>contracts/</code> 변경 시 Schema 검증 통과</li>
+<li>사람이 읽는 로그와 오류 메시지가 한국어 또는 명확한 코드로 남음</li>
+<li>Secret이 로그·응답·이미지·Git에 남지 않음</li>
+<li><code>docs/</code> 해당 문서 갱신</li>
+<li>Docker 환경에서 재현 가능(로컬 전용 설정 금지)</li>
+</ol>
+<hr />
+<h3 id="m-1-장비환경-조사-코드-없음-최우선">M-1 장비·환경 조사 (코드 없음, 최우선)</h3>
+<p>이 단계 없이 M2를 시작하면 Mapping을 두 번 만들게 된다.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M-1.1</td>
+<td>보유 CTR 목록화 (모델·시리얼·펌웨어·IP·지역)</td>
+<td><code>docs/inventory.md</code></td>
+<td>전 장비가 표에 있고 모델·펌웨어 분포가 집계됨</td>
+</tr>
+<tr>
+<td>M-1.2</td>
+<td>3채널·6채널 각 1대 이상 SOH 응답 채집</td>
+<td><code>backend/app/adapters/centaur_ctr/testdata/*.json</code></td>
+<td>익명화된 실제 응답 4종 이상 확보</td>
+</tr>
+<tr>
+<td>M-1.3</td>
+<td>Mass Position의 SOH API 실제 경로 확정</td>
+<td>Mapping 표 갱신</td>
+<td>축별 값이 어느 키로 오는지 실응답으로 확인</td>
+</tr>
+<tr>
+<td>M-1.4</td>
+<td>인증 필요 여부·HTTPS 지원 확인</td>
+<td>조사 메모</td>
+<td>인증 없이 SOH 조회 가능 여부가 모델별로 확정</td>
+</tr>
+<tr>
+<td>M-1.5</td>
+<td>중앙 → 각 관측소 IP 접근성 시험</td>
+<td>지역별 접근성 표</td>
+<td>DIRECT 가능 지역과 EDGE 필요 지역이 구분됨</td>
+</tr>
+<tr>
+<td>M-1.6</td>
+<td>센서 A/B 모델·축 구성, 외부 SOH 결선 내역</td>
+<td>관측소별 구성표</td>
+<td>Mass Position 임계값 설정 근거 확보</td>
+</tr>
+<tr>
+<td>M-1.7</td>
+<td>전원 구성 분류 (12V/24V/태양광)</td>
+<td>전원 프로파일 초안</td>
+<td>전압 임계값 프로파일 후보가 3종 이내로 정리됨</td>
+</tr>
+<tr>
+<td>M-1.8</td>
+<td>기존 InfluxDB·Grafana 유무·버전, 관측소 코드 체계, 알림 채널</td>
+<td>통합 요건 메모</td>
+<td>신규 구축/기존 연동 여부 확정</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> M-1.2와 M-1.3이 끝나지 않으면 M2를 착수하지 않는다.</p>
+<hr />
+<h3 id="m0-저장소-골격과-개발환경">M0 저장소 골격과 개발환경</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M0.1</td>
+<td><code>soh_monitor/</code> 디렉터리 골격 생성</td>
+<td>4절 구조</td>
+<td>빈 패키지까지 포함해 구조가 존재</td>
+</tr>
+<tr>
+<td>M0.2</td>
+<td>백엔드 기본 앱 3개 실행점</td>
+<td><code>main_api.py</code> <code>main_collector.py</code> <code>main_edge.py</code></td>
+<td>각 프로세스가 기동되고 <code>/healthz</code> 응답</td>
+</tr>
+<tr>
+<td>M0.3</td>
+<td><code>requirements.txt</code> 고정 (FastAPI·httpx·SQLAlchemy·Alembic·influxdb-client·pytest)</td>
+<td>의존성 파일</td>
+<td>버전 Pin, 설치 재현 가능</td>
+</tr>
+<tr>
+<td>M0.4</td>
+<td>Frontend Vite + TS + Router + TanStack Query 골격</td>
+<td><code>frontend/</code></td>
+<td>빈 대시보드가 <code>/</code>에서 렌더</td>
+</tr>
+<tr>
+<td>M0.5</td>
+<td><code>Dockerfile.backend</code> Multi-stage (api/collector/migrate Target)</td>
+<td>이미지 3종</td>
+<td>각 Target 빌드 성공, 런타임에 빌드도구 없음</td>
+</tr>
+<tr>
+<td>M0.6</td>
+<td><code>Dockerfile.web</code>(Nginx 정적), <code>Dockerfile.edge</code>(경량)</td>
+<td>이미지 2종</td>
+<td>Web 이미지에 Node 런타임 없음, Edge에 API 코드 없음</td>
+</tr>
+<tr>
+<td>M0.7</td>
+<td><code>compose.dev.yml</code> (postgres·influxdb·grafana·api·collector·web)</td>
+<td>개발 Compose</td>
+<td><code>make dev</code> 한 번으로 전체 기동</td>
+</tr>
+<tr>
+<td>M0.8</td>
+<td><code>Makefile</code> (dev/migrate/seed/test/e2e/down/plan-html)</td>
+<td>Makefile</td>
+<td>각 타깃 동작</td>
+</tr>
+<tr>
+<td>M0.9</td>
+<td><code>.env.example</code>, Secret 분리, <code>.gitignore</code> 확인</td>
+<td>예시 설정</td>
+<td>저장소에 실제 Secret·인증서 없음</td>
+</tr>
+<tr>
+<td>M0.10</td>
+<td>로깅·요청ID·구조화 로그 기반</td>
+<td><code>observability/</code></td>
+<td>모든 Poll 로그에 <code>device_id</code>·<code>poll_id</code> 포함</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> 빈 시스템이지만 <code>make dev</code>로 전체 스택이 뜨고 Grafana가 InfluxDB를 Datasource로 인식한다.</p>
+<hr />
+<h3 id="m1-계약-확정">M1 계약 확정</h3>
+<p>이 단계의 산출물이 이후 모든 코드의 기준이 된다. 여기서 이름을 잘못 정하면 Gen5 확장에서 되돌리기 어렵다.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M1.1</td>
+<td>표준 Metric 카탈로그 작성</td>
+<td><code>contracts/metrics/catalog.yaml</code></td>
+<td>5절 항목 전부 등록, 단위·타입·필수여부 명시</td>
+</tr>
+<tr>
+<td>M1.2</td>
+<td>상태 Mapping 규칙</td>
+<td><code>contracts/metrics/status-mappings.yaml</code></td>
+<td>CTR 상태문자열 전부가 표준 6상태로 매핑</td>
+</tr>
+<tr>
+<td>M1.3</td>
+<td>카탈로그 → 백엔드 상수·프론트 타입 생성기</td>
+<td><code>scripts/gen_metrics.py</code></td>
+<td>카탈로그 수정 시 양쪽 타입이 동시 갱신</td>
+</tr>
+<tr>
+<td>M1.4</td>
+<td>PostgreSQL 초기 스키마 Alembic Migration</td>
+<td><code>migrations/0001_*</code></td>
+<td>6절 테이블 전부 생성·롤백 가능</td>
+</tr>
+<tr>
+<td>M1.5</td>
+<td>제조사 중립 명명 검사</td>
+<td>Lint 규칙</td>
+<td>코드·스키마에 <code>centaur_</code> 접두 테이블/Measurement 없음</td>
+</tr>
+<tr>
+<td>M1.6</td>
+<td><code>RecorderAdapter</code> 추상 계약 정의</td>
+<td><code>adapters/contract.py</code></td>
+<td>10개 메서드 시그니처와 반환 모델 확정</td>
+</tr>
+<tr>
+<td>M1.7</td>
+<td>Adapter Manifest Schema</td>
+<td><code>contracts/adapter/manifest.schema.json</code></td>
+<td>Manifest 검증 테스트 통과</td>
+</tr>
+<tr>
+<td>M1.8</td>
+<td>Capability 키 목록과 4상태 정의</td>
+<td><code>contracts/metrics/capabilities.yaml</code></td>
+<td><code>SUPPORTED_ENABLED/DISABLED/UNSUPPORTED/UNKNOWN</code> 규칙 문서화</td>
+</tr>
+<tr>
+<td>M1.9</td>
+<td>Edge 설정·Ingest Schema</td>
+<td><code>contracts/edge/*.json</code></td>
+<td>예시 Payload가 Schema 검증 통과</td>
+</tr>
+<tr>
+<td>M1.10</td>
+<td>InfluxDB Bucket·보존정책·다운샘플링 Task 초기화</td>
+<td><code>deploy/influxdb/init/</code></td>
+<td>컨테이너 초기화만으로 Bucket·Task 생성</td>
+</tr>
+<tr>
+<td>M1.11</td>
+<td>OpenAPI 초안 커밋 및 클라이언트 생성 스크립트</td>
+<td><code>contracts/openapi/openapi.yaml</code>, <code>scripts/gen_api_client.sh</code></td>
+<td>생성된 TS 클라이언트가 빌드 통과</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> Metric 이름·상태 값·Adapter 계약·DB 스키마가 문서와 코드에서 일치한다. 이후 이름 변경은 Migration을 동반하는 변경으로만 허용한다.</p>
+<hr />
+<h3 id="m2-centaur-ctr-adapter-mock-기록계">M2 Centaur CTR Adapter + Mock 기록계</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M2.1</td>
+<td>가상 Centaur CTR 서버</td>
+<td><code>mock/centaur_mock/</code></td>
+<td>9개 시나리오 전환 가능, 3/6채널 응답 제공</td>
+</tr>
+<tr>
+<td>M2.2</td>
+<td>CTR HTTP Client (Timeout·재시도 없음, 오류 분류)</td>
+<td><code>centaur_ctr/client.py</code></td>
+<td>DNS·거부·연결·응답 Timeout·HTTP·본문오류를 서로 다른 코드로 반환</td>
+</tr>
+<tr>
+<td>M2.3</td>
+<td>SOH JSON Parser</td>
+<td><code>parser.py</code></td>
+<td>필드 누락·미지의 상태문자열에도 예외 없이 부분 결과 반환</td>
+</tr>
+<tr>
+<td>M2.4</td>
+<td>표준 Metric Mapper (단위 변환 포함)</td>
+<td><code>mapper.py</code></td>
+<td>µV→V, ns, bytes, −1(SD 미장착) 처리 검증</td>
+</tr>
+<tr>
+<td>M2.5</td>
+<td>펌웨어별 Mapping 버전 처리</td>
+<td><code>adapter_metric_mappings</code> Seed</td>
+<td>조건분기 없이 Mapping 테이블로 차이 흡수</td>
+</tr>
+<tr>
+<td>M2.6</td>
+<td>Capability 자동 탐지 (채널수·SD·GNSS·외부SOH)</td>
+<td><code>capabilities.py</code></td>
+<td>3채널 장비에서 Sensor B가 <code>UNSUPPORTED</code>로 판정</td>
+</tr>
+<tr>
+<td>M2.7</td>
+<td><code>Probe</code> 구현 (모델·시리얼·펌웨어·InstrumentID)</td>
+<td><code>adapter.py</code></td>
+<td>등록값과 실제값 불일치를 목록으로 반환</td>
+</tr>
+<tr>
+<td>M2.8</td>
+<td>민감정보 제거 (<code>RedactSensitiveData</code>)</td>
+<td><code>adapter.py</code></td>
+<td><code>soh-preview</code> 응답에 인증정보·내부 경로 없음</td>
+</tr>
+<tr>
+<td>M2.9</td>
+<td>Adapter Manifest 작성·등록</td>
+<td><code>manifest.json</code>, <code>registry.py</code></td>
+<td><code>GET /api/v1/adapters</code>에 CTR이 노출</td>
+</tr>
+<tr>
+<td>M2.10</td>
+<td>Fixture 기반 계약 테스트</td>
+<td><code>tests/unit/adapters/</code></td>
+<td>M-1.2 실응답 4종 + Mock 9종 전부 통과</td>
+</tr>
+<tr>
+<td>M2.11</td>
+<td>데이터 연속성 Adapter (SeedLink/FDSN) 분리 구현</td>
+<td><code>adapters/data_availability/</code></td>
+<td>채널별 Sample Age·Gap을 SOH와 독립적으로 산출</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> 서로 다른 CTR 모델·펌웨어의 응답이 <strong>동일한 표준 Metric 집합</strong>으로 변환되고, 미지원 항목은 <code>UNSUPPORTED</code>로 표시된다.</p>
+<hr />
+<h3 id="m3-direct-collector-influxdb-적재">M3 Direct Collector + InfluxDB 적재</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M3.1</td>
+<td>스케줄러 (10초 Tick, <code>next_poll_at</code> 조회)</td>
+<td><code>collector/scheduler.py</code></td>
+<td>분 단위 설정대로 Poll 시각이 잡힘</td>
+</tr>
+<tr>
+<td>M3.2</td>
+<td>중복 실행 방지 (Advisory Lock / Lease)</td>
+<td><code>collector/lease.py</code></td>
+<td>인스턴스 2개 동시 기동에도 장비별 1회만 수집</td>
+</tr>
+<tr>
+<td>M3.3</td>
+<td>Jitter 분산 (10~20%)</td>
+<td>scheduler</td>
+<td>동일 시각 동시 요청이 분산됨</td>
+</tr>
+<tr>
+<td>M3.4</td>
+<td>동시성 제한 및 장비별 진행 중 Poll 차단</td>
+<td><code>collector/worker.py</code></td>
+<td>느린 장비가 전체 수집을 지연시키지 않음</td>
+</tr>
+<tr>
+<td>M3.5</td>
+<td>재시도·Backoff, 실패 유형별 분류</td>
+<td><code>collector/retry.py</code></td>
+<td>10종 실패 유형이 <code>poll_runs.error_code</code>로 구분</td>
+</tr>
+<tr>
+<td>M3.6</td>
+<td>연속 실패 카운터와 Offline 판정</td>
+<td><code>device_runtime_states</code></td>
+<td>2회 WARNING, 3회 CRITICAL 전이 확인</td>
+</tr>
+<tr>
+<td>M3.7</td>
+<td>InfluxDB Batch Write</td>
+<td><code>repository/influx/</code></td>
+<td>한 Poll이 분류별 Point로 묶여 기록</td>
+</tr>
+<tr>
+<td>M3.8</td>
+<td>Influx 장애 시 재시도·백프레셔</td>
+<td>writer</td>
+<td>Influx 30분 중단 후 재개 시 유실 없음</td>
+</tr>
+<tr>
+<td>M3.9</td>
+<td><code>poll_runs</code> 이력 적재</td>
+<td>Postgres</td>
+<td>성공률·응답시간 조회 가능</td>
+</tr>
+<tr>
+<td>M3.10</td>
+<td>Stale 판정 (수집 성공했으나 값이 낡음)</td>
+<td>health 입력</td>
+<td>마지막 수집 시각이 화면·Grafana에 항상 함께 표시</td>
+</tr>
+<tr>
+<td>M3.11</td>
+<td><code>poll-now</code> 수동 수집</td>
+<td>API·Collector 연동</td>
+<td>화면 요청 후 5초 내 결과 반영</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> Mock 50대 + 실장비 1대를 1분 주기로 안정 수집하고, 한 장비 장애가 다른 장비 수집에 영향을 주지 않는다.</p>
+<hr />
+<h3 id="m4-상태-판정-엔진-장애-이력">M4 상태 판정 엔진 + 장애 이력</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M4.1</td>
+<td>임계값 평가기 (프로파일 + 장비 Override)</td>
+<td><code>health/evaluator.py</code></td>
+<td>관측소별 전압 기준이 서로 다르게 적용</td>
+</tr>
+<tr>
+<td>M4.2</td>
+<td>지속시간·연속횟수·Hysteresis</td>
+<td><code>health/rules.py</code></td>
+<td>순간 스파이크로 장애가 생기지 않음</td>
+</tr>
+<tr>
+<td>M4.3</td>
+<td>카테고리별 상태 집계 (통신·전원·시각·센서·저장소·데이터)</td>
+<td><code>health/state_machine.py</code></td>
+<td>장비 종합 상태와 별개로 카테고리 상태가 계산</td>
+</tr>
+<tr>
+<td>M4.4</td>
+<td><code>UNSUPPORTED</code>·<code>UNKNOWN</code> 제외 규칙</td>
+<td>evaluator</td>
+<td>미지원 기능이 장애로 집계되지 않음</td>
+</tr>
+<tr>
+<td>M4.5</td>
+<td>Incident 생성·확인·복구 상태기계</td>
+<td><code>incident/</code></td>
+<td><code>PENDING→OPEN→ACK→RESOLVED</code> 전이 이력 저장</td>
+</tr>
+<tr>
+<td>M4.6</td>
+<td>유지보수 시간 억제</td>
+<td><code>maintenance/</code></td>
+<td>유지보수 중 알림 없음, 상태는 <code>MAINTENANCE</code> 기록</td>
+</tr>
+<tr>
+<td>M4.7</td>
+<td><code>recorder_health</code> Influx 적재</td>
+<td>writer</td>
+<td>Grafana가 <code>severity</code>만으로 알림 가능</td>
+</tr>
+<tr>
+<td>M4.8</td>
+<td>늦게 도착한 데이터의 현재상태 보호</td>
+<td>health_states 갱신 조건</td>
+<td>과거 <code>observed_at</code> 데이터가 현재 상태를 되돌리지 못함</td>
+</tr>
+<tr>
+<td>M4.9</td>
+<td>알림 중복 억제·복구 알림</td>
+<td>notifier</td>
+<td>동일 장애가 반복 알림되지 않고 복구 시 1회 알림</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> 동일한 장애가 중복 생성되지 않고, 복구가 자동 인식되며, 미지원·확인불가·정상이 서로 구분된다.</p>
+<hr />
+<h3 id="m5-관리-api">M5 관리 API</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M5.1</td>
+<td>인증·세션·역할 3종</td>
+<td><code>auth/</code></td>
+<td>역할별 접근 제한이 API 레벨에서 강제</td>
+</tr>
+<tr>
+<td>M5.2</td>
+<td>관측소 CRUD + <code>retired</code> 처리</td>
+<td><code>api/routers/stations.py</code></td>
+<td>물리 삭제 없이 비활성 가능</td>
+</tr>
+<tr>
+<td>M5.3</td>
+<td>기록계 CRUD + Endpoint·Credential 분리 저장</td>
+<td>devices, device_endpoints</td>
+<td>응답·로그에 비밀번호 없음</td>
+</tr>
+<tr>
+<td>M5.4</td>
+<td>센서·축·외부 SOH 설정 API</td>
+<td>routers</td>
+<td>변환식 <code>value = raw × scale + offset</code> 적용</td>
+</tr>
+<tr>
+<td>M5.5</td>
+<td><code>test-connection</code>·<code>probe</code>·<code>soh-preview</code></td>
+<td>routers</td>
+<td>화면에서 등록 전 연결·모델 확인 가능</td>
+</tr>
+<tr>
+<td>M5.6</td>
+<td>SSRF 방지 (대역 화이트리스트)</td>
+<td>validation</td>
+<td>외부 URL·메타데이터 주소 차단</td>
+</tr>
+<tr>
+<td>M5.7</td>
+<td>수집·Metric 프로파일 CRUD + 영향 관측소 수</td>
+<td>profiles</td>
+<td>프로파일 변경 전 영향 범위 표시</td>
+</tr>
+<tr>
+<td>M5.8</td>
+<td>장비별 Override</td>
+<td>device_metric_overrides</td>
+<td>프로파일 상속과 개별 재정의 동시 동작</td>
+</tr>
+<tr>
+<td>M5.9</td>
+<td>CSV 일괄 등록 (검증·부분실패 보고)</td>
+<td><code>stations/import</code></td>
+<td>오류 행만 실패하고 나머지는 등록, Formula Injection 방지</td>
+</tr>
+<tr>
+<td>M5.10</td>
+<td><code>fleet/summary</code>·<code>current-health</code> 조회</td>
+<td>routers</td>
+<td>화면 1회 호출로 통합 현황 렌더 가능</td>
+</tr>
+<tr>
+<td>M5.11</td>
+<td>감사 로그</td>
+<td><code>audit/</code></td>
+<td>설정 변경 주체·전후 값이 기록</td>
+</tr>
+<tr>
+<td>M5.12</td>
+<td>OpenAPI 갱신 및 클라이언트 재생성</td>
+<td>contracts, generated</td>
+<td>프론트 타입이 API와 불일치하면 CI 실패</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> 프로그램 수정 없이 API만으로 관측소·기록계·프로파일을 등록·변경할 수 있다.</p>
+<hr />
+<h3 id="m6-관리-frontend-1차">M6 관리 Frontend 1차</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M6.1</td>
+<td>레이아웃·라우팅·권한별 메뉴</td>
+<td><code>app/</code>, <code>routes/</code></td>
+<td>VIEWER에게 편집 버튼이 보이지 않음</td>
+</tr>
+<tr>
+<td>M6.2</td>
+<td>로그인·세션 만료 처리</td>
+<td><code>features/auth</code></td>
+<td>만료 시 재로그인 유도, 작업 내용 손실 안내</td>
+</tr>
+<tr>
+<td>M6.3</td>
+<td>통합 현황 화면</td>
+<td><code>features/overview</code></td>
+<td>상태 집계·현재 장애·마지막 수집 시각 표시</td>
+</tr>
+<tr>
+<td>M6.4</td>
+<td>관측소 지도</td>
+<td>overview</td>
+<td>상태색 + 아이콘 병행(색약 대응)</td>
+</tr>
+<tr>
+<td>M6.5</td>
+<td>관측소 목록 (필터·정렬·일괄 작업)</td>
+<td><code>features/stations</code></td>
+<td>카테고리별 상태 컬럼과 미지원 표시 구분</td>
+</tr>
+<tr>
+<td>M6.6</td>
+<td>등록 마법사 전 단계</td>
+<td>stations/new</td>
+<td>10절 흐름대로 저장까지 완료</td>
+</tr>
+<tr>
+<td>M6.7</td>
+<td>연결 시험 진행 표시</td>
+<td>공통 컴포넌트</td>
+<td>장시간 요청에서 진행 상태·취소 제공</td>
+</tr>
+<tr>
+<td>M6.8</td>
+<td>자동 탐지 결과와 입력값 불일치 표시</td>
+<td>마법사</td>
+<td>모델·시리얼·펌웨어 차이를 사용자에게 확인받음</td>
+</tr>
+<tr>
+<td>M6.9</td>
+<td>Adapter Manifest Schema 기반 동적 폼</td>
+<td><code>schemas/</code></td>
+<td>새 Adapter 추가 시 화면 코드 수정 없이 입력폼 생성</td>
+</tr>
+<tr>
+<td>M6.10</td>
+<td>관측소 상세 탭</td>
+<td><code>stations/:id</code></td>
+<td>카테고리별 현재값·상태·Grafana Deep Link</td>
+</tr>
+<tr>
+<td>M6.11</td>
+<td>프로파일 화면 (복제·영향 미리보기·이력 비교)</td>
+<td><code>features/profiles</code></td>
+<td>변경 전후 차이 확인 가능</td>
+</tr>
+<tr>
+<td>M6.12</td>
+<td>장애 목록·확인 화면</td>
+<td><code>features/incidents</code></td>
+<td>장애 확인 시 담당자·시각 기록</td>
+</tr>
+<tr>
+<td>M6.13</td>
+<td>상태 자동 갱신 (Polling, 추후 SSE)</td>
+<td>api layer</td>
+<td>갱신 중 화면 깜빡임·스크롤 이동 없음</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> 운영자가 화면만으로 관측소 등록 → 연결 시험 → 첫 수집 → 상태 확인까지 수행한다.</p>
+<hr />
+<h3 id="m7-edge-agent">M7 Edge Agent</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M7.1</td>
+<td>Edge 실행 모드 분리 (<code>main_edge.py</code>)</td>
+<td>edgeagent</td>
+<td>중앙 Collector와 Adapter 코드 공유 확인</td>
+</tr>
+<tr>
+<td>M7.2</td>
+<td>Enrollment (일회용 Token → 인증서 발급)</td>
+<td><code>edgeagent/enroll</code></td>
+<td>등록 후 Token 폐기, 이후 mTLS로만 통신</td>
+</tr>
+<tr>
+<td>M7.3</td>
+<td>설정 동기화 + 원자적 적용 + Rollback</td>
+<td><code>configsync/</code></td>
+<td>잘못된 설정 배포 시 이전 버전으로 자동 복귀</td>
+</tr>
+<tr>
+<td>M7.4</td>
+<td>로컬 Spool (SQLite WAL + gzip Segment)</td>
+<td><code>spool/</code></td>
+<td>전원 강제 차단 후 재기동에도 손상·유실 없음</td>
+</tr>
+<tr>
+<td>M7.5</td>
+<td>Sequence·Batch·ACK 관리</td>
+<td>spool</td>
+<td>ACK 전 삭제 없음, 재전송 가능</td>
+</tr>
+<tr>
+<td>M7.6</td>
+<td>Uploader (Batch·gzip·Backoff)</td>
+<td><code>uploader/</code></td>
+<td>중앙 30분 단절 후 오래된 순서로 전송 완료</td>
+</tr>
+<tr>
+<td>M7.7</td>
+<td>디스크 한도·우선순위 정리</td>
+<td>spool</td>
+<td>한도 초과 시 장애 이벤트가 마지막까지 보존</td>
+</tr>
+<tr>
+<td>M7.8</td>
+<td>Heartbeat + 자체 진단(CPU·메모리·디스크·시각오차)</td>
+<td><code>heartbeat/</code></td>
+<td>중앙에서 Edge 자원 상태 조회 가능</td>
+</tr>
+<tr>
+<td>M7.9</td>
+<td>중앙 단절 중 지속 수집</td>
+<td>runtime</td>
+<td>단절 상태에서도 Poll 로그가 계속 증가</td>
+</tr>
+<tr>
+<td>M7.10</td>
+<td>원격 작업 처리 (연결 시험 대행)</td>
+<td><code>tasks</code></td>
+<td>중앙 화면의 연결 시험이 Edge를 통해 수행</td>
+</tr>
+<tr>
+<td>M7.11</td>
+<td>Edge 배포 문서</td>
+<td><code>docs/edge-deployment/</code></td>
+<td>신규 지역 설치 절차가 문서만으로 수행 가능</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> 중앙을 완전히 내린 상태에서도 Edge가 수집을 지속하고, 중앙 복구 후 누락 구간이 원래 시각으로 채워진다.</p>
+<hr />
+<h3 id="m8-중앙-ingestedge-관리장애-상관관계">M8 중앙 Ingest·Edge 관리·장애 상관관계</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M8.1</td>
+<td>Ingest API (gzip·Schema 검증·크기 제한)</td>
+<td><code>api/routers/edge_ingest.py</code></td>
+<td>과대 Payload·비정상 Batch 거부</td>
+</tr>
+<tr>
+<td>M8.2</td>
+<td>멱등 처리 (<code>edge_id</code>+<code>sequence</code>+<code>batch_id</code>)</td>
+<td>repository</td>
+<td>같은 Batch 3회 전송 시 Point 수 불변</td>
+</tr>
+<tr>
+<td>M8.3</td>
+<td>지연 데이터 적재 (<code>observed_at</code> 기준)</td>
+<td>writer</td>
+<td>하루 늦은 데이터가 과거 시각에 채워짐</td>
+</tr>
+<tr>
+<td>M8.4</td>
+<td>mTLS 검증·인증서 폐기</td>
+<td>nginx·api</td>
+<td>폐기된 Edge 즉시 차단</td>
+</tr>
+<tr>
+<td>M8.5</td>
+<td>Edge 등록·장비 할당 API·화면</td>
+<td><code>features/edges</code></td>
+<td>동일 장비를 두 Edge에 할당 시 거부</td>
+</tr>
+<tr>
+<td>M8.6</td>
+<td>Edge 상세 화면 (Spool·버전·인증서·성공률)</td>
+<td>edges/:id</td>
+<td>미전송량과 최고령 데이터 표시</td>
+</tr>
+<tr>
+<td>M8.7</td>
+<td>Edge 장애 시 하위 장애 억제</td>
+<td>health</td>
+<td>Edge Offline 시 하위 알림 1건으로 수렴</td>
+</tr>
+<tr>
+<td>M8.8</td>
+<td><code>UNKNOWN / EDGE UNREACHABLE</code> 상태 표시</td>
+<td>overview·stations</td>
+<td>기록계 장애와 Edge 장애가 화면에서 구분</td>
+</tr>
+<tr>
+<td>M8.9</td>
+<td>Adapter·Core 버전 호환성 검사</td>
+<td>edge config</td>
+<td>미지원 Adapter 필요 장비는 할당 차단</td>
+</tr>
+<tr>
+<td>M8.10</td>
+<td>지역 토폴로지 화면</td>
+<td>overview</td>
+<td>지역 → Edge → 관측소 계층과 영향 범위 표시</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> Edge 하나가 죽어도 알림은 1건이며, 하위 관측소는 장애가 아니라 확인 불가로 표시된다.</p>
+<hr />
+<h3 id="m9-grafana-provisioning-알림">M9 Grafana Provisioning + 알림</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M9.1</td>
+<td>Datasource·Folder Provisioning</td>
+<td><code>deploy/grafana/provisioning</code></td>
+<td>컨테이너 재생성만으로 동일 구성 복원</td>
+</tr>
+<tr>
+<td>M9.2</td>
+<td><code>01-fleet-overview</code></td>
+<td>dashboards</td>
+<td>상태 집계·Geomap·Matrix·현재 장애</td>
+</tr>
+<tr>
+<td>M9.3</td>
+<td><code>02-station-detail</code></td>
+<td>dashboards</td>
+<td>관측소 변수로 전 카테고리 시계열 표시</td>
+</tr>
+<tr>
+<td>M9.4</td>
+<td><code>03-centaur-ctr-detail</code></td>
+<td>dashboards</td>
+<td>Vendor Metric 포함, 공통 대시보드와 분리</td>
+</tr>
+<tr>
+<td>M9.5</td>
+<td><code>04-edge-fleet</code></td>
+<td>dashboards</td>
+<td>Spool·업로드·버전·인증서 만료 표시</td>
+</tr>
+<tr>
+<td>M9.6</td>
+<td><code>05-collector-operations</code></td>
+<td>dashboards</td>
+<td>Poll 처리량·성공률·Influx Write 오류</td>
+</tr>
+<tr>
+<td>M9.7</td>
+<td><code>06-data-quality</code></td>
+<td>dashboards</td>
+<td>채널별 Sample Age·Gap·가용률</td>
+</tr>
+<tr>
+<td>M9.8</td>
+<td>알림 규칙 7종</td>
+<td>provisioning</td>
+<td>중복 알림 없음, 복구 알림 정상</td>
+</tr>
+<tr>
+<td>M9.9</td>
+<td>관제 Kiosk 화면·자동 갱신</td>
+<td>dashboards</td>
+<td>대형 화면에서 장애 우선 정렬</td>
+</tr>
+<tr>
+<td>M9.10</td>
+<td>관리 Web ↔ Grafana Deep Link</td>
+<td>frontend</td>
+<td>관측소 상세에서 해당 패널로 직접 이동</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> 표준 Metric만으로 구성된 공통 대시보드에서 CTR 장비 전체가 보이고, 제조사 전용 정보는 별도 대시보드에만 존재한다.</p>
+<hr />
+<h3 id="m10-운영-강화와-파일럿">M10 운영 강화와 파일럿</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M10.1</td>
+<td>백업·복구 절차 (Postgres·Influx·Grafana·키)</td>
+<td><code>docs/operations/</code></td>
+<td>빈 서버에서 복구 리허설 성공</td>
+</tr>
+<tr>
+<td>M10.2</td>
+<td>보존정책·다운샘플링 검증</td>
+<td>Influx Task</td>
+<td>원본 만료 후에도 장기 추세 조회 가능</td>
+</tr>
+<tr>
+<td>M10.3</td>
+<td>부하 시험 (100대·느린 장비 20%·Influx 중단)</td>
+<td><code>tests/load/</code></td>
+<td>목표 주기 유지, 재시작 후 스케줄 자동 복구</td>
+</tr>
+<tr>
+<td>M10.4</td>
+<td>보안 점검 (Secret·권한·SSRF·CSV·TLS)</td>
+<td>점검표</td>
+<td>발견 항목 전부 조치 또는 위험 수용 기록</td>
+</tr>
+<tr>
+<td>M10.5</td>
+<td>E2E 자동화 (Playwright)</td>
+<td><code>tests/e2e/</code></td>
+<td>등록→수집→장애→복구 시나리오 통과</td>
+</tr>
+<tr>
+<td>M10.6</td>
+<td>장애 시나리오 리허설 12종</td>
+<td>시험 결과서</td>
+<td>중앙 단절·Edge 재시작·디스크 Full·중복 Batch·인증서 만료 등 확인</td>
+</tr>
+<tr>
+<td>M10.7</td>
+<td>파일럿 3~5개 관측소 적용</td>
+<td>운영 기록</td>
+<td>실장비에서 오탐·누락 목록 확보</td>
+</tr>
+<tr>
+<td>M10.8</td>
+<td>임계값 튜닝 (전압·온도·Mass Position·GNSS)</td>
+<td>프로파일</td>
+<td>오탐이 운영 수용 수준으로 감소</td>
+</tr>
+<tr>
+<td>M10.9</td>
+<td>운영 문서 (설치·등록·장애대응·FAQ)</td>
+<td><code>docs/</code></td>
+<td>담당자 교체 시 문서만으로 인수 가능</td>
+</tr>
+<tr>
+<td>M10.10</td>
+<td>전체 관측소 확대 적용</td>
+<td>운영 기록</td>
+<td>등록 누락 없이 전 장비 수집</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> MVP 완료 기준(<a href="#16-mvp-완료-기준">16절</a>) 전 항목 충족.</p>
+<hr />
+<h3 id="m11-확장성-검증-gen5타-제조사-준비">M11 확장성 검증 (Gen5·타 제조사 준비)</h3>
+<p>실제 Gen5 장비가 없어도 확장 가능성은 <strong>지금 검증</strong>해야 한다. 나중에 확인하면 구조를 되돌리기 어렵다.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>작업</th>
+<th>산출물</th>
+<th>완료 판정</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M11.1</td>
+<td>가상 제조사 Adapter 구현</td>
+<td><code>adapters/mock_recorder/</code></td>
+<td>다른 필드명·다른 상태문자열·다른 단위</td>
+</tr>
+<tr>
+<td>M11.2</td>
+<td>Collector·Scheduler 무변경 확인</td>
+<td>회귀 테스트</td>
+<td>Adapter 추가로 수집 코드 변경 0줄</td>
+</tr>
+<tr>
+<td>M11.3</td>
+<td>DB 스키마 무변경 확인</td>
+<td>Migration 이력</td>
+<td>제조사 추가에 신규 테이블 불필요</td>
+</tr>
+<tr>
+<td>M11.4</td>
+<td>공통 대시보드 재사용 확인</td>
+<td>Grafana</td>
+<td>가상 제조사 장비가 공통 화면에 그대로 표출</td>
+</tr>
+<tr>
+<td>M11.5</td>
+<td>Capability 기반 화면 자동 변화</td>
+<td>Frontend</td>
+<td>미지원 기능 탭·패널이 자동 숨김/미지원 표시</td>
+</tr>
+<tr>
+<td>M11.6</td>
+<td>SNMP 등 비HTTP Transport 시험 구현</td>
+<td><code>adapters/transport/</code></td>
+<td>Transport 교체가 Adapter 내부로 한정</td>
+</tr>
+<tr>
+<td>M11.7</td>
+<td>gRPC 외부 Adapter Runner 설계 검증</td>
+<td><code>docs/adapter-development/</code></td>
+<td>제조사 SDK 오류가 Collector를 죽이지 않는 구조 확인</td>
+</tr>
+<tr>
+<td>M11.8</td>
+<td>Gen5 착수 체크리스트</td>
+<td>문서</td>
+<td>필요한 조사 항목·인증 방식·예상 신규 Metric 정리</td>
+</tr>
+<tr>
+<td>M11.9</td>
+<td>Adapter 개발 가이드</td>
+<td><code>docs/adapter-development/</code></td>
+<td>외부 개발자가 문서만으로 새 Adapter 추가 가능</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Exit:</strong> 새 제조사 추가 범위가 <code>Adapter + Manifest + Mapping + (선택) 전용 대시보드</code>로 한정됨이 실측으로 증명된다.</p>
+<hr />
+<h2 id="16-mvp-완료-기준">16. MVP 완료 기준</h2>
+<ol>
+<li><code>make up</code> 수준의 단일 명령으로 중앙 스택이 기동된다.</li>
+<li>별도 Compose로 지역 Edge가 기동되고, 중앙에 자동 등록된다.</li>
+<li>화면에서 관측소와 CTR 기록계를 등록하고 DIRECT/EDGE를 선택할 수 있다.</li>
+<li>설정한 분 주기로 SOH가 수집되고, 한 장비 장애가 전체 수집을 막지 않는다.</li>
+<li>중앙이 끊겨도 Edge 수집이 지속되고, 복구 후 누락분이 원래 시각으로 채워진다.</li>
+<li>InfluxDB에 제조사 중립 표준 Metric으로 적재된다.</li>
+<li>Grafana에서 전체·관측소·Edge·데이터품질을 확인할 수 있다.</li>
+<li>기록계 장애와 Edge 장애가 구분되고, Edge 장애 시 알림이 폭주하지 않는다.</li>
+<li><code>UNSUPPORTED</code>·<code>UNKNOWN</code>·<code>OK</code>가 화면에서 구분된다.</li>
+<li>센서 상태와 별개로 실제 데이터 공백이 검출된다.</li>
+<li>새 Adapter 추가에 DB·공통 화면·공통 대시보드 재설계가 필요 없다.</li>
+<li>Secret이 화면·로그·이미지·Git에 남지 않는다.</li>
+</ol>
+<hr />
+<h2 id="17-릴리스와-추적">17. 릴리스와 추적</h2>
+<p>이미지 태그: <code>soh-{api,collector,edge,web}:&lt;git-sha&gt;</code>, 정식 릴리스는 <code>:1.0.0</code>. 중앙은 Edge의 Core·Adapter 버전 호환성을 검사하고, 비호환 Edge에는 장비 할당을 막는다.</p>
+<p>CI 게이트:</p>
+<pre><code>Format → Lint → Unit → contracts Schema 검증 → OpenAPI/Type 동기 검사
+→ Docker Build → Integration(compose.test) → Frontend Build → E2E → 취약점 Scan
+</code></pre>
+<p>작업 추적은 마일스톤 ID를 그대로 이슈 라벨로 사용한다(<code>M2.4</code> 형식). 마일스톤은 Exit 조건이 충족되기 전에는 닫지 않는다.</p>
+<hr />
+<h2 id="18-위험과-완화">18. 위험과 완화</h2>
+<table>
+<thead>
+<tr>
+<th>위험</th>
+<th>영향</th>
+<th>완화</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mass Position의 SOH API 경로가 모델별로 다름</td>
+<td>센서 감시 누락</td>
+<td>M-1.3에서 실응답으로 확정, Mapping 테이블로 흡수</td>
+</tr>
+<tr>
+<td>펌웨어별 필드·상태문자열 차이</td>
+<td>파싱 실패·오탐</td>
+<td>Mapping 버전 + 미지의 값은 <code>UNKNOWN</code> 처리, Fixture 회귀</td>
+</tr>
+<tr>
+<td>센서 상태가 미연결·파형정지를 못 잡음</td>
+<td>장애 미검출</td>
+<td>SeedLink/FDSN 기반 <code>acquisition.*</code> 병행</td>
+</tr>
+<tr>
+<td>Edge 자동 절체 시 이중 수집</td>
+<td>데이터 중복·경합</td>
+<td>MVP는 수동 절체, 활성 할당 Unique 제약</td>
+</tr>
+<tr>
+<td>중앙 장기 단절 후 대량 Backfill</td>
+<td>Ingest·Influx 부하</td>
+<td>Batch 크기 제한·Backoff·우선순위 정리, 부하 시험(M10.3)</td>
+</tr>
+<tr>
+<td>늦게 도착한 과거 데이터</td>
+<td>현재 상태 오표시</td>
+<td><code>observed_at</code> 최신성 검사(M4.8)</td>
+</tr>
+<tr>
+<td>임계값 오탐으로 알림 신뢰도 하락</td>
+<td>운영자가 알림 무시</td>
+<td>지속시간·Hysteresis, 파일럿 튜닝(M10.8)</td>
+</tr>
+<tr>
+<td>기록계 인증정보 유출</td>
+<td>장비 침해</td>
+<td>Credential 참조 저장·암호화, 로그·응답 Redact, VPN 내부 접근</td>
+</tr>
+<tr>
+<td>CTR 원본 필드가 Grafana로 새어나감</td>
+<td>Gen5 확장 시 대시보드 전면 수정</td>
+<td>명명 Lint(M1.5), 확장성 회귀 검증(M11.4)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="19-근거-centaur-사용자-가이드">19. 근거 (Centaur 사용자 가이드)</h2>
+<ul>
+<li>SOH API: <code>GET /api/v1/instruments/soh</code>, JSON 반환, <code>instrumentId</code> 미지정 시 자기 자신의 SOH 보고, <code>pretty</code> 파라미터 지원.</li>
+<li>SOH 채널 목록(7.4절): <code>instrumentStatus</code>, <code>config/commitState</code>, <code>controller/store/storePercentageUsed</code>, <code>controller/store/storeRecordingStatus</code>, <code>dataArchive/status</code>, <code>dataArchive/status/events</code>, <code>digitizer/sensor/status#_0</code>·<code>#_1</code>, <code>externalSoh/voltage#_1</code>~<code>#_3</code>(µV), <code>gps/numberOfSatellites</code>, <code>instrument/earthLocation</code>, <code>instrument/systemInfo/firmwareStatus</code>, <code>media/status/removableSD</code>, <code>media/freeSpace/removableSD</code>(미장착 시 −1), <code>powerSupply/voltage</code>(V), <code>sensor/controlLines/state#_0</code>·<code>#_1</code>, <code>system/current</code>(A), <code>systemSoftwareVersion</code>, <code>temperature</code>(°C), <code>timeStatus</code>, <code>timing/lastLockTime</code>, <code>timing/phaseLock</code>, <code>timing/timeError</code>(ns), <code>timing/timeQuality</code>(%), <code>timing/timeUncertainty</code>(ns).</li>
+<li>SOH 그룹: Environment SOH(전압·전류·온도·센서·외부 SOH·시각), Timing SOH(위치·GNSS 상태·위성 수·시각 상태·PLL·불확도), System SOH(내부 저장소·수집 통계).</li>
+<li>Steim 압축 SOH 코드(8.2절): <code>VEI</code>(입력전압 mV), <code>VEC</code>(시스템 전류 mA), <code>VDT</code>(온도 m°C), <code>VM1</code>~<code>VM6</code>(센서 SOH, 통상 Mass Position, µV), <code>EX1</code>~<code>EX3</code>(외부 SOH µV), <code>GST</code>/<code>GAN</code>/<code>GNS</code>/<code>GPL</code>(GNSS 상태·안테나·위성수·PLL), <code>LCQ</code>/<code>LCE</code>(시각 품질·위상오차), <code>VPB</code>(버퍼 사용률).</li>
+<li>센서 상태 제약: Sensor LED와 Health 상태는 Mass Position 범위 초과만 검출하며, 센서 미연결 등 다른 고장은 검출하지 않는다(펌웨어 릴리스 노트 알려진 제약).</li>
+<li>외부 SOH 입력: 3채널 단일단 입력 ±5V, 샘플 간격 1~3600초, CTR2 이상 모델.</li>
+<li>인증 API: <code>GET /key</code> → <code>POST /login</code> → 인증 필요 엔드포인트 → <code>POST /logout</code> (Calibration 등 인증 필요 API 사용 시).</li>
+</ul>
+<p>출처: Centaur User Guide 17935R10(7.0 APIs, 7.4 State of Health API, 8.2 SOH channels in Steim compressed formats), Centaur 데이터시트, Centaur Firmware Release Notes 3.2.8.</p>
+    </article>
+    <footer>
+      Generated from <code>plan.md</code>.
+    </footer>
+  </div>
+</body>
+</html>

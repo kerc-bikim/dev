@@ -1,0 +1,76 @@
+{
+  "NRLCatalog": {
+    "formatversion": 1.0,
+    "detail": "In 2006, the IRIS DMC began to collect an \"authoritative\" set of manufacturers' recommended nominal instrument responses in SEED RESP format and publish these on the web. The goal behind the Library is to make it easier for the seismological community to both share and create metadata for common instrumentation, and to improve response accuracy for users of the data.  All links to responses are queries to the [NRL web service](http://service.iris.edu/irisws/nrl/1/). \n\nTo cite the the IRIS Nominal Response Library, please use\n- Mary E. Templeton (2017): IRIS Library of Nominal Response for Seismic Instruments.  \nIncorporated Research Institutions for Seismology. Dataset. \n[https://doi.org/10.17611/S7159Q](https://doi.org/10.17611/S7159Q)\n\nDownload the full Library as [RESP](http://service.iris.edu/irisws/nrl/1/combine?instconfig=full_NRL_v2_zip&format=resp.zip&nodata=404) or [StationXML](http://service.iris.edu/irisws/nrl/1/combine?instconfig=full_NRL_v2_zip&format=stationxml.zip&nodata=404) files.",
+    "element": [
+      {
+        "name": "sensor",
+        "detail": "Below is some manufacturer-specific information to help you \nlocate your instrument response.\n### DTCC\nDTCC is the manufacturer of SmartSolo nodal seismographs.\n### Eentec\nEentec was formerly Sprengnether.\n### GeoSpace\nGeoSpace was previously OYO Geospace.\n### HGS Products\nSensor Nederland is a former subsidiary of HGS Products.\n### Magseis Fairfield\nMagseis Fairfield was previously Fairfield Nodal.\n### R-Sensors\nR-Sensors are the manufacturer of CME sensors.\n### SensorNederland\nSensor Nederland is a former subsidiary of HGS Products.\n### Sercel\nMark Products is now part of Sercel. \n",
+        "manufacturer": [
+          {
+            "name": "Guralp",
+            "detail": "Below is some model-specific information to help you locate your instrument response.\n### CMG-1T\nThis sensor measures ground velocity.\n### CMG-3ESP\nThis sensor measures ground velocity.\n### CMG-3T\nThis sensor measures ground velocity.\n### CMG-3TB\nThis borehole sensor measures ground velocity.\n### CMG-3T-5THybridNSN\nThis sensor's response has units of ground velocity, although part of its band is flat to acceleration and part is flat to velocity.\n### CMG-3v\nThis sensor measures ground velocity.\n### CMG-6T\nThis sensor measures ground velocity.\n### CMG-6TF\nThis sensor measures ground velocity.\n### CMG-40T\nThis sensor measures ground velocity.\n### CMG-EDU-T\nThis sensor measures ground velocity.\n### CMG-5T\nThis sensor measures ground acceleration.\n### CMG-5TC\nThis sensor measures ground acceleration.\n### Fortis\nThis sensor measures ground acceleration.\n",
+            "model": [
+              {
+                "name": "CMG-1T",
+                "detail": ""
+              },
+              {
+                "name": "CMG-3ESP",
+                "detail": ""
+              },
+              {
+                "name": "CMG-3ESPC",
+                "detail": ""
+              },
+              {
+                "name": "CMG-3T",
+                "detail": ""
+              },
+              {
+                "name": "CMG-3T-5THybridNSN",
+                "detail": ""
+              },
+              {
+                "name": "CMG-3TB",
+                "detail": ""
+              },
+              {
+                "name": "CMG-3v",
+                "detail": ""
+              },
+              {
+                "name": "CMG-40T",
+                "detail": ""
+              },
+              {
+                "name": "CMG-5T",
+                "detail": "Below is some model-specific information to help you locate your instrument response.\n### Sensitivity\nGuralp accelerometers have adjustable clip levels and full scale voltage outputs that are custom set at the factory according to the purchaser's needs.  Clip levels, in units of g's, rangefrom 0.1 g through 4g.  Full-scale voltages can be set to 2.5, 5 or 10 Volts.\nThe example response file(s) available here gives the sensitivity assuming a 4g clip level and +/-10V Full scale voltage. Instrument-specific sensitivities in V/g can be found in their accompanying Guralp manual.  Those values can be divided by 9.80665 m/(g * s\\*\\*2) to get units of V/m/s\\*\\*2 using the following expression for nominal sensitivity:\n > [Full scale voltage / Clip level] / [9.80665 m/(g * s\\*\\*2)]\n  \n"
+              },
+              {
+                "name": "CMG-5TC",
+                "detail": "Below is some model-specific information to help you locate your instrument response.\n### Sensitivity\nGuralp accelerometers have adjustable clip levels and full scale voltage outputs that are custom set at the factory according to the purchaser's needs.  Clip levels, in units of g's, rangefrom 0.1 g through 4g.  Full-scale voltages can be set to 2.5, 5 or 10 Volts.\nThe example response file(s) available here gives the sensitivity assuming a 4g clip level and +/-10V Full scale voltage. Instrument-specific sensitivities in V/g can be found in their accompanying Guralp manual.  Those values can be divided by 9.80665 m/(g * s\\*\\*2) to get units of V/m/s\\*\\*2 using the following expression for nominal sensitivity:\n > [Full scale voltage / Clip level] / [9.80665 m/(g * s\\*\\*2)]\n  \n"
+              },
+              {
+                "name": "CMG-6T",
+                "detail": ""
+              },
+              {
+                "name": "CMG-6TF",
+                "detail": ""
+              },
+              {
+                "name": "CMG-EDU-T",
+                "detail": ""
+              },
+              {
+                "name": "Fortis",
+                "detail": "Below is some model-specific information to help you locate your instrument response.\n### Sensitivity\nGuralp accelerometers have adjustable clip levels and full scale voltage outputs that are custom set at the factory according to the purchaser's needs.  Clip levels, in units of g's, rangefrom 0.1 g through 4g.  Full-scale voltages can be set to 2.5, 5 or 10 Volts.\nThe example response file(s) available here gives the sensitivity assuming a 4g clip level and +/-10V Full scale voltage. Instrument-specific sensitivities in V/g can be found in their accompanying Guralp manual.  Those values can be divided by 9.80665 m/(g * s\\*\\*2) to get units of V/m/s\\*\\*2 using the following expression for nominal sensitivity:\n > [Full scale voltage / Clip level] / [9.80665 m/(g * s\\*\\*2)]\n  \n"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

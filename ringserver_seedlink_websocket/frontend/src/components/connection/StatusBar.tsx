@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const labels: Record<string, string> = {
@@ -241,9 +242,8 @@ export function StatusBar() {
         ? `Nyquist(${(minSampleRate / 2).toFixed(2)} Hz)에 맞춰 ${activeNyquist.fminHz.toPrecision(3)}–${activeNyquist.fmaxHz.toPrecision(3)} Hz로 적용합니다.`
         : "";
 
-  const seismic = presets.filter((p) => p.group === "seismic");
-  const infrasound = presets.filter((p) => p.group === "infrasound");
-  const custom = presets.filter((p) => p.group === "custom");
+  const builtin = presets.filter((p) => p.builtin);
+  const custom = presets.filter((p) => !p.builtin);
 
   return (
     <>
@@ -428,8 +428,7 @@ export function StatusBar() {
                     <span className="filter-item-band">필터 없음</span>
                   </button>
 
-                  <div className="filter-group-label">지진</div>
-                  {seismic.map((p) => (
+                  {builtin.map((p) => (
                     <button
                       key={p.id}
                       type="button"
@@ -443,24 +442,8 @@ export function StatusBar() {
                     </button>
                   ))}
 
-                  <div className="filter-group-label">공중음파</div>
-                  {infrasound.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className={`filter-item ${
-                        bandPassEnabled && bandPassPresetId === p.id ? "selected" : ""
-                      }`}
-                      onClick={() => selectPreset(p.id)}
-                    >
-                      <span className="filter-item-name">{p.name}</span>
-                      <span className="filter-item-band">{fmtBand(p)}</span>
-                    </button>
-                  ))}
-
-                  <div className="filter-group-label">커스텀</div>
-                  {custom.length === 0 && !addingCustom && (
-                    <p className="filter-empty muted">저장된 커스텀 필터 없음</p>
+                  {(custom.length > 0 || addingCustom) && (
+                    <div className="filter-group-label">커스텀</div>
                   )}
                   {custom.map((p) => (
                     <div key={p.id} className="filter-custom-row">
@@ -566,12 +549,7 @@ export function StatusBar() {
               title="전체 스트림 닫기"
               aria-label="전체 스트림 닫기"
             >
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path
-                  fill="currentColor"
-                  d="M5.3 4.2 4.2 5.3 6.9 8l-2.7 2.7 1.1 1.1L8 9.1l2.7 2.7 1.1-1.1L9.1 8l2.7-2.7-1.1-1.1L8 6.9 5.3 4.2zm7.2 0-1.1 1.1L14.1 8l-2.7 2.7 1.1 1.1L15.2 9.1l2.7 2.7 1.1-1.1L16.3 8l2.7-2.7-1.1-1.1L15.2 6.9l-2.7-2.7z"
-                />
-              </svg>
+              <X className="size-4" aria-hidden="true" />
             </Button>
           </div>
         </div>

@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FDSNStationXML xmlns="http://www.fdsn.org/xml/station/1" schemaVersion="1.2">
+  <!-- keep-me-document-comment -->
+  <Source>unit-test</Source>
+  <Sender>KERC</Sender>
+  <Module>stationxml_manager</Module>
+  <ModuleURI>https://example.local/stationxml</ModuleURI>
+  <Created>2020-01-01T00:00:00Z</Created>
+  <Network code="YZ" startDate="2009-04-10T00:00:00Z" restrictedStatus="open">
+    <Description>Test network</Description>
+    <Identifier type="DOI">10.17611/S7159Q</Identifier>
+    <Comment id="n1" subject="ops">
+      <Value>network comment</Value>
+    </Comment>
+    <Station code="TEST1" startDate="2009-04-10T00:00:00Z" restrictedStatus="open">
+      <Description>Test station</Description>
+      <Identifier type="internal">sta-test1</Identifier>
+      <Comment id="s1" subject="nrl">
+        <Value>NRL v2 sensor_Guralp_CMG-3T_LP120_HF50_SG1500_STgroundVel (2021-03-18)</Value>
+      </Comment>
+      <Latitude unit="DEGREES">76.35</Latitude>
+      <Longitude unit="DEGREES">-41.84</Longitude>
+      <Elevation unit="METERS">100</Elevation>
+      <Site>
+        <Name>Test Site</Name>
+        <Description>Greenland test</Description>
+        <Country>GL</Country>
+      </Site>
+      <CreationDate>2009-04-10T00:00:00Z</CreationDate>
+      <Equipment>
+        <Type>Vault</Type>
+        <Description>Test vault box</Description>
+      </Equipment>
+      <Channel code="BHE" locationCode="00" startDate="2009-04-10T00:00:00Z">
+        <Latitude unit="DEGREES">76.35</Latitude>
+        <Longitude unit="DEGREES">-41.84</Longitude>
+        <Elevation unit="METERS">100</Elevation>
+        <Depth unit="METERS">0</Depth>
+        <Azimuth unit="DEGREES">90</Azimuth>
+        <Dip unit="DEGREES">0</Dip>
+        <Type>CONTINUOUS</Type>
+        <SampleRate>20</SampleRate>
+        <Sensor>
+          <Type>Broadband Seismometer</Type>
+          <Description>Guralp CMG-3T</Description>
+          <Manufacturer>Guralp</Manufacturer>
+          <Model>CMG-3T</Model>
+          <gfz:Identifier xmlns:gfz="http://gfz-potsdam.de/ns/fdsnstationxml/1" type="hdl">10013/sensor.test</gfz:Identifier>
+        </Sensor>
+        <DataLogger>
+          <Type>Digitizer</Type>
+          <Manufacturer>Quanterra</Manufacturer>
+          <Model>Q330HR</Model>
+        </DataLogger>
+        <Response>
+          <InstrumentSensitivity>
+            <Value>1.2e9</Value>
+            <Frequency>1</Frequency>
+            <InputUnits>
+              <Name>m/s</Name>
+            </InputUnits>
+            <OutputUnits>
+              <Name>count</Name>
+            </OutputUnits>
+          </InstrumentSensitivity>
+          <Stage number="1">
+            <PolesZeros>
+              <PzTransferFunctionType>LAPLACE (RADIANS/SECOND)</PzTransferFunctionType>
+              <NormalizationFactor>1</NormalizationFactor>
+              <NormalizationFrequency>1</NormalizationFrequency>
+              <Zero>
+                <Real>0</Real>
+                <Imaginary>0</Imaginary>
+              </Zero>
+              <Pole>
+                <Real>-0.037</Real>
+                <Imaginary>0.037</Imaginary>
+              </Pole>
+              <Pole>
+                <Real>-0.037</Real>
+                <Imaginary>-0.037</Imaginary>
+              </Pole>
+            </PolesZeros>
+            <StageGain>
+              <Value>1500</Value>
+              <Frequency>1</Frequency>
+            </StageGain>
+          </Stage>
+          <Stage number="2">
+            <Coefficients>
+              <CfTransferFunctionType>DIGITAL</CfTransferFunctionType>
+              <Numerator>1</Numerator>
+            </Coefficients>
+            <Decimation>
+              <InputSampleRate>20</InputSampleRate>
+              <Factor>1</Factor>
+              <Offset>0</Offset>
+              <Delay>0</Delay>
+              <Correction>0</Correction>
+            </Decimation>
+            <StageGain>
+              <Value>1</Value>
+              <Frequency>1</Frequency>
+            </StageGain>
+          </Stage>
+        </Response>
+      </Channel>
+      <Channel code="BHN" locationCode="00" startDate="2009-04-10T00:00:00Z">
+        <Latitude unit="DEGREES">76.35</Latitude>
+        <Longitude unit="DEGREES">-41.84</Longitude>
+        <Elevation unit="METERS">100</Elevation>
+        <Depth unit="METERS">0</Depth>
+        <Azimuth unit="DEGREES">0</Azimuth>
+        <Dip unit="DEGREES">0</Dip>
+        <Type>CONTINUOUS</Type>
+        <SampleRate>20</SampleRate>
+        <Sensor>
+          <Type>Broadband Seismometer</Type>
+          <Manufacturer>Guralp</Manufacturer>
+          <Model>CMG-3T</Model>
+        </Sensor>
+        <Response>
+          <InstrumentSensitivity>
+            <Value>1.2e9</Value>
+            <Frequency>1</Frequency>
+            <InputUnits>
+              <Name>m/s</Name>
+            </InputUnits>
+            <OutputUnits>
+              <Name>count</Name>
+            </OutputUnits>
+          </InstrumentSensitivity>
+        </Response>
+      </Channel>
+      <Channel code="BHZ" locationCode="00" startDate="2009-04-10T00:00:00Z">
+        <Latitude unit="DEGREES">76.35</Latitude>
+        <Longitude unit="DEGREES">-41.84</Longitude>
+        <Elevation unit="METERS">100</Elevation>
+        <Depth unit="METERS">0</Depth>
+        <Azimuth unit="DEGREES">0</Azimuth>
+        <Dip unit="DEGREES">-90</Dip>
+        <Type>CONTINUOUS</Type>
+        <SampleRate>20</SampleRate>
+        <Sensor>
+          <Type>Broadband Seismometer</Type>
+          <Manufacturer>Guralp</Manufacturer>
+          <Model>CMG-3T</Model>
+        </Sensor>
+        <Response>
+          <InstrumentSensitivity>
+            <Value>1.2e9</Value>
+            <Frequency>1</Frequency>
+            <InputUnits>
+              <Name>m/s</Name>
+            </InputUnits>
+            <OutputUnits>
+              <Name>count</Name>
+            </OutputUnits>
+          </InstrumentSensitivity>
+        </Response>
+      </Channel>
+    </Station>
+  </Network>
+</FDSNStationXML>

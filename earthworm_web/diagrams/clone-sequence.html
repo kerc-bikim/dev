@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>복제 모듈 기동</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #eb6c36;
+      --font-sans:     'Geist', 'Noto Sans KR', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem 2rem;
+    }
+    .frame { max-width: 1200px; width: 100%; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 720px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Sequence · Diagram Design</p>
+    <h1>복제는 파일 트랜잭션, 기동은 reconfigure</h1>
+    <svg viewBox="0 0 1000 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="clone-sequence-title clone-sequence-desc">
+      <title id="clone-sequence-title">복제 모듈 기동</title>
+      <desc id="clone-sequence-desc">브라우저가 모듈을 복제하고 켜면 FastAPI 가 바이너리와 .d 를 복사한 뒤 startstop reconfigure 로 새 프로세스만 띄운다.</desc>
+      
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+        <marker id="arrow-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0, 8 3, 0 6" fill="none" stroke="#4f5d75" stroke-width="1.2"/></marker>
+      </defs>
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+      
+      <line x1="160" y1="96" x2="160" y2="456" stroke="rgba(45,49,66,0.20)" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="500" y1="96" x2="500" y2="456" stroke="rgba(45,49,66,0.20)" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="840" y1="96" x2="840" y2="456" stroke="rgba(45,49,66,0.20)" stroke-width="1" stroke-dasharray="3,3"/>
+      <rect x="496" y="148" width="8" height="288" fill="rgba(45,49,66,0.06)" stroke="#4f5d75" stroke-width="0.8"/>
+      <rect x="836" y="340" width="8" height="56" fill="rgba(45,49,66,0.06)" stroke="#4f5d75" stroke-width="0.8"/>
+
+      <line x1="160" y1="152" x2="496" y2="152" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <path d="M 508 200 L 548 200 L 548 224 L 508 224" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="160" y1="256" x2="496" y2="256" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <path d="M 508 304 L 548 304 L 548 328 L 508 328" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="504" y1="360" x2="836" y2="360" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M 848 400 L 888 400 L 888 424 L 848 424" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="496" y1="448" x2="160" y2="448" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+
+      
+      <rect x="244.0" y="132" width="168" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="328" y="141" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">POST CLONE PICK_EW_B</text>
+
+      
+      <rect x="564.0" y="192" width="96" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="612" y="201" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">CP BIN + .D</text>
+
+      
+      <rect x="268.0" y="236" width="120" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="328" y="245" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">PATCH ENABLED</text>
+
+      
+      <rect x="552.0" y="296" width="152" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="628" y="305" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">UNCOMMENT PROCESS</text>
+
+      
+      <rect x="618.0" y="340" width="104" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="670" y="349" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">RECONFIGURE</text>
+
+      
+      <rect x="920.0" y="392" width="56" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="948" y="401" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SPAWN</text>
+
+      
+      <rect x="300.0" y="428" width="56" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="328" y="437" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ALIVE</text>
+
+
+      
+      <rect x="80" y="40" width="160" height="56" rx="6" fill="#f5f5f5"/>
+      <rect x="80" y="40" width="160" height="56" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+      <rect x="88" y="48" width="32" height="12" rx="2" fill="transparent" stroke="#7a8399" stroke-opacity="0.45" stroke-width="0.8"/>
+      <text x="104.0" y="57" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EXT</text>
+      <text x="160.0" y="76" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif" text-anchor="middle">브라우저</text>
+      <text x="160.0" y="92" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">모듈 화면</text>
+
+      
+      <rect x="420" y="40" width="160" height="56" rx="6" fill="#f5f5f5"/>
+      <rect x="420" y="40" width="160" height="56" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+      <rect x="428" y="48" width="32" height="12" rx="2" fill="transparent" stroke="#eb6c36" stroke-opacity="0.45" stroke-width="0.8"/>
+      <text x="444.0" y="57" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">API</text>
+      <text x="500.0" y="76" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif" text-anchor="middle">FastAPI</text>
+      <text x="500.0" y="92" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">clone + toggle</text>
+
+      
+      <rect x="760" y="40" width="160" height="56" rx="6" fill="#f5f5f5"/>
+      <rect x="760" y="40" width="160" height="56" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+      <rect x="768" y="48" width="32" height="12" rx="2" fill="transparent" stroke="#7a8399" stroke-opacity="0.45" stroke-width="0.8"/>
+      <text x="784.0" y="57" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">BIN</text>
+      <text x="840.0" y="76" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', 'Noto Sans KR', sans-serif" text-anchor="middle">startstop</text>
+      <text x="840.0" y="92" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">reconfigure</text>
+
+
+      <line x1="40" y1="476" x2="960" y2="476" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <text x="40" y="496" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <text x="40" y="516" fill="#4f5d75" font-size="8" font-family="'Geist', 'Noto Sans KR', sans-serif">복제본은 주석 Process 로 생긴 뒤, 켜면 reconfigure 가 새 모듈만 spawn 한다.</text>
+
+    </svg>
+  </div>
+</body>
+</html>

@@ -1,0 +1,4094 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Earthworm Web Control — 계획서</title>
+  <style>
+:root {
+  --bg: #f6f4ef;
+  --surface: #fffdf8;
+  --ink: #1c2430;
+  --muted: #5a6570;
+  --line: #d7d2c8;
+  --accent: #0b4f6e;
+  --accent-soft: #d8e6ee;
+  --code-bg: #eef2f4;
+  --table-head: #e8eef3;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #e7eef3 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #efe8dc 0%, transparent 50%),
+    var(--bg);
+  line-height: 1.65;
+}
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+header.doc-header {
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 1.25rem;
+  margin-bottom: 2rem;
+}
+header.doc-header .eyebrow {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 0.4rem;
+}
+h1 {
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  line-height: 1.25;
+  margin: 0 0 0.75rem;
+}
+.meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+article h1 { display: none; }
+article h2 {
+  margin-top: 2.4rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--line);
+  font-size: 1.35rem;
+  color: var(--accent);
+}
+article h3 {
+  margin-top: 1.6rem;
+  font-size: 1.1rem;
+}
+article h4 { margin-top: 1.2rem; }
+p, li { font-size: 0.98rem; }
+a { color: var(--accent); }
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 2rem 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+  margin: 1rem 0 1.4rem;
+  font-size: 0.92rem;
+}
+th, td {
+  border: 1px solid var(--line);
+  padding: 0.55rem 0.7rem;
+  vertical-align: top;
+  text-align: left;
+}
+th { background: var(--table-head); }
+code, pre {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 0.86rem;
+}
+code {
+  background: var(--code-bg);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  background: #1c2430;
+  color: #e8eef2;
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+.diagram {
+  margin: 1rem 0 1.4rem;
+}
+iframe.diagram {
+  display: block;
+  width: 100%;
+  height: 640px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f5f5f5;
+}
+figure.diagram {
+  margin: 1rem 0 1.4rem;
+}
+figure.diagram figcaption {
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+blockquote {
+  margin: 1rem 0;
+  padding: 0.6rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+}
+footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+@media (max-width: 640px) {
+  .wrap { padding: 1.5rem 0.9rem 3rem; }
+  table { display: block; overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="doc-header">
+      <p class="eyebrow">Earthworm · Web Control Plan</p>
+      <h1>Earthworm Web Control — 계획서</h1>
+      <p class="meta">v8.0b17 · FastAPI 백엔드 + React 프론트엔드 · 우선 모듈 · 구성 보드 · 모노레포</p>
+    </header>
+    <article>
+<h1 id="earthworm-web-control">Earthworm Web Control — 계획서</h1>
+<p>Earthworm <strong>v8.0b17</strong> 기준으로, 이미 컴파일된 Rocky Linux 9 바이너리를 웹에서 설정·기동·감시하는 콘솔의 <strong>확정 계획</strong>입니다. 구현은 이 문서를 따른다.</p>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>대상 소스</td>
+<td><a href="https://gitlab.com/seismic-software/earthworm.git">seismic-software/earthworm</a> 태그 <code>v8.0b17</code></td>
+</tr>
+<tr>
+<td>바이너리</td>
+<td><a href="http://www.earthwormcentral.org/distribution/earthworm_v8-0b8_rockylinux9_4.tar.gz">earthworm_v8-0b8_rockylinux9_4.tar.gz</a> (HTTP 전용. 크기 130927698 bytes, SHA-256 대조 후 사용)</td>
+</tr>
+<tr>
+<td>매뉴얼</td>
+<td>소스 <code>doc/WEB_DOC</code> (<a href="https://gitlab.com/seismic-software/earthworm/-/raw/master/doc/WEB_DOC">raw</a>, 시작점 <code>index.html</code> / <code>modules.html</code>)</td>
+</tr>
+<tr>
+<td>환경 스크립트</td>
+<td><code>environment/ew_linux.bash</code> 만 사용</td>
+</tr>
+<tr>
+<td>UI 언어</td>
+<td>한국어</td>
+</tr>
+<tr>
+<td>스택</td>
+<td>백엔드 FastAPI · 프론트엔드 React + Vite + TypeScript (이 저장소 PPSD / StationXML 과 동일)</td>
+</tr>
+</tbody>
+</table>
+<p>상태: 계획만. 구현 체크리스트는 <a href="#12-구현-단계">구현 단계</a>에 둔다. 웹 흐름은 <strong>초기 설정</strong>(디렉터리·링)과 <strong>이후 설정</strong>(모듈·운영)으로 나눈다. 근거는 <a href="#17-소스매뉴얼-분석-근거">17절</a>.</p>
+<p>우선 운영 모듈·한 창 일괄 구성·모노레포 배포는 <a href="plan_priority.md">plan_priority.md</a> (<a href="#18">18절 이하</a>). 단계별 세부·MVP는 <a href="plan_mvp.md">plan_mvp.md</a> (<a href="#30-mvp">30절</a>). 작업자·이력은 <a href="plan_ops.md">plan_ops.md</a> (<a href="#41_1">41절</a>).</p>
+<hr />
+<h2 id="1">1. 목표</h2>
+<p>운영자가 SSH와 <code>startstop</code> 콘솔 없이, 브라우저에서 다음을 한다.</p>
+<ol>
+<li><code>ew_linux.bash</code> 로 런타임 환경을 고정한다.</li>
+<li><code>params/</code> · <code>environment/</code> 파일을 웹에서 읽고 고친다.</li>
+<li><strong>우선 모듈</strong>만 팔레트에 두고, 나머지는 필요 시 등록한다.</li>
+<li><code>q3302ew</code> · <code>slink2ew</code> · <code>export_scnl</code> · <code>export_generic</code> · <code>wave_serverV</code> 는 복제 다발로 <strong>같은 기능, 다른 이름</strong> 인스턴스를 여러 대 돌린다.</li>
+<li><strong>구성 보드 한 창</strong>에서 인스턴스 파라미터를 채우고 일괄 적용한 뒤, 전체가 같은 <code>startstop</code> 아래 운영되게 한다.</li>
+<li>Earthworm 전체를 시작 / 종료 / 일시중지한다.</li>
+<li>실행 중 모듈 상태를 대시보드로 본다.</li>
+<li>로그 디렉터리를 설정하고 모듈별 로그를 본다.</li>
+<li>로그 보관 기간을 설정한다.</li>
+<li><code>sniffwave</code> · <code>sniffring</code> 결과를 옵션과 함께 실시간으로 본다.</li>
+<li><strong>초기 설정 마법사</strong>로 기본 디렉터리(<code>params</code>/<code>log</code>/<code>data</code>)와 링 이름·키·크기·순서를 웹에서 한 번에 만든다.</li>
+<li>초기 설정이 끝난 뒤에만 모듈 토글·복제·기동·로그·스니프를 연다 (<strong>이후 설정</strong>).</li>
+</ol>
+<p>백엔드와 프론트엔드는 <strong>프로세스·저장소·API 계약</strong>으로 완전히 분리한다. 프론트는 Earthworm 바이너리를 직접 호출하지 않는다.</p>
+<hr />
+<h2 id="2">2. 전제와 버전 정합</h2>
+<h3 id="21-v80b17-ew_linuxbash">2.1 디렉터리 (v8.0b17 <code>ew_linux.bash</code>)</h3>
+<pre><code>${EW_HOME}                          # 기본 /opt/earthworm
+  ${EW_VERSION}/                    # 기본 earthworm_8.0  (타르볼 풀면 실제 폴더명으로 맞춤)
+    bin/                            # startstop, status, pau, sniffwave, …
+    environment/                    # ew_linux.bash, earthworm.d, earthworm_global.d, …
+  run_working/                      # EW_RUN_DIR
+    params/                         # EW_PARAMS  (모듈 .d / .desc, startstop_unix.d)
+    log/                            # EW_LOG
+    data/                           # EW_DATA_DIR
+</code></pre>
+<p>웹 앱은 Earthworm <strong>과 같은 호스트</strong>에서만 동작한다. transport ring 은 System V 공유 메모리이므로, 원격 호스트에서 <code>sniffwave</code> / <code>status</code> 를 호출해도 링에 붙을 수 없다.</p>
+<h3 id="22-vs">2.2 바이너리 vs 소스 태그</h3>
+<p>배포 tarball 은 <strong>v8.0b8</strong>, Git 태그는 <strong>v8.0b17</strong> 이다. 계획은 다음과 같이 고정한다.</p>
+<ul>
+<li>실행 파일: tarball <code>bin/</code> 을 그대로 쓴다. 이 호스트에서 재컴파일하지 않는다.</li>
+<li>배포 URL 은 현재 <strong>HTTP 전용</strong>이다 (<code>https://www.earthwormcentral.org/...</code> 는 HTTP 로 리다이렉트). 받은 파일은 크기(130927698 bytes, Last-Modified 2025-08-04)와 <strong>SHA-256</strong> 을 기록·대조한 뒤에만 푼다. 체크섬이 배포 사이트에 없으면 첫 신뢰 경로에서 한 번 계산해 <code>earthworm_web/checksums.txt</code> 에 보관하는 것을 운영 절차로 둔다.</li>
+<li>설정 템플릿·매뉴얼: v8.0b17 <code>params/</code>, <code>environment/</code>, <code>doc/WEB_DOC</code> 를 기준으로 파서·카탈로그를 만든다.</li>
+<li>v8.0b17 에만 있는 모듈은 <code>bin</code> 에 실행 파일이 없으면 UI 에서 <strong>바이너리 없음</strong> 으로 표시하고 활성화를 막는다.</li>
+<li><code>ew_linux.bash</code> 의 <code>EW_VERSION</code> 은 tarball 을 푼 실제 디렉터리명으로 맞춘다.</li>
+</ul>
+<h3 id="23-earthworm">2.3 Earthworm 이 이미 제공하는 제어 명령</h3>
+<p>웹 컨트롤은 새 프로토콜을 만들지 않고, 환경이 잡힌 셸에서 아래 CLI 만 호출한다.</p>
+<table>
+<thead>
+<tr>
+<th>웹 동작</th>
+<th>CLI</th>
+<th>비고</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>전체 시작</td>
+<td><code>startstop</code></td>
+<td><code>EW_PARAMS/startstop_unix.d</code> 를 읽고 링 생성 후 자식 기동</td>
+</tr>
+<tr>
+<td>전체 종료</td>
+<td><code>pau</code></td>
+<td>TERMINATE 메시지. <code>quit</code> 과 동등</td>
+</tr>
+<tr>
+<td>상태</td>
+<td><code>status</code></td>
+<td>startstop 콘솔에서 Enter 친 것과 동일 표</td>
+</tr>
+<tr>
+<td>모듈 재시작</td>
+<td><code>restart &lt;pid&gt;</code></td>
+<td>외부 CLI 는 <strong>PID 만</strong>. 이름은 startstop 콘솔 전용</td>
+</tr>
+<tr>
+<td>모듈 일시중지</td>
+<td><code>stopmodule &lt;pid&gt;</code></td>
+<td>Status=<code>Stop</code>. <strong><code>pidpau</code> 금지</strong> (statmgr 가 다시 올림)</td>
+</tr>
+<tr>
+<td>모듈 재개</td>
+<td><code>restart &lt;pid&gt;</code></td>
+<td>Stop 된 모듈을 다시 기동</td>
+</tr>
+<tr>
+<td>설정 반영(기동 중)</td>
+<td><code>reconfigure</code></td>
+<td><code>startstop_unix.d</code> · <code>earthworm.d</code> 재독. <strong>이미 도는 모듈은 안 죽임</strong>. 새 링/모듈만 추가</td>
+</tr>
+<tr>
+<td>파형 링</td>
+<td><code>sniffwave</code></td>
+<td>TRACEBUF / TRACEBUF2</td>
+</tr>
+<tr>
+<td>임의 메시지 링</td>
+<td><code>sniffring</code></td>
+<td>사용자가 말한 “sniffing” 은 공식 이름 <strong>sniffring</strong> 으로 매핑</td>
+</tr>
+</tbody>
+</table>
+<p>Earthworm 에는 <strong>시스템 전체 pause</strong> 가 없다. 웹의 “일시중지” 는 기본값으로 <strong>모든 업무 모듈 <code>stopmodule</code></strong> (startstop · statmgr 는 유지) 이다. 개별 모듈 중지는 대시보드의 행 액션으로 둔다. <code>pidpau</code> 는 쓰지 않는다. 소스 근거는 <a href="#17-소스매뉴얼-분석-근거">17절</a>.</p>
+<hr />
+<h2 id="3">3. 확정 결정</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>결정</th>
+<th>이유</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>백엔드 FastAPI, 프론트 React/Vite/TS, 프록시 <code>/api</code> · <code>/ws</code></td>
+<td>이 저장소 기존 웹 앱과 운영·개발 방식이 같음</td>
+</tr>
+<tr>
+<td>2</td>
+<td>웹 앱 상태(토글, 복제 메타, 보관기간)는 <code>backend/data/app.json</code></td>
+<td>Earthworm 원본 <code>.d</code> 와 웹 전용 메타를 분리</td>
+</tr>
+<tr>
+<td>3</td>
+<td>공통 변수 원본은 <code>params/earthworm_commonvars.d</code> 의 <code>SetEnvVariable</code></td>
+<td>v8 가 <code>.d</code> 안에서 <code>${VAR}</code> 확장을 이미 지원</td>
+</tr>
+<tr>
+<td>4</td>
+<td>모듈 on/off 는 <code>startstop_unix.d</code> 의 <code>Process</code> 블록 주석 처리</td>
+<td>startstop 이 읽는 유일한 기동 목록</td>
+</tr>
+<tr>
+<td>5</td>
+<td>복제는 <strong>params <code>.d</code> 복사 + <code>earthworm.d</code> 새 Module ID + 같은 <code>bin</code> 을 다른 명령 이름으로 복사</strong></td>
+<td>사용자 요구 4. 실행은 <code>Process "newname newname.d"</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>기동 중 토글 off → <code>stopmodule</code>. 토글 on → <code>startstop_unix.d</code> 주석 해제 후 <code>reconfigure</code></td>
+<td>문서화된 안전 경로</td>
+</tr>
+<tr>
+<td>7</td>
+<td>링 뷰는 서브프로세스 stdout 을 WebSocket 으로 중계</td>
+<td>sniff 도구는 공유메모리에 붙는 대화형 CLI</td>
+</tr>
+<tr>
+<td>8</td>
+<td>인증은 1차에 로컬 단일 API 키 (<code>X-API-Key</code>). 세션/SSO 는 후속</td>
+<td>내부망 운영 가정</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>earthworm_global.d</code> 는 읽기 전용(경고 후 고급 편집만)</td>
+<td>Installation / Message Type 전역 계약</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>FLAG_RING</code> 은 startstop 링 목록에 넣지 않음</td>
+<td>공식 주석. startstop 이 숨은 링으로 씀</td>
+</tr>
+<tr>
+<td>11</td>
+<td>모든 EW CLI 는 <code>source ew_linux.bash</code> 된 환경에서 <code>argv</code> 리스트로만 실행</td>
+<td>셸 문자열 조립 금지 (명령 주입 방지)</td>
+</tr>
+<tr>
+<td>12</td>
+<td>UI 를 <strong>초기 설정</strong> / <strong>이후 설정</strong> 으로 분리. <code>app.json.setup_complete</code> 가 false 면 마법사만</td>
+<td>링·경로는 startstop 이 shm 을 만들기 전에 고정해야 함</td>
+</tr>
+<tr>
+<td>13</td>
+<td>기본 첫 링은 <code>STATUS_RING</code> (작음). <code>FLAG_RING</code> 은 startstop 목록에 넣지 않음</td>
+<td>제어 메시지(<code>status</code>/<code>pau</code>)가 WAVE_RING 에서 덮이지 않게</td>
+</tr>
+<tr>
+<td>14</td>
+<td>최소 기동 세트는 <code>statmgr</code> + <code>CheckAllRings 1</code> (또는 모든 링→STATUS_RING <code>copystatus</code>)</td>
+<td>샘플 설정은 하트비트가 statmgr 에 안 닿을 수 있음</td>
+</tr>
+<tr>
+<td>15</td>
+<td>외부 CLI 재시작/중지는 <strong>PID 숫자만</strong>. 일시중지는 <code>stopmodule</code> 만</td>
+<td>콘솔 이름/<code>pidpau</code> 는 웹에서 오동작</td>
+</tr>
+<tr>
+<td>16</td>
+<td>복제 시 <code>.d</code> + Module ID + <code>.desc</code> + <code>statmgr.d</code> Descriptor 를 한 트랜잭션으로</td>
+<td>로고 충돌·하트비트 미감시 방지</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4">4. 초기 설정과 이후 설정</h2>
+<p>Earthworm 은 <strong>한 번 기동하면 공유메모리 링이 고정</strong>되고, 모듈은 <code>EW_PARAMS</code> 의 테이블을 기동 시점에 읽는다. 웹도 이 경계를 그대로 따른다.</p>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/setup-phases.html" title="초기 설정 → 이후 설정" loading="lazy" style="height:640px"></iframe><figcaption><a href="diagrams/setup-phases.html">초기 설정 → 이후 설정</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure> — <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a> HTML. <code>plan.html</code> 에서 임베드한다.</p>
+<h3 id="41">4.1 왜 나누는가</h3>
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>초기 설정에서만</th>
+<th>이후 설정에서</th>
+<th>기동 중 반영</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EW_HOME</code> / <code>EW_VERSION</code> / <code>EW_RUN_DIR</code></td>
+<td>○</td>
+<td>고급만. 기동 중 잠금</td>
+<td>전체 재시작</td>
+</tr>
+<tr>
+<td><code>params/</code> <code>log/</code> <code>data/</code> 생성</td>
+<td>○</td>
+<td>로그 경로 변경은 이후 설정</td>
+<td>재시작 후 유효</td>
+</tr>
+<tr>
+<td><code>earthworm.d</code> Ring 키 할당</td>
+<td>○ (기본 세트)</td>
+<td>새 링 추가 가능</td>
+<td>추가는 <code>reconfigure</code>, 삭제·크기·순서 변경은 <strong>전체 재시작</strong></td>
+</tr>
+<tr>
+<td><code>startstop_unix.d</code> 링 목록·첫 링</td>
+<td>○</td>
+<td>동일</td>
+<td>위와 같음</td>
+</tr>
+<tr>
+<td><code>FLAG_RING</code> 키</td>
+<td>○ (earthworm.d 만, startstop 제외)</td>
+<td>잠금 권장</td>
+<td>재시작</td>
+</tr>
+<tr>
+<td><code>EW_INSTALLATION</code></td>
+<td>○</td>
+<td>이후에도 가능</td>
+<td>모듈 restart</td>
+</tr>
+<tr>
+<td>모듈 Process 토글</td>
+<td>최소 <code>statmgr</code> 만</td>
+<td>○ 본 작업</td>
+<td>on=<code>reconfigure</code>, off=<code>stopmodule</code></td>
+</tr>
+<tr>
+<td>모듈 <code>.d</code> 값, 통합 변수</td>
+<td>기본값만</td>
+<td>○</td>
+<td>해당 모듈 <code>restart</code></td>
+</tr>
+<tr>
+<td>복제</td>
+<td>×</td>
+<td>○</td>
+<td>켜면 <code>reconfigure</code></td>
+</tr>
+<tr>
+<td>로그 보관 일수</td>
+<td>기본 14</td>
+<td>○</td>
+<td>즉시 (웹 청소 태스크)</td>
+</tr>
+<tr>
+<td>sniffwave / sniffring</td>
+<td>× (링이 있어야 함)</td>
+<td>○</td>
+<td>즉시</td>
+</tr>
+</tbody>
+</table>
+<p>초기 설정을 건너뛰고 배포 샘플 <code>startstop_unix.d</code> 를 그대로 쓰면, 첫 링이 <code>WAVE_RING</code> 이고 <code>copystatus</code> 가 <code>HYPO_RING</code> 으로만 가서 <strong>status 유실 + 하트비트 미감시</strong> 가 나올 수 있다. 마법사가 이 두 가지를 고친 기본값을 쓴다.</p>
+<h3 id="42-setupwizard">4.2 초기 설정 마법사 (프론트: <code>SetupWizard</code>)</h3>
+<p><code>GET /api/setup/status</code> 의 <code>setup_complete === false</code> 이면 사이드의 이후 메뉴는 잠그고 마법사만 연다. 이미 <code>params/earthworm.d</code> 와 <code>startstop_unix.d</code> 가 있고 링이 정의돼 있으면 “기존 구성 가져오기” 로 마법사 값을 채운 뒤 확인만 받는다.</p>
+<h4 id="a">단계 A — 기본 디렉터리</h4>
+<p>화면에서 받는 값:</p>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th>기본</th>
+<th>백엔드 동작</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EW_HOME</code></td>
+<td><code>/opt/earthworm</code></td>
+<td><code>ew_linux.bash</code> 치환. tarball 이 풀린 경로인지, <code>$EW_HOME/$EW_VERSION/bin/startstop</code> 존재 검사</td>
+</tr>
+<tr>
+<td><code>EW_VERSION</code></td>
+<td>tarball 디렉터리명 자동 탐지</td>
+<td><code>bin/</code> 존재 확인. 없으면 목록에서 고름</td>
+</tr>
+<tr>
+<td><code>EW_RUN_DIR</code></td>
+<td><code>$EW_HOME/run_working</code></td>
+<td><code>params/</code>, <code>log/</code>, <code>data/</code> 생성 (이미 있으면 유지)</td>
+</tr>
+<tr>
+<td>로그 보관 일수</td>
+<td>14</td>
+<td><code>app.json</code></td>
+</tr>
+</tbody>
+</table>
+<p>생성하는 트리:</p>
+<pre><code>${EW_RUN_DIR}/
+  params/     # EW_PARAMS
+  log/        # EW_LOG   (끝 슬래시 유지)
+  data/       # EW_DATA_DIR
+</code></pre>
+<p>권한: 웹 백엔드 유저 = Earthworm 유저. root 거부.</p>
+<h4 id="b-id">단계 B — 설치 ID 와 테이블 파일</h4>
+<ol>
+<li><code>environment/earthworm_global.d</code> 의 <code>Inst</code> 목록을 콤보로. 기본 <code>INST_UNKNOWN</code>.</li>
+<li><code>ew_linux.bash</code> 의 <code>EW_INSTALLATION</code> 과 <code>earthworm_commonvars.d</code> 의 <code>EW_INST_ID</code> 를 같은 값으로.</li>
+<li>없을 때만 복사:<br />
+   - <code>environment/earthworm.d</code> → <code>EW_PARAMS/earthworm.d</code><br />
+   - <code>environment/earthworm_global.d</code> → <code>EW_PARAMS/</code><br />
+   - <code>environment/earthworm_commonvars.d</code> → <code>EW_PARAMS/</code><br />
+   - 배포 <code>params/*.d</code> <code>*.desc</code> 템플릿 (이미 있으면 덮지 않음)</li>
+<li><code>GetLocalInst</code> 가 성공할 수 있는지 문자열 검증.</li>
+<li><code>SYS_NAME</code> 은 <code>hostname</code> (스크립트가 이미 export). 화면에 읽기 전용 표시.</li>
+</ol>
+<p><code>GetUtil_LoadTable</code> 은 <strong><code>EW_PARAMS</code> 만</strong> 본다. 이 복사를 빼면 이후 모든 모듈이 기동 실패한다.</p>
+<h4 id="c">단계 C — 링 구성과 크기</h4>
+<p>링 편집 표 (추가/삭제/위아래 순서). <strong>첫 행 = startstop 이 제어 메시지를 넣는 링.</strong></p>
+<p>기본 프리셋 (마법사 “표준 관측망”):</p>
+<table>
+<thead>
+<tr>
+<th>순서</th>
+<th>이름</th>
+<th>키 (<code>earthworm.d</code>)</th>
+<th>크기 KiB</th>
+<th><code>startstop_unix.d</code></th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>STATUS_RING</code></td>
+<td>1040</td>
+<td>128</td>
+<td>○ 첫 줄</td>
+<td><code>status</code> / <code>pau</code> / <code>stopmodule</code> 교통. 작게</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>WAVE_RING</code></td>
+<td>1000</td>
+<td>1024 (권장: 채널 수에 따라 4096–32768)</td>
+<td>○</td>
+<td>파형. sniffwave 대상</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>PICK_RING</code></td>
+<td>1005</td>
+<td>1024</td>
+<td>○</td>
+<td>피크</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>HYPO_RING</code></td>
+<td>1015</td>
+<td>1024</td>
+<td>○</td>
+<td>위치·이벤트</td>
+</tr>
+<tr>
+<td>—</td>
+<td><code>BINDER_RING</code></td>
+<td>1020</td>
+<td>256</td>
+<td><strong>넣지 않음</strong></td>
+<td>binder 전용. earthworm.d 에만</td>
+</tr>
+<tr>
+<td>—</td>
+<td><code>FLAG_RING</code></td>
+<td>2000</td>
+<td>(startstop 자동)</td>
+<td><strong>넣지 않음</strong></td>
+<td>종료 플래그. 숨김</td>
+</tr>
+</tbody>
+</table>
+<p>제약 (소스 <code>startstop_lib.h</code>, <code>earthworm_defs.h</code>):</p>
+<ul>
+<li>공개 링 개수 ≤ <code>MAX_RING</code> <strong>50</strong></li>
+<li>이름 ≤ 32자, <code>[A-Za-z0-9_]</code></li>
+<li>키는 <code>earthworm.d</code> 에서 유일. 1차 웹은 단일 startstop 만</li>
+<li>크기: 정수 KiB. UI 범위 1–1048576, 큰 값은 램 경고</li>
+<li><code>FLAG_RING</code> 을 startstop 목록에 넣으려 하면 거부</li>
+</ul>
+<p>크기 가이드 (Inst_config 매뉴얼 + <code>startstop_unix.d</code> 주석):</p>
+<ul>
+<li>관측소 10 전후: WAVE 1024–5120</li>
+<li>관측소 수백: WAVE 16384–32768</li>
+<li>PICK/HYPO: 보통 1024</li>
+<li>STATUS: 128</li>
+</ul>
+<p>저장 시 백엔드가:</p>
+<ol>
+<li><code>earthworm.d</code> 의 <code>Ring NAME KEY</code> 를 맞춘다 (없는 이름만 추가. 키 변경은 고급·재시작 확인)</li>
+<li><code>startstop_unix.d</code> 의 <code>Ring</code> 블록을 <strong>마법사 순서대로</strong> 다시 쓴다</li>
+<li><code>statmgr.d</code> 의 <code>RingName</code> 을 <code>STATUS_RING</code>, <code>CheckAllRings 1</code> 로 맞춘다</li>
+<li>샘플 <code>copystatus … HYPO_RING</code> 은 CheckAllRings 가 켜지면 주석 처리하고 안내</li>
+</ol>
+<h4 id="d">단계 D — 최소 모듈과 검증</h4>
+<p>마법사가 <code>startstop_unix.d</code> Process 를 다음만 <strong>활성</strong>으로 남긴다.</p>
+<ul>
+<li><code>statmgr statmgr.d</code> (강제)</li>
+<li>나머지는 주석 (tankplayer 등 샘플은 이후 설정에서 켜기)</li>
+</ul>
+<p>검증 (<code>POST /api/setup/validate</code>):</p>
+<ul>
+<li><code>bin/startstop</code>, <code>status</code>, <code>pau</code>, <code>statmgr</code> 존재</li>
+<li><code>EW_PARAMS</code> 에 세 테이블 파일 존재</li>
+<li><code>EW_INSTALLATION</code> ∈ global Inst</li>
+<li>링 이름 ⊆ earthworm.d</li>
+<li>첫 링이 <code>FLAG_RING</code> 이 아님</li>
+<li><code>MAX_RING</code> / 이름 길이 / 키 중복 없음</li>
+<li><code>log/</code> 쓰기 가능</li>
+</ul>
+<p>통과 시 <code>app.json.setup_complete = true</code>, <code>setup_at</code> 기록. 이후 설정 메뉴를 연다. <strong>이 시점에 startstop 을 자동 기동하지는 않는다.</strong> 운영자가 대시보드에서 시작한다.</p>
+<h3 id="43">4.3 이후 설정</h3>
+<p>초기 설정이 끝난 뒤의 일상 화면이다. 요구 2–10 이 여기 해당한다.</p>
+<table>
+<thead>
+<tr>
+<th>메뉴</th>
+<th>하는 일</th>
+<th>기동 중</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>기반 설정 (재진입)</td>
+<td>디렉터리·링 표. 기동 중이면 읽기 전용 + “종료 후 수정”</td>
+<td>링 크기/순서/경로 변경은 pau 후</td>
+</tr>
+<tr>
+<td>모듈 설정</td>
+<td>토글, 복제, <code>.d</code>/<code>.desc</code></td>
+<td>토글 on=<code>reconfigure</code>(statmgr 재시작됨), off=<code>stopmodule</code></td>
+</tr>
+<tr>
+<td>통합 변수</td>
+<td>commonvars + HeartbeatInt→desc <code>tsec</code></td>
+<td>영향 모듈 restart 옵션</td>
+</tr>
+<tr>
+<td>파일 편집</td>
+<td>params / environment 원문</td>
+<td>저장은 되나 동작은 restart 후</td>
+</tr>
+<tr>
+<td>제어</td>
+<td>시작/종료/일시중지/재개</td>
+<td>PID 만 CLI 에 전달</td>
+</tr>
+<tr>
+<td>대시보드</td>
+<td>프로세스 + 하트비트 + 디스크 + 락/IPC</td>
+<td>2초 폴링</td>
+</tr>
+<tr>
+<td>로그</td>
+<td>경로·보관·뷰어. <code>*.lock</code>·<code>EW_DATA_DIR</code> 제외</td>
+<td>경로 변경은 재시작 후</td>
+</tr>
+<tr>
+<td>링 모니터</td>
+<td>sniffwave / sniffring</td>
+<td>세션 2개</td>
+</tr>
+<tr>
+<td>네트워크 (P2)</td>
+<td>export/import/wave_server 포트</td>
+<td>모듈 restart</td>
+</tr>
+</tbody>
+</table>
+<p>이후 설정에서 <strong>링 추가</strong>: earthworm.d 키 확인 → startstop 에 Ring 줄 → <code>reconfigure</code>.<br />
+<strong>링 삭제·크기 변경·순서(첫 링) 변경</strong>: 같은 폼을 열되, startstop 이 Alive 면 저장을 막고 pau 를 요구한다.</p>
+<h3 id="44">4.4 초기 설정 시퀀스</h3>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/setup-sequence.html" title="마법사 시퀀스" loading="lazy" style="height:700px"></iframe><figcaption><a href="diagrams/setup-sequence.html">마법사 시퀀스</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<hr />
+<h2 id="5">5. 아키텍처 (백엔드 / 프론트엔드 분리)</h2>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/architecture.html" title="아키텍처" loading="lazy" style="height:620px"></iframe><figcaption><a href="diagrams/architecture.html">아키텍처</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<p>역할 경계:</p>
+<ul>
+<li><strong>프론트엔드</strong>: 화면, 토글, 폼, 대시보드 표, 로그 뷰어, sniff 옵션 UI. Earthworm 경로·프로세스를 모름.</li>
+<li><strong>백엔드</strong>: <code>ew_linux.bash</code> 로드, 파일 CRUD, <code>startstop_unix.d</code> / <code>earthworm.d</code> 합성, CLI 실행, <code>status</code> 파싱, 로그 tail, sniff 프로세스 수명, 로그 보관 청소.</li>
+<li><strong>Earthworm</strong>: 기존 바이너리와 <code>.d</code> 포맷을 그대로 사용. 웹 앱이 EW 소스를 패치하지 않음.</li>
+</ul>
+<p>개발 시 Vite 가 <code>/api</code>·<code>/ws</code> 를 FastAPI(<code>:8000</code>)로 프록시한다. 배포 시 백엔드가 빌드된 <code>frontend/dist</code> 를 서빙하거나 nginx 가 둘을 붙인다.</p>
+<hr />
+<h2 id="6">6. 백엔드 설계</h2>
+<p>프로젝트 경로: <code>earthworm_web/backend/</code></p>
+<pre><code>backend/
+  app/
+    main.py                 # FastAPI, CORS, 라우터, WS
+    config.py               # EW_HOME, ew_linux.bash 경로, API 키
+    env.py                  # ew_linux.bash 파싱·적용·재기록
+    security.py             # API 키
+    models/schemas.py
+    api/
+      health.py
+      setup.py              # 초기 설정 마법사 (디렉터리·링)
+      diagnostics.py        # 락파일·잔류 IPC
+      params.py             # params 파일 목록·읽기·쓰기
+      modules.py            # 카탈로그, 토글, 복제
+      variables.py          # 통합 변수
+      control.py            # start / stop / pause / resume / reconfigure
+      status.py             # status 스냅샷
+      logs.py               # 디렉터리 설정, 목록, 내용, 보관기간
+      sniff.py              # sniff 세션 시작/중지 (REST) + WS 는 main
+    services/
+      setup_wizard.py       # mkdir, 테이블 복사, 링 프리셋 기록
+      ipc_diag.py           # lockfile, ipcs 요약
+      ew_process.py         # sourced env + argv 실행, 타임아웃
+      startstop_file.py     # startstop_unix.d 파서/시리얼라이저
+      earthworm_d.py        # Ring / Module 할당
+      commonvars.py         # earthworm_commonvars.d
+      module_catalog.py     # bin × params 조인
+      clone.py              # 모듈 복제
+      status_parser.py      # `status` 텍스트 → JSON
+      log_store.py          # 경로, tail, 보관 청소
+      sniff_broker.py       # sniffwave/sniffring Popen + 브로드캐스트
+    data/
+      app.json              # 웹 메타 (런타임 생성)
+      module_fields.yaml    # 모듈별 운영자 입력 필드 카탈로그
+  requirements.txt
+</code></pre>
+<h3 id="61-envpy">6.1 환경 로더 (<code>env.py</code>)</h3>
+<p>매 CLI 호출 전에 <code>ew_linux.bash</code> 를 <strong>login-free bash</strong> 로 소스하고 <code>env -0</code> 으로 변수를 가져온다.</p>
+<pre><code class="language-bash">bash -lc 'source /path/to/ew_linux.bash &gt;/dev/null; env -0'
+</code></pre>
+<p>필수 확인: <code>EW_HOME</code>, <code>EW_VERSION</code>, <code>EW_PARAMS</code>, <code>EW_LOG</code>, <code>EW_DATA_DIR</code>, <code>PATH</code> 에 <code>$EW_HOME/$EW_VERSION/bin</code>.</p>
+<p>웹에서 고칠 <code>ew_linux.bash</code> 키 (1차 폼):</p>
+<table>
+<thead>
+<tr>
+<th>변수</th>
+<th>기본 (스크립트)</th>
+<th>UI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EW_HOME</code></td>
+<td><code>/opt/earthworm</code></td>
+<td>경로</td>
+</tr>
+<tr>
+<td><code>EW_VERSION</code></td>
+<td><code>earthworm_8.0</code></td>
+<td>문자열</td>
+</tr>
+<tr>
+<td><code>EW_RUN_DIR</code></td>
+<td><code>${EW_HOME}/run_working</code></td>
+<td>경로</td>
+</tr>
+<tr>
+<td><code>EW_INSTALLATION</code></td>
+<td><code>INST_UNKNOWN</code></td>
+<td>선택/<code>earthworm_global.d</code> 목록</td>
+</tr>
+<tr>
+<td><code>EW_PARAMS</code></td>
+<td><code>${EW_RUN_DIR}/params/</code></td>
+<td>읽기 위주. RUN_DIR 로부터 유도</td>
+</tr>
+<tr>
+<td><code>EW_LOG</code></td>
+<td><code>${EW_RUN_DIR}/log/</code></td>
+<td><strong>요구 8</strong>: 설정 창에서 변경. 디렉터리 생성</td>
+</tr>
+<tr>
+<td><code>EW_DATA_DIR</code></td>
+<td><code>${EW_RUN_DIR}/data/</code></td>
+<td>경로</td>
+</tr>
+</tbody>
+</table>
+<p>쓰기는 스크립트 내 <code>export EW_*</code> / <code>EW_RUN_DIR=</code> 할당 줄만 치환한다. 컴파일 플래그(<code>CC</code>, <code>WARNFLAGS</code>)는 고급 원문 편집으로만 연다.</p>
+<p><code>environment/</code> 나머지 파일(<code>earthworm.d</code>, <code>earthworm_commonvars.d</code>, …)은 파일 트리 편집 API 로 다룬다. 운영 사본은 <code>EW_PARAMS</code> 에 복사돼 있어야 하므로, 백엔드는 “버전 트리 <code>environment/</code>” 와 “런타임 <code>params/</code> 의 동명 파일” 을 구분해 보여 주고, <strong>저장 시 런타임 <code>params/</code> 를 우선</strong> 한다. <code>ew_linux.bash</code> 만 버전 트리 쪽을 직접 수정한다.</p>
+<h3 id="62-module_catalogpy">6.2 모듈 카탈로그 (<code>module_catalog.py</code>)</h3>
+<p>한 행 = 기동 가능한 모듈 인스턴스.</p>
+<pre><code>id            : &quot;pick_ew&quot; | &quot;export_generic__picks&quot;   # 웹 ID
+binary        : &quot;pick_ew&quot;                             # bin/ 파일명
+binary_exists : true
+param_file    : &quot;pick_ew.d&quot;
+desc_file     : &quot;pick_ew.desc&quot; | null
+module_id     : &quot;MOD_PICK_EW&quot;                         # .d 의 MyModuleId
+enabled       : true                                  # startstop_unix.d 주석 여부
+clone_of      : null | &quot;export_generic&quot;
+display_name  : &quot;pick_ew&quot;
+doc_url       : &quot;/api/docs/module/pick_ew&quot;            # WEB_DOC 프록시
+</code></pre>
+<p>스캔:</p>
+<ol>
+<li><code>$EW_HOME/$EW_VERSION/bin</code> 실행 파일 (ELF, 스크립트).</li>
+<li><code>EW_PARAMS</code> 의 <code>*.d</code> (<code>startstop_*.d</code>, <code>earthworm*.d</code> 제외).</li>
+<li><code>startstop_unix.d</code> 의 <code>Process "cmd args"</code> — 활성/비활성(주석).</li>
+<li>이름 매칭: <code>pick_ew.d</code> ↔ <code>bin/pick_ew</code>. 복제본은 <code>app.json</code> 의 <code>clones[]</code> 로 연결.</li>
+</ol>
+<p><code>params</code> 에만 있고 <code>bin</code> 에 없으면 활성화 불가. 그 반대(바이너리만 있음)는 카탈로그에 <strong>설정 파일 없음</strong> 으로 두고, 토글 전에 <code>.d</code> 템플릿을 고르게 한다.</p>
+<h3 id="63-startstop_unixd-startstop_filepy">6.3 <code>startstop_unix.d</code> 편집 (<code>startstop_file.py</code>)</h3>
+<p>v8.0b17 샘플은 구버전 문서의 <code>nRing</code> 없이 <code>Ring</code> 줄을 나열한다. 파서는 둘 다 읽는다. 기록은 <strong>현재 파일 스타일을 유지</strong> 한다 (있는 <code>nRing</code> 을 임의로 지우지 않음).</p>
+<p>블록 단위:</p>
+<pre><code># Process          &quot;coaxtoring coaxtoring.d&quot;
+# Class/Priority    OTHER 0
+
+Process          &quot;pick_ew pick_ew.d&quot;
+ Class/Priority    OTHER 0
+</code></pre>
+<p>토글 off: 해당 <code>Process</code> / <code>Class/Priority</code> / 옵션 <code>Stderr</code> / <code>Agent</code> 앞에 <code>#</code> 를 붙인다.<br />
+토글 on: 그 주석을 벗긴다.<br />
+복제 추가: 파일 끝에 새 블록을 <strong>주석 상태</strong>로 넣고, 사용자가 켜면 주석을 벗긴다.</p>
+<p><code>statmgr</code> 는 기본 강제 활성. 끄면 경고.</p>
+<p>기동 중 변경:</p>
+<ul>
+<li>새 모듈 on → 파일 저장 + <code>reconfigure</code> (새 프로세스만 기동).</li>
+<li>모듈 off → <code>stopmodule</code> 후 파일에서 주석. 다음 전체 시작 때 안 올라옴.</li>
+<li>Ring 추가 → <code>earthworm.d</code> 키 확인 후 <code>startstop_unix.d</code> 에 <code>Ring</code> 추가 + <code>reconfigure</code>.</li>
+<li>Ring 삭제·크기 변경 → <strong>전체 재시작 필요</strong>. UI 에서 명시.</li>
+</ul>
+<h3 id="64-clonepy">6.4 모듈 복제 (<code>clone.py</code>)</h3>
+<p>요청: 활성 모듈을 복제해 다른 이름으로 같은 기능을 쓴다.</p>
+<p>절차:</p>
+<ol>
+<li>원본 <code>foo</code> (<code>bin/foo</code>, <code>foo.d</code>, 선택 <code>foo.desc</code>).</li>
+<li>새 이름 <code>foo_bar</code> (문자·숫자·<code>_</code>, 기존 bin/params/Module 문자열과 충돌 없음).</li>
+<li><code>cp bin/foo bin/foo_bar</code> (동일 호스트, 실행 비트 유지). 심볼릭 링크는 쓰지 않는다. 이름은 다르고 내용은 같다.</li>
+<li><code>foo.d</code> → <code>foo_bar.d</code>. <code>MyModuleId</code> 를 새 값으로 바꾼다.</li>
+<li><code>earthworm.d</code> 에 <code>Module  MOD_FOO_BAR  &lt;미사용 1–255&gt;</code> 를 추가한다. 빈 ID 는 200번대부터 채워 배포 기본값과 겹침을 줄인다.</li>
+<li><code>foo.desc</code> 가 있으면 복사하고 내부 모듈명을 갱신. <code>statmgr.d</code> 가 desc 목록을 나열하면 한 줄 추가.</li>
+<li><code>startstop_unix.d</code> 에 <code>Process "foo_bar foo_bar.d"</code> 를 주석으로 추가.</li>
+<li><code>app.json.clones</code> 에 <code>{ id, clone_of, binary, param_file, module_id }</code> 기록.</li>
+<li><code>.desc</code> 의 <code>modId</code>/<code>modName</code> 과 <code>statmgr.d</code> <code>Descriptor</code> 줄을 빼먹으면 하트비트 감시와 <code>restartMe</code> 가 동작하지 않는다 (<a href="#172-프로세스-alive--모듈-생존--statmgr--desc-가-본-감시">17.2</a>).</li>
+</ol>
+<p>복제 삭제: 기동 중이면 <code>stopmodule</code> → 주석/블록 제거 → 복사한 bin·d·desc 삭제. 원본은 건드리지 않는다. <code>earthworm.d</code> 의 Module 줄은 주석 처리(숫자 재사용 혼란 방지).</p>
+<h3 id="65-variablespy-commonvarspy">6.5 통합 변수 (<code>variables.py</code> + <code>commonvars.py</code>)</h3>
+<p>두 층:</p>
+<p><strong>A. 사이트 공통 (<code>earthworm_commonvars.d</code>)</strong><br />
+Earthworm 이 <code>.d</code> 에서 <code>${EW_INST_ID}</code> 처럼 확장한다. 웹 통합 입력의 <strong>저장 위치</strong> 는 여기다.</p>
+<pre><code>SetEnvVariable EW_INST_ID INST_UNKNOWN
+SetEnvVariable HEARTBEAT_INT 30
+SetEnvVariable STATIONFILE &quot;${EW_PARAMS}/stations.hinv&quot;
+</code></pre>
+<p><strong>B. 운영자 필드 카탈로그 (<code>module_fields.yaml</code>)</strong><br />
+모듈마다 “한 곳에서 넣을 값” 을 선언한다. 저장 시:</p>
+<ol>
+<li>공통이면 <code>SetEnvVariable</code> 로 넣고, 대상 <code>.d</code> 해당 키를 <code>${NAME}</code> 으로 바꾼다 (아직 리터럴이면 치환).</li>
+<li>모듈 전용이면 그 <code>.d</code> 의 해당 명령 값만 바꾼다.</li>
+</ol>
+<p>1차 통합 폼 필드 (모든 활성 모듈에 전파 가능한 것):</p>
+<table>
+<thead>
+<tr>
+<th>키</th>
+<th>전파 대상</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EW_INST_ID</code> / <code>EW_INSTALLATION</code></td>
+<td><code>GetStatusFrom</code>, <code>GetWavesFrom</code> 등의 Installation</td>
+</tr>
+<tr>
+<td><code>HeartbeatInt</code></td>
+<td>각 <code>.d</code> 의 <code>HeartbeatInt</code> (모듈이 키를 가질 때)</td>
+</tr>
+<tr>
+<td><code>LogFile</code></td>
+<td>각 <code>.d</code> 의 <code>LogFile</code></td>
+</tr>
+<tr>
+<td>기본 <code>RingName</code> 매핑</td>
+<td>역할별: waveform=<code>WAVE_RING</code>, pick=<code>PICK_RING</code>, hypo=<code>HYPO_RING</code>, status=<code>STATUS_RING</code></td>
+</tr>
+<tr>
+<td>관측소 파일 경로</td>
+<td><code>site_file</code>, <code>StationFile</code> 류</td>
+</tr>
+<tr>
+<td>로그 디렉터리</td>
+<td><code>ew_linux.bash</code> 의 <code>EW_LOG</code> (모듈 <code>.d</code> 가 아니라 환경)</td>
+</tr>
+</tbody>
+</table>
+<p>모듈별 나머지(그리드, 포트, SCNL 리스트)는 <strong>모듈 상세 편집기</strong> 에서 다룬다. <code>.d</code> 는 INI 가 아니라 명령 문법이다. 1차는 줄 단위 키/값 파서 + 원문 편집을 병행하고, WEB_DOC <code>cmd/</code> HTML 을 사이드에 띄운다. 완전 스키마화는 2차.</p>
+<p>통합 변수로 <code>HeartbeatInt</code> 를 바꾸면 해당 모듈 <code>.desc</code> 의 <code>tsec</code> 도 <code>max(현재, HeartbeatInt×3)</code> 으로 올린다 (<a href="#172-프로세스-alive--모듈-생존--statmgr--desc-가-본-감시">17.2</a>).</p>
+<p><code>@include</code> (<code>@ncal_model.d</code>) 는 <code>EW_PARAMS</code> 상대 경로로 따라가서 보여주고, 포함 파일도 같은 편집 API 로 연다.</p>
+<p><code>${VAR}</code> 확장: 셸 env 가 먼저, 그다음 <code>SetEnvVariable</code>. 같은 파일 안 재귀 확장 없음. <code>EW_HOME</code>/<code>EW_LOG</code>/<code>EW_PARAMS</code> 는 commonvars 에 넣지 않음 (<a href="#177-var-확장-규칙-komc--통합-변수-함정">17.7</a>).</p>
+<h3 id="66-ew_processpy-controlpy">6.6 프로세스 제어 (<code>ew_process.py</code>, <code>control.py</code>)</h3>
+<ul>
+<li><strong>시작</strong>: <code>setup_complete</code> 가 아니면 409. 락파일 <code>EW_LOG/startstop_unix.d.lock</code> 이 있으면 진단 JSON 과 함께 거부 (확인 후 강제 해제 API 는 별도). 이미 Alive 인 startstop 이 있으면 거부. 없으면 <code>cwd=EW_PARAMS</code>, env=sourced, <code>startstop</code> 백그라운드. stdout 은 <code>EW_LOG/web_startstop.out</code>.</li>
+<li><strong>종료</strong>: <code>pau</code>. <code>KillDelay</code>+<code>HardKillDelay</code> 동안 <code>status</code> 폴링. 잔류 프로세스/IPC 는 진단에 남김.</li>
+<li><strong>일시중지</strong>: startstop/statmgr 제외 활성 모듈에 <strong><code>stopmodule &lt;pid&gt;</code> 만</strong>. <code>pidpau</code> 금지. 각 pid 는 <code>status</code> 에서 얻음. 이름 문자열을 CLI 에 넣지 않음.</li>
+<li><strong>재개</strong>: Status=<code>Stop</code> 인 모듈에 <code>restart &lt;pid&gt;</code>.</li>
+<li><strong>개별</strong>: 대시보드에서 pid 로 <code>restart</code> / <code>stopmodule</code>. 직후 Alive 일 수 있으므로 KillDelay 동안 폴링.</li>
+</ul>
+<p>동시 제어는 asyncio Lock. 진행 중이면 409.</p>
+<h3 id="67-status_parserpy">6.7 상태 (<code>status_parser.py</code>)</h3>
+<p>주기(기본 2초)로 <code>status</code> 를 실행해 파싱한다.</p>
+<pre><code>Hostname-OS, Start time, Current time, Disk space,
+Ring n name/key/size, Log Dir, Params Dir, Bin Dir, Version
+rows: name, pid, status, class/priority, cpu, argument
+</code></pre>
+<p><code>Alive</code> / <code>Stop</code> / <code>Dead</code> / 공백을 enum 으로. 웹 메타의 <code>enabled</code> 와 조인하고, <strong>하트비트 열</strong>을 따로 둔다 (<code>statmgr.d</code> Descriptor 등록 여부, <code>restartMe</code>, statmgr.log 의 dead 알림).</p>
+<table>
+<thead>
+<tr>
+<th>enabled</th>
+<th>process</th>
+<th>heartbeat</th>
+<th>대시보드</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>true</td>
+<td>Alive</td>
+<td>ok</td>
+<td>정상</td>
+</tr>
+<tr>
+<td>true</td>
+<td>Alive</td>
+<td>missing / no desc</td>
+<td>하트비트 장애 (프로세스는 있음)</td>
+</tr>
+<tr>
+<td>true</td>
+<td>Dead / 없음</td>
+<td>—</td>
+<td>프로세스 장애</td>
+</tr>
+<tr>
+<td>false</td>
+<td>Stop / 없음</td>
+<td>—</td>
+<td>꺼짐</td>
+</tr>
+<tr>
+<td>false</td>
+<td>Alive</td>
+<td>—</td>
+<td>설정과 불일치 (경고)</td>
+</tr>
+</tbody>
+</table>
+<p>헤더의 Disk space, 링 name/key/size, Log/Params/Bin Dir 도 카드로 표시. 락파일·IPC 요약은 진단 배지.</p>
+<p>WebSocket <code>/ws/status</code> 가 스냅샷 JSON 을 푸시한다. REST <code>GET /api/status</code> 는 마지막 스냅샷.</p>
+<h3 id="68-log_storepy">6.8 로그 (<code>log_store.py</code>)</h3>
+<ul>
+<li>경로: <code>EW_LOG</code>. 설정 창에서 바꾸면 <code>ew_linux.bash</code> 의 <code>EW_LOG</code> 를 쓰고 디렉터리를 만든다. <strong>기동 중 변경은 재시작 후 유효</strong> 함을 UI 에 표시.</li>
+<li>파일명 관례: <code>{config}_YYYYMMDD.log</code>, stderr 는 <code>.err</code>.</li>
+<li><code>GET /api/logs</code> : 모듈(설정 파일 basename)별 파일 목록, 날짜, 크기.</li>
+<li><code>GET /api/logs/content?file=&amp;date=&amp;tail=</code> : 본문. 큰 파일은 tail. <code>file</code> 은 basename 만 (경로 구분자 거부).</li>
+<li><code>WS /ws/logs?file=</code> : <code>tail -F</code> 와 동일한 폴링 append.</li>
+<li><strong>보관 기간</strong>: <code>app.json.log_retention_days</code> (기본 14). UTC 날짜 스탬프가 기간 밖인 <code>*_YYYYMMDD.log</code> / <code>.err</code> 만 삭제. <strong><code>*.lock</code> 과 <code>EW_DATA_DIR</code> 아래 tank/waveserver 파일은 삭제하지 않음.</strong> <code>web_startstop.out</code> 은 크기 상한으로 로테이트.</li>
+</ul>
+<p>Earthworm 자체는 일 단위 파일을 무한히 남긴다. 보관 정책은 웹 앱이 파일 시스템에서 집행한다.</p>
+<h3 id="69-sniff_brokerpy">6.9 링 스니프 (<code>sniff_broker.py</code>)</h3>
+<p>동시 세션 상한 2 (링 부하). 세션당 하나의 Popen.</p>
+<p><strong>sniffwave</strong> (v8.0b17 <code>sniffwave.c</code>):</p>
+<pre><code>sniffwave &lt;Ring&gt;
+sniffwave &lt;Ring&gt; &lt;Sta&gt; &lt;Comp&gt; &lt;Net&gt; &lt;y|n|s|seconds&gt; [verbose]
+sniffwave &lt;Ring&gt; &lt;Sta&gt; &lt;Comp&gt; &lt;Net&gt; &lt;Loc&gt; &lt;y|n|s|seconds&gt; [verbose]
+</code></pre>
+<ul>
+<li><code>Sta/Comp/Net/Loc</code>: 값 또는 <code>wild</code> / <code>*</code></li>
+<li>데이터 플래그: <code>n</code> 헤더만, <code>y</code> 샘플, <code>s</code> min/max/avg, 숫자는 초 단위 후 종료</li>
+<li><code>verbose</code>: 설치·모듈·타입 이름</li>
+</ul>
+<p><strong>sniffring</strong>:</p>
+<pre><code>sniffring [-n] &lt;ringname&gt;
+sniffring [-n] &lt;ringname&gt; verbose
+sniffring [-n] &lt;ringname&gt; &lt;instid&gt; &lt;mod&gt; &lt;type&gt;
+sniffring [-n] &lt;ringname&gt; &lt;instid&gt; &lt;mod&gt; &lt;type&gt; verbose
+</code></pre>
+<p><code>-n</code> 은 기존 메시지 flush 생략.</p>
+<p>백엔드는 옵션 JSON 을 검증한 뒤 argv 만 만든다. stdout 줄을 WS 로 보낸다. 바이너리 덤프(<code>y</code>)는 텍스트가 폭주하므로 기본 <code>n</code> 또는 <code>s</code>, <code>y</code> 는 확인 후. 버퍼 상한(예: 2000줄) 초과 시 오래된 줄 폐기 + <code>overflow</code> 이벤트.</p>
+<p>링 이름 목록: <code>startstop_unix.d</code> 의 <code>Ring</code> ∪ <code>earthworm.d</code> 의 <code>Ring</code>. <code>FLAG_RING</code> 은 목록에서 숨기거나 경고.</p>
+<p>WS 종료 시 프로세스에 SIGTERM, 수 초 후 SIGKILL.</p>
+<h3 id="610">6.10 보안</h3>
+<ul>
+<li>파일 API 는 <code>EW_PARAMS</code>, <code>environment/</code>, <code>ew_linux.bash</code>, 복제 대상 <code>bin/</code> 밖으로의 <code>..</code> 를 거부.</li>
+<li>CLI 인자: 링 이름·모듈명·SCNL 은 <code>[A-Za-z0-9_.*\-]</code> .</li>
+<li>원문 저장은 텍스트만. 실행 비트 부여 API 없음.</li>
+<li>컨트롤 API 는 모두 API 키.</li>
+</ul>
+<hr />
+<h2 id="7">7. 프론트엔드 설계</h2>
+<p>프로젝트 경로: <code>earthworm_web/frontend/</code></p>
+<p>목 데이터 미리보기(백엔드 없음): <code>earthworm_web/frontend/preview/</code> 에서 <code>python3 -m http.server 8765</code> 후 <code>http://127.0.0.1:8765</code> .</p>
+<p>기존 <code>PPSD_v1/frontend</code> 와 같이 React 18 + Vite + TypeScript. 상태: 간단한 Context + fetch/WS. 1차에 Redux 없음.</p>
+<h3 id="71">7.1 화면 구성</h3>
+<pre><code>┌─ 탑바: 로고 · EW 버전 · startstop 뱃지 · 시작/종료/일시중지/재개 · 설정 ─────────────┐
+├─ 사이드 (setup_complete 전에는 마법사만) ──────────────────────────────────────────┤
+│  초기 설정 마법사 (디렉터리 · 설치 ID · 링 구성/크기)  ← setup_complete 전 필수     │
+│  기반 설정 (마법사 재진입: 링·경로, 기동 중 잠금)                                    │
+│  대시보드                                                                            │
+│  모듈 설정 (토글·복제)                                                               │
+│  통합 변수                                                                           │
+│  파일 편집 (params / environment)                                                    │
+│  로그                                                                                │
+│  링 모니터 (sniffwave / sniffring)                                                   │
+│  진단 (락파일 · IPC)                                                                 │
+└──────────────────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>화면</th>
+<th>단계</th>
+<th>요구</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>초기 설정 마법사</strong></td>
+<td>초기</td>
+<td>신규 11–12</td>
+<td>디렉터리, Inst ID, 링 표(이름·키·크기·순서), 검증. <a href="#4-초기-설정과-이후-설정">4절</a></td>
+</tr>
+<tr>
+<td><strong>기반 설정</strong></td>
+<td>이후</td>
+<td>1, 링</td>
+<td>같은 폼 재진입. Alive 면 링 크기/순서 잠금</td>
+</tr>
+<tr>
+<td><strong>대시보드</strong></td>
+<td>이후</td>
+<td>6, 7</td>
+<td>링 카드, 프로세스+하트비트, 디스크, 행별 restart/stop(pid)</td>
+</tr>
+<tr>
+<td><strong>모듈 설정</strong></td>
+<td>이후</td>
+<td>3, 4</td>
+<td>토글, 복제, <code>.d</code>+<code>.desc</code>. 바이너리 없음 비활성</td>
+</tr>
+<tr>
+<td><strong>통합 변수</strong></td>
+<td>이후</td>
+<td>5</td>
+<td>공통 키. HeartbeatInt→tsec. 적용 미리보기</td>
+</tr>
+<tr>
+<td><strong>파일 편집</strong></td>
+<td>이후</td>
+<td>2</td>
+<td>params/environment 트리</td>
+</tr>
+<tr>
+<td><strong>로그</strong></td>
+<td>이후</td>
+<td>8, 9</td>
+<td>경로·보관. lock/data 제외</td>
+</tr>
+<tr>
+<td><strong>링 모니터</strong></td>
+<td>이후</td>
+<td>10</td>
+<td>sniffwave / sniffring</td>
+</tr>
+<tr>
+<td><strong>진단</strong></td>
+<td>이후</td>
+<td>P0</td>
+<td><code>*.lock</code>, ipcs 요약, 강제 해제 확인</td>
+</tr>
+<tr>
+<td><strong>설정</strong></td>
+<td>이후</td>
+<td>1, 8, 9</td>
+<td>상태 주기, sniff 상한, NTP 표시(P2)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="72">7.2 프론트 모듈 구조</h3>
+<pre><code>frontend/src/
+  api/client.ts           # REST + API 키
+  ws/status.ts
+  ws/logs.ts
+  ws/sniff.ts
+  pages/SetupWizard.tsx
+  pages/Foundation.tsx
+  pages/Dashboard.tsx
+  pages/Modules.tsx
+  pages/Variables.tsx
+  pages/Files.tsx
+  pages/Logs.tsx
+  pages/Sniff.tsx
+  pages/Settings.tsx
+  components/Toggle.tsx
+  components/StatusBadge.tsx
+  components/ConfirmApply.tsx
+  App.tsx
+</code></pre>
+<p>프론트는 <code>.d</code> 문법을 해석하지 않는다. 폼 스키마는 <code>GET /api/variables</code> · <code>GET /api/modules/{id}</code> JSON 을 따른다. 원문 편집은 textarea.</p>
+<p>제어 버튼은 확인 모달 후 <code>POST /api/control/{action}</code>. 응답 전까지 비활성.</p>
+<h3 id="73-ux">7.3 UX 규칙</h3>
+<ul>
+<li><code>setup_complete === false</code> 이면 마법사 외 메뉴는 비활성.</li>
+<li>링 크기/순서 저장은 startstop Alive 이면 막고 pau 를 안내한다.</li>
+<li>토글 on 이 기동 중 <code>reconfigure</code> 를 부르면 statmgr 재시작 토스트를 보여 준다.</li>
+<li>통합 변수 저장은 항상 “변경될 파일 N개” 목록을 먼저 보여 준다.</li>
+<li>sniff <code>y</code>(샘플 덤프) 는 경고.</li>
+<li><code>earthworm_global.d</code> 저장은 “전역 ID 파일” 경고.</li>
+</ul>
+<hr />
+<h2 id="8">8. 요구사항 매핑</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>요구</th>
+<th>백엔드</th>
+<th>프론트</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>ew_linux.bash</code> 로 운영</td>
+<td>매 CLI 소스. 핵심 변수 읽기/쓰기</td>
+<td>초기 마법사 + 기반 설정</td>
+</tr>
+<tr>
+<td>1b</td>
+<td>디렉터리·링 초기 구성</td>
+<td><code>/api/setup/*</code>, 테이블 복사, 링 프리셋</td>
+<td>초기 설정 마법사</td>
+</tr>
+<tr>
+<td>2</td>
+<td>params · environment 웹 편집</td>
+<td>트리 + 읽기/쓰기, 경로 샌드박스</td>
+<td>파일 트리 에디터</td>
+</tr>
+<tr>
+<td>3</td>
+<td>모듈 토글</td>
+<td><code>startstop_unix.d</code> 주석 + stopmodule/reconfigure</td>
+<td>이후 · 모듈 설정</td>
+</tr>
+<tr>
+<td>4</td>
+<td>모듈 복제</td>
+<td>bin+<code>.d</code>+Module ID+<code>.desc</code>+Descriptor</td>
+<td>이후 · 복제 다이얼로그</td>
+</tr>
+<tr>
+<td>5</td>
+<td>통합 변수 → 각 params</td>
+<td>commonvars + tsec 연동</td>
+<td>이후 · 통합 입력</td>
+</tr>
+<tr>
+<td>6</td>
+<td>시작/종료/일시중지</td>
+<td>startstop / pau / stopmodule(pid)</td>
+<td>탑바 (setup 완료 후)</td>
+</tr>
+<tr>
+<td>7</td>
+<td>상태 대시보드</td>
+<td>status + 하트비트 + 디스크</td>
+<td>대시보드</td>
+</tr>
+<tr>
+<td>8</td>
+<td>로그 경로·조회</td>
+<td>EW_LOG, tail WS, lock 제외</td>
+<td>이후 · 로그</td>
+</tr>
+<tr>
+<td>9</td>
+<td>로그 보관 기간</td>
+<td>retention 태스크</td>
+<td>설정 숫자 입력</td>
+</tr>
+<tr>
+<td>10</td>
+<td>링 실시간</td>
+<td>sniffwave/sniffring argv + WS</td>
+<td>이후 · 링 모니터</td>
+</tr>
+<tr>
+<td>11</td>
+<td>BE/FE 분리</td>
+<td>FastAPI only I/O·프로세스</td>
+<td>React only UI</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="9-api">9. API 계약 (초안)</h2>
+<p>베이스: <code>/api</code>. 헤더 <code>X-API-Key</code>. WS 는 쿼리 <code>?key=</code>. <code>setup_complete</code> 가 false 이면 <code>/api/setup/*</code> 와 <code>/health</code> 외의 쓰기·제어는 409.</p>
+<h3 id="_1">초기 설정</h3>
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>경로</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/setup/status</code></td>
+<td><code>setup_complete</code>, 탐지된 <code>EW_HOME</code>/<code>EW_VERSION</code>, 기존 params 여부</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/setup/defaults</code></td>
+<td>링 프리셋, Inst 목록, 디렉터리 기본값</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/setup/directories</code></td>
+<td><code>EW_*</code> 기록, <code>params</code>/<code>log</code>/<code>data</code> mkdir</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/setup/installation</code></td>
+<td>Inst ID, 테이블 파일 복사</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/setup/rings</code></td>
+<td>링 행 배열 → earthworm.d + startstop_unix.d</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/setup/validate</code></td>
+<td>바이너리·테이블·링·권한 검사</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/setup/complete</code></td>
+<td>validate 통과 시에만 <code>setup_complete=true</code></td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/setup/import-existing</code></td>
+<td>이미 있는 params 를 마법사 값으로 로드</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_2">환경·파일</h3>
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>경로</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/health</code></td>
+<td>앱·EW env 로드 여부, <code>EW_VERSION</code>, startstop 생존</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/environment</code></td>
+<td>파싱된 <code>EW_*</code></td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/environment</code></td>
+<td><code>ew_linux.bash</code> 핵심 변수</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/files?root=params\|environment</code></td>
+<td>트리</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/files/content?root=&amp;path=</code></td>
+<td>본문</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/files/content</code></td>
+<td>본문 저장 (백업 <code>*.bak.&lt;ts&gt;</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_3">모듈·변수</h3>
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>경로</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/modules</code></td>
+<td>카탈로그</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td><code>/modules/{id}</code></td>
+<td><code>{ enabled: bool }</code></td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/modules/{id}/clone</code></td>
+<td><code>{ new_name }</code></td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/modules/{id}</code></td>
+<td>복제본만</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/variables</code></td>
+<td>통합 필드 + 현재 값 + 사용처</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/variables</code></td>
+<td>일괄 적용</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_4">제어·상태</h3>
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>경로</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/control/start</code></td>
+<td>startstop</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/control/stop</code></td>
+<td>pau</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/control/pause</code></td>
+<td>업무 모듈 stopmodule</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/control/resume</code></td>
+<td>Stop 모듈 restart</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/control/reconfigure</code></td>
+<td>reconfigure</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/control/modules/{id}/restart</code></td>
+<td>restart</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/control/modules/{id}/stop</code></td>
+<td>stopmodule</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/status</code></td>
+<td>마지막 스냅샷</td>
+</tr>
+<tr>
+<td>WS</td>
+<td><code>/ws/status</code></td>
+<td>주기 푸시</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_5">로그·스니프</h3>
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>경로</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET/PUT</td>
+<td><code>/logs/settings</code></td>
+<td><code>{ directory, retention_days }</code></td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/logs</code></td>
+<td>모듈별 파일</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/logs/content</code></td>
+<td><code>file</code>, <code>date</code>, <code>tail</code> (basename 만)</td>
+</tr>
+<tr>
+<td>WS</td>
+<td><code>/ws/logs</code></td>
+<td>follow</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/rings</code></td>
+<td>링 목록</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/sniff/sessions</code></td>
+<td><code>{ tool: sniffwave\|sniffring, args }</code> → <code>session_id</code></td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/sniff/sessions/{id}</code></td>
+<td>종료</td>
+</tr>
+<tr>
+<td>WS</td>
+<td><code>/ws/sniff?session=</code></td>
+<td>줄 단위</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_6">진단</h3>
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>경로</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/diagnostics/lock</code></td>
+<td><code>startstop_unix.d.lock</code> 존재·pid</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/diagnostics/lock/unlock</code></td>
+<td>운영자 확인 후 락 해제</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/diagnostics/ipc</code></td>
+<td>해당 유저 shm/세마포어 요약 (자동 삭제 없음)</td>
+</tr>
+</tbody>
+</table>
+<p>에러: 400 검증, 403 키, 409 제어 잠금/이미 기동/<code>setup_complete</code> 아님, 422 <code>.d</code> 파서, 503 EW env 미설정.</p>
+<hr />
+<h2 id="10-appjson">10. <code>app.json</code> 스키마</h2>
+<pre><code class="language-json">{
+  &quot;version&quot;: 1,
+  &quot;setup_complete&quot;: false,
+  &quot;setup_at&quot;: null,
+  &quot;log_retention_days&quot;: 14,
+  &quot;status_interval_sec&quot;: 2,
+  &quot;clones&quot;: [],
+  &quot;disabled_process_names&quot;: [],
+  &quot;startstop_pid&quot;: null
+}
+</code></pre>
+<p>진실의 원천은 여전히 <code>startstop_unix.d</code> 이다. <code>app.json</code> 은 복제 계보·보관일수 등 EW 파일이 담지 못하는 웹 메타만 넣는다. 토글 상태는 파일을 다시 읽어 복원한다.</p>
+<p>저장 전 백엔드가 <code>EW_PARAMS</code> 아래 <code>web_backup/YYYYMMDD_HHMMSS/</code> 로 <code>startstop_unix.d</code>, <code>earthworm.d</code>, <code>earthworm_commonvars.d</code> 를 복사한다.</p>
+<hr />
+<h2 id="11">11. 런타임 시퀀스</h2>
+<h3 id="111">11.1 전체 시작</h3>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/start-sequence.html" title="시작 시퀀스" loading="lazy" style="height:640px"></iframe><figcaption><a href="diagrams/start-sequence.html">시작 시퀀스</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<h3 id="112">11.2 토글 후 복제 모듈 기동</h3>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/clone-sequence.html" title="복제 기동 시퀀스" loading="lazy" style="height:660px"></iframe><figcaption><a href="diagrams/clone-sequence.html">복제 기동 시퀀스</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<h3 id="113-sniffwave">11.3 sniffwave</h3>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/sniff-sequence.html" title="sniffwave 시퀀스" loading="lazy" style="height:700px"></iframe><figcaption><a href="diagrams/sniff-sequence.html">sniffwave 시퀀스</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<hr />
+<h2 id="12">12. 구현 단계</h2>
+<p>Earthworm 을 실제로 기동하지 않고도 1단계는 마법사·파일 파서·UI 로 진행할 수 있다. 제어·스니프는 같은 호스트의 공유 메모리가 필요하다. <a href="#1712-웹-기능으로-승격할-항목-요구-110-밖-구현-시-포함">17.12</a> 의 P0 는 1–2단계에 포함한다.</p>
+<h3 id="1_1">1단계 — 초기 설정 마법사와 파일 기반</h3>
+<ul>
+<li><code>ew_linux.bash</code> 로드, <code>/api/health</code>, <code>/api/setup/*</code></li>
+<li><code>params</code>/<code>log</code>/<code>data</code> 생성, 테이블 파일 복사, Inst 검증</li>
+<li>링 편집(이름·키·크기·순서), <code>STATUS_RING</code> 첫 줄, <code>FLAG_RING</code> 제외</li>
+<li><code>startstop_unix.d</code> · <code>earthworm.d</code> 파서/기록</li>
+<li>모듈 카탈로그 + 토글(파일만)</li>
+<li>프론트: SetupWizard, 이후 메뉴 잠금</li>
+</ul>
+<h3 id="2-p0">2단계 — 제어와 대시보드 (P0)</h3>
+<ul>
+<li>setup_complete 후에만 start / pau / status</li>
+<li>CLI 는 pid 만. 일시중지는 stopmodule 만</li>
+<li>락파일·IPC 진단</li>
+<li><code>/ws/status</code>, 프로세스 + 하트비트 열</li>
+<li>기동 중 토글 ↔ stopmodule / reconfigure</li>
+<li>KillDelay 폴링</li>
+</ul>
+<h3 id="2b-mvp">2b단계 — 작업자·이력 (MVP)</h3>
+<p><a href="plan_ops.md">plan_ops.md</a>. 로그인·3역할·변경 이력. 구성 보드 적용보다 먼저.</p>
+<ul>
+<li><code>control.sqlite</code> 작업자·세션·audit_event</li>
+<li>최초 admin 부트스트랩, 사람 UI는 세션 (공유 키는 service만)</li>
+<li>네비 작업자(admin) · 이력. 줄 삭제 없음</li>
+</ul>
+<h3 id="3-p1">3단계 — 우선 카탈로그와 스키마 (P1)</h3>
+<p>우선 목록·스키마·시드는 <a href="plan_priority.md">plan_priority.md 27절</a>.</p>
+<ul>
+<li><code>module_fields.yaml</code>, 카탈로그 <code>priority</code> / <code>role</code> / <code>fleet</code></li>
+<li>I/O 12개 스텁·샘플 <code>.d</code></li>
+<li>기타 모듈 등록 API. 팔레트 UI</li>
+</ul>
+<h3 id="4-p1">4단계 — 구성 보드와 일괄 적용 (P1)</h3>
+<ul>
+<li>한 창: 사이트 공통 + 인스턴스 카드 + 검토/적용/시작</li>
+<li>clone 트랜잭션을 apply 가 묶음. 포트·탱크·Process 유일 검증</li>
+<li><code>Variables</code> 를 사이트 공통으로 흡수. 포트 인벤토리(구 P2) 흡수</li>
+</ul>
+<h3 id="5_1">5단계 — 로그와 링 모니터</h3>
+<ul>
+<li>로그 디렉터리·보관·뷰어·follow. lock/data 제외</li>
+<li>sniffwave / sniffring 세션 + WS. <code>getmenu</code> ↔ wave_serverV 인스턴스</li>
+<li>기반 설정 재진입 (링 크기 변경은 pau 후)</li>
+</ul>
+<h3 id="6-p2">6단계 — 다듬기와 모노레포 배포 (P2)</h3>
+<ul>
+<li>API 키 서비스 계정, 백업, NTP·디스크 위젯</li>
+<li>WEB_DOC 정적 제공 (<code>/docs/ew/</code>)</li>
+<li><code>earthworm_web/compose.yaml</code>. 태그 <code>earthworm-web-v0.x</code>. systemd 는 선택</li>
+<li>tankplayer 는 기타 등록</li>
+</ul>
+<p>각 단계의 넣을 것/빼는 것·API·수락 조건과 <strong>MVP 경계</strong>는 <a href="plan_mvp.md">plan_mvp.md</a> (<a href="#30-mvp">30절</a>). MVP는 3–4단계(카탈로그·구성 보드)를 닫는 것이다. 1–2단계와 로그·스니프는 기존 코드가 전제다.</p>
+<p>각 단계마다 백엔드 pytest (파서·argv 생성·경로 샌드박스) 와 프론트 타입체크를 둔다.</p>
+<hr />
+<h2 id="13">13. 백엔드 / 프론트엔드 책임 요약</h2>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/stack-layers.html" title="책임 계층" loading="lazy" style="height:500px"></iframe><figcaption><a href="diagrams/stack-layers.html">책임 계층</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<p>프론트는 JSON/WS 만 다룬다. 백엔드는 파일과 프로세스만 다룬다. 공유 타입은 OpenAPI(<code>/api/openapi.json</code>)로 맞춘다.</p>
+<hr />
+<h2 id="14">14. 위험과 완화</h2>
+<table>
+<thead>
+<tr>
+<th>위험</th>
+<th>완화</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP 로 바이너리 tarball 다운로드</td>
+<td>HTTPS 가 HTTP 로 리다이렉트됨. 크기+SHA-256 대조 후 압축 해제</td>
+</tr>
+<tr>
+<td>잘못된 <code>.d</code> 로 startstop 기동 실패</td>
+<td>저장 시 구문 검사, 저장 전 백업, 시작 실패 시 <code>web_startstop.out</code> 표시</td>
+</tr>
+<tr>
+<td><code>environment/</code> 만 수정</td>
+<td>초기 마법사가 <code>EW_PARAMS</code> 로 테이블 복사·검증</td>
+</tr>
+<tr>
+<td>Alive 인데 하트비트 없음</td>
+<td>Descriptor + CheckAllRings, 대시보드 하트비트 열</td>
+</tr>
+<tr>
+<td>락파일·잔류 shm</td>
+<td>진단 화면. 자동 ipcrm 없음</td>
+</tr>
+<tr>
+<td>status 가 WAVE_RING 에서 유실</td>
+<td>초기 설정에서 STATUS_RING 을 첫 줄</td>
+</tr>
+<tr>
+<td><code>reconfigure</code> 가 이미 도는 모듈의 <code>.d</code> 변경을 안 읽음</td>
+<td>UI: “기동 중 모듈은 restart 필요”</td>
+</tr>
+<tr>
+<td>이름/<code>pidpau</code> 로 중지</td>
+<td>CLI 는 pid, 일시중지는 stopmodule 만</td>
+</tr>
+<tr>
+<td>sniff 가 링을 느리게 함</td>
+<td>세션 2개, 기본 헤더만, 서버측 줄 상한</td>
+</tr>
+<tr>
+<td>로그 삭제 오동작</td>
+<td>삭제 패턴 <code>*_YYYYMMDD.log</code> 만. 미리보기 API</td>
+</tr>
+<tr>
+<td>여러 startstop</td>
+<td><code>status</code> 로 기존 인스턴스 거부. 링 키 충돌 방지</td>
+</tr>
+<tr>
+<td>명령 주입</td>
+<td>argv 리스트, 화이트리스트</td>
+</tr>
+<tr>
+<td><code>MyModuleId</code> 중복</td>
+<td>clone 시 <code>earthworm.d</code> 유일성 검사</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="15">15. 운영 시 웹이 만지는 파일</h2>
+<table>
+<thead>
+<tr>
+<th>파일</th>
+<th>읽기</th>
+<th>쓰기</th>
+<th>조건</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>environment/ew_linux.bash</code></td>
+<td>○</td>
+<td>○</td>
+<td>초기 마법사·기반 설정</td>
+</tr>
+<tr>
+<td><code>EW_RUN_DIR/params,log,data</code></td>
+<td>○</td>
+<td>생성</td>
+<td>초기 마법사 mkdir</td>
+</tr>
+<tr>
+<td><code>EW_PARAMS/startstop_unix.d</code></td>
+<td>○</td>
+<td>○</td>
+<td>링 순서, 토글·복제</td>
+</tr>
+<tr>
+<td><code>EW_PARAMS/*.d</code>, <code>*.desc</code></td>
+<td>○</td>
+<td>○</td>
+<td>편집·복제·변수 전파</td>
+</tr>
+<tr>
+<td><code>EW_PARAMS/earthworm.d</code></td>
+<td>○</td>
+<td>○</td>
+<td>Ring 키, Module ID</td>
+</tr>
+<tr>
+<td><code>EW_PARAMS/earthworm_commonvars.d</code></td>
+<td>○</td>
+<td>○</td>
+<td>통합 변수</td>
+</tr>
+<tr>
+<td><code>EW_PARAMS/earthworm_global.d</code></td>
+<td>○</td>
+<td>△</td>
+<td>복사(초기), 이후 읽기 전용</td>
+</tr>
+<tr>
+<td><code>$EW_HOME/$EW_VERSION/bin/*</code></td>
+<td>○</td>
+<td>복제 시 <code>cp</code> 만</td>
+<td>원본 삭제 없음</td>
+</tr>
+<tr>
+<td><code>EW_LOG/*</code></td>
+<td>○</td>
+<td>보관 청소 시 삭제</td>
+<td><code>*_YYYYMMDD.log</code> 만. <code>*.lock</code> 제외</td>
+</tr>
+<tr>
+<td><code>EW_LOG/startstop_unix.d.lock</code></td>
+<td>○</td>
+<td>확인 후 해제</td>
+<td>진단</td>
+</tr>
+<tr>
+<td><code>backend/data/app.json</code></td>
+<td>○</td>
+<td>○</td>
+<td>setup_complete, 웹 메타</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="16">16. 참고</h2>
+<ul>
+<li>설치·<code>EW_*</code>·run/params/log: <code>doc/WEB_DOC/USER_GUIDE/Inst_config_guide.htm</code></li>
+<li>시작·status·pau: <code>doc/WEB_DOC/USER_GUIDE/start-stop-status.html</code></li>
+<li>Linux startstop 파일: 구버전 <code>nRing</code> 문서와 v8 <code>startstop_unix.d</code> 실파일 차이 주의</li>
+<li>sniffwave: <code>src/diagnostic_tools/sniffwave/sniffwave.c</code> (Usage, VERSION 3.0.1)</li>
+<li>sniffring: <code>src/diagnostic_tools/sniffring/sniffring.c</code></li>
+<li>제어: <code>src/system_control/{startstop_unix,status,pau,restart,stopmodule,reconfigure}</code></li>
+<li>공통 변수: <code>environment/earthworm_commonvars.d</code></li>
+<li>모듈 목록·명령: <code>doc/WEB_DOC/modules.html</code>, <code>doc/WEB_DOC/cmd/</code>, <code>doc/WEB_DOC/ovr/</code></li>
+</ul>
+<p>동일 저장소의 분리 웹 앱 선례: <code>PPSD_v1/</code> (FastAPI + React), <code>stationxml_manager/</code> (FastAPI <code>app/</code> + React).</p>
+<hr />
+<h2 id="17">17. 소스·매뉴얼 분석 근거</h2>
+<p>1차 요구(1–10)만으로는 기동이 안 되거나 Alive 오탐이 난다. 아래는 v8.0b17 소스와 <code>doc/WEB_DOC</code> 근거이며, <strong>화면·API 로는 4절(초기/이후)과 6–9절에 이미 넣었다.</strong> 구현 시 이 절을 스펙의 출전으로 쓴다.</p>
+<h3 id="171-environment">17.1 부트스트랩 — <code>environment/</code> 만 고쳐서는 안 돌아간다</h3>
+<p><code>GetUtil_LoadTable</code> (<code>src/libsrc/util/getutil.c</code>) 은 <strong><code>EW_PARAMS</code> 아래</strong> <code>earthworm_global.d</code> 와 <code>earthworm.d</code> 만 읽는다. 배포 <code>environment/</code> 원본을 웹에서 고쳐도, 런타임 사본이 <code>params/</code> 에 없으면 모든 모듈이 Inst/Module/Ring lookup 에 실패한다.</p>
+<p><code>kom.c</code> 의 <code>${VAR}</code> 도 <code>EW_PARAMS/earthworm_commonvars.d</code> 만 로드한다.</p>
+<p>웹 앱 최초 기동 체크리스트:</p>
+<ol>
+<li><code>run_working/{params,log,data}</code> 생성</li>
+<li><code>environment/{earthworm.d,earthworm_global.d,earthworm_commonvars.d}</code> → <code>EW_PARAMS</code> 복사 (없을 때만)</li>
+<li>배포 <code>params/*.d</code> 템플릿 복사 (없을 때만)</li>
+<li><code>source environment/ew_linux.bash</code> 로 <code>EW_*</code> 가 실제 경로와 일치하는지 검증</li>
+<li><code>EW_INSTALLATION</code> 값이 <code>earthworm_global.d</code> 의 <code>Inst</code> 목록에 있는지 검증 (<code>GetLocalInst</code>)</li>
+<li><code>SYS_NAME</code> (<code>ew_linux.bash</code> 에서 <code>hostname</code>) — statmgr 가 요구</li>
+</ol>
+<p>Linux autostart 예제(<code>USER_GUIDE/linux_autostart.html</code>)는 <code>ew_linux.bash</code> 를 <strong>params 로 복사한 뒤</strong> 소스한다. 본 계획은 사용자가 지정한 <code>environment/ew_linux.bash</code> 를 소스로 쓰되, 웹은 “지금 소싱되는 파일 경로” 를 명시한다.</p>
+<h3 id="172-alive-statmgr-desc">17.2 프로세스 Alive ≠ 모듈 생존 — statmgr / <code>.desc</code> 가 본 감시</h3>
+<p><code>status</code> 는 OS 프로세스가 있는지만 본다 (<code>Alive</code> / <code>Dead</code> / <code>Stop</code>).<br />
+실제 “하트비트가 끊김” 은 <strong>statmgr</strong> 이다 (<code>doc/WEB_DOC</code> statmgr overview, <code>src/reporting/statmgr</code>).</p>
+<ul>
+<li>모듈은 자신이 붙은 링에만 heartbeat 를 쓴다.</li>
+<li><code>statmgr.d</code> 의 <code>RingName</code> (샘플은 <code>STATUS_RING</code>) + <code>CheckAllRings 0</code> 이면, 다른 링의 heartbeat 는 <strong>보이지 않는다</strong>.</li>
+<li>그때 필요한 것이 <code>copystatus &lt;원본링&gt; &lt;statmgr링&gt;</code> 또는 <code>CheckAllRings 1</code>.</li>
+<li>배포 <code>startstop_unix.d</code> 샘플은 <code>copystatus</code> 를 <code>HYPO_RING</code> 으로 보내고 statmgr 는 <code>STATUS_RING</code> 을 본다. <strong>샘플 그대로면 하트비트 감시가 비어 있을 수 있다.</strong> 웹은 활성 모듈의 <code>RingName</code> 이 statmgr 감시 경로에 있는지 경고한다.</li>
+</ul>
+<p><code>.desc</code> 파일 (예: <code>params/pick_ew.desc</code>):</p>
+<table>
+<thead>
+<tr>
+<th>키</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>modName</code> / <code>modId</code> / <code>instId</code></td>
+<td>알람에 찍히는 신원. 복제 시 <strong>반드시 새 <code>modId</code></strong></td>
+</tr>
+<tr>
+<td><code>tsec</code></td>
+<td>이 초 안에 heartbeat 가 없으면 dead</td>
+</tr>
+<tr>
+<td><code>restartMe</code></td>
+<td>dead 시 statmgr 가 <code>TYPE_RESTART</code> → startstop 이 모듈만 재기동</td>
+</tr>
+<tr>
+<td><code>err:</code></td>
+<td>모듈 에러 번호별 메일/페이저</td>
+</tr>
+</tbody>
+</table>
+<p><code>statmgr.d</code> 의 <code>Descriptor xxx.desc</code> 에 없는 모듈은 <strong>에러·하트비트 감시 대상이 아니다.</strong></p>
+<p>복제 절차에 추가 (기존 4절 보완):</p>
+<ul>
+<li><code>.desc</code> 복사 + <code>modName</code>/<code>modId</code> 변경</li>
+<li><code>statmgr.d</code> 에 <code>Descriptor</code> 한 줄 추가</li>
+<li>통합 변수로 <code>HeartbeatInt</code> 를 바꾸면 해당 <code>.desc</code> 의 <code>tsec</code> 도 같이 올린다 (<code>tsec</code> ≥ 2–4× <code>HeartbeatInt</code> 권장)</li>
+</ul>
+<p>대시보드 열 추가:</p>
+<ul>
+<li>프로세스 상태 (<code>status</code>)</li>
+<li>하트비트 상태 (statmgr.log 또는 Descriptor 등록 여부)</li>
+<li><code>restartMe</code> on/off</li>
+</ul>
+<h3 id="173-cli-pid-startstop">17.3 CLI 는 PID 만 받는다 (이름은 startstop 콘솔 전용)</h3>
+<table>
+<thead>
+<tr>
+<th>경로</th>
+<th>재시작</th>
+<th>중지</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>startstop stdin (<code>Interactive</code>)</td>
+<td><code>restart &lt;pid\|이름&gt;</code></td>
+<td><code>stopmodule &lt;pid\|이름&gt;</code></td>
+</tr>
+<tr>
+<td>외부 CLI</td>
+<td><code>restart [-c file] &lt;pid&gt; [...]</code></td>
+<td><code>stopmodule [file] &lt;pid&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<p>메시지 payload 는 <strong>PID 문자열</strong> 이다 (<code>restart.c</code>, <code>stopmodule.c</code>).<br />
+웹은 <code>status</code> 로 pid 를 얻은 뒤 CLI 에 숫자만 넘긴다. 이름을 넘기면 실패한다.</p>
+<p><code>pidpau &lt;pid&gt;</code> 는 링에 terminate flag 만 세운다. <strong>Status 가 <code>Stop</code> 이 되지 않아 <code>restartMe</code> 모듈은 statmgr 가 다시 올린다.</strong> 웹 일시중지는 반드시 <code>stopmodule</code> 만 사용한다.</p>
+<p><code>stopmodule</code> 직후 바로 <code>status</code> 하면 아직 Alive 일 수 있다. 소스 메시지도 “30초 정도 status 로 확인” 이다. 웹은 <code>KillDelay</code> 동안 폴링한다.</p>
+<h3 id="174-startstop-v80b17-startstop_libh-startstop_unix_genericc">17.4 startstop 하드 리밋 (v8.0b17 <code>startstop_lib.h</code> / <code>startstop_unix_generic.c</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>한도</th>
+<th>값</th>
+<th>웹 동작</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>링</td>
+<td><code>MAX_RING</code> <strong>50</strong></td>
+<td>초과 생성 거부</td>
+</tr>
+<tr>
+<td>자식</td>
+<td><code>MAX_CHILD</code> <strong>256</strong></td>
+<td>복제·토글 거부</td>
+</tr>
+<tr>
+<td>Process 명령 문자열</td>
+<td><code>MAXLINE-1</code> (<strong>199</strong>)</td>
+<td><code>foo_bar foo_bar.d</code> 길이 검사</td>
+</tr>
+<tr>
+<td>argv 개수</td>
+<td><code>MAX_ARG</code> 50</td>
+<td></td>
+</tr>
+<tr>
+<td>Module ID</td>
+<td><strong>0–255</strong> (<code>MAXMODID</code> 256)</td>
+<td><code>MOD_WILDCARD=0</code> 사용 금지</td>
+</tr>
+<tr>
+<td>Ring/Module 이름</td>
+<td><code>MAX_*_STR</code> <strong>32</strong></td>
+<td></td>
+</tr>
+<tr>
+<td><code>SetEnvVariable</code> 이름/값</td>
+<td>255자, 이름 <code>[A-Za-z0-9_]</code></td>
+<td></td>
+</tr>
+<tr>
+<td>동일 <code>Process</code> 문자열</td>
+<td><strong>중복 spawn 안 함</strong> (조용히 skip)</td>
+<td>복제 시 명령줄이 원본과 달라야 함</td>
+</tr>
+</tbody>
+</table>
+<p><code>statmgr</code> 는 자식 목록에서 <strong>맨 먼저 기동</strong>한다 (<code>statmgr_location</code>). 끄면 자동 재시작이 사라지므로 기본 강제 유지.</p>
+<p><code>reconfigure</code> 성공 후 startstop 은 <strong>statmgr 을 다시 시작한다</strong> (<code>Final reconfigure step: Restart statmgr</code>). 토글 on 은 하트비트 감시가 잠깐 끊길 수 있음을 UI 에 표시한다. 이미 도는 모듈의 <code>.d</code> 는 그대로다. 링 삭제·축소는 reconfigure 로 안 되고 <strong>전체 재시작</strong>이다. 중복 링/모듈 이름은 reject.</p>
+<h3 id="175">17.5 락파일 · 유령 공유메모리 — 시작 실패의 실제 원인</h3>
+<ul>
+<li>락: <code>EW_LOG/startstop_unix.d.lock</code> (<code>ew_lockfile_path</code>). startstop 은 <strong>한 인스턴스만</strong>. 비정상 종료 후 락이 남으면 시작이 거절된다. 웹 시작 실패 화면에 락 경로·pid·“강제 해제(운영자 확인)” 를 둔다.</li>
+<li><code>pau</code> 후 <code>KillDelay</code>/<code>HardKillDelay</code> 가 지나도 안 죽는 모듈(예: <code>wave_serverV</code> 가 SIGTERM 을 자체 처리)은 좀비 + <strong>링 shm/세마포어 잔류</strong>. 다음 <code>startstop</code> 이 같은 키로 <code>tport_create</code> 에 실패한다.</li>
+<li>웹에 <strong>진단</strong> 화면: <code>ipcs</code> (또는 POSIX shm) 요약, <code>status</code> 실패 시 “잔류 IPC 가능성”, 정리는 <strong>해당 사용자 소유 세그먼트만</strong> 명시적 확인 후. 자동 <code>ipcrm</code> 전부 삭제는 하지 않는다.</li>
+</ul>
+<h3 id="176-ring">17.6 첫 번째 Ring 에 제어 메시지가 실린다</h3>
+<p><code>status</code> / <code>stopmodule</code> / <code>pau</code> 계열은 <code>startstop_unix.d</code> 의 <strong>첫 <code>Ring</code></strong> 에 붙는다 (<code>ReadRingName</code>). <code>restart</code> 는 statmgr 링을 찾고, 없으면 첫 링.</p>
+<p>배포 샘플의 첫 링은 <code>WAVE_RING</code> 이다. 파형이 바쁜 시스템에서 <code>TYPE_STATUS</code> 가 <code>ERR_LAPPED</code>(덮어쓰기) 되면 대시보드가 빈다.</p>
+<p>권장: 웹 링 설정에서 <strong>STATUS_RING 을 첫 줄로</strong> 두거나, 제어 전용 작은 링을 첫 번째로. 변경은 전체 재시작.</p>
+<h3 id="177-var-komc">17.7 <code>${VAR}</code> 확장 규칙 (<code>kom.c</code>) — 통합 변수 함정</h3>
+<ol>
+<li>셸 환경(<code>getenv</code>)을 먼저 본다.</li>
+<li>그다음 <code>earthworm_commonvars.d</code> 의 <code>SetEnvVariable</code>.</li>
+<li>같은 파일 안의 다른 <code>SetEnvVariable</code> 로 <strong>재귀 확장하지 않는다</strong> (파일 헤더 주석).</li>
+<li><code>EW_HOME</code>, <code>EW_VERSION</code>, <code>EW_LOG</code>, <code>EW_PARAMS</code> 는 commonvars 에 넣지 말 것 (공식 Best practice).</li>
+<li><code>@include</code> (<code>@ncal_model.d</code>) 는 <code>EW_PARAMS</code> 상대 경로. 통합 편집기가 follow 해야 한다.</li>
+</ol>
+<h3 id="178-logit_commonc">17.8 로그 파일명 · 지우면 안 되는 것 (<code>logit_common.c</code>)</h3>
+<ul>
+<li>경로: <code>EW_LOG</code> (없으면 logit_init 실패)</li>
+<li>이름: <code>{설정파일basename}_{YYYYMMDD}.log</code> (UTC 날짜 롤)</li>
+<li><code>Stderr File</code> → 같은 basename 의 <code>.err</code></li>
+<li>락파일 <code>*.lock</code> 은 로그 보관 청소에서 <strong>제외</strong></li>
+<li><code>EW_DATA_DIR</code> 의 wave tank / tankplayer 파일은 로그가 아니다. 보관 정책 대상 아님</li>
+</ul>
+<h3 id="179">17.9 복제 시 메시지 로고가 겹치면 안 된다</h3>
+<p>모든 EW 메시지는 <code>(Installation, Module, Type)</code> 로고를 단다. 같은 <code>MyModuleId</code> 로 두 인스턴스를 돌리면 pick/export 수신 측이 구분하지 못한다.</p>
+<ul>
+<li><code>earthworm.d</code> 에 새 <code>Module MOD_… n</code> (1–255, 미사용)</li>
+<li><code>.d</code> 의 <code>MyModuleId</code> 와 <code>.desc</code> 의 <code>modId</code> 를 그 문자열로</li>
+<li><code>instId</code> 는 <code>${EW_INST_ID}</code> 유지</li>
+<li>바이너리 파일명만 바꾸고 Module ID 를 안 바꾸면 <strong>로고 충돌</strong></li>
+</ul>
+<h3 id="1710">17.10 대시보드에 더 넣을 운영 신호</h3>
+<p><code>status</code> 헤더에는 Hostname-OS, UTC 시작/현재, <strong>Disk space</strong>, 링 name/key/size, Log/Params/Bin Dir, startstop 버전이 있다. 디스크는 <code>diskmgr</code> 모듈과도 겹친다.</p>
+<p>추가 진단 도구 (1차 sniff 외에 선택):</p>
+<ul>
+<li><code>sniffrings</code> — 여러 링</li>
+<li><code>dumpwave</code> / <code>file2ring</code> — 파일↔링 (운영보다 시험)</li>
+<li><code>tankplayer</code> — 라이브 없이 재생. 웹 콘솔 자체 시험에 필요</li>
+</ul>
+<h3 id="1711-2">17.11 네트워크·권한·시간 (설정 화면 2차)</h3>
+<p>매뉴얼/스크립트 주석에서 웹이 빠뜨리기 쉬운 것:</p>
+<ul>
+<li><code>export_generic</code> / <code>import_generic</code> / <code>wave_serverV</code> / <code>slink2ew</code> 의 <strong>IP·포트</strong>. <code>ew_linux.bash</code> 는 커널 <code>ip_local_port_range</code> 보다 <strong>낮은 포트</strong> 를 쓰라고 한다.</li>
+<li>백엔드 유저는 Earthworm 유저와 <strong>동일</strong> (shm·락·로그 권한). root 로 startstop 하지 않음. <code>Agent</code> 에 root 불가.</li>
+<li>64비트 tarball 과 32비트 모듈을 한 startstop 에 섞지 않음.</li>
+<li>시계: sniffwave 출력의 <code>D:</code>(지연) <code>F:</code> 는 호스트 UTC 에 의존. NTP 상태를 설정/대시보드에 표시하면 좋다.</li>
+<li><code>EW_DATA_DIR</code> 경로·용량 (tank, waveserver)</li>
+</ul>
+<h3 id="1712-110">17.12 웹 기능으로 승격할 항목 (요구 1–10 밖, 구현 시 포함)</h3>
+<table>
+<thead>
+<tr>
+<th>우선</th>
+<th>항목</th>
+<th>이유</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0</td>
+<td>params 부트스트랩 + Inst/테이블 검증</td>
+<td>없으면 기동 자체가 안 됨</td>
+</tr>
+<tr>
+<td>P0</td>
+<td><code>.desc</code> + <code>Descriptor</code> + heartbeat 열</td>
+<td>Alive만 보면 장애를 놓침</td>
+</tr>
+<tr>
+<td>P0</td>
+<td>CLI 는 pid, 일시중지는 stopmodule 만</td>
+<td>이름/<code>pidpau</code> 는 오동작</td>
+</tr>
+<tr>
+<td>P0</td>
+<td>락파일·잔류 IPC 진단</td>
+<td>재시작 실패 1순위</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>링 토폴로지 (모듈→RingName, copystatus, CheckAllRings)</td>
+<td>샘플 설정이 비어 있을 수 있음</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>첫 링을 제어용으로 권고</td>
+<td>status 유실 방지</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>HeartbeatInt ↔ desc <code>tsec</code> 연동</td>
+<td>통합 변수 변경 시 오탐</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Process 길이·Module ID 한도 UI</td>
+<td>복제 실패를 파일 저장 전에 차단</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>포트/IP 인벤토리</td>
+<td>데이터 수집·송신 모듈</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>tankplayer 시험 프로파일</td>
+<td>라이브 망 없이 콘솔 검증</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>NTP·디스크·락 위젯</td>
+<td>운영 장애 3대장</td>
+</tr>
+</tbody>
+</table>
+<p>이 절의 P0 는 <a href="#12-구현-단계">12절</a> 1–2단계(초기 마법사 포함), P1 은 3–4단계(우선 카탈로그·구성 보드), P2 는 6단계로 잡는다. 포트/IP 인벤토리는 구성 보드 검증이 대체한다.</p>
+<hr />
+<p>우선 모듈 화이트리스트, 구성 보드 UX, 인스턴스 스키마, 모노레포 배포 규약은 다음 문서에 이어진다.</p>
+<p>이 문서는 <a href="plan.md">plan.md</a> 를 보완한다. Earthworm <strong>v8.0b17</strong> 웹 콘솔이 <strong>실제로 먼저 돌릴 모듈</strong>, <strong>한 창에서 인스턴스를 등록·채우고 일괄 적용하는 방법</strong>, <strong>배포 가능한 모노레포 형태</strong>를 확정한다.</p>
+<p>대상 바이너리·매뉴얼·제어 규칙(<code>startstop</code> / <code>pau</code> / <code>stopmodule</code> pid / <code>restart</code> pid, <code>pidpau</code> 웹 금지, 첫 링 <code>STATUS_RING</code>)은 본 계획서와 같다. 여기서는 <strong>무엇을 팔레트에 둘지</strong>와 <strong>여러 대를 어떻게 한 번에 운영할지</strong>만 더 좁힌다.</p>
+<p>상태: 2b·3·4단계는 코드에 있다. 이 문서의 구성 보드·화이트리스트·일괄 적용은 <strong>구현됨</strong>. Docker 배포는 <code>earthworm_web/compose.yaml</code> 만 쓴다.</p>
+<hr />
+<h2 id="18">18. 왜 우선 목록이 필요한가</h2>
+<p>Earthworm <code>bin</code> 에는 픽커·로케이터·hypoinverse·tankplayer 등 수십 개가 있다. 관측망 수집·중계·아카이브 콘솔은 그 전부를 첫 화면에 펼치면 안 된다.</p>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/module-families.html" title="모듈 패밀리" loading="lazy" style="height:640px"></iframe><figcaption><a href="diagrams/module-families.html">모듈 패밀리</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<p>운영자가 원하는 흐름은 이것이다.</p>
+<ol>
+<li><strong>우선 모듈만</strong> 팔레트에 둔다.</li>
+<li>같은 바이너리를 <strong>여러 인스턴스</strong>로 쓴다 (<code>q3302ew</code> 관측소마다, <code>export_scnl</code> 수신처마다).</li>
+<li>인스턴스별 파라미터를 <strong>한 창에서</strong> 채운다.</li>
+<li><strong>적용 한 번</strong>으로 <code>.d</code> · Module ID · Process · Descriptor · 복제 bin 이 맞고, <code>startstop</code> 이 전체를 함께 돌린다.</li>
+<li>목록에 없는 모듈은 <strong>필요 시 따로 등록</strong>한다.</li>
+<li>웹 콘솔은 저장소 안의 다른 앱(StationXML, PPSD, ringserver UI)과 <strong>모노레포로 배포</strong>할 수 있게 패키지 경계를 둔다.</li>
+</ol>
+<p>현재 구현과의 차이:</p>
+<table>
+<thead>
+<tr>
+<th>지금</th>
+<th>이 계획</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>module_catalog.py</code> 가 <code>bin</code> 의 모든 실행파일을 나열</td>
+<td>팔레트는 <strong>우선 화이트리스트</strong>. 나머지는 “추가 등록”</td>
+</tr>
+<tr>
+<td><code>Modules.tsx</code> 토글 + <code>prompt()</code> 복제</td>
+<td><strong>구성 보드</strong>: 인스턴스 카드 + 사이트 공통 + 적용</td>
+</tr>
+<tr>
+<td><code>Variables.tsx</code> 가 HeartbeatInt 등 소수 공통키만</td>
+<td>사이트 공통 + 모듈 스키마 필드가 <strong>한 화면</strong></td>
+</tr>
+<tr>
+<td><code>seed.py</code> CONTROL_BINS 에 I/O 모듈 스텁이 부족</td>
+<td>우선 Process 바이너리 스텁·샘플 <code>.d</code> 를 시드에 포함</td>
+</tr>
+<tr>
+<td>웹만 호스트 프로세스</td>
+<td><code>earthworm_web/compose.yaml</code> 로 웹 콘솔만 Docker</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="19">19. 우선 모듈 분류</h2>
+<p>이름은 Earthworm Process 이름(또는 CLI 이름)과 같다. 웹 카탈로그 <code>family</code> 키도 이 문자열을 쓴다.</p>
+<h3 id="191">19.1 역할 세 갈래</h3>
+<p>Earthworm 에서 <strong>startstop Process</strong> 와 <strong>사람이 가끔 치는 CLI</strong> 를 한 토글 목록에 섞으면 안 된다.</p>
+<table>
+<thead>
+<tr>
+<th>갈래</th>
+<th><code>role</code></th>
+<th>startstop Process?</th>
+<th>구성 보드</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>데이터 I/O</td>
+<td><code>process</code></td>
+<td>예. <code>Process "name name.d"</code></td>
+<td>인스턴스 카드. 켜면 기동 대상</td>
+</tr>
+<tr>
+<td>제어</td>
+<td><code>control</code></td>
+<td><code>startstop</code>·<code>statmgr</code> 만 Process. 나머지 CLI</td>
+<td>버튼·확인 대화. 인스턴스 카드 없음</td>
+</tr>
+<tr>
+<td>진단</td>
+<td><code>diagnostic</code></td>
+<td>아니오</td>
+<td>링 모니터·wave 메뉴. 인스턴스 카드 없음</td>
+</tr>
+</tbody>
+</table>
+<p><code>statmgr</code> 는 사용자가 나열하지 않았지만 <strong>startstop 과 함께 필수 Process</strong> 다. 구성 보드는 숨기지 않고 <strong>사이트 공통 / 필수</strong> 칸에 고정한다. 끄면 하트비트 감시가 없어지므로 기본은 켜짐, 잠금.</p>
+<p><code>pidpau</code> 는 우선 목록에 있지만 <strong>웹 stop 경로에 쓰지 않는다</strong>. 진단 화면에 “statmgr 가 다시 올리는 종료” 설명만 둔다. 일시중지는 <code>stopmodule &lt;pid&gt;</code> 만.</p>
+<h3 id="192-io-process">19.2 데이터 I/O Process (팔레트 기본)</h3>
+<p>복제 다발 가능성이 높은 다섯 개는 <code>fleet: true</code> 다. 팔레트에서 <strong>인스턴스 추가</strong> 가 기본 동작이고, prompt 복제가 아니다.</p>
+<table>
+<thead>
+<tr>
+<th>family</th>
+<th>한 줄</th>
+<th>주로 붙는 링</th>
+<th>유일해야 하는 것</th>
+<th>fleet</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>q3302ew</code></td>
+<td>Q330 디지타이저 → TRACEBUF2</td>
+<td><code>WAVE_RING</code></td>
+<td>호스트 UDP <code>SourcePortControl</code> / <code>SourcePortData</code>, Serial, Module ID</td>
+<td>○</td>
+</tr>
+<tr>
+<td><code>slink2ew</code></td>
+<td>SeedLink 서버 → TRACEBUF2</td>
+<td><code>WAVE_RING</code></td>
+<td>Module ID, Stream 신원. 원격 <code>SLhost</code> 는 중복 가능</td>
+<td>○</td>
+</tr>
+<tr>
+<td><code>export_generic</code></td>
+<td>링 메시지를 TCP 로 보냄</td>
+<td>송신할 링</td>
+<td>리슨 <code>ServerIPAdr</code>+<code>ServerPort</code></td>
+<td>○</td>
+</tr>
+<tr>
+<td><code>export_scnl</code></td>
+<td>SCNL 필터 후 TCP 송신</td>
+<td>송신할 링</td>
+<td>리슨 주소+포트, <code>Send_scnl</code> 집합</td>
+<td>○</td>
+</tr>
+<tr>
+<td><code>wave_serverV</code></td>
+<td>탱크 파일 웨이브 서버</td>
+<td><code>WAVE_RING</code></td>
+<td>리슨 포트, <code>Tank</code> 경로, <code>TankStructFile</code></td>
+<td>○</td>
+</tr>
+<tr>
+<td><code>import_generic</code></td>
+<td>원격 export 에 접속해 수신</td>
+<td>넣을 링</td>
+<td>로컬 Module ID. 원격 <code>SenderIpAdr</code>+<code>SenderPort</code> 는 대상마다</td>
+<td></td>
+</tr>
+<tr>
+<td><code>import_pasv</code></td>
+<td>패시브 리슨 후 수신</td>
+<td>넣을 링</td>
+<td>리슨 <code>ReceiverIpAdr</code>+<code>ReceiverPort</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>tbuf2mseed</code></td>
+<td>TRACEBUF2 → MiniSEED 메시지</td>
+<td>In / Out 링</td>
+<td>Module ID, 링 쌍</td>
+<td></td>
+</tr>
+<tr>
+<td><code>mseed2tbuf</code></td>
+<td>MiniSEED → TRACEBUF2</td>
+<td>In / Out 링</td>
+<td>Module ID, 링 쌍</td>
+<td></td>
+</tr>
+<tr>
+<td><code>ew2ringserver</code></td>
+<td>링 → ringserver (SeedLink 업스트림)</td>
+<td><code>WAVE_RING</code> 등</td>
+<td>Module ID, <code>RSAddress</code>+<code>RSPort</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>ew2mseed</code></td>
+<td>링 → MiniSEED 파일</td>
+<td>입력 링</td>
+<td>출력 디렉터리(인스턴스별 권장)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>ewmseedarchiver</code></td>
+<td>MiniSEED 아카이브 배치</td>
+<td>입력 링</td>
+<td>아카이브 루트 경로</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><code>getmenu</code> 는 wave_serverV <strong>클라이언트 CLI</strong> 이지 Process 가 아니다. 진단 갈래로 둔다.</p>
+<h3 id="193-cli-process">19.3 제어 CLI · 필수 Process</h3>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>웹에서의 역할</th>
+<th>Process?</th>
+<th>비고</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>startstop</code></td>
+<td>전체 기동. 웹 Start</td>
+<td>예 (자기 자신)</td>
+<td>명령은 <code>startstop</code>. 구성 카드 없음</td>
+</tr>
+<tr>
+<td><code>statmgr</code></td>
+<td>하트비트·에러 로고 감시</td>
+<td>예</td>
+<td>필수. Descriptor 목록은 인스턴스 적용 시 갱신</td>
+</tr>
+<tr>
+<td><code>restart</code></td>
+<td>모듈 재개. <code>restart &lt;pid&gt;</code></td>
+<td>아니오</td>
+<td>대시보드 행 버튼</td>
+</tr>
+<tr>
+<td><code>reconfigure</code></td>
+<td>startstop 이 Process 목록을 다시 읽음</td>
+<td>아니오</td>
+<td>구성 적용 후, 또는 토글 on</td>
+</tr>
+<tr>
+<td><code>pau</code></td>
+<td>전체 종료</td>
+<td>아니오</td>
+<td>웹 Stop</td>
+</tr>
+<tr>
+<td><code>stopmodule</code></td>
+<td>일시중지 <code>stopmodule &lt;pid&gt;</code></td>
+<td>아니오</td>
+<td>웹 Pause. 이름 인자 없음</td>
+</tr>
+<tr>
+<td><code>pidpau</code></td>
+<td>프로세스 종료(statmgr 재기동 가능)</td>
+<td>아니오</td>
+<td>웹 Stop 경로 금지. 진단 문서만</td>
+</tr>
+</tbody>
+</table>
+<h3 id="194-cli">19.4 진단 CLI</h3>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>웹에서의 역할</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>status</code></td>
+<td>대시보드 원본. 주기 호출 + <code>/ws/status</code></td>
+</tr>
+<tr>
+<td><code>getmenu</code></td>
+<td>선택 가능한 wave_serverV 에 SCNL 메뉴 조회</td>
+</tr>
+<tr>
+<td><code>sniffring</code></td>
+<td>링 메시지 헤더. 기존 링 모니터</td>
+</tr>
+<tr>
+<td><code>sniffwave</code></td>
+<td>TRACEBUF 스니프. 기존 링 모니터</td>
+</tr>
+</tbody>
+</table>
+<p>진단 도구는 구성 보드 하단 <strong>도구</strong> 줄에만 노출한다. 인스턴스를 복제하지 않는다.</p>
+<h3 id="195">19.5 나머지 모듈 — 필요 시 등록</h3>
+<p>팔레트에 없는 <code>bin</code> 항목(<code>pick_ew</code>, <code>eqproc</code>, <code>tankplayer</code>, <code>copystatus</code>, …)은 <strong>추가 모듈 등록</strong> 으로만 넣는다.</p>
+<p>등록 최소 입력:</p>
+<ol>
+<li><code>bin</code> 에서 실행파일 선택 (또는 경로가 <code>EW_HOME/$EW_VERSION/bin</code> 안인지 검사).</li>
+<li>샘플 <code>.d</code> 가 있으면 복사, 없으면 빈 템플릿(<code>MyModuleId</code>, <code>RingName</code>, <code>HeartBeatInt</code>).</li>
+<li><code>earthworm.d</code> Module 상수, <code>.desc</code>, <code>statmgr.d</code> Descriptor.</li>
+<li><code>family</code> 는 파일 줄기. <code>fleet</code> 기본 false. 운영자가 “이 패밀리도 여러 대” 를 켜면 이후부터 인스턴스 추가가 열린다.</li>
+<li>필드 스키마가 없으면 구성 보드는 <strong>키=값 표</strong> + 원문 <code>.d</code> 편집으로 떨어진다. 우선 12개만 YAML 스키마를 둔다.</li>
+</ol>
+<p>등록한 모듈은 <code>app.json.extra_families[]</code> 에 남긴다. 팔레트 “기타” 그룹으로 재방문 시 다시 보인다.</p>
+<hr />
+<h2 id="20">20. 인스턴스 모델 (복제가 기본 단위)</h2>
+<p>Earthworm startstop 은 <strong>같은 Process 문자열을 두 줄 넣어도 두 번째로 spawn 하지 않는다</strong>. 그래서 같은 바이너리를 여러 대 쓰려면 <strong>명령 이름이 달라야</strong> 한다. 웹은 기존과 같이 <code>bin</code> 을 새 이름으로 복사한다.</p>
+<pre><code>bin/q3302ew          +  params/q3302ew.d           →  Process &quot;q3302ew q3302ew.d&quot;
+bin/q3302ew_sta1     +  params/q3302ew_sta1.d      →  Process &quot;q3302ew_sta1 q3302ew_sta1.d&quot;
+bin/q3302ew_sta2     +  params/q3302ew_sta2.d      →  Process &quot;q3302ew_sta2 q3302ew_sta2.d&quot;
+</code></pre>
+<p>구성 보드의 <strong>인스턴스 추가</strong> 는 내부적으로 지금의 <code>clone.py</code> 트랜잭션과 같다. UI 만 “복제 다이얼로그” 가 아니라 <strong>패밀리에서 카드 한 장 더</strong> 다.</p>
+<h3 id="201">20.1 식별자</h3>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th>규칙</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>family</code></td>
+<td>원본 바이너리 이름. <code>q3302ew</code></td>
+</tr>
+<tr>
+<td><code>id</code></td>
+<td>Process 이름 = 복사된 bin 이름. <code>q3302ew_sta1</code></td>
+</tr>
+<tr>
+<td><code>id</code> 문자</td>
+<td><code>^[A-Za-z][A-Za-z0-9_]{0,31}$</code> (기존 <code>SAFE_NAME</code>)</td>
+</tr>
+<tr>
+<td>Process 명령</td>
+<td><code>{id} {id}.d</code> — 공백 포함 199자 이하 (<code>MAX_PROCESS_CMD</code>)</td>
+</tr>
+<tr>
+<td>Module 상수</td>
+<td><code>MOD_</code> + <code>id</code> 대문자. <code>earthworm.d</code> 에서 유일</td>
+</tr>
+<tr>
+<td><code>clone_of</code></td>
+<td>원본 family. 첫 인스턴스가 원본 이름을 쓰면 <code>null</code></td>
+</tr>
+</tbody>
+</table>
+<p>원본 이름(<code>q3302ew</code>)을 첫 관측소에 써도 된다. 두 번째부터는 접미사를 강제한다. 권장 접미사: <code>_</code> + 관측소 또는 역할 (<code>_sta1</code>, <code>_n1</code>, <code>_ks</code>).</p>
+<h3 id="202">20.2 한도</h3>
+<table>
+<thead>
+<tr>
+<th>한도</th>
+<th>값</th>
+<th>UI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>startstop 자식</td>
+<td><code>MAX_CHILD</code> <strong>256</strong></td>
+<td>인스턴스 추가 거부</td>
+</tr>
+<tr>
+<td>Module ID</td>
+<td><code>earthworm.d</code> 빈 번호</td>
+<td>고갈 시 적용 실패 메시지</td>
+</tr>
+<tr>
+<td>동시 sniff 세션</td>
+<td>2 (기존)</td>
+<td>구성 보드와 무관</td>
+</tr>
+</tbody>
+</table>
+<p>필수 Process(<code>startstop</code> 카운트 방식, <code>statmgr</code>) + 우선 I/O 인스턴스 합이 256 을 넘지 않게 카운트한다.</p>
+<h3 id="203">20.3 복제 다발 다섯 패밀리 — 운영 패턴</h3>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/instance-fleet.html" title="복제 다발" loading="lazy" style="height:620px"></iframe><figcaption><a href="diagrams/instance-fleet.html">복제 다발</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<p><strong>q3302ew</strong><br />
+관측소(또는 Q330)마다 한 인스턴스. 장치 <code>IPAddress</code>·<code>BasePort</code>·<code>SerialNumber</code>·<code>AuthCode</code> 가 다르다. 호스트가 받는 UDP <code>SourcePortControl</code> / <code>SourcePortData</code> 는 <strong>머신에서 유일</strong>. 채널 맵은 인스턴스 <code>.d</code> 에 둔다.</p>
+<p><strong>slink2ew</strong><br />
+업링크 SeedLink 마다, 또는 같은 서버라도 스트림 세트가 다르면 인스턴스를 나눈다. <code>SLhost</code>:<code>SLport</code> 는 같아도 된다. 구분자는 Module ID + <code>Stream</code>/<code>Selectors</code>.</p>
+<p><strong>export_scnl / export_generic</strong><br />
+수신 클라이언트(다른 기관, 내부 import)마다 리슨 포트가 달라야 한다. 커널 <code>ip_local_port_range</code> <strong>보다 낮은</strong> 포트를 쓴다 (<code>ew_linux.bash</code> 주석과 동일). SCNL 목록은 인스턴스 카드의 반복 필드.</p>
+<p><strong>wave_serverV</strong><br />
+역할마다 탱크를 나눈다 (실시간 / 아카이브 조회). <code>ServerPort</code> 유일, <code>Tank</code>·<code>TankStructFile</code> 경로는 인스턴스마다 <strong>다른 파일</strong>. 같은 탱크를 두 서버가 열면 깨진다.</p>
+<p><code>import_generic</code> 은 fleet 기본값이 아니지만, 송신 기관이 여러 곳이면 추가 등록과 같은 UX 로 인스턴스를 늘릴 수 있게 <code>fleet</code> 플래그를 운영자가 켠다.</p>
+<hr />
+<h2 id="21">21. 구성 보드 — 한 창에서 등록·입력·일괄 운영</h2>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/compose-board.html" title="구성 보드" loading="lazy" style="height:680px"></iframe><figcaption><a href="diagrams/compose-board.html">구성 보드</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<p>이후 설정의 <strong>모듈 설정</strong> 화면을 토글 목록에서 구성 보드로 바꾼다. 통합 변수 화면의 공통키는 보드 상단 <strong>사이트 공통</strong> 으로 옮긴다. <code>Variables</code> 페이지는 보드로 흡수하거나, 보드의 앵커 탭으로 남긴다.</p>
+<p>목표는 “카드마다 저장” 이 아니라, 운영자가 값을 다 채운 뒤 <strong>적용</strong> 한 번에 파일이 맞고, 이어서 <strong>시작</strong> 하면 전체가 같은 startstop 아래 돈다는 것이다.</p>
+<h3 id="211">21.1 화면 구역</h3>
+<pre><code>┌─ 사이트 공통 ─────────────────────────────────────────┐
+│ Inst  HeartbeatInt  LogFile  기본 WAVE_RING  statmgr   │
+└────────────────────────────────────────────────────────┘
+┌ 팔레트 ──────┐  ┌ 인스턴스 카드 (스크롤) ──────────────┐
+│ 우선 12      │  │ q3302ew_sta1  [스키마 필드…]         │
+│  · q3302ew + │  │ q3302ew_sta2                         │
+│  · slink2ew +│  │ export_scnl_n1                       │
+│  · …         │  │ wave_serverV                         │
+│ 기타 등록…   │  │ …                                    │
+└──────────────┘  └──────────────────────────────────────┘
+┌ 검증 요약 (포트 충돌, 빈 필수값)  [검토] [적용] [시작] ┐
+└────────────────────────────────────────────────────────┘
+</code></pre>
+<ul>
+<li><strong>팔레트 <code>+</code></strong>: fleet 패밀리는 인스턴스 카드를 즉시 추가하고 이름 기본값을 제안한다. 비-fleet 는 카드가 이미 있으면 포커스만, 없으면 원본 이름 카드 하나.</li>
+<li><strong>기타 등록</strong>: 모달에서 bin 선택 → 카드 추가.</li>
+<li><strong>카드</strong>: 스키마 필드. 고급은 접은 “원문 <code>.d</code>”.</li>
+<li><strong>검토</strong>: 디스크에 쓰지 않고 검증만 (<code>POST /api/compose/validate</code>).</li>
+<li><strong>적용</strong>: 트랜잭션 기록 (<code>POST /api/compose/apply</code>). startstop 이 Alive 면 기본은 파일만 쓰고 “기동 중 모듈은 restart 필요” 배지. 옵션 <code>reconfigure: true</code> 로 새 Process 만 띄운다. 이미 돌 고 있는 모듈의 <code>.d</code> 변경은 startstop 이 다시 읽지 않으므로 행마다 restart 가 필요하다는 기존 규칙을 그대로 둔다.</li>
+<li><strong>시작</strong>: 미기동이면 <code>startstop</code>. Alive 면 비활성.</li>
+</ul>
+<p>한 창에 모든 인스턴스가 보여야 하므로, 카드는 패밀리로 그룹하고 기본은 요약 줄 + 펼침이다. 필터: 패밀리, 검증 오류만.</p>
+<h3 id="212">21.2 사이트 공통 (한 번만)</h3>
+<p><code>earthworm_commonvars.d</code> · <code>ew_linux.bash</code> · <code>statmgr.d</code> 상단에 해당하는 값.</p>
+<table>
+<thead>
+<tr>
+<th>키</th>
+<th>반영 위치</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EW_INSTALLATION</code> / Inst</td>
+<td><code>ew_linux.bash</code>, 각 <code>.desc</code> <code>instId</code> (기존)</td>
+</tr>
+<tr>
+<td><code>HeartbeatInt</code></td>
+<td>공통 vars + 각 <code>.d</code> HeartBeatInt + <code>.desc</code> <code>tsec</code></td>
+</tr>
+<tr>
+<td><code>LogFile</code></td>
+<td>공통 + 모듈 <code>.d</code> 가 키를 쓰는 경우</td>
+</tr>
+<tr>
+<td>기본 <code>WAVE_RING</code></td>
+<td>새 I/O 카드의 RingName 초기값. 기존 카드는 덮어쓰지 않음(명시적 “공통 전파” 체크 시만)</td>
+</tr>
+<tr>
+<td><code>statmgr</code> 로그 수준</td>
+<td><code>statmgr.d</code></td>
+</tr>
+</tbody>
+</table>
+<p>공통 전파는 위험하므로 기본은 <strong>새 카드 초기값만</strong>. 이미 채운 인스턴스를 일괄 덮어쓰려면 체크박스 “이 적용에서 HeartbeatInt 를 모든 <code>.d</code> 에 씀”.</p>
+<h3 id="213">21.3 이름·포트 제안</h3>
+<p>인스턴스 추가 시 백엔드가 제안하고, 운영자가 고친다.</p>
+<table>
+<thead>
+<tr>
+<th>패밀리</th>
+<th>이름 제안</th>
+<th>포트/경로 제안</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>q3302ew</code></td>
+<td><code>q3302ew_staN</code></td>
+<td><code>SourcePortControl</code> 16030 부터 짝, Data = Control+1</td>
+</tr>
+<tr>
+<td><code>slink2ew</code></td>
+<td><code>slink2ew_nN</code></td>
+<td>포트 없음. Stream 빈 값이면 검증 실패</td>
+</tr>
+<tr>
+<td><code>export_generic</code></td>
+<td><code>export_generic_nN</code></td>
+<td><code>ServerPort</code> 16005, 16006, …</td>
+</tr>
+<tr>
+<td><code>export_scnl</code></td>
+<td><code>export_scnl_nN</code></td>
+<td><code>ServerPort</code> 16015, …</td>
+</tr>
+<tr>
+<td><code>import_pasv</code></td>
+<td><code>import_pasv_nN</code></td>
+<td><code>ReceiverPort</code> 16025, …</td>
+</tr>
+<tr>
+<td><code>wave_serverV</code></td>
+<td><code>wave_serverV_nN</code></td>
+<td><code>ServerPort</code> 16022, … / <code>Tank</code> <code>$EW_DATA_DIR/tanks/{id}.tnk</code></td>
+</tr>
+</tbody>
+</table>
+<p>포트는 이미 카드·디스크에 쓰인 리슨 포트를 피해 고른다. 커널 ephemeral 하한(보통 32768) 미만인지는 적용 시 경고.</p>
+<h3 id="214">21.4 등록이 “쉽다”는 것의 조작 목표</h3>
+<ol>
+<li>팔레트에서 <code>q3302ew</code> 를 세 번 누른다 → 카드 세 장.</li>
+<li>각 카드에 IP·시리얼·Auth·로컬 UDP 만 넣는다. Module ID·bin 복사는 적용이 한다.</li>
+<li><code>export_scnl</code> 을 한 번 누르고 리슨 포트와 <code>Send_scnl</code> 줄을 넣는다.</li>
+<li>검토 → 빨간 칸만 고친다.</li>
+<li>적용 → 시작.</li>
+</ol>
+<p>모듈마다 파일 트리를 열고 <code>earthworm.d</code> 숫자를 고르지 않는다.</p>
+<hr />
+<h2 id="22">22. 모듈 필드 스키마</h2>
+<p>진실의 원천 파일: <code>earthworm_web/backend/app/module_fields.yaml</code>. 프론트는 <code>/api/modules/schema</code> 로 받는다. 매뉴얼은 소스 <code>doc/WEB_DOC</code> 의 각 cmd HTML.</p>
+<p>공통 Process 필드 (스키마가 생략해도 카드 상단에 항상 표시):</p>
+<table>
+<thead>
+<tr>
+<th>키</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MyModuleId</code></td>
+<td>적용 시 할당. 카드에서는 읽기 전용 미리보기</td>
+</tr>
+<tr>
+<td><code>RingName</code> 또는 In/Out</td>
+<td>초기 설정에서 만든 링만 콤보</td>
+</tr>
+<tr>
+<td><code>HeartBeatInt</code></td>
+<td>사이트 공통 기본</td>
+</tr>
+<tr>
+<td><code>LogFile</code></td>
+<td>0/1/2</td>
+</tr>
+</tbody>
+</table>
+<p>아래는 <strong>운영자가 한 창에서 채울 1차 필드</strong>다. 매뉴얼의 모든 키를 1차에 올리지 않는다. 나머지는 고급(원문).</p>
+<h3 id="221-q3302ew">22.1 <code>q3302ew</code></h3>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th>필수</th>
+<th>유일 범위</th>
+<th>메모</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IPAddress</code></td>
+<td>○</td>
+<td>인스턴스</td>
+<td>Q330</td>
+</tr>
+<tr>
+<td><code>BasePort</code></td>
+<td>○</td>
+<td>장치 관례 5330</td>
+<td></td>
+</tr>
+<tr>
+<td><code>SerialNumber</code></td>
+<td>○</td>
+<td>전역 권장</td>
+<td></td>
+</tr>
+<tr>
+<td><code>AuthCode</code></td>
+<td>○</td>
+<td>비밀. 파일 권한 유지</td>
+<td>UI 는 password 입력, 저장은 <code>.d</code> 평문 (Earthworm 한계)</td>
+</tr>
+<tr>
+<td><code>SourcePortControl</code></td>
+<td>○</td>
+<td><strong>호스트 전역 UDP</strong></td>
+<td></td>
+</tr>
+<tr>
+<td><code>SourcePortData</code></td>
+<td>○</td>
+<td><strong>호스트 전역 UDP</strong></td>
+<td>Control 과 달라야 함</td>
+</tr>
+<tr>
+<td>채널 맵 줄</td>
+<td>○</td>
+<td></td>
+<td>반복 필드. 원문 유지 파서</td>
+</tr>
+</tbody>
+</table>
+<h3 id="222-slink2ew">22.2 <code>slink2ew</code></h3>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th>필수</th>
+<th>메모</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SLhost</code></td>
+<td>○</td>
+<td></td>
+</tr>
+<tr>
+<td><code>SLport</code></td>
+<td>○</td>
+<td>기본 18000</td>
+</tr>
+<tr>
+<td><code>Stream</code> / <code>Selectors</code></td>
+<td>○</td>
+<td>빈 구독 방지</td>
+</tr>
+<tr>
+<td><code>NetworkTimeout</code> 등</td>
+<td></td>
+<td>고급</td>
+</tr>
+</tbody>
+</table>
+<h3 id="223-export_generic-export_scnl">22.3 <code>export_generic</code> · <code>export_scnl</code></h3>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th>필수</th>
+<th>유일 범위</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ServerIPAdr</code></td>
+<td>○</td>
+<td>리슨 IP. <code>0.0.0.0</code> 허용하되 방화벽 경고</td>
+</tr>
+<tr>
+<td><code>ServerPort</code></td>
+<td>○</td>
+<td><strong>호스트 TCP 리슨 전역</strong></td>
+</tr>
+<tr>
+<td><code>MaxMsgSize</code></td>
+<td></td>
+<td>기본 유지</td>
+</tr>
+<tr>
+<td><code>Send_scnl</code> / <code>Send_scn</code></td>
+<td><code>export_scnl</code> 은 ○</td>
+<td>반복 줄. wildcard 허용</td>
+</tr>
+<tr>
+<td><code>export_generic</code> 필터</td>
+<td></td>
+<td>로고/타입. 고급</td>
+</tr>
+</tbody>
+</table>
+<p>같은 IP+포트를 두 export 가 리슨하면 적용을 거절한다.</p>
+<h3 id="224-import_generic">22.4 <code>import_generic</code></h3>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th>필수</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SenderIpAdr</code></td>
+<td>○ 원격 export</td>
+</tr>
+<tr>
+<td><code>SenderPort</code></td>
+<td>○</td>
+</tr>
+</tbody>
+</table>
+<p>로컬 리슨이 아니므로 포트 유일 검사 대상이 아니다. 같은 원격에 두 인스턴스가 붙는 것은 경고만.</p>
+<h3 id="225-import_pasv">22.5 <code>import_pasv</code></h3>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th>필수</th>
+<th>유일</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ReceiverIpAdr</code></td>
+<td>○</td>
+<td></td>
+</tr>
+<tr>
+<td><code>ReceiverPort</code></td>
+<td>○</td>
+<td>TCP 리슨 전역</td>
+</tr>
+<tr>
+<td><code>SenderIpAdr</code></td>
+<td>○</td>
+<td>허용 피어</td>
+</tr>
+</tbody>
+</table>
+<h3 id="226-wave_serverv">22.6 <code>wave_serverV</code></h3>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th>필수</th>
+<th>유일</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ServerIPAdr</code></td>
+<td>○</td>
+<td></td>
+</tr>
+<tr>
+<td><code>ServerPort</code></td>
+<td>○</td>
+<td>TCP 리슨</td>
+</tr>
+<tr>
+<td><code>Tank</code></td>
+<td>○</td>
+<td><strong>파일 경로 전역</strong></td>
+</tr>
+<tr>
+<td><code>TankStructFile</code></td>
+<td>○</td>
+<td>파일 경로 전역</td>
+</tr>
+<tr>
+<td><code>GapThresh</code> 등</td>
+<td></td>
+<td>고급</td>
+</tr>
+</tbody>
+</table>
+<p><code>getmenu</code> 진단은 이 인스턴스의 IP:포트를 콤보로 받는다.</p>
+<h3 id="227-tbuf2mseed-mseed2tbuf">22.7 <code>tbuf2mseed</code> · <code>mseed2tbuf</code></h3>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th>필수</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InRing</code> / <code>OutRing</code> 또는 매뉴얼 키</td>
+<td>○ 서로 다른 링 권장</td>
+</tr>
+<tr>
+<td>패킹/필터</td>
+<td>고급</td>
+</tr>
+</tbody>
+</table>
+<h3 id="228-ew2ringserver">22.8 <code>ew2ringserver</code></h3>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th>필수</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RSAddress</code></td>
+<td>○</td>
+</tr>
+<tr>
+<td><code>RSPort</code></td>
+<td>○ 이 저장소 ringserver 기본과 맞출 것(배포 시 문서화)</td>
+</tr>
+<tr>
+<td>인코딩</td>
+<td>고급</td>
+</tr>
+</tbody>
+</table>
+<p>웹 콘솔과 ringserver UI 는 <strong>같은 모노레포의 다른 앱</strong>이다. 프로세스 결합은 하지 않고, 기본 호스트/포트만 배포 문서에 교차 링크한다.</p>
+<h3 id="229-ew2mseed-ewmseedarchiver">22.9 <code>ew2mseed</code> · <code>ewmseedarchiver</code></h3>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th>필수</th>
+<th>유일 권장</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>출력/아카이브 디렉터리</td>
+<td>○</td>
+<td>인스턴스별 하위 디렉터리</td>
+</tr>
+<tr>
+<td>SCNL 선택</td>
+<td></td>
+<td>반복 필드</td>
+</tr>
+</tbody>
+</table>
+<p>디스크 용량 경고는 기존 P2 위젯과 연결한다.</p>
+<h3 id="2210-yaml">22.10 YAML 스케치</h3>
+<pre><code class="language-yaml">families:
+  q3302ew:
+    role: process
+    fleet: true
+    default_ring: WAVE_RING
+    fields:
+      - { key: IPAddress, required: true, type: ip }
+      - { key: BasePort, required: true, type: port }
+      - { key: SerialNumber, required: true, type: string }
+      - { key: AuthCode, required: true, type: secret }
+      - { key: SourcePortControl, required: true, type: udp_port, unique: host }
+      - { key: SourcePortData, required: true, type: udp_port, unique: host }
+  export_scnl:
+    role: process
+    fleet: true
+    fields:
+      - { key: ServerIPAdr, required: true, type: ip }
+      - { key: ServerPort, required: true, type: tcp_listen, unique: host }
+      - { key: Send_scnl, required: true, type: lines }
+</code></pre>
+<p>파서는 기존 <code>parse_key_values</code> + 반복 커맨드(<code>Send_scnl</code>, 채널 맵)를 <strong>같은 키 여러 줄</strong> 로 다룬다. 모르는 줄은 라운드트립에서 보존한다.</p>
+<hr />
+<h2 id="23">23. 검증 (적용 전에 한 창에서)</h2>
+<p><code>POST /api/compose/validate</code> 는 보드 JSON 만 보고, 디스크와 합쳐 충돌을 돌려준다. 카드 옆과 하단 요약에 같은 코드를 표시한다.</p>
+<table>
+<thead>
+<tr>
+<th>코드</th>
+<th>검사</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dup_process</code></td>
+<td>Process 이름 중복</td>
+</tr>
+<tr>
+<td><code>dup_module_id</code></td>
+<td><code>earthworm.d</code> / 보드 안 Module 상수 중복</td>
+</tr>
+<tr>
+<td><code>dup_listen</code></td>
+<td>TCP/UDP 리슨 포트 중복 (export, import_pasv, wave_serverV, q3302ew source)</td>
+</tr>
+<tr>
+<td><code>dup_tank</code></td>
+<td>Tank / TankStructFile 경로 중복</td>
+</tr>
+<tr>
+<td><code>missing_ring</code></td>
+<td>RingName 이 startstop 링 목록에 없음. <code>FLAG_RING</code> 사용 금지</td>
+</tr>
+<tr>
+<td><code>missing_bin</code></td>
+<td>family 원본 바이너리 없음</td>
+</tr>
+<tr>
+<td><code>max_child</code></td>
+<td>활성 Process 가 256 초과</td>
+</tr>
+<tr>
+<td><code>cmd_len</code></td>
+<td><code>{id} {id}.d</code> &gt; 199</td>
+</tr>
+<tr>
+<td><code>bad_name</code></td>
+<td><code>SAFE_NAME</code> 실패</td>
+</tr>
+<tr>
+<td><code>ephemeral_port</code></td>
+<td>포트가 <code>ip_local_port_range</code> 하한 이상 — 경고</td>
+</tr>
+<tr>
+<td><code>empty_required</code></td>
+<td>스키마 required</td>
+</tr>
+<tr>
+<td><code>auth_empty</code></td>
+<td>q3302ew AuthCode</td>
+</tr>
+</tbody>
+</table>
+<p>오류가 있으면 적용 HTTP 409. 경고만 있으면 적용 가능, UI 에 노란 배지.</p>
+<hr />
+<h2 id="24">24. 일괄 적용 트랜잭션</h2>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/compose-apply.html" title="일괄 적용" loading="lazy" style="height:660px"></iframe><figcaption><a href="diagrams/compose-apply.html">일괄 적용</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<p>한 번의 <code>apply</code> 가 여러 <code>clone.py</code> 호출 + <code>.d</code> 패치 + 토글을 묶는다. 중간 실패 시 <strong>그 적용에서 만든 파일만</strong> 롤백한다. 적용 전 <code>params/</code> · <code>earthworm.d</code> · <code>startstop_unix.d</code> · <code>statmgr.d</code> 스냅샷을 <code>backend/data/backups/compose-&lt;ts&gt;/</code> 에 둔다 (기존 백업 정책과 동일 디렉터리).</p>
+<p>순서:</p>
+<ol>
+<li>검증. 실패면 디스크 변경 없음.</li>
+<li>스냅샷.</li>
+<li>새 인스턴스: bin 복사, <code>.d</code> 생성, Module ID, <code>.desc</code>, Descriptor, <code>app.json.clones</code>.</li>
+<li>기존 인스턴스: <code>.d</code> 키 패치(모르는 줄 보존), 이름 변경은 이 단계에서 하지 않음(삭제 후 추가로만).</li>
+<li>사이트 공통 전파(체크된 키만).</li>
+<li><code>startstop_unix.d</code> Process 줄을 보드의 enabled 와 맞춘다. 새 줄은 주석으로 넣지 않고, 보드에서 켠 것은 활성, 끈 것은 주석(기존 토글과 같음).</li>
+<li><code>app.json.compose_revision</code> 증가.</li>
+<li>옵션 <code>reconfigure</code>. Alive 가 아니면 생략. 호출 후 status 로 새 이름 확인.</li>
+</ol>
+<p>삭제: 보드에서 카드를 지우고 적용하면 기존 복제 삭제와 같다 (기동 중이면 먼저 <code>stopmodule</code>). 원본 family 의 마지막 카드까지 지우는 것은 확인 대화. <code>statmgr</code> 카드는 삭제 불가.</p>
+<p>적용과 시작을 한 버튼으로 묶지 않는다. 파일이 틀린 채 startstop 이 뜨는 것을 막기 위해 <strong>적용 성공 → 시작</strong> 두 단계다. 다만 미기동 상태에서는 보드 하단에 두 버튼을 나란히 두어 같은 창에서 끝낸다.</p>
+<hr />
+<h2 id="25-api">25. API · 프론트 · 시드 변경점</h2>
+<p>기존 <code>/api/modules/{id}/clone</code> 은 유지한다. 구성 보드가 그 위를 쓴다. 단독 복제 API 를 바로 제거하지 않는다.</p>
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>경로</th>
+<th>역할</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/modules/schema</code></td>
+<td>YAML → JSON. 우선+extra</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/compose</code></td>
+<td>디스크+app.json 을 보드 모델로</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/compose/validate</code></td>
+<td>보드 JSON → 이슈 목록</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/compose/apply</code></td>
+<td>트랜잭션</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/compose/suggest</code></td>
+<td><code>{ family }</code> → 이름·포트·탱크</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/modules/register</code></td>
+<td>기타 bin 등록</td>
+</tr>
+</tbody>
+</table>
+<p>보드 모델 (스케치):</p>
+<pre><code class="language-json">{
+  &quot;site&quot;: { &quot;heartbeat_int&quot;: 30, &quot;default_wave_ring&quot;: &quot;WAVE_RING&quot; },
+  &quot;instances&quot;: [
+    {
+      &quot;family&quot;: &quot;q3302ew&quot;,
+      &quot;id&quot;: &quot;q3302ew_sta1&quot;,
+      &quot;enabled&quot;: true,
+      &quot;values&quot;: { &quot;IPAddress&quot;: &quot;10.1.2.3&quot;, &quot;BasePort&quot;: 5330 }
+    }
+  ]
+}
+</code></pre>
+<p>프론트:</p>
+<ul>
+<li><code>pages/Compose.tsx</code> (또는 <code>Modules.tsx</code> 교체). 네비 라벨 “모듈 설정” 유지.</li>
+<li>팔레트 / <code>InstanceCard</code> / <code>SiteBar</code> / <code>ApplyBar</code>.</li>
+<li>미리보기 HTML(<code>frontend/preview</code>)에 구성 보드 목 한 장 추가.</li>
+</ul>
+<p>시드 (<code>seed.py</code> · <code>fixtures/</code>):</p>
+<ul>
+<li>CONTROL_BINS 에 우선 I/O 12개 이름을 넣고 스텁 바이너리를 심는다.</li>
+<li>각 family 의 최소 <code>.d</code> / <code>.desc</code> 샘플을 <code>fixtures/earthworm_8.0/params/</code> 에 둔다. 실기 없이 보드 pytest 가 돌게 한다.</li>
+<li><code>getmenu</code> 스텁은 진단용.</li>
+</ul>
+<p>카탈로그: <code>catalog()</code> 는 계속 <code>bin</code> 을 스캔하되, 응답에 <code>priority: bool</code>, <code>role</code>, <code>fleet</code> 을 붙인다. UI 기본 필터는 <code>priority || extra</code>.</p>
+<hr />
+<h2 id="26">26. 배포 (이 앱만)</h2>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/monorepo.html" title="모노레포" loading="lazy" style="height:600px"></iframe><figcaption><a href="diagrams/monorepo.html">모노레포</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<p>이 작업은 <strong><code>earthworm_web/</code> 만</strong> 다룬다. 저장소의 다른 디렉터리(StationXML, PPSD, ringserver, dataselect, recvQSCD20, seedlinkToMp3)는 옮기지 않고 Compose 에도 넣지 않는다. 프론트 마이크로프론트 합성은 하지 않는다.</p>
+<h3 id="261">26.1 레이아웃</h3>
+<pre><code>earthworm_web/
+  compose.yaml
+  docker/
+    backend.Dockerfile
+    frontend.Dockerfile
+    nginx.conf
+  backend/
+  frontend/
+  fixtures/
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>규약</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>앱 루트</td>
+<td><code>earthworm_web/</code> (<code>backend/</code> + <code>frontend/</code>)</td>
+</tr>
+<tr>
+<td>오케스트레이션</td>
+<td><code>earthworm_web/compose.yaml</code></td>
+</tr>
+<tr>
+<td>이미지</td>
+<td>Rocky tarball 은 <strong>넣지 않음</strong></td>
+</tr>
+<tr>
+<td>시드</td>
+<td><code>earthworm_web/fixtures</code> + 볼륨 <code>earthworm-home</code></td>
+</tr>
+<tr>
+<td>태그</td>
+<td><code>earthworm-web-v0.x</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="262-compose">26.2 Compose 서비스</h3>
+<table>
+<thead>
+<tr>
+<th>서비스</th>
+<th>포트</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>earthworm-web</code> + <code>earthworm-web-ui</code></td>
+<td>8081</td>
+</tr>
+</tbody>
+</table>
+<p>UI nginx 는 API 와 같은 네트워크 네임스페이스에서 <code>/api</code>·<code>/ws</code> 를 <code>127.0.0.1</code> 로 프록시한다. 호스트에는 UI 포트만 연다.</p>
+<p>실제 <code>startstop</code> 은 <code>ipc: host</code> 와 <code>compose.override.example.yaml</code> 의 <code>EW_HOME</code> 바인드. SysV IPC 가 컨테이너에서 실패하면 웹만 Docker, Earthworm 은 호스트.</p>
+<h3 id="263">26.3 같은 저장소 다른 앱</h3>
+<p>포트 교차(<code>ew2ringserver</code> / <code>slink2ew</code>)는 문서에서만 맞춘다. 다른 앱 디렉터리·Compose 는 이 작업 밖이다.</p>
+<h3 id="264-ci">26.4 CI</h3>
+<ul>
+<li><code>earthworm_web/**</code> → pytest + frontend build</li>
+<li><code>earthworm_web</code> 에서 <code>docker compose config</code></li>
+<li>계획 HTML 은 <code>earthworm_web/scripts/build_plan_html.py</code></li>
+</ul>
+<hr />
+<h2 id="27-12">27. 구현 단계 (본계획 12절을 이 문서로 재배치)</h2>
+<p>구현 순서는 <strong>2b(작업자·이력) → 3 → 4</strong>. 작업자 없는 적용은 머지하지 않는다. 티켓 단위·MVP 수락은 <a href="plan_mvp.md">plan_mvp.md</a> · <a href="plan_ops.md">plan_ops.md</a>.</p>
+<h3 id="3_1">3단계 — 우선 카탈로그와 스키마</h3>
+<ul>
+<li><code>module_fields.yaml</code> + <code>/api/modules/schema</code></li>
+<li>카탈로그에 <code>priority</code> / <code>role</code> / <code>fleet</code></li>
+<li>시드에 I/O 12 스텁 + 샘플 <code>.d</code></li>
+<li>팔레트 UI (아직 일괄 적용 없음). 기타 등록 API</li>
+</ul>
+<h3 id="4_1">4단계 — 구성 보드와 일괄 적용</h3>
+<ul>
+<li><code>GET/POST /api/compose*</code></li>
+<li>인스턴스 카드, 사이트 공통, 검토/적용/시작</li>
+<li>포트·탱크·Process 유일 검증 pytest</li>
+<li>기존 clone API 를 apply 가 호출</li>
+<li><code>Variables.tsx</code> 를 보드 사이트로 흡수</li>
+</ul>
+<h3 id="5-4">5단계 — 로그·스니프 (본계획 4단계와 동일)</h3>
+<p>구성 보드와 독립. <code>getmenu</code> 를 진단에 연결 (wave_serverV 인스턴스 콤보).</p>
+<h3 id="6-docker">6단계 — 배포 패키징 (Docker)</h3>
+<ul>
+<li><code>earthworm_web/compose.yaml</code></li>
+<li>웹 UI <code>:8081</code>. nginx 가 <code>/api</code>·<code>/ws</code> 프록시</li>
+<li><code>compose.override.example.yaml</code> 로 <code>EW_HOME</code> 바인드 · <code>ipc: host</code></li>
+<li>README 배포 절, 태그 <code>earthworm-web-v0.x</code></li>
+<li>저장소 다른 디렉터리는 이 단계에서 옮기지 않음</li>
+</ul>
+<p>본계획 5단계 P2(포트 인벤토리)는 구성 보드 검증이 대체하므로 <strong>4단계에 흡수</strong>한다. tankplayer 시험 프로파일은 기타 등록으로 미룬다.</p>
+<hr />
+<h2 id="28">28. 위험 (이 범위만)</h2>
+<table>
+<thead>
+<tr>
+<th>위험</th>
+<th>완화</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>한 창에 필드가 너무 많음</td>
+<td>1차 스키마만. 고급은 원문</td>
+</tr>
+<tr>
+<td>적용 중 일부만 기록</td>
+<td>스냅샷 롤백. 적용 로그</td>
+</tr>
+<tr>
+<td>Alive 중 <code>.d</code> 변경이 안 먹음</td>
+<td>배지 + 행 restart. 적용≠시작</td>
+</tr>
+<tr>
+<td>AuthCode 가 브라우저·감사 로그에 남음</td>
+<td>password 입력, 로그 마스킹, 파일 권한</td>
+</tr>
+<tr>
+<td>포트가 ephemeral 대역</td>
+<td>경고 + 제안값 16xxx</td>
+</tr>
+<tr>
+<td><code>bin</code> 복사본이 업그레이드 때 낡음</td>
+<td>적용 시 family 원본 mtime/해시 비교, “원본으로 다시 복사” 동작</td>
+</tr>
+<tr>
+<td>모노레포 조기 rename</td>
+<td>1차는 경로 유지</td>
+</tr>
+<tr>
+<td>우선 목록 밖 모듈을 숨겨 운영자가 못 찾음</td>
+<td>기타 등록 + 카탈로그 필터 “전체 bin”</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="29">29. 현재 코드 갭 (구현 착수 시 체크)</h2>
+<table>
+<thead>
+<tr>
+<th>위치</th>
+<th>상태</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>module_fields.yaml</code> + <code>/api/modules/schema</code></td>
+<td>있음. <code>priority</code> / <code>role</code> / <code>fleet</code></td>
+</tr>
+<tr>
+<td>구성 보드 <code>Compose.tsx</code> + <code>/api/compose*</code></td>
+<td>있음. 팔레트·검토·적용·시작</td>
+</tr>
+<tr>
+<td><code>Modules.tsx</code></td>
+<td>우회 토글·prompt 복제. 기본 화면은 보드</td>
+</tr>
+<tr>
+<td><code>Variables.tsx</code></td>
+<td>사이트 공통은 보드. 이 페이지는 잔여</td>
+</tr>
+<tr>
+<td>시드 I/O 12</td>
+<td>있음</td>
+</tr>
+<tr>
+<td><code>earthworm_web/compose.yaml</code></td>
+<td>있음. 다른 앱 디렉터리는 안 옮김</td>
+</tr>
+<tr>
+<td>기타 bin 등록 API</td>
+<td>이후. 파일 편집 우회</td>
+</tr>
+</tbody>
+</table>
+<p>이 파일이 닫히는 조건: 3–4단계가 머지되어 우선 12 Process 를 한 창에서 여러 인스턴스로 적용하고, 시드만으로 pytest 가 검증·apply 를 통과하는 것. 그 시점이 <strong>MVP</strong> 다 (<a href="plan_mvp.md">30절</a>).</p>
+<p>이 문서는 <a href="plan.md">plan.md 12절</a>과 <a href="plan_priority.md">plan_priority.md 27절</a>을 <strong>실행 단위</strong>로 쪼갠다. 각 단계의 목표, 넣을 것/빼는 것, API·화면·테스트, 수락 조건을 적는다.</p>
+<p>전제: 백엔드는 FastAPI, 프론트는 React. 프론트는 Earthworm 바이너리를 직접 호출하지 않는다. 제어 규칙은 그대로다 (<code>startstop</code> / <code>pau</code> / <code>stopmodule &lt;pid&gt;</code> / <code>restart &lt;pid&gt;</code>, <code>pidpau</code> 웹 금지, 첫 링 <code>STATUS_RING</code>).</p>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/phase-roadmap.html" title="단계 지도" loading="lazy" style="height:600px"></iframe><figcaption><a href="diagrams/phase-roadmap.html">단계 지도</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/mvp-scope.html" title="MVP 범위" loading="lazy" style="height:620px"></iframe><figcaption><a href="diagrams/mvp-scope.html">MVP 범위</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<hr />
+<h2 id="30-mvp">30. MVP 한 줄</h2>
+<p><strong>MVP</strong>는 작업자가 로그인한 뒤, 우선 I/O 모듈을 <strong>한 창에서 여러 인스턴스로 등록·입력·검증·적용</strong>하고, 같은 <code>startstop</code>으로 <strong>함께 기동·정지</strong>하며, <strong>누가 무엇을 했는지 이력</strong>으로 확인하는 최소 제품이다.</p>
+<p>MVP가 <strong>새로 닫는 갭</strong>은 <strong>2b 작업자·이력</strong>, 3단계(화이트리스트·스키마·시드), 4단계(구성 보드·일괄 적용)다. 1·2단계와 로그·스니프는 이미 코드에 있으므로 <strong>재구현하지 않고 전제로 쓴다.</strong> 공유 <code>EW_WEB_API_KEY</code>만으로는 작업자를 구분할 수 없으므로, 4단계 적용보다 <strong>2b를 먼저</strong> 머지한다.</p>
+<p>MVP가 <strong>성공한 장면</strong> (시드 홈만으로도, 실제 <code>EW_HOME</code>이 있으면 더 좋음):</p>
+<ol>
+<li>최초 관리자를 만들고 로그인한다.</li>
+<li>운영자 계정을 하나 등록한다.</li>
+<li>운영자로 구성 보드에서 <code>q3302ew</code> 두 장 등을 적용하고 시작한다.</li>
+<li>이력에 그 운영자 이름과 <code>compose_apply</code> / <code>control_start</code>가 남는다.</li>
+<li>조회자 계정은 시작 버튼이 막히고, 이 거절도 이력에 남는다.</li>
+<li>모듈 로그·스니프는 기존 화면으로 본다 (이력 화면과 별개).</li>
+</ol>
+<p>이 장면 밖(기타 <code>bin</code> 등록, <code>getmenu</code>, systemd 패키지, WEB_DOC, NTP 위젯)은 <strong>MVP 이후</strong>다. 파일 편집 화면이 우회 경로로 남는다.</p>
+<hr />
+<h2 id="31-mvp">31. 단계와 MVP의 관계</h2>
+<table>
+<thead>
+<tr>
+<th>단계</th>
+<th>이름</th>
+<th>코드 상태</th>
+<th>MVP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>기반(이미 있음)</td>
+<td>마법사·제어·대시보드·파일·로그·스니프·clone API</td>
+<td><strong>전제</strong>. 손대지 않거나 보드가 호출만 함</td>
+</tr>
+<tr>
+<td>1</td>
+<td>초기 설정 마법사</td>
+<td>있음</td>
+<td>전제. 2b와 함께 최초 admin 칸</td>
+</tr>
+<tr>
+<td>2</td>
+<td>제어와 대시보드</td>
+<td>있음</td>
+<td>전제. 2b 이후 actor 필수</td>
+</tr>
+<tr>
+<td><strong>2b</strong></td>
+<td><strong>작업자·이력</strong></td>
+<td>있음</td>
+<td><strong>MVP에 포함</strong>. <a href="plan_ops.md">plan_ops.md</a></td>
+</tr>
+<tr>
+<td>3</td>
+<td>우선 카탈로그·스키마</td>
+<td>있음</td>
+<td><strong>MVP에 포함</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td>구성 보드·일괄 적용</td>
+<td>있음</td>
+<td><strong>MVP에 포함</strong>. apply에 작업자 필수</td>
+</tr>
+<tr>
+<td>5</td>
+<td>로그·링 모니터</td>
+<td>대부분 있음. <code>getmenu</code> 없음</td>
+<td>기존 화면은 MVP에 포함. <code>getmenu</code>는 이후</td>
+</tr>
+<tr>
+<td>6</td>
+<td>다듬기·배포</td>
+<td><code>earthworm_web/compose.yaml</code></td>
+<td>이 앱만 Docker. SSO·WEB_DOC는 이후</td>
+</tr>
+</tbody>
+</table>
+<p>구현 순서는 <strong>2b → 3 → 4</strong> (3과 2b는 병렬 가능, <strong>4는 2b 이후</strong>). 작업자 없는 적용은 이력이 아니다.</p>
+<hr />
+<h2 id="32-1">32. 1단계 — 초기 설정 마법사 (전제, 동결)</h2>
+<h3 id="_7">목표</h3>
+<p><code>ew_linux.bash</code>로 <code>EW_HOME</code>/<code>EW_PARAMS</code>/<code>EW_LOG</code>/<code>EW_DATA_DIR</code>·Inst를 고정하고, 링 테이블과 <code>startstop_unix.d</code> 뼈대를 만든다. 끝나기 전 제어 API는 409.</p>
+<h3 id="_8">이미 있는 것</h3>
+<ul>
+<li><code>/api/setup/*</code>, SetupWizard, <code>STATUS_RING</code> 첫 줄, <code>FLAG_RING</code> 제외</li>
+<li>params 부트스트랩, Inst/테이블 검증</li>
+<li>파일 트리 편집 (<code>/api</code> files)</li>
+</ul>
+<h3 id="mvp">MVP에서 할 일</h3>
+<p>새 기능 없음. 3–4단계가 마법사 <code>setup_complete</code> 가드를 깨지 않는지 회귀 테스트만 유지.</p>
+<h3 id="_9">넣지 않는 것</h3>
+<p>링 크기 변경을 기동 중에 허용하기. 재진입은 기존처럼 <code>pau</code> 후 기반 설정.</p>
+<h3 id="_10">수락</h3>
+<ul>
+<li>마법사 완료 전 <code>/api/control/start</code> 409</li>
+<li>완료 후 <code>EW_PARAMS</code>에 링·startstop 파일이 있다</li>
+<li>pytest <code>test_api_flow</code> 의 setup 경로 통과</li>
+</ul>
+<hr />
+<h2 id="33-2">33. 2단계 — 제어와 대시보드 (전제, 동결)</h2>
+<h3 id="_11">목표</h3>
+<p>같은 호스트에서 Earthworm 전체를 기동·종료하고, pid 기준으로 모듈을 잠시 멈추거나 재개한다. 상태를 대시보드와 <code>/ws/status</code>로 본다.</p>
+<h3 id="_12">이미 있는 것</h3>
+<ul>
+<li>Start=<code>startstop</code>, Stop=<code>pau</code>, Pause=<code>stopmodule &lt;pid&gt;</code>, Resume=<code>restart &lt;pid&gt;</code></li>
+<li>락파일·IPC 진단, KillDelay 폴링</li>
+<li>기동 중 토글 ↔ stopmodule / reconfigure</li>
+<li>HTTP <code>X-API-Key</code>, WS만 <code>?key=</code></li>
+</ul>
+<h3 id="mvp_1">MVP에서 할 일</h3>
+<p>구성 보드의 <strong>시작</strong> 버튼이 기존 control API를 호출하게만 연결. 제어 규칙을 바꾸지 않는다. Alive 중 적용은 파일만 쓰고 “restart 필요” 배지(4단계에서 추가).</p>
+<h3 id="_13">넣지 않는 것</h3>
+<p>이름 인자로 중지, <code>pidpau</code> 웹 버튼, 여러 startstop.</p>
+<h3 id="_14">수락</h3>
+<ul>
+<li>시드 스텁에서 start → status 파싱 → pau</li>
+<li>한 모듈 pause/resume이 pid 인자인지 argv 테스트로 확인</li>
+</ul>
+<hr />
+<h2 id="33b-2b-mvp">33b. 2b단계 — 작업자·이력 (MVP)</h2>
+<p>상세 모델·API는 <a href="plan_ops.md">plan_ops.md</a>. 요약만 둔다.</p>
+<h3 id="_15">목표</h3>
+<p>사람마다 로그인하고, 변경 API마다 작업자 이름을 이력에 남긴다. 관리자는 작업자를 등록·정지한다. 모듈 <code>*_YYYYMMDD.log</code>와 이력 화면은 분리한다.</p>
+<h3 id="_16">넣을 것</h3>
+<ul>
+<li>SQLite <code>control.sqlite</code>: operators, sessions, audit_event</li>
+<li>역할 <code>admin</code> / <code>operator</code> / <code>viewer</code></li>
+<li>최초 admin 부트스트랩 (마법사 마지막 칸)</li>
+<li>로그인 세션 쿠키. WS는 짧은 ticket</li>
+<li>네비 <strong>작업자</strong>(admin) · <strong>이력</strong>(전원 조회)</li>
+<li>변경 성공/실패/403을 append-only로 기록. 비밀번호·AuthCode 마스킹</li>
+</ul>
+<h3 id="_17">빼는 것</h3>
+<p>SSO, 리눅스 계정 동기화, 이력 삭제 UI, 사람 UI의 공유 API 키</p>
+<h3 id="_18">수락</h3>
+<p>viewer의 start는 403+이력 <code>denied</code>. operator pau는 이력에 표시 이름. 마지막 admin 정지 거부.</p>
+<h3 id="_19">순서</h3>
+<p><strong>4단계 apply 전에 머지.</strong> actor 없는 적용은 거부한다.</p>
+<hr />
+<h2 id="34-3-mvp">34. 3단계 — 우선 카탈로그와 스키마 (MVP)</h2>
+<h3 id="_20">목표</h3>
+<p>팔레트에 <strong>우선 모듈만</strong> 보이게 하고, 각 Process 패밀리의 1차 필드를 JSON으로 프론트에 준다. 시드에 I/O 12개 스텁과 샘플 <code>.d</code>가 있어 실제 tarball 없이도 보드를 시험한다.</p>
+<h3 id="_21">넣을 것</h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>module_fields.yaml</code></td>
+<td>family, <code>role</code>, <code>fleet</code>, 1차 <code>fields[]</code> (22절 키만)</td>
+</tr>
+<tr>
+<td><code>GET /api/modules/schema</code></td>
+<td>YAML → JSON</td>
+</tr>
+<tr>
+<td><code>catalog()</code></td>
+<td><code>priority</code>, <code>role</code>, <code>fleet</code>, <code>clone_of</code></td>
+</tr>
+<tr>
+<td>시드</td>
+<td>12 I/O + 기존 CONTROL_BINS 스텁, 최소 <code>.d</code>/<code>.desc</code></td>
+</tr>
+<tr>
+<td>팔레트 UI</td>
+<td>우선 12. fleet는 <code>+</code> = 인스턴스 추가 예고(실제 복사는 4단계 apply). 비-fleet는 카드 하나</td>
+</tr>
+<tr>
+<td>카탈로그 필터</td>
+<td>기본 <code>priority</code>. “전체 bin”은 보기 전용(등록은 4단계 이후)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mvp_2">빼는 것 (MVP 밖)</h3>
+<ul>
+<li><code>POST /api/modules/register</code> (기타 모듈). 우회는 파일 편집</li>
+<li>매뉴얼 전 키를 폼으로 올리기</li>
+<li><code>getmenu</code>를 팔레트 Process로 오인</li>
+</ul>
+<h3 id="api">API</h3>
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>경로</th>
+<th>비고</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/modules</code></td>
+<td>기존 + <code>priority</code>/<code>role</code>/<code>fleet</code></td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/modules/schema</code></td>
+<td>신규</td>
+</tr>
+</tbody>
+</table>
+<p>기존 clone API는 유지. 3단계 UI는 clone을 직접 호출하지 않고 4단계 apply에 맡기는 것이 원칙이다. 3단계만 머지된 중간 상태에서는 기존 Modules 토글이 깨지면 안 된다.</p>
+<h3 id="_22">화면</h3>
+<p><code>Modules.tsx</code>에 팔레트 그룹(I/O · 제어 안내 · 진단 안내). 제어/진단은 카드가 아니라 “대시보드/링 모니터로” 링크. 아직 보드 레이아웃이 없으면 기존 토글 목록 위에 팔레트만 얹는다.</p>
+<h3 id="_23">테스트</h3>
+<ul>
+<li>YAML 로드, 12 family 존재, fleet 5개 플래그</li>
+<li>시드 후 <code>bin</code>에 <code>q3302ew</code> 등 실행 비트</li>
+<li>카탈로그 기본 응답에 <code>pick_ew</code>가 없거나 <code>priority: false</code></li>
+<li>프론트 <code>tsc --noEmit</code></li>
+</ul>
+<h3 id="_24">수락</h3>
+<p>운영자가 모듈 설정에서 <strong>우선 12 + 필수 statmgr</strong>만 또렷이 보고, 스키마 API가 <code>q3302ew.fields</code>에 <code>IPAddress</code>를 돌려준다.</p>
+<h3 id="_25">완료 정의</h3>
+<p>3단계 단독으로 일괄 적용은 하지 않는다. 다음 단계의 입력이다.</p>
+<hr />
+<h2 id="35-4-mvp">35. 4단계 — 구성 보드와 일괄 적용 (MVP 핵심)</h2>
+<h3 id="_26">목표</h3>
+<p>한 창에서 인스턴스를 늘리고 1차 파라미터를 채운 뒤, <strong>검토 → 적용 → 시작</strong>으로 전체가 같이 돌아간다.</p>
+<h3 id="_27">넣을 것</h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/compose</code></td>
+<td>디스크+clones → 보드 모델</td>
+</tr>
+<tr>
+<td><code>POST /api/compose/validate</code></td>
+<td>쓰기 없이 이슈 목록</td>
+</tr>
+<tr>
+<td><code>POST /api/compose/apply</code></td>
+<td>스냅샷 + clone/패치 + Process 줄. 옵션 <code>reconfigure</code></td>
+</tr>
+<tr>
+<td><code>POST /api/compose/suggest</code></td>
+<td>이름·포트·탱크 제안</td>
+</tr>
+<tr>
+<td><code>Compose.tsx</code></td>
+<td>사이트 공통 + 팔레트 + 카드 + 적용 바. 네비 라벨 “모듈 설정”</td>
+</tr>
+<tr>
+<td>사이트 공통</td>
+<td>HeartbeatInt, 기본 WAVE_RING, Inst 표시. 기존 카드 덮어쓰기는 체크 시에만</td>
+</tr>
+<tr>
+<td>1차 필드</td>
+<td>22절 표. 고급은 원문 <code>.d</code></td>
+</tr>
+<tr>
+<td>검증</td>
+<td><code>dup_process</code>, <code>dup_module_id</code>, <code>dup_listen</code>, <code>dup_tank</code>, <code>missing_ring</code>, <code>missing_bin</code>, <code>max_child</code>, <code>cmd_len</code>, <code>bad_name</code>, <code>empty_required</code>, <code>ephemeral_port</code>(경고)</td>
+</tr>
+<tr>
+<td>롤백</td>
+<td><code>backend/data/backups/compose-&lt;ts&gt;/</code></td>
+</tr>
+<tr>
+<td>AuthCode</td>
+<td>password 입력, 서버 로그·이력 마스킹</td>
+</tr>
+<tr>
+<td>actor</td>
+<td>세션 작업자 필수. 없으면 apply 500</td>
+</tr>
+</tbody>
+</table>
+<p>적용은 내부에서 기존 <code>clone_module</code>을 여러 번 호출한다. 중간 실패 시 그 apply가 만든 파일만 되돌린다.</p>
+<h3 id="mvp_3">빼는 것 (MVP 밖)</h3>
+<ul>
+<li>기타 모듈 등록 모달</li>
+<li>Variables 페이지 삭제(보드는 사이트 바를 갖고, Variables는 남겨도 됨)</li>
+<li>기동 중 <code>.d</code> 핫 리로드 (배지 + 수동 restart만)</li>
+<li>bin 원본 해시 비교 후 재복사</li>
+<li>StationXML에서 <code>Send_scnl</code> 자동 채움</li>
+<li>공통 전파로 모든 카드 HeartbeatInt 강제 덮어쓰기(기본 끔)</li>
+</ul>
+<h3 id="mvp_4">화면 조작 (MVP 데모 스크립트)</h3>
+<ol>
+<li>팔레트 <code>q3302ew</code> + 두 번 → <code>q3302ew_sta1</code>, <code>q3302ew_sta2</code> (제안 이름 수정 가능)</li>
+<li><code>slink2ew</code> +, <code>export_scnl</code> +, <code>wave_serverV</code> + (원본 이름 또는 <code>_n1</code>)</li>
+<li>필수 칸 입력. 같은 <code>ServerPort</code>를 두 export에 넣으면 검토가 빨강</li>
+<li>적용 → 시작. 대시보드에서 이름 확인</li>
+<li>카드 삭제 후 적용 = 기존 복제 삭제(기동 중이면 stopmodule 먼저)</li>
+</ol>
+<p><code>statmgr</code> 카드는 삭제 불가.</p>
+<h3 id="_28">테스트</h3>
+<ul>
+<li>같은 리슨 포트 두 장 → validate 409, 디스크 불변</li>
+<li>apply 후 <code>earthworm.d</code> Module 유일, <code>startstop_unix.d</code>에 <code>q3302ew_sta1 q3302ew_sta1.d</code></li>
+<li>Tank 경로 중복 거부</li>
+<li><code>MAX_CHILD</code> 초과 거부</li>
+<li>apply 실패 롤백 (두 번째 clone을 강제 실패시키는 테스트)</li>
+<li><code>SAFE_NAME</code> 위반 400</li>
+</ul>
+<h3 id="_29">수락</h3>
+<p>시드만으로 pytest가 validate·apply를 통과하고, 브라우저(또는 preview)에서 카드 여러 장을 한 번에 적용할 수 있다. 이 단계가 끝나야 MVP가 닫힌다.</p>
+<hr />
+<h2 id="36-5-mvp">36. 5단계 — 로그와 링 모니터 (기존=MVP, 확장=이후)</h2>
+<h3 id="_30">목표</h3>
+<p>기동 후 운영자가 파일 로그와 링 내용을 본다.</p>
+<h3 id="mvp_5">이미 있는 것 (MVP에 포함)</h3>
+<ul>
+<li>로그 디렉터리·보관일·뷰어·follow. lock/data 제외</li>
+<li>sniffwave / sniffring 세션 2개, WS, 서버 줄 상한</li>
+</ul>
+<h3 id="mvp_6">MVP에서 할 일</h3>
+<p>새 기능 없음. 보드에서 기동한 인스턴스 로그 파일 이름이 <code>{id}_YYYYMMDD.log</code> 패턴과 맞는지 스모크만.</p>
+<h3 id="mvp_7">이후 (MVP 밖)</h3>
+<ul>
+<li><code>getmenu</code> → 선택 wave_serverV IP:포트</li>
+<li>기반 설정 재진입 UX 다듬기</li>
+</ul>
+<h3 id="mvp_8">수락 (MVP)</h3>
+<p>기존 Sniff·Logs 페이지가 보드 적용 이후에도 동작한다. sniff 세션 한도 2 유지.</p>
+<hr />
+<h2 id="37-6-mvp">37. 6단계 — 다듬기와 모노레포 배포 (MVP 밖)</h2>
+<h3 id="_31">목표</h3>
+<p>웹 콘솔은 Docker Compose 로 올리고, Earthworm 바이너리는 <code>EW_HOME</code> 볼륨(또는 호스트)에 둔다.</p>
+<h3 id="_32">넣을 것 (이후)</h3>
+<ul>
+<li><code>earthworm_web/compose.yaml</code> 안정화, 태그 <code>earthworm-web-v0.x</code></li>
+<li>WEB_DOC 정적 <code>/docs/ew/</code></li>
+<li>NTP·디스크 위젯</li>
+<li>기타 모듈 등록 API</li>
+<li>tankplayer는 등록으로만</li>
+<li>SSO (작업자 모델은 2b에서 끝냄)</li>
+<li>호스트 전용 systemd 유닛(선택)</li>
+</ul>
+<h3 id="mvp_9">MVP에서 허용하는 최소</h3>
+<p>README에 <code>docker compose up</code> 과 “배포 시 <code>EW_WEB_AUTO_SEED=0</code>, <code>EW_WEB_BASH</code>, 키를 <code>dev</code>에서 바꿀 것”이 있다. 실제 EW 기동은 override.</p>
+<h3 id="_33">빼는 것</h3>
+<p>루트 npm/pnpm workspace 로 프론트를 한 lock 에 묶기, 이미지에 Rocky tarball 넣기, 프론트 마이크로프론트 합성.</p>
+<hr />
+<h2 id="38-mvp">38. MVP 범위 표</h2>
+<table>
+<thead>
+<tr>
+<th>기능</th>
+<th>MVP</th>
+<th>이후</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>마법사·링·Inst</td>
+<td>○ 기존</td>
+<td></td>
+</tr>
+<tr>
+<td>start / pau / stopmodule / restart</td>
+<td>○ 기존</td>
+<td></td>
+</tr>
+<tr>
+<td>대시보드 + <code>/ws/status</code></td>
+<td>○ 기존</td>
+<td></td>
+</tr>
+<tr>
+<td>파일 편집 (우회)</td>
+<td>○ 기존</td>
+<td></td>
+</tr>
+<tr>
+<td>로그·sniff</td>
+<td>○ 기존</td>
+<td>getmenu</td>
+</tr>
+<tr>
+<td>로그인·역할·작업자 CRUD</td>
+<td>○ 신규 2b</td>
+<td>SSO</td>
+</tr>
+<tr>
+<td>변경 이력 화면</td>
+<td>○ 신규 2b</td>
+<td>이력 삭제(하지 않음)</td>
+</tr>
+<tr>
+<td>우선 12 스키마·시드</td>
+<td>○ 신규</td>
+<td>필드 확장</td>
+</tr>
+<tr>
+<td>구성 보드 한 창</td>
+<td>○ 신규</td>
+<td></td>
+</tr>
+<tr>
+<td>복제 다발 5종 인스턴스 추가</td>
+<td>○ 신규</td>
+<td></td>
+</tr>
+<tr>
+<td>검토·적용 트랜잭션</td>
+<td>○ 신규</td>
+<td>원본 bin 재복사</td>
+</tr>
+<tr>
+<td>기타 모듈 등록</td>
+<td></td>
+<td>○</td>
+</tr>
+<tr>
+<td>Variables 페이지 제거</td>
+<td></td>
+<td>○ (보드는 사이트 바)</td>
+</tr>
+<tr>
+<td>Compose·태그·WEB_DOC</td>
+<td></td>
+<td>○</td>
+</tr>
+<tr>
+<td>StationXML·PPSD 연동</td>
+<td></td>
+<td>○</td>
+</tr>
+<tr>
+<td><code>pidpau</code> 웹 버튼</td>
+<td>하지 않음</td>
+<td>하지 않음</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="39-mvp">39. MVP 수락 테스트</h2>
+<p>자동화 (시드, Earthworm 실기동 불필요):</p>
+<ol>
+<li>부트스트랩 admin → login</li>
+<li>viewer로 start → 403, 이력 <code>denied</code></li>
+<li>operator로 compose apply(포트 다른 q3302ew 두 장) → Process 두 줄 + 이력 <code>compose_apply</code></li>
+<li>schema에 fleet 5 + process 12</li>
+<li>같은 <code>ServerPort</code> 두 <code>export_scnl</code> → validate 실패, 파일 없음</li>
+<li>같은 Tank 두 <code>wave_serverV</code> → 실패</li>
+<li>잘못된 이름 → 400</li>
+<li>기존 start/pau argv 테스트 회귀</li>
+<li>audit detail에 password 없음</li>
+</ol>
+<p>수동 (스텁 또는 실기):</p>
+<ol>
+<li>관리자가 운영자를 등록</li>
+<li>운영자로 보드 적용·시작</li>
+<li>이력에서 이름·동작 확인</li>
+<li>대시보드 일시중지, 로그·sniff</li>
+</ol>
+<p>실기 Rocky 바이너리가 없는 환경에서는 자동화가 MVP 통과 기준이다.</p>
+<hr />
+<h2 id="40">40. 작업 쪼개기 (구현 착수 시)</h2>
+<p>2b 티켓 (4보다 먼저):</p>
+<ol>
+<li>SQLite operators + bootstrap + login/session</li>
+<li>역할 가드 + 프론트 Login · 헤더</li>
+<li>audit_event 미들웨어 + 이력 UI + 작업자 CRUD</li>
+</ol>
+<p>3단계 티켓:</p>
+<ol>
+<li><code>module_fields.yaml</code> + 로더 + schema 엔드포인트</li>
+<li>catalog 플래그 + 시드 12 스텁</li>
+<li>팔레트 UI (토글 목록과 공존)</li>
+</ol>
+<p>4단계 티켓:</p>
+<ol>
+<li>compose 모델 GET + validate</li>
+<li>apply 트랜잭션 + 롤백 pytest</li>
+<li>Compose 화면 + 적용 바 + control start 연결</li>
+<li>제안 포트/이름 API</li>
+</ol>
+<p>한 티켓이 머지돼도 기존 마법사·제어가 깨지면 안 된다. MVP 태그는 4단계 3번까지 끝난 시점의 <code>earthworm-web-v0.1.0</code>을 권장한다.</p>
+<p>이 문서는 웹 콘솔의 <strong>누가</strong> 설정·기동·적용을 했는지 남기고, 관리자가 <strong>작업자를 등록·정지</strong>할 수 있게 한다. Earthworm 모듈 로그(<code>*_YYYYMMDD.log</code>)와 다르다. 모듈 로그는 프로세스가 쓴 파일이고, <strong>작업 이력</strong>은 웹이 기록하는 감사 로그다.</p>
+<p>지금 코드는 공유 <code>EW_WEB_API_KEY</code> 하나다. 키가 같으면 작업자를 구분할 수 없다. 이력 관리가 성립하려면 <strong>로그인 신원</strong>이 모든 변경 API에 붙어야 한다.</p>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/operator-roles.html" title="역할" loading="lazy" style="height:580px"></iframe><figcaption><a href="diagrams/operator-roles.html">역할</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<p><figure class="diagram"><iframe class="diagram" src="diagrams/audit-flow.html" title="이력 흐름" loading="lazy" style="height:620px"></iframe><figcaption><a href="diagrams/audit-flow.html">이력 흐름</a> · <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a></figcaption></figure></p>
+<p>MVP 위치: <a href="plan_mvp.md">plan_mvp.md</a> <strong>단계 2b</strong>. 구성 보드 적용(4단계)보다 <strong>먼저</strong> 머지한다. 적용 이벤트에 작업자가 비어 있으면 이력이 아니다.</p>
+<hr />
+<h2 id="41_1">41. 목표</h2>
+<p>운영 책임자가 브라우저에서 다음을 한다.</p>
+<ol>
+<li><strong>작업자</strong>를 등록한다 (로그인 ID, 표시 이름, 역할, 사용/정지).</li>
+<li>본인 비밀번호로 로그인한다. 화면 헤더에 표시 이름이 보인다.</li>
+<li>역할에 따라 구성 보드·기동·파일·작업자 메뉴가 열리거나 막힌다.</li>
+<li><strong>이력</strong>에서 시각·작업자·동작·대상·결과(성공/실패)를 필터해 본다.</li>
+<li>이력 한 줄에서 그때의 백업 스냅샷(있으면)으로 간다. 이력 줄 자체는 고치거나 지우지 못한다.</li>
+</ol>
+<p>하지 않는 것: LDAP/SSO(이후), Earthworm 리눅스 계정과 웹 작업자 동기화, 이력으로 <code>pau</code>를 자동 되돌리기.</p>
+<hr />
+<h2 id="42">42. 작업자 모델</h2>
+<p>저장소: <code>backend/data/control.sqlite</code> (SQLite). <code>app.json</code>에 사용자를 넣지 않는다. 이력이 늘어나도 JSON 전체를 다시 쓰지 않기 위함이다. EW 메타(<code>setup_complete</code>, clones)는 기존 <code>app.json</code>을 유지한다.</p>
+<h3 id="421">42.1 필드</h3>
+<table>
+<thead>
+<tr>
+<th>컬럼</th>
+<th>규칙</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>정수 PK</td>
+</tr>
+<tr>
+<td><code>username</code></td>
+<td>로그인 ID. <code>[A-Za-z][A-Za-z0-9_.-]{2,31}</code>, 대소문자 무시 유일</td>
+</tr>
+<tr>
+<td><code>display_name</code></td>
+<td>화면용. 한글 가능. 이력에 이 이름을 남긴다(당시 값 스냅샷)</td>
+</tr>
+<tr>
+<td><code>password_hash</code></td>
+<td>argon2id. 평문·해시 모두 이력에 안 남김</td>
+</tr>
+<tr>
+<td><code>role</code></td>
+<td><code>admin</code> · <code>operator</code> · <code>viewer</code></td>
+</tr>
+<tr>
+<td><code>enabled</code></td>
+<td>정지면 로그인 거부. 과거 이력은 유지</td>
+</tr>
+<tr>
+<td><code>created_at</code> / <code>updated_at</code></td>
+<td>UTC ISO</td>
+</tr>
+<tr>
+<td><code>created_by</code></td>
+<td>만든 작업자 id. 최초 관리자는 <code>null</code></td>
+</tr>
+</tbody>
+</table>
+<p>삭제: <strong>하드 삭제 없음</strong>. 정지만. 이력이 가리키는 사람이 사라지면 안 된다.</p>
+<h3 id="422">42.2 역할</h3>
+<table>
+<thead>
+<tr>
+<th>역할</th>
+<th>할 수 있는 것</th>
+<th>못하는 것</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admin</code></td>
+<td>전부. 작업자 CRUD, 마법사 재진입, 락 강제 해제</td>
+<td>이력 삭제</td>
+</tr>
+<tr>
+<td><code>operator</code></td>
+<td>구성 보드, 시작/정지/일시중지, 파일·변수, 로그, 스니프, 이력 <strong>조회</strong></td>
+<td>작업자 생성/역할 변경, 락 강제 해제</td>
+</tr>
+<tr>
+<td><code>viewer</code></td>
+<td>대시보드, 로그 읽기, 스니프, 이력 조회</td>
+<td>모든 POST/PATCH/PUT/DELETE (로그인·자기 비밀번호 변경 제외)</td>
+</tr>
+</tbody>
+</table>
+<p><code>pidpau</code>는 어떤 역할에도 웹 버튼이 없다.</p>
+<h3 id="423">42.3 최초 관리자</h3>
+<p>작업자 테이블이 비어 있으면 로그인 대신 <strong>부트스트랩</strong>만 연다.</p>
+<ol>
+<li>초기 설정 마법사 마지막 칸: 관리자 ID·표시 이름·비밀번호(10자 이상).</li>
+<li>이미 마법사만 끝난 기존 설치: <code>POST /api/auth/bootstrap</code> 한 번. 이후 403.</li>
+<li>환경 변수 <code>EW_WEB_BOOTSTRAP_USERNAME</code> / <code>EW_WEB_BOOTSTRAP_PASSWORD</code> 는 <strong>개발·CI 전용</strong>. 파일이 비어 있을 때만 시드하고, 배포 README는 변수를 비우라고 한다.</li>
+</ol>
+<p>관리자가 0명이 되도록 마지막 admin을 정지하면 거부한다.</p>
+<h3 id="424">42.4 세션</h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>규칙</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>로그인</td>
+<td><code>POST /api/auth/login</code> <code>{ username, password }</code></td>
+</tr>
+<tr>
+<td>HTTP</td>
+<td>HttpOnly <code>ew_session</code> 쿠키. 브라우저 프론트는 <code>credentials: include</code>. <code>X-API-Key</code> 공유키는 <strong>사람 UI에서 제거</strong></td>
+</tr>
+<tr>
+<td>만료</td>
+<td>유휴 12시간, 절대 7일. 로그아웃 <code>POST /api/auth/logout</code></td>
+</tr>
+<tr>
+<td>WS</td>
+<td>쿼리에 비밀번호를 넣지 않는다. <code>POST /api/auth/ws-ticket</code> → 60초 티켓 → <code>/ws/*?ticket=</code></td>
+</tr>
+<tr>
+<td>서비스 계정</td>
+<td>선택. <code>EW_WEB_API_KEY</code>가 있으면 합성 작업자 <code>service</code> (<code>role=operator</code>). pytest·스크립트용. 이력 <code>actor_username=service</code></td>
+</tr>
+<tr>
+<td>실패</td>
+<td>같은 username 5회/10분이면 10분 잠금. 이력 <code>login_failed</code> (비밀번호 없음)</td>
+</tr>
+</tbody>
+</table>
+<p>자기 비밀번호 변경: <code>POST /api/auth/password</code>. admin은 다른 사용자에게 <strong>임시 비밀번호 재설정</strong>만 (새 해시 저장, 평문 이력 금지).</p>
+<hr />
+<h2 id="43_1">43. 이력 모델</h2>
+<p>테이블 <code>audit_event</code>. append-only. UPDATE/DELETE 쿼리를 애플리케이션이 호출하지 않는다.</p>
+<table>
+<thead>
+<tr>
+<th>컬럼</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>정수 PK</td>
+</tr>
+<tr>
+<td><code>at</code></td>
+<td>UTC</td>
+</tr>
+<tr>
+<td><code>actor_id</code></td>
+<td>작업자 id. 부트스트랩·service는 nullable + <code>actor_username</code> 필수</td>
+</tr>
+<tr>
+<td><code>actor_username</code></td>
+<td>당시 로그인 ID</td>
+</tr>
+<tr>
+<td><code>actor_display_name</code></td>
+<td>당시 표시 이름</td>
+</tr>
+<tr>
+<td><code>action</code></td>
+<td>아래 코드</td>
+</tr>
+<tr>
+<td><code>target</code></td>
+<td>예: <code>q3302ew_sta1</code>, <code>startstop_unix.d</code>, <code>compose</code></td>
+</tr>
+<tr>
+<td><code>result</code></td>
+<td><code>ok</code> · <code>error</code> · <code>denied</code></td>
+</tr>
+<tr>
+<td><code>ip</code></td>
+<td>요청 주소. X-Forwarded-For는 신뢰 프록시일 때만</td>
+</tr>
+<tr>
+<td><code>detail</code></td>
+<td>JSON. 비밀 키 없음. AuthCode·비밀번호·API 키 마스킹</td>
+</tr>
+<tr>
+<td><code>backup_dir</code></td>
+<td>compose/파일 적용 시 <code>web_backup/…</code> 상대 경로</td>
+</tr>
+</tbody>
+</table>
+<h3 id="431">43.1 반드시 기록하는 동작</h3>
+<table>
+<thead>
+<tr>
+<th><code>action</code></th>
+<th>때</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>login</code> / <code>logout</code> / <code>login_failed</code></td>
+<td>인증</td>
+</tr>
+<tr>
+<td><code>bootstrap_admin</code></td>
+<td>최초 관리자</td>
+</tr>
+<tr>
+<td><code>operator_create</code> / <code>operator_update</code> / <code>operator_disable</code></td>
+<td>작업자</td>
+</tr>
+<tr>
+<td><code>setup_complete</code></td>
+<td>마법사 종료</td>
+</tr>
+<tr>
+<td><code>compose_apply</code></td>
+<td>일괄 적용 (revision, 인스턴스 id 목록)</td>
+</tr>
+<tr>
+<td><code>control_start</code> / <code>control_pau</code></td>
+<td>전체</td>
+</tr>
+<tr>
+<td><code>control_stopmodule</code> / <code>control_restart</code></td>
+<td>pid·모듈 이름</td>
+</tr>
+<tr>
+<td><code>module_toggle</code> / <code>module_clone</code> / <code>module_delete</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>file_write</code></td>
+<td>경로 basename만</td>
+</tr>
+<tr>
+<td><code>variables_apply</code></td>
+<td>키 이름. 값 중 비밀 제외</td>
+</tr>
+<tr>
+<td><code>lock_unlock</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sniff_start</code> / <code>sniff_stop</code></td>
+<td>도구 이름. 링 이름</td>
+</tr>
+</tbody>
+</table>
+<p><code>compose_validate</code>·<code>GET</code>·status 폴링은 <strong>안 남긴다</strong> (噪声). <code>denied</code>(403)는 남긴다.</p>
+<h3 id="432">43.2 조회 · 보관</h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>규칙</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>API</td>
+<td><code>GET /api/audit?from&amp;to&amp;actor&amp;action&amp;result&amp;q</code> 페이지 50</td>
+</tr>
+<tr>
+<td>UI</td>
+<td>네비 <strong>이력</strong>. 테이블 + 필터. viewer도 읽기</td>
+</tr>
+<tr>
+<td>내보내기</td>
+<td><code>GET /api/audit/export</code> CSV. admin·operator</td>
+</tr>
+<tr>
+<td>보관</td>
+<td><code>audit_retention_days</code> 기본 <strong>365</strong>. 일일 스윕이 오래된 줄만 삭제(이 삭제만 예외이며 <code>audit_sweep</code> 한 줄로 남김)</td>
+</tr>
+<tr>
+<td>EW 로그 보관</td>
+<td>기존 14일과 <strong>별개</strong></td>
+</tr>
+</tbody>
+</table>
+<p>이력을 고치는 UI는 없다.</p>
+<hr />
+<h2 id="44-api">44. API · 화면</h2>
+<table>
+<thead>
+<tr>
+<th>메서드</th>
+<th>경로</th>
+<th>권한</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/bootstrap</code></td>
+<td>테이블 공백일 때만</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/login</code></td>
+<td>공개</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/logout</code></td>
+<td>로그인</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/auth/me</code></td>
+<td>로그인</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/password</code></td>
+<td>본인</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/auth/ws-ticket</code></td>
+<td>로그인</td>
+</tr>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/operators</code></td>
+<td>admin</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td><code>/api/operators/{id}</code></td>
+<td>admin</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/audit</code></td>
+<td>로그인</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/audit/export</code></td>
+<td>admin, operator</td>
+</tr>
+</tbody>
+</table>
+<p>프론트:</p>
+<ul>
+<li><code>Login.tsx</code> — 부트스트랩/로그인 분기</li>
+<li>헤더: 표시 이름 · 역할 · 로그아웃</li>
+<li><code>Operators.tsx</code> — admin만 네비 <strong>작업자</strong></li>
+<li><code>Audit.tsx</code> — <strong>이력</strong></li>
+<li>viewer는 구성 보드·제어 버튼 숨김 (API도 403)</li>
+</ul>
+<p>미들웨어: 변경 핸들러가 반환한 뒤 <code>audit_event</code> insert. 핸들러 예외도 <code>result=error</code> + 메시지 요약(스택 없음).</p>
+<hr />
+<h2 id="45-mvp">45. 단계 · MVP</h2>
+<p><a href="plan_mvp.md">plan_mvp.md 31절</a>을 이 규칙으로 고친다.</p>
+<table>
+<thead>
+<tr>
+<th>단계</th>
+<th>작업자·이력</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 마법사</td>
+<td>마지막에 최초 admin 칸 추가 (2b와 함께)</td>
+</tr>
+<tr>
+<td>2 제어</td>
+<td>기존. 2b 이후 호출에 actor 필요</td>
+</tr>
+<tr>
+<td><strong>2b 작업자·이력</strong></td>
+<td><strong>MVP</strong>. 로그인, 3역할, 이력 화면, 변경 API 기록</td>
+</tr>
+<tr>
+<td>3 카탈로그</td>
+<td>로그인 필요</td>
+</tr>
+<tr>
+<td>4 구성 보드</td>
+<td><code>compose_apply</code>에 작업자 필수. 2b 없이 4를 머지하지 않음</td>
+</tr>
+<tr>
+<td>5 로그</td>
+<td>모듈 로그와 이력 화면을 헷갈리지 않게 라벨</td>
+</tr>
+<tr>
+<td>6 배포</td>
+<td>SSO·프록시 TLS. 이력 자체는 6에 미루지 않음</td>
+</tr>
+</tbody>
+</table>
+<p>공유 키만으로 사람이 쓰는 UI를 남기지 않는다. pytest는 <code>service</code> 키 또는 테스트 로그인 픽스처.</p>
+<h3 id="2b">수락 (2b)</h3>
+<ol>
+<li>부트스트랩 없이 변경 API → 401</li>
+<li>viewer로 <code>POST /api/control/start</code> → 403 + 이력 <code>denied</code></li>
+<li>operator로 pau → 이력 <code>control_pau</code> ok, 표시 이름 일치</li>
+<li>비밀번호가 audit <code>detail</code>에 없음</li>
+<li>마지막 admin 정지 거부</li>
+<li>이력 UI에서 시간·작업자 필터</li>
+</ol>
+<hr />
+<h2 id="46">46. 위험</h2>
+<table>
+<thead>
+<tr>
+<th>위험</th>
+<th>완화</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>공유 키를 헤더에 계속 씀</td>
+<td>사람 UI는 세션만. 키는 service</td>
+</tr>
+<tr>
+<td>WS <code>?key=</code>에 비밀번호</td>
+<td>짧은 ticket</td>
+</tr>
+<tr>
+<td>AuthCode가 이력 JSON에 복사됨</td>
+<td>detail 마스킹 목록 (<code>AuthCode</code>, <code>password</code>, <code>API_KEY</code>)</td>
+</tr>
+<tr>
+<td>SQLite 잠금</td>
+<td>WAL. 이력 insert 실패해도 본 요청은 이미 성공했을 수 있음 → 로그 경고, 재시도 1회</td>
+</tr>
+<tr>
+<td>누가 했는지 없는 적용</td>
+<td>4단계 머지 가드: actor 없으면 apply 500</td>
+</tr>
+<tr>
+<td>작업자=리눅스 ew 유저로 착각</td>
+<td>README: 웹 작업자는 콘솔 신원. startstop uid는 호스트 계정</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="47">47. 현재 코드 갭</h2>
+<table>
+<thead>
+<tr>
+<th>위치</th>
+<th>갭</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>security.py</code></td>
+<td>공유 키만. 세션·역할 없음</td>
+</tr>
+<tr>
+<td><code>app.json</code></td>
+<td>사용자·이력 없음</td>
+</tr>
+<tr>
+<td>프론트</td>
+<td><code>VITE_API_KEY</code> 전역. 로그인 화면 없음</td>
+</tr>
+<tr>
+<td>변경 API</td>
+<td>actor 인자 없음</td>
+</tr>
+<tr>
+<td>네비</td>
+<td>작업자·이력 항목 없음</td>
+</tr>
+</tbody>
+</table>
+<p>이 파일이 닫히는 조건: 로그인 후 적용·기동이 이력 테이블에 작업자 이름으로 남고, admin이 작업자를 등록·정지할 수 있으며, viewer는 변경을 못한다.</p>
+    </article>
+    <footer>
+      Generated from <code>plan.md</code> + <code>plan_priority.md</code> + <code>plan_mvp.md</code> + <code>plan_ops.md</code>.
+    </footer>
+  </div>
+</body>
+</html>

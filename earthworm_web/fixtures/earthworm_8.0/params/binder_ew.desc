@@ -1,0 +1,5 @@
+modName binder_ew
+modId   MOD_BINDER_EW
+instId  INST_WILDCARD
+tsec    90
+restartMe

@@ -1,0 +1,5 @@
+modName import_pasv
+modId   MOD_IMPORT_PASV
+instId  ${EW_INST_ID}
+tsec    90
+restartMe
