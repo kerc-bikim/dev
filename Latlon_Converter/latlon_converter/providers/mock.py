@@ -17,19 +17,23 @@ from ..config import FIXTURES_DIR
 from ..models import LandCharacteristics, LandLedger, Parcel
 from ..pnu import build_pnu, format_jibun, parse_pnu
 
-# 국내 육지를 대강 감싸는 범위. 밖이면 필지가 없는 것으로 본다.
+# 국내를 대강 감싸는 사각 범위. 해상도 들어가는 근사치라 mock 안에서만 쓴다.
+# 이 밖이면 필지가 없는 것으로 본다.
 KOREA_BBOX = (33.0, 38.7, 124.5, 131.9)
 
 # fixtures에 없는 좌표를 만들어 냈다는 표시. 결과에 경고로 남는다.
 SYNTHESIZED_SOURCE = "mock-synth"
 
+# 합성 주소는 실제 지번으로 오해하기 쉬우므로 실재하지 않는 이름과
+# 쓰이지 않는 법정동코드(9999…)를 써서 한눈에 구분되게 한다.
+MOCK_LABEL = "[모의]"
+
 _SAMPLE_DONG: tuple[tuple[str, str], ...] = (
-    ("1168010100", "서울특별시 강남구 역삼동"),
-    ("4113510300", "경기도 성남시 분당구 정자동"),
-    ("2726010100", "대구광역시 수성구 범어동"),
-    ("4215038023", "강원특별자치도 강릉시 왕산면 대기리"),
-    ("4671025321", "전라남도 해남군 송지면 갈두리"),
-    ("4817011400", "경상남도 진주시 상대동"),
+    ("9999900001", f"{MOCK_LABEL} 가상시 가상구 가동"),
+    ("9999900002", f"{MOCK_LABEL} 가상시 가상구 나동"),
+    ("9999900003", f"{MOCK_LABEL} 가상시 가상구 다동"),
+    ("9999900004", f"{MOCK_LABEL} 가상군 가상면 라리"),
+    ("9999900005", f"{MOCK_LABEL} 가상군 가상면 마리"),
 )
 
 _SAMPLE_OWNERSHIP: tuple[tuple[str, str], ...] = (
@@ -184,7 +188,7 @@ def _ld_name_for(ld_code: str) -> str:
     for code, name in _SAMPLE_DONG:
         if code == ld_code:
             return name
-    return "테스트 법정동"
+    return f"{MOCK_LABEL} 가상 법정동"
 
 
 def _synth_ledger(pnu: str) -> dict:

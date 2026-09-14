@@ -18,7 +18,10 @@ from .providers.base import LandDataProvider
 logger = logging.getLogger(__name__)
 
 NO_PARCEL_MESSAGE = "해당 좌표에서 필지를 찾지 못했습니다 (해상·국외·미등록 지역일 수 있음)"
-SYNTHESIZED_MESSAGE = "mock 제공자가 만들어 낸 합성 데이터입니다 (실제 지번 아님)"
+SYNTHESIZED_MESSAGE = (
+    "mock 제공자가 만들어 낸 합성 데이터입니다 (실제 지번 아님). "
+    "실제 주소가 필요하면 VWORLD_API_KEY를 설정하고 --provider vworld 로 실행하세요."
+)
 
 
 @dataclass
