@@ -6,7 +6,7 @@ import pytest
 
 from latlon_converter.errors import AuthError, InputError, LatlonError, QuotaError
 from latlon_converter.models import LandCharacteristics, LandLedger, Parcel
-from latlon_converter.providers.mock import MockProvider
+from latlon_converter.providers.mock import MOCK_LABEL, MockProvider
 from latlon_converter.service import LandLookupService, LookupOptions, current_year
 
 
@@ -138,6 +138,18 @@ def test_mock_synthesized_result_is_flagged():
     result = service.lookup_point(35.1802, 128.1076)
     assert result.found is True
     assert any("합성 데이터" in warning for warning in result.warnings)
+
+
+def test_mock_synthesized_address_is_obviously_fake():
+    """실재하는 지번으로 오해하지 않도록 주소와 법정동코드가 표시되어야 한다."""
+    result = LandLookupService(MockProvider()).lookup_point(37.973604, 124.652882)
+    row = result.to_row()
+    assert row["지번주소"].startswith(MOCK_LABEL)
+    assert row["법정동명"].startswith(MOCK_LABEL)
+    # 9999…는 실제로 쓰이지 않는 법정동코드다.
+    assert row["법정동코드"].startswith("99999")
+    assert row["PNU"].startswith("99999")
+    assert "VWORLD_API_KEY" in row["비고"]
 
 
 def test_mock_fixture_result_is_not_flagged():
