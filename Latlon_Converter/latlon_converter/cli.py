@@ -13,7 +13,6 @@ from .cache import build_cache
 from .config import Settings
 from .errors import EXIT_OK, LatlonError
 from .providers import build_provider
-from .providers.mock import MockProvider
 from .providers.vworld import VWorldProvider
 from .service import LandLookupService, LookupOptions
 
@@ -79,12 +78,12 @@ def _build_service(args: argparse.Namespace) -> tuple[LandLookupService, object]
             "--provider vworld 로 실행하세요.",
             file=sys.stderr,
         )
-    if settings.provider == "vworld":
-        provider = VWorldProvider(settings, cache=cache)
-    elif settings.provider == "mock":
-        provider = MockProvider()
-    else:
-        provider = build_provider(settings)
+    # vworld만 캐시를 쓴다. mock은 파일을 읽어 재생하므로 캐시할 게 없다.
+    provider = (
+        VWorldProvider(settings, cache=cache)
+        if settings.provider == "vworld"
+        else build_provider(settings)
+    )
     return LandLookupService(provider), cache
 
 
