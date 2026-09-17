@@ -2,6 +2,20 @@
 
 from __future__ import annotations
 
+import re
+from typing import Any
+
+# 요청이 실패하면 requests 예외 문자열에 인증키가 붙은 URL이 통째로 들어간다.
+# 그대로 두면 오류 메시지, 로그, 배치 결과의 비고 칸에 키가 남는다.
+_SECRET_PARAM_RE = re.compile(r"(?i)(key|servicekey|authkey)=([^&\s'\")]+)")
+REDACTED = "<가려짐>"
+
+
+def redact_secrets(value: Any) -> str:
+    """URL 질의문자열에 섞인 인증키를 가린다."""
+    return _SECRET_PARAM_RE.sub(lambda match: f"{match.group(1)}={REDACTED}", str(value))
+
+
 EXIT_OK = 0
 EXIT_INPUT = 1
 EXIT_AUTH = 2

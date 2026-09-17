@@ -22,7 +22,7 @@ import requests
 
 from . import parsers
 from .config import PROJECT_ROOT, Settings
-from .errors import AuthError, ConfigError, LatlonError, QuotaError
+from .errors import AuthError, ConfigError, LatlonError, QuotaError, redact_secrets
 
 PEM_MARKER = b"-----BEGIN CERTIFICATE-----"
 
@@ -81,7 +81,7 @@ def _ensure_pem(path: Path) -> None:
 
 def tls_error_message(ca_bundle: str | bool, exc: Exception) -> str:
     """인증서 검증 실패를 설정 방법과 함께 설명한다."""
-    lines = [f"서버 인증서를 검증하지 못했습니다: {exc}"]
+    lines = [f"서버 인증서를 검증하지 못했습니다: {redact_secrets(exc)}"]
     if isinstance(ca_bundle, str):
         lines.append(
             f"지정한 인증서({ca_bundle})로도 검증에 실패했습니다. "
@@ -166,14 +166,14 @@ def check_connection(settings: Settings, url: str, session: Any | None = None) -
         return ConnectionCheck(
             ca_bundle=prepared.verify,
             status=CHECK_TLS_FAILED,
-            detail=str(exc),
+            detail=redact_secrets(exc),
             hint=tls_error_message(prepared.verify, exc),
         )
     except Exception as exc:
         return ConnectionCheck(
             ca_bundle=prepared.verify,
             status=CHECK_CONNECT_FAILED,
-            detail=str(exc),
+            detail=redact_secrets(exc),
             hint=(
                 "인증서 검증 단계에 가기 전에 연결이 끊겼습니다. 인증서 문제가 아니라 "
                 "네트워크나 프록시(HTTPS_PROXY) 설정 문제일 수 있습니다."
@@ -206,7 +206,7 @@ def check_connection(settings: Settings, url: str, session: Any | None = None) -
         parsers.raise_for_error(payload, "연결 점검")
     except AuthError as exc:
         check.status = CHECK_AUTH
-        check.detail = str(exc)
+        check.detail = redact_secrets(exc)
         check.hint = (
             "인증서 검증은 정상입니다. 인증키와 domain 값을 확인하세요."
             if settings.api_key
@@ -214,11 +214,11 @@ def check_connection(settings: Settings, url: str, session: Any | None = None) -
         )
     except QuotaError as exc:
         check.status = CHECK_QUOTA
-        check.detail = str(exc)
+        check.detail = redact_secrets(exc)
         check.hint = "인증서 검증은 정상입니다. 일일 호출 한도가 회복된 뒤 다시 시도하세요."
     except LatlonError as exc:
         check.status = CHECK_API_ERROR
-        check.detail = str(exc)
+        check.detail = redact_secrets(exc)
     else:
         check.detail = "인증서 검증과 API 응답이 모두 정상입니다"
     return check
