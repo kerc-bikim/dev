@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from ..models import LandCharacteristics, LandLedger, Parcel
+from ..models import LandCharacteristics, LandLedger, Parcel, ParcelCandidate
 
 
 @runtime_checkable
@@ -18,6 +18,9 @@ class LandDataProvider(Protocol):
 
     def get_parcel(self, lat: float, lon: float, with_road: bool = False) -> Parcel | None:
         """좌표가 속한 필지를 찾는다. 없으면 None."""
+
+    def find_nearby(self, lat: float, lon: float, meters: float) -> list[ParcelCandidate]:
+        """점 주변 필지를 가까운 순으로 돌려준다. 지번 확인용."""
 
     def get_ledger(self, pnu: str) -> LandLedger | None:
         """토지(임야)대장 속성을 가져온다."""

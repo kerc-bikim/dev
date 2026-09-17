@@ -17,11 +17,11 @@ from typing import Any
 
 import requests
 
-from .. import parsers
+from .. import geometry, parsers
 from ..cache import NullCache
 from ..config import Settings
 from ..errors import AuthError, NetworkError, QuotaError, TlsError
-from ..models import LandCharacteristics, LandLedger, Parcel
+from ..models import LandCharacteristics, LandLedger, Parcel, ParcelCandidate
 from ..pnu import build_pnu
 from ..tls import build_session, tls_error_message
 
@@ -34,6 +34,10 @@ LANDCHAR_URL = "https://api.vworld.kr/ned/data/getLandCharacteristics"
 
 CADASTRAL_LAYER = "LP_PA_CBND_BUBUN"
 DEFAULT_CRS = "EPSG:4326"
+
+# 한 점에 필지가 겹쳐 등록된 경우가 있어 여러 건을 받아 보고 고른다.
+CANDIDATE_LIMIT = 10
+NEARBY_LIMIT = 50
 
 
 class VWorldProvider:
@@ -109,23 +113,59 @@ class VWorldProvider:
             parcel.road_address = self._get_road_address(lat, lon)
         return parcel
 
-    def _get_parcel_from_cadastral(self, lat: float, lon: float) -> Parcel | None:
-        params = {
+    def _cadastral_params(self, geom_filter: str, size: int) -> dict[str, str]:
+        return {
             "service": "data",
             "version": "2.0",
             "request": "GetFeature",
             "data": CADASTRAL_LAYER,
             "format": "json",
             "crs": DEFAULT_CRS,
-            # geomFilter의 POINT는 경도가 먼저다.
-            "geomFilter": f"POINT({lon} {lat})",
-            "geometry": "false",
+            "geomFilter": geom_filter,
+            # 겹친 필지 중 점을 실제로 품는 쪽을 고르려면 도형이 필요하다.
+            "geometry": "true",
             "attribute": "true",
-            "size": "1",
+            "size": str(size),
             "page": "1",
             **self._auth_params(),
         }
-        return parsers.parse_cadastral(self._get(DATA_URL, params, "연속지적도 조회"))
+
+    def _get_parcel_from_cadastral(self, lat: float, lon: float) -> Parcel | None:
+        # geomFilter의 POINT는 경도가 먼저다.
+        params = self._cadastral_params(f"POINT({lon} {lat})", CANDIDATE_LIMIT)
+        features = parsers.parse_cadastral_features(self._get(DATA_URL, params, "연속지적도 조회"))
+        return parsers.select_parcel(features, lat, lon)
+
+    def find_nearby(self, lat: float, lon: float, meters: float) -> list[ParcelCandidate]:
+        """점 주변 사각 범위의 필지를 가까운 순으로 돌려준다(진단용)."""
+        dlat = meters / geometry.METERS_PER_DEGREE_LAT
+        dlon = meters / max(geometry.meters_per_degree_lon(lat), 1e-9)
+        box = f"BOX({lon - dlon},{lat - dlat},{lon + dlon},{lat + dlat})"
+        params = self._cadastral_params(box, NEARBY_LIMIT)
+        features = parsers.parse_cadastral_features(self._get(DATA_URL, params, "주변 필지 조회"))
+
+        candidates = []
+        for feature in features:
+            center = geometry.centroid(feature.geometry)
+            candidates.append(
+                ParcelCandidate(
+                    pnu=feature.parcel.pnu,
+                    jibun_address=feature.parcel.jibun_address,
+                    jibun=feature.parcel.jibun,
+                    contains_point=geometry.point_in_geometry(lon, lat, feature.geometry),
+                    approx_area_m2=geometry.approx_area_m2(feature.geometry, lat),
+                    distance_m=(
+                        geometry.distance_m(lon, lat, center[0], center[1]) if center else None
+                    ),
+                )
+            )
+        candidates.sort(
+            key=lambda candidate: (
+                candidate.contains_point is not True,
+                candidate.distance_m if candidate.distance_m is not None else float("inf"),
+            )
+        )
+        return candidates
 
     def _address_params(self, lat: float, lon: float, address_type: str) -> dict[str, str]:
         return {

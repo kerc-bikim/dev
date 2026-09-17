@@ -8,11 +8,13 @@
 
 from __future__ import annotations
 
+import math
+from dataclasses import dataclass
 from typing import Any
 
-from . import codes
+from . import codes, geometry
 from .errors import AuthError, LatlonError, QuotaError
-from .models import LandCharacteristics, LandLedger, Parcel
+from .models import LandCharacteristics, LandLedger, Parcel, ParcelCandidate
 
 _AUTH_MARKERS = (
     "INCORRECT_KEY",
@@ -106,13 +108,72 @@ def raise_for_error(payload: Any, context: str) -> None:
     raise LatlonError(f"{context}: {message}")
 
 
-def parse_cadastral(payload: Any) -> Parcel | None:
-    """연속지적도(LP_PA_CBND_BUBUN) GetFeature 응답에서 필지를 읽는다."""
+@dataclass
+class CadastralFeature:
+    """연속지적도 feature 하나. 도형은 필지를 고를 때 쓴다."""
+
+    parcel: Parcel
+    geometry: Any = None
+
+
+def parse_cadastral_features(payload: Any) -> list[CadastralFeature]:
+    """연속지적도(LP_PA_CBND_BUBUN) GetFeature 응답의 필지를 모두 읽는다."""
     raise_for_error(payload, "연속지적도 조회")
-    features = find_records(payload, "features")
+    features = []
+    for feature in find_records(payload, "features"):
+        parcel = _parse_cadastral_properties(feature.get("properties"))
+        if parcel is not None:
+            features.append(CadastralFeature(parcel=parcel, geometry=feature.get("geometry")))
+    return features
+
+
+def parse_cadastral(payload: Any) -> Parcel | None:
+    """응답의 첫 필지만 쓴다. 도형 없이 판단할 때의 기본 동작."""
+    features = parse_cadastral_features(payload)
+    return features[0].parcel if features else None
+
+
+def select_parcel(features: list[CadastralFeature], lat: float, lon: float) -> Parcel | None:
+    """한 점에 걸린 여러 필지 중 하나를 고른다.
+
+    점을 실제로 품는 필지만 남긴 뒤, 그중 가장 작은 필지를 고른다. 지적도
+    필지와 임야도 필지가 겹쳐 있을 때 더 촘촘히 등록된 쪽을 뜻한다.
+    고르지 못한 나머지는 `alternatives`에 담아 눈에 보이게 한다.
+    """
     if not features:
         return None
-    properties = features[0].get("properties")
+
+    scored = [
+        (
+            feature,
+            geometry.point_in_geometry(lon, lat, feature.geometry),
+            geometry.approx_area_m2(feature.geometry, lat),
+        )
+        for feature in features
+    ]
+    containing = [entry for entry in scored if entry[1] is True]
+    pool = containing or scored
+    # 면적을 모르면(도형 없음) 응답 순서를 그대로 따른다.
+    pool = sorted(pool, key=lambda entry: entry[2] if entry[2] is not None else math.inf)
+
+    chosen_feature, contains, _ = pool[0]
+    parcel = chosen_feature.parcel
+    parcel.contains_point = contains
+    parcel.alternatives = [
+        ParcelCandidate(
+            pnu=feature.parcel.pnu,
+            jibun_address=feature.parcel.jibun_address,
+            jibun=feature.parcel.jibun,
+            contains_point=inside,
+            approx_area_m2=area,
+        )
+        for feature, inside, area in scored
+        if feature is not chosen_feature
+    ]
+    return parcel
+
+
+def _parse_cadastral_properties(properties: Any) -> Parcel | None:
     if not isinstance(properties, dict):
         return None
 

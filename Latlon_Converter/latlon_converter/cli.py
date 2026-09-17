@@ -45,6 +45,12 @@ def build_parser() -> argparse.ArgumentParser:
     point.add_argument("--lat", type=float, required=True, help="위도 (WGS84)")
     point.add_argument("--lon", type=float, required=True, help="경도 (WGS84)")
     point.add_argument("--with-road", action="store_true", help="도로명주소도 조회")
+    point.add_argument(
+        "--nearby",
+        type=float,
+        metavar="미터",
+        help="결과와 함께 주변 필지 목록도 출력 (지번이 기대와 다를 때 확인용)",
+    )
     output = point.add_mutually_exclusive_group()
     output.add_argument("--json", action="store_true", help="JSON으로 출력")
     output.add_argument("--csv", action="store_true", help="CSV 한 행으로 출력")
@@ -173,6 +179,10 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "point":
             _emit_single(args, service.lookup_point(args.lat, args.lon, options))
+            if args.nearby:
+                candidates = service.provider.find_nearby(args.lat, args.lon, args.nearby)
+                print()
+                print(report.render_candidates(args.lat, args.lon, args.nearby, candidates))
         elif args.command == "pnu":
             _emit_single(args, service.lookup_pnu(args.pnu, options))
         else:
