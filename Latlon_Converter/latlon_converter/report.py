@@ -96,7 +96,8 @@ def render_connection_check(settings, check) -> str:
     lines.extend(f"{_pad(name, label_width)}  {value}" for name, value in rows)
     lines.extend(["", "점검 결과", "-" * 56])
     lines.extend(f"{_pad(name, label_width)}  {value}" for name, value in results)
-    if check.detail:
+    # 인증서 실패는 안내 문구가 원인 문장을 이미 품고 있어 두 번 찍지 않는다.
+    if check.detail and check.detail not in check.hint:
         lines.extend(["", check.detail])
     if check.hint:
         lines.extend(["", check.hint])

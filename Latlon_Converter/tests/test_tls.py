@@ -310,6 +310,19 @@ def test_check_command_exit_codes(monkeypatch, capsys, status, api_key, expected
     assert "TLS 인증서 검증" in out
 
 
+def test_check_output_does_not_repeat_the_same_error(monkeypatch, capsys):
+    detail = "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed"
+    check = ConnectionCheck(
+        True, CHECK_TLS_FAILED, detail=detail, hint=f"서버 인증서를 검증하지 못했습니다: {detail}"
+    )
+    monkeypatch.setenv("LATLON_PROVIDER", "vworld")
+    monkeypatch.setenv("VWORLD_API_KEY", "")
+    monkeypatch.setattr(cli, "check_connection", lambda settings, url: check)
+
+    assert cli.main(["check"]) == EXIT_TLS
+    assert capsys.readouterr().out.count(detail) == 1
+
+
 def test_check_command_masks_api_key(monkeypatch, capsys, tmp_path):
     cert = tmp_path / "test.crt"
     cert.write_text(PEM_SAMPLE, encoding="utf-8")
