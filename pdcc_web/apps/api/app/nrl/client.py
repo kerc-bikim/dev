@@ -10,6 +10,7 @@ import httpx
 
 from ..cache import get_redis
 from ..config import settings
+from ..tls import CaBundleError, httpx_verify, is_cert_verify_failed, load_verify, tls_hint
 
 log = logging.getLogger("pdcc.nrl")
 
@@ -41,16 +42,39 @@ def validate_format(value: str) -> str:
 
 
 class NrlClient:
-    def __init__(self, base_url: str | None = None, timeout: float | None = None):
+    def __init__(
+        self,
+        base_url: str | None = None,
+        timeout: float | None = None,
+        verify: bool | str | None = None,
+    ):
         self.base_url = (base_url or settings.nrl_base_url).rstrip("/")
         self.timeout = timeout if timeout is not None else settings.nrl_timeout_sec
+        if verify is None:
+            try:
+                self.verify: bool | str = httpx_verify()
+                if self.verify is True and settings.ssl_ca_bundle:
+                    self.verify = load_verify(settings.ssl_ca_bundle)
+            except CaBundleError as exc:
+                raise NrlError(str(exc), 500) from exc
+        else:
+            self.verify = verify
 
     def _get(self, path: str, params: dict[str, Any]) -> httpx.Response:
         url = f"{self.base_url}{path}"
         try:
-            with httpx.Client(timeout=self.timeout, follow_redirects=True) as client:
+            with httpx.Client(
+                timeout=self.timeout,
+                follow_redirects=True,
+                verify=self.verify,
+            ) as client:
                 response = client.get(url, params=params)
         except httpx.HTTPError as exc:
+            if is_cert_verify_failed(exc):
+                log.warning("nrl TLS verify failed %s %s", url, exc)
+                raise NrlError(
+                    "NRL 인증서 검증에 실패했습니다. " + tls_hint(exc)
+                ) from exc
             log.warning("nrl request failed %s %s", url, exc)
             raise NrlError("NRL 서비스에 연결할 수 없습니다") from exc
         if response.status_code == 204 or response.status_code == 404:
