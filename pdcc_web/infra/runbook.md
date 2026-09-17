@@ -16,6 +16,7 @@ Docker-in-Docker가 없는 호스트와 compose 배포를 모두 다룬다. Stat
 | `SESSION_COOKIE_SECURE` | 꺼짐 | 켜짐 |
 | `CORS_ORIGINS` | localhost:3000 | 브라우저 출처. 비우면 same-origin |
 | `AUDIT_RETENTION_DAYS` | 365 | 필요 시 조정 |
+| `SSL_CA_BUNDLE` | 비움 | 사내 SSL 가시화 CA PEM 경로. compose는 `pdcc_web/certs` → `/certs` |
 
 복사: `cp infra/env.example infra/.env` 후 `APP_SECRET` 을 긴 난수로 바꾼다.
 
@@ -26,6 +27,8 @@ python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 ## Compose
 
 호스트에서 Postgres는 **5433** (컨테이너 내부는 5432). API·워커가 compose 네트워크 안이면 `postgres:5432` 를 그대로 쓴다.
+
+사내 SSL 가시화로 NRL HTTPS가 `CERTIFICATE_VERIFY_FAILED` 이면 `pdcc_web/certs/ABC.crt`(PEM)를 두고 `SSL_CA_BUNDLE=/certs/ABC.crt` 를 설정한다. 검증은 끄지 않는다.
 
 개발:
 

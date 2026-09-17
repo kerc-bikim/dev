@@ -24,6 +24,10 @@ pdcc_web/apps/web/node_modules/
 pdcc_web/apps/web/dist/
 pdcc_web/apps/api/.pytest_cache/
 pdcc_web/apps/api/.venv/
+pdcc_web/certs/*.crt
+pdcc_web/certs/*.pem
+pdcc_web/certs/*.cer
+pdcc_web/certs/*.key
 
 
 # redis dumps

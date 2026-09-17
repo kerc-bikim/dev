@@ -4,6 +4,7 @@ import logging
 from contextvars import ContextVar
 
 from .config import INSECURE_SECRET, Settings, settings
+from .tls import CaBundleError, apply_ca_bundle, configured_ca_bundle, load_verify
 
 log = logging.getLogger("pdcc.runtime")
 
@@ -78,6 +79,10 @@ def collect_policy_issues(
         warnings.append("DEV_BOOTSTRAP_ADMIN=true — admin/admin 로그인이 허용됩니다.")
     if cookie_samesite(cfg) == "none" and not cookie_secure(cfg):
         errors.append("SameSite=None 쿠키는 Secure 플래그가 필요합니다.")
+    try:
+        load_verify(configured_ca_bundle(cfg))
+    except CaBundleError as exc:
+        errors.append(str(exc))
     return warnings, errors
 
 
@@ -89,3 +94,4 @@ def apply_runtime_policy(cfg: Settings | None = None) -> None:
         for msg in errors:
             log.error("%s", msg)
         raise RuntimePolicyError(" ".join(errors))
+    apply_ca_bundle(cfg)

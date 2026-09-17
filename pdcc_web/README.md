@@ -50,8 +50,11 @@ cd pdcc_web/apps/web && npm install && npm run dev -- --host 0.0.0.0 --port 3000
 | `NRL_BASE_URL` | `https://service.earthscope.org/irisws/nrl/1` | NRL 서비스 |
 | `NRL_TIMEOUT_SEC` | `30` | 업스트림 제한 |
 | `NRL_CACHE_TTL_SEC` | `3600` | catalog·prefix Redis TTL |
+| `SSL_CA_BUNDLE` | (비움) | 사내 SSL 가시화 CA (PEM, 예: `/certs/ABC.crt`) |
 
 NRL은 API 기동 시 호출하지 않습니다.
+
+내부망에서 SSL 검사 장비를 거치면 `CERTIFICATE_VERIFY_FAILED` (self-signed certificate in certificate chain) 가 납니다. 보안팀이 준 `ABC.crt` 를 PEM으로 `pdcc_web/certs/` 에 두고 `SSL_CA_BUNDLE=/certs/ABC.crt` 를 설정하세요. 인증서 검증은 끄지 않고, 기본 CA에 그 파일을 더합니다. DER이면 `openssl x509 -inform der -in ABC.crt -out ABC.pem` 으로 변환합니다.
 
 ## M2 위저드·잠금
 

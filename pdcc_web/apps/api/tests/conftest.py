@@ -10,6 +10,7 @@ os.environ["APP_SECRET"] = "test-secret"
 os.environ["DEV_BOOTSTRAP_ADMIN"] = "false"
 os.environ["APP_ENV"] = "development"
 os.environ["ALLOW_STUB_LOGIN"] = "true"
+os.environ["SSL_CA_BUNDLE"] = ""
 
 import pytest
 from fakeredis import FakeRedis

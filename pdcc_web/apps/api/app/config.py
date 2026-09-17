@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     nrl_base_url: str = "https://service.earthscope.org/irisws/nrl/1"
     nrl_timeout_sec: float = 30.0
     nrl_cache_ttl_sec: int = 3600
+    ssl_ca_bundle: str = ""
     lock_ttl_sec: int = 300
     export_dir: str = "/tmp/pdcc-exports"
     job_poll_sec: int = 5

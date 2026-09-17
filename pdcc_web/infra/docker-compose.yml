@@ -45,6 +45,9 @@ services:
       NRL_BASE_URL: ${NRL_BASE_URL:-https://service.earthscope.org/irisws/nrl/1}
       NRL_TIMEOUT_SEC: ${NRL_TIMEOUT_SEC:-30}
       NRL_CACHE_TTL_SEC: ${NRL_CACHE_TTL_SEC:-3600}
+      SSL_CA_BUNDLE: ${SSL_CA_BUNDLE:-}
+    volumes:
+      - ../certs:/certs:ro
     ports:
       - "8080:8080"
     depends_on:
