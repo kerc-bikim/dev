@@ -20,7 +20,7 @@ import requests
 from .. import parsers
 from ..cache import NullCache
 from ..config import Settings
-from ..errors import AuthError, NetworkError, QuotaError, TlsError
+from ..errors import AuthError, NetworkError, QuotaError, TlsError, redact_secrets
 from ..models import LandCharacteristics, LandLedger, Parcel
 from ..pnu import build_pnu
 from ..tls import build_session, tls_error_message
@@ -81,7 +81,7 @@ class VWorldProvider:
                 raise TlsError(f"{context}: {tls_error_message(self.session.verify, exc)}") from exc
             except Exception as exc:  # requests의 모든 전송 오류
                 last_error = exc
-                logger.debug("%s 요청 실패(%d회차): %s", context, attempt, exc)
+                logger.debug("%s 요청 실패(%d회차): %s", context, attempt, redact_secrets(exc))
             else:
                 if response.status_code >= 500:
                     last_error = NetworkError(f"{context}: 서버 오류 {response.status_code}")
@@ -95,7 +95,7 @@ class VWorldProvider:
             if attempt < max(self.settings.retries, 1):
                 time.sleep(min(2 ** (attempt - 1), 8))
 
-        raise NetworkError(f"{context}: 요청에 실패했습니다 ({last_error})")
+        raise NetworkError(f"{context}: 요청에 실패했습니다 ({redact_secrets(last_error)})")
 
     # --- 조회 -------------------------------------------------------------
 
@@ -162,7 +162,7 @@ class VWorldProvider:
         except (AuthError, QuotaError):
             raise
         except Exception as exc:
-            logger.debug("도로명주소 조회 실패: %s", exc)
+            logger.debug("도로명주소 조회 실패: %s", redact_secrets(exc))
             return ""
 
     def get_ledger(self, pnu: str) -> LandLedger | None:
