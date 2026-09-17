@@ -57,6 +57,7 @@ class LandLookupService:
         result.parcel = parcel
         if parcel.source.startswith("mock"):
             result.warnings.append(SYNTHESIZED_MESSAGE)
+        result.warnings.extend(_selection_warnings(parcel))
         self._fill_details(result, parcel.pnu, options)
         return result
 
@@ -117,6 +118,20 @@ class LandLookupService:
 
         result.warnings.append("토지특성정보가 조회되지 않았습니다")
         return None
+
+
+def _selection_warnings(parcel: Parcel) -> list[str]:
+    """필지를 고를 때 애매했던 점을 결과에 남긴다."""
+    warnings: list[str] = []
+    if parcel.contains_point is False:
+        warnings.append(
+            "입력한 점이 이 필지 경계 안에 들어가지 않습니다. "
+            "연속지적도의 위치 오차이거나 좌표가 경계에 걸쳤을 수 있습니다"
+        )
+    if parcel.alternatives:
+        others = " / ".join(candidate.describe() for candidate in parcel.alternatives)
+        warnings.append(f"같은 지점에 겹치는 필지가 더 있습니다: {others}")
+    return warnings
 
 
 def _validate_coords(lat: float, lon: float) -> None:

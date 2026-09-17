@@ -14,7 +14,7 @@ from typing import Any
 
 from .. import parsers
 from ..config import FIXTURES_DIR
-from ..models import LandCharacteristics, LandLedger, Parcel
+from ..models import LandCharacteristics, LandLedger, Parcel, ParcelCandidate
 from ..pnu import build_pnu, format_jibun, parse_pnu
 
 # 국내를 대강 감싸는 사각 범위. 해상도 들어가는 근사치라 mock 안에서만 쓴다.
@@ -125,6 +125,20 @@ class MockProvider:
         if parcel:
             parcel.source = SYNTHESIZED_SOURCE
         return parcel
+
+    def find_nearby(self, lat: float, lon: float, meters: float) -> list[ParcelCandidate]:
+        """mock에는 경계 도형이 없으므로 그 좌표의 필지 하나만 돌려준다."""
+        parcel = self.get_parcel(lat, lon)
+        if parcel is None:
+            return []
+        return [
+            ParcelCandidate(
+                pnu=parcel.pnu,
+                jibun_address=parcel.jibun_address,
+                jibun=parcel.jibun,
+                distance_m=0.0,
+            )
+        ]
 
     def get_ledger(self, pnu: str) -> LandLedger | None:
         entry = self._entry_for_pnu(pnu)
