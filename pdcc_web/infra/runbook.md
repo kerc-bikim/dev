@@ -25,6 +25,8 @@ python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 
 ## Compose
 
+호스트에서 Postgres는 **5433** (컨테이너 내부는 5432). API·워커가 compose 네트워크 안이면 `postgres:5432` 를 그대로 쓴다.
+
 개발:
 
 ```bash
@@ -46,7 +48,7 @@ Postgres 16과 Redis 7이 `DATABASE_URL` / `REDIS_URL` 에 있어야 한다.
 ```bash
 export APP_ENV=development
 export APP_SECRET=test-or-real-secret
-export DATABASE_URL=postgresql+psycopg://pdcc:pdcc@127.0.0.1:5432/pdcc
+export DATABASE_URL=postgresql+psycopg://pdcc:pdcc@127.0.0.1:5433/pdcc
 export REDIS_URL=redis://127.0.0.1:6379/0
 cd pdcc_web/apps/api && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8080
 cd pdcc_web/apps/web && npm run dev -- --host 0.0.0.0 --port 3000

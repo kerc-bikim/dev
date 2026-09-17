@@ -11,7 +11,7 @@ IRIS PDCC를 대체하는 StationXML 웹 편집기의 모노레포입니다. 브
 5. 웹이 `/api/health` 를 프록시해 화면 하단에 `API OK`
 6. [`docs/adr/0001-monorepo.md`](docs/adr/0001-monorepo.md)
 
-포트: web **3000**, api **8080**, postgres **5432**, redis **6379**.
+포트: web **3000**, api **8080**, postgres **5433**(호스트; 컨테이너 내부는 5432), redis **6379**.
 
 ## 기동
 
@@ -67,7 +67,7 @@ NRL은 API 기동 시 호출하지 않습니다.
 
 ```bash
 cd pdcc_web/apps/api
-export DATABASE_URL=postgresql+psycopg://pdcc:pdcc@127.0.0.1:5432/pdcc
+export DATABASE_URL=postgresql+psycopg://pdcc:pdcc@127.0.0.1:5433/pdcc
 export REDIS_URL=redis://127.0.0.1:6379/0
 .venv/bin/python -m app.jobs.runner
 ```

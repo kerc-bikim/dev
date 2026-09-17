@@ -7,7 +7,7 @@ API 프로세스에서 큰 변환을 붙잡지 않습니다.
 
 ```bash
 cd pdcc_web/apps/api
-export DATABASE_URL=postgresql+psycopg://pdcc:pdcc@127.0.0.1:5432/pdcc
+export DATABASE_URL=postgresql+psycopg://pdcc:pdcc@127.0.0.1:5433/pdcc
 export REDIS_URL=redis://127.0.0.1:6379/0
 .venv/bin/python -m app.jobs.runner
 ```

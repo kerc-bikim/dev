@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pdcc}
       POSTGRES_DB: ${POSTGRES_DB:-pdcc}
     ports:
-      - "5432:5432"
+      # Host 5432 is often already taken; container still listens on 5432.
+      - "5433:5432"
     volumes:
       - pdcc-pg:/var/lib/postgresql/data
     healthcheck:
