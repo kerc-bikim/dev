@@ -37,6 +37,7 @@ class Settings:
     provider: str = "mock"
     api_key: str = ""
     domain: str = ""
+    ca_bundle: str = ""
     cache_db: str = ""
     cache_ttl_days: int = 30
     timeout: int = 10
@@ -49,6 +50,11 @@ class Settings:
             provider=(os.getenv("LATLON_PROVIDER", "") or "mock").strip().lower(),
             api_key=os.getenv("VWORLD_API_KEY", "").strip(),
             domain=os.getenv("VWORLD_DOMAIN", "").strip(),
+            # requests가 이미 보는 표준 변수도 함께 받아들인다.
+            ca_bundle=(
+                os.getenv("LATLON_CA_BUNDLE", "").strip()
+                or os.getenv("REQUESTS_CA_BUNDLE", "").strip()
+            ),
             cache_db=os.getenv("LATLON_CACHE_DB", "").strip(),
             cache_ttl_days=_int_env("LATLON_CACHE_TTL_DAYS", 30),
             timeout=_int_env("LATLON_TIMEOUT", 10),

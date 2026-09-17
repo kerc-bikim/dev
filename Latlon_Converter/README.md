@@ -101,11 +101,47 @@ cp .env.example .env
 ../.venv/bin/python -m latlon_converter point --lat 37.50435 --lon 127.02505 --provider vworld
 ```
 
+### 사내망 인증서 설정 (CERTIFICATE_VERIFY_FAILED 대응)
+
+사내망에서 TLS 검사 장비(프록시)를 거치면 서버 인증서 체인에 사설 루트 인증서가 끼어들어
+기본 신뢰 저장소로는 검증이 실패합니다.
+
+```
+[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed:
+self-signed certificate in certificate chain (_ssl.c:1032)
+```
+
+이때는 보안팀에서 받은 인증서(예: `test.crt`)를 신뢰 목록으로 넘겨야 합니다. `.env`에 경로를
+적으면 모든 요청이 그 인증서로 서버를 검증합니다.
+
+```bash
+# .env
+LATLON_CA_BUNDLE=C:\certs\test.crt     # 윈도우
+LATLON_CA_BUNDLE=/etc/ssl/certs/test.crt   # 리눅스·맥
+```
+
+설정이 맞는지는 `check` 명령으로 확인합니다. **인증키가 없어도 인증서 검증 여부는 확인할 수
+있습니다.** 서버가 키 오류를 돌려준다는 것 자체가 TLS 연결에 성공했다는 뜻이기 때문입니다.
+
+```bash
+../.venv/bin/python -m latlon_converter check
+```
+
+알아 둘 점이 몇 가지 있습니다.
+
+- **PEM 형식이어야 합니다.** `.crt` 확장자라도 내용이 DER(바이너리)인 경우가 많습니다. 그럴 때는
+  변환 명령을 안내하니 그대로 실행하면 됩니다: `openssl x509 -inform der -in test.crt -out test.pem`
+- **인증서가 여러 장이면** 루트와 중간 인증서의 PEM 블록을 한 파일에 이어 붙여 그 파일을 지정하세요.
+- 상대경로는 실행 위치를 먼저 찾고, 없으면 `Latlon_Converter/` 폴더에서 찾습니다. 헷갈리면 절대경로를 쓰세요.
+- `requests`가 원래 보는 `REQUESTS_CA_BUNDLE`도 인식하지만, 둘 다 있으면 `LATLON_CA_BUNDLE`이 우선합니다.
+- 인증서 문제로 실패하면 재시도하지 않고 바로 원인과 설정 방법을 알려 주며 종료코드 `5`로 끝납니다.
+
 ### 환경변수
 
 - `VWORLD_API_KEY` — 브이월드 인증키
 - `VWORLD_DOMAIN` — 인증키에 등록한 서비스 URL
 - `LATLON_PROVIDER` — `mock`(기본) 또는 `vworld`
+- `LATLON_CA_BUNDLE` — 사내망 TLS 검사용 인증서 경로 (아래 참고, 비우면 시스템 기본)
 - `LATLON_CACHE_DB` — 응답 캐시 sqlite 경로 (비우면 캐시 안 함)
 - `LATLON_CACHE_TTL_DAYS` — 캐시 유효기간, 기본 30일
 - `LATLON_TIMEOUT` / `LATLON_RETRIES` — HTTP 타임아웃(초)과 재시도 횟수
@@ -147,6 +183,12 @@ cp .env.example .env
 --pnu             19자리 PNU
 ```
 
+### `check` — 인증서·인증키 설정 점검
+
+인수 없이 실행하면 설정 요약과 함께 실제 서버에 한 번 요청해 결과를 단계별로 보고합니다.
+인증서 검증 실패인지, 그 이전의 연결 실패인지, 아니면 TLS는 정상이고 인증키만 문제인지
+구분해 알려 줍니다. 조회는 하지 않으므로 호출 한도에 거의 영향이 없습니다.
+
 ### 공통 옵션
 
 ```
@@ -160,9 +202,10 @@ cp .env.example .env
 
 - `0` 성공 (필지를 못 찾은 경우도 포함)
 - `1` 입력 오류
-- `2` 인증/설정 오류 (키 없음, 키·도메인 불일치)
+- `2` 인증/설정 오류 (키 없음, 키·도메인 불일치, 인증서 경로·형식 오류)
 - `3` 일일 호출 한도 초과
 - `4` 네트워크 실패
+- `5` 서버 인증서 검증 실패 (`LATLON_CA_BUNDLE` 설정 필요)
 
 ---
 
