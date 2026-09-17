@@ -104,6 +104,17 @@ def render_connection_check(settings, check) -> str:
     return "\n".join(lines)
 
 
+def render_candidates(lat: float, lon: float, meters: float, candidates) -> str:
+    """`--nearby`로 찾은 주변 필지 목록."""
+    lines = [f"{lat:.6f}, {lon:.6f} 기준 반경 약 {meters:.0f}m 안의 필지", "-" * 56]
+    if not candidates:
+        lines.append("주변에서 필지를 찾지 못했습니다.")
+        return "\n".join(lines)
+    for index, candidate in enumerate(candidates, start=1):
+        lines.append(f"{index:2}. {candidate.describe()}")
+    return "\n".join(lines)
+
+
 def render_json(results: LookupResult | list[LookupResult]) -> str:
     items = results if isinstance(results, list) else [results]
     payload = [
@@ -112,6 +123,9 @@ def render_json(results: LookupResult | list[LookupResult]) -> str:
             "lon": item.lon,
             "found": item.found,
             "parcel": asdict(item.parcel) if item.parcel else None,
+            "alternatives": [asdict(candidate) for candidate in item.parcel.alternatives]
+            if item.parcel
+            else [],
             "ledger": asdict(item.ledger) if item.ledger else None,
             "characteristics": asdict(item.characteristics) if item.characteristics else None,
             "owner_name_notice": OWNER_NAME_NOTICE,

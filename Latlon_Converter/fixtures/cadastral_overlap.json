@@ -1,0 +1,77 @@
+{
+  "_comment": "한 점에 토지대장 필지와 임야대장 필지가 겹쳐 돌아오는 경우를 재현한 시험용 응답. 좌표는 37.968352, 124.645289 기준이며 경계 도형은 선택 로직 검증용으로 단순화했다.",
+  "response": {
+    "service": {
+      "name": "data",
+      "version": "2.0",
+      "operation": "GetFeature",
+      "time": "61(ms)"
+    },
+    "status": "OK",
+    "record": { "total": "2", "current": "2" },
+    "page": { "size": "10", "page": "1", "total": "1" },
+    "result": {
+      "featureCollection": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "id": "LP_PA_CBND_BUBUN.9100001",
+            "geometry": {
+              "type": "MultiPolygon",
+              "coordinates": [
+                [
+                  [
+                    [124.641789, 37.965652],
+                    [124.648789, 37.965652],
+                    [124.648789, 37.971052],
+                    [124.641789, 37.971052],
+                    [124.641789, 37.965652]
+                  ]
+                ]
+              ]
+            },
+            "properties": {
+              "pnu": "2872025022203060000",
+              "jibun": "산 306 임",
+              "bonbun": "306",
+              "bubun": "",
+              "addr": "인천광역시 옹진군 백령면 가을리 산 306",
+              "gosi_year": "2025",
+              "gosi_month": "01",
+              "jiga": "5200"
+            }
+          },
+          {
+            "type": "Feature",
+            "id": "LP_PA_CBND_BUBUN.9100002",
+            "geometry": {
+              "type": "MultiPolygon",
+              "coordinates": [
+                [
+                  [
+                    [124.645119, 37.968212],
+                    [124.645459, 37.968212],
+                    [124.645459, 37.968492],
+                    [124.645119, 37.968492],
+                    [124.645119, 37.968212]
+                  ]
+                ]
+              ]
+            },
+            "properties": {
+              "pnu": "2872025022108530000",
+              "jibun": "853 대",
+              "bonbun": "853",
+              "bubun": "",
+              "addr": "인천광역시 옹진군 백령면 가을리 853",
+              "gosi_year": "2025",
+              "gosi_month": "01",
+              "jiga": "121000"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

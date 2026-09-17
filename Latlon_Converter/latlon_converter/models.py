@@ -34,6 +34,30 @@ OUTPUT_COLUMNS: tuple[str, ...] = (
 
 
 @dataclass
+class ParcelCandidate:
+    """같은 지점에서 함께 조회된 다른 필지."""
+
+    pnu: str
+    jibun_address: str = ""
+    jibun: str = ""
+    contains_point: bool | None = None
+    approx_area_m2: float | None = None
+    distance_m: float | None = None
+
+    def describe(self) -> str:
+        parts = [self.jibun_address or self.jibun or self.pnu]
+        if self.pnu and self.jibun_address:
+            parts.append(f"PNU {self.pnu}")
+        if self.approx_area_m2:
+            parts.append(f"약 {round(self.approx_area_m2):,}㎡")
+        if self.contains_point is True:
+            parts.append("점 포함")
+        elif self.distance_m is not None:
+            parts.append(f"{self.distance_m:.0f}m")
+        return " · ".join(parts)
+
+
+@dataclass
 class Parcel:
     """좌표로 찾은 필지의 기본 정보."""
 
@@ -47,6 +71,10 @@ class Parcel:
     price_year: str = ""
     price_month: str = ""
     source: str = "cadastral"
+    # 경계 안에 실제로 들어가는지. 도형을 못 받으면 None.
+    contains_point: bool | None = None
+    # 같은 점에서 함께 걸린 다른 필지들.
+    alternatives: list[ParcelCandidate] = field(default_factory=list)
 
 
 @dataclass
