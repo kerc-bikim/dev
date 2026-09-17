@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import re
+import ssl
 from typing import Any
 
 import httpx
@@ -41,6 +42,12 @@ def validate_format(value: str) -> str:
     return fmt
 
 
+def _httpx_verify(verify: bool | str) -> bool | ssl.SSLContext:
+    if isinstance(verify, str):
+        return ssl.create_default_context(cafile=verify)
+    return verify
+
+
 class NrlClient:
     def __init__(
         self,
@@ -66,7 +73,7 @@ class NrlClient:
             with httpx.Client(
                 timeout=self.timeout,
                 follow_redirects=True,
-                verify=self.verify,
+                verify=_httpx_verify(self.verify),
             ) as client:
                 response = client.get(url, params=params)
         except httpx.HTTPError as exc:
