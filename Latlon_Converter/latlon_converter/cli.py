@@ -11,10 +11,11 @@ from . import __version__, report
 from .batch import LAT_ALIASES, LON_ALIASES, detect_column, read_rows, run_batch
 from .cache import build_cache
 from .config import Settings
-from .errors import EXIT_OK, LatlonError
+from .errors import EXIT_AUTH, EXIT_NETWORK, EXIT_OK, EXIT_QUOTA, EXIT_TLS, LatlonError
 from .providers import build_provider
-from .providers.vworld import VWorldProvider
+from .providers.vworld import DATA_URL, VWorldProvider
 from .service import LandLookupService, LookupOptions
+from .tls import CHECK_AUTH, CHECK_OK, CHECK_QUOTA, CHECK_TLS_FAILED, check_connection
 
 DESCRIPTION = """\
 위도/경도로 지번과 토지 정보를 조회합니다.
@@ -57,6 +58,12 @@ def build_parser() -> argparse.ArgumentParser:
     batch.add_argument("--sleep", type=float, default=0.2, help="요청 간격(초), 기본 0.2")
     batch.add_argument("--limit", type=int, help="상위 N행만 처리")
 
+    subparsers.add_parser(
+        "check",
+        parents=[common],
+        help="인증서·인증키 설정과 서버 연결을 점검 (키 없이도 TLS 확인 가능)",
+    )
+
     pnu = subparsers.add_parser("pnu", parents=[common], help="PNU로 직접 조회")
     pnu.add_argument("--pnu", required=True, help="19자리 PNU")
     pnu_output = pnu.add_mutually_exclusive_group()
@@ -85,6 +92,30 @@ def _build_service(args: argparse.Namespace) -> tuple[LandLookupService, object]
         else build_provider(settings)
     )
     return LandLookupService(provider), cache
+
+
+def _run_check(args: argparse.Namespace) -> int:
+    """TLS 인증서와 인증키 설정을 점검한다. 조회는 하지 않는다."""
+    settings = Settings.from_env()
+    if args.provider:
+        settings.provider = args.provider
+
+    check = check_connection(settings, DATA_URL)
+    print(report.render_connection_check(settings, check))
+    return _check_exit_code(check, settings)
+
+
+def _check_exit_code(check, settings: Settings) -> int:
+    if check.status == CHECK_TLS_FAILED:
+        return EXIT_TLS
+    if check.status == CHECK_QUOTA:
+        return EXIT_QUOTA
+    # 인증키를 아예 넣지 않았다면 키 오류는 예상된 결과이므로 성공으로 본다.
+    if check.status == CHECK_AUTH:
+        return EXIT_AUTH if settings.api_key else EXIT_OK
+    if check.status == CHECK_OK:
+        return EXIT_OK
+    return EXIT_NETWORK
 
 
 def _emit_single(args: argparse.Namespace, result) -> None:
@@ -131,6 +162,9 @@ def main(argv: list[str] | None = None) -> int:
 
     cache = None
     try:
+        if args.command == "check":
+            return _run_check(args)
+
         service, cache = _build_service(args)
         options = LookupOptions(
             stdr_year=args.year,

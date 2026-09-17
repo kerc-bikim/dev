@@ -20,9 +20,10 @@ import requests
 from .. import parsers
 from ..cache import NullCache
 from ..config import Settings
-from ..errors import AuthError, NetworkError, QuotaError
+from ..errors import AuthError, NetworkError, QuotaError, TlsError
 from ..models import LandCharacteristics, LandLedger, Parcel
 from ..pnu import build_pnu
+from ..tls import build_session, tls_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,8 @@ class VWorldProvider:
             )
         self.settings = settings
         self.cache = cache or NullCache()
-        self.session = session or requests.Session()
+        # LATLON_CA_BUNDLE이 있으면 그 인증서로 서버를 검증한다.
+        self.session = build_session(settings, session)
 
     # --- HTTP ------------------------------------------------------------
 
@@ -74,6 +76,9 @@ class VWorldProvider:
         for attempt in range(1, max(self.settings.retries, 1) + 1):
             try:
                 response = self.session.get(url, params=params, timeout=self.settings.timeout)
+            except requests.exceptions.SSLError as exc:
+                # 인증서 문제는 다시 시도해도 같은 결과이므로 바로 알린다.
+                raise TlsError(f"{context}: {tls_error_message(self.session.verify, exc)}") from exc
             except Exception as exc:  # requests의 모든 전송 오류
                 last_error = exc
                 logger.debug("%s 요청 실패(%d회차): %s", context, attempt, exc)

@@ -69,6 +69,40 @@ def render_table(result: LookupResult) -> str:
     return "\n".join(lines)
 
 
+def _mask_key(api_key: str) -> str:
+    if not api_key:
+        return "없음"
+    return f"설정됨 ({api_key[:4]}…, {len(api_key)}자)"
+
+
+def render_connection_check(settings, check) -> str:
+    """`check` 명령의 점검 결과를 사람이 읽는 형태로 만든다."""
+    bundle = check.ca_bundle if isinstance(check.ca_bundle, str) else "(기본 신뢰 저장소)"
+    rows = [
+        ("provider", settings.provider),
+        ("VWORLD_API_KEY", _mask_key(settings.api_key)),
+        ("VWORLD_DOMAIN", settings.domain or "(설정 없음)"),
+        ("LATLON_CA_BUNDLE", bundle),
+    ]
+    verified = {True: "성공", False: "실패", None: "확인 못 함 (연결 실패)"}[check.tls_verified]
+    results: list[tuple[str, str]] = [("TLS 인증서 검증", verified)]
+    if check.http_status is not None:
+        results.append(("HTTP 상태", str(check.http_status)))
+    results.append(("점검 단계", check.status))
+
+    label_width = max(_display_width(name) for name, _ in [*rows, *results])
+
+    lines = ["설정", "-" * 56]
+    lines.extend(f"{_pad(name, label_width)}  {value}" for name, value in rows)
+    lines.extend(["", "점검 결과", "-" * 56])
+    lines.extend(f"{_pad(name, label_width)}  {value}" for name, value in results)
+    if check.detail:
+        lines.extend(["", check.detail])
+    if check.hint:
+        lines.extend(["", check.hint])
+    return "\n".join(lines)
+
+
 def render_json(results: LookupResult | list[LookupResult]) -> str:
     items = results if isinstance(results, list) else [results]
     payload = [
