@@ -8,7 +8,7 @@ from typing import List, Tuple
 
 from obspy import Inventory, Stream, UTCDateTime
 from obspy.clients.fdsn import Client
-from obspy.clients.fdsn.header import FDSNException
+from obspy.clients.fdsn.header import FDSNException, FDSNNoDataException
 
 from ..config import settings
 from ..models.schemas import ChannelInfo, NetworkInfo, StationInfo
@@ -81,26 +81,57 @@ def list_stations(network: str) -> List[StationInfo]:
     return sorted(out, key=lambda s: (s.network, s.code))
 
 
-def list_channels(network: str, station: str) -> List[ChannelInfo]:
+CHANNEL_SEARCH_LIMIT = 500
+
+
+def list_channels(
+    network: str,
+    station: str,
+    location: str | None = None,
+    channel: str | None = None,
+) -> List[ChannelInfo]:
+    """List channels. ``location`` / ``channel`` accept FDSN wildcards ``*`` / ``?``.
+
+    Empty location is sent as ``--``. Omit location/channel to return every
+    channel for the network/station (dropdown behaviour).
+    """
     client = get_client()
+    kwargs: dict = {
+        "network": network,
+        "station": station,
+        "level": "channel",
+    }
+    if location is not None:
+        kwargs["location"] = "--" if location == "" else location
+    if channel is not None:
+        kwargs["channel"] = channel or "*"
+
     try:
-        inv = client.get_stations(
-            network=network, station=station, level="channel"
-        )
+        inv = client.get_stations(**kwargs)
+    except FDSNNoDataException:
+        return []
     except FDSNException as exc:
-        raise FDSNError(
-            f"Failed to list channels for {network}.{station}: {exc}"
-        ) from exc
+        status = getattr(exc, "code", None)
+        if status == 204 or "204" in str(exc):
+            return []
+        nslc = f"{network}.{station}.{location or '*'}.{channel or '*'}"
+        raise FDSNError(f"Failed to list channels for {nslc}: {exc}") from exc
 
     out: List[ChannelInfo] = []
+    seen: set[Tuple[str, str, str, str]] = set()
     for net in inv:
         for sta in net:
             for cha in sta:
+                loc = cha.location_code or ""
+                key = (net.code, sta.code, loc, cha.code)
+                if key in seen:
+                    continue
+                seen.add(key)
                 out.append(
                     ChannelInfo(
                         network=net.code,
                         station=sta.code,
-                        location=cha.location_code or "",
+                        location=loc,
                         channel=cha.code,
                         sample_rate=float(cha.sample_rate)
                         if cha.sample_rate is not None
@@ -111,6 +142,11 @@ def list_channels(network: str, station: str) -> List[ChannelInfo]:
                         dip=float(cha.dip) if cha.dip is not None else None,
                     )
                 )
+                if len(out) >= CHANNEL_SEARCH_LIMIT:
+                    return sorted(
+                        out,
+                        key=lambda c: (c.network, c.station, c.location, c.channel),
+                    )
     return sorted(
         out,
         key=lambda c: (c.network, c.station, c.location, c.channel),

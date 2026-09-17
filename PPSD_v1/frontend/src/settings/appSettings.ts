@@ -1,4 +1,5 @@
 export type XAxisType = "period" | "frequency";
+export type InputMode = "dropdown" | "manual";
 
 /**
  * User-configurable frontend defaults, persisted in localStorage so they keep
@@ -6,6 +7,8 @@ export type XAxisType = "period" | "frequency";
  * every value is still overridable per-tab after mount.
  */
 export interface AppSettings {
+  /** Station/channel input: FDSN dropdowns or typed codes. */
+  input_mode: InputMode;
   // Heatmap (Single / Multi) defaults
   percentile_low: number;
   percentile_high: number;
@@ -29,6 +32,7 @@ export interface AppSettings {
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
+  input_mode: "dropdown",
   percentile_low: 10,
   percentile_high: 90,
   xaxis: "period",
@@ -68,7 +72,9 @@ export function loadSettings(): AppSettings {
     if (!raw) return { ...DEFAULT_APP_SETTINGS };
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
     // Merge so newly added settings fall back to defaults.
-    return { ...DEFAULT_APP_SETTINGS, ...parsed };
+    const merged = { ...DEFAULT_APP_SETTINGS, ...parsed };
+    if (merged.input_mode !== "manual") merged.input_mode = "dropdown";
+    return merged;
   } catch {
     return { ...DEFAULT_APP_SETTINGS };
   }

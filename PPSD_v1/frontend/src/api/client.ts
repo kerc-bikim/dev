@@ -264,12 +264,18 @@ export const api = {
     fetch(`${BASE}/api/stations?network=${encodeURIComponent(network)}`).then(
       (r) => jsonOrThrow<StationInfo[]>(r)
     ),
-  channels: (network: string, station: string) =>
-    fetch(
-      `${BASE}/api/channels?network=${encodeURIComponent(
-        network
-      )}&station=${encodeURIComponent(station)}`
-    ).then((r) => jsonOrThrow<ChannelInfo[]>(r)),
+  channels: (
+    network: string,
+    station: string,
+    opts?: { location?: string; channel?: string }
+  ) => {
+    const params = new URLSearchParams({ network, station });
+    if (opts?.location !== undefined) params.set("location", opts.location);
+    if (opts?.channel !== undefined) params.set("channel", opts.channel);
+    return fetch(`${BASE}/api/channels?${params.toString()}`).then((r) =>
+      jsonOrThrow<ChannelInfo[]>(r)
+    );
+  },
   ppsd: (body: PPSDRequestBody) =>
     fetch(`${BASE}/api/ppsd`, {
       method: "POST",

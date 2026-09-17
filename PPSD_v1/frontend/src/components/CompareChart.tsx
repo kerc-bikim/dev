@@ -20,8 +20,11 @@ export function CompareChart({ data, height = 560 }: Props) {
 
     const render = () => {
       const totalW = container.clientWidth || 720;
-      const totalH = height;
-      const m = { top: 34, right: 24, bottom: 46, left: 64 };
+      const totalH = container.clientHeight || height;
+      const m =
+        totalW < 600
+          ? { top: 46, right: 12, bottom: 48, left: 52 }
+          : { top: 34, right: 24, bottom: 46, left: 64 };
       const plotW = Math.max(10, totalW - m.left - m.right);
       const plotH = Math.max(10, totalH - m.top - m.bottom);
 
@@ -163,14 +166,18 @@ export function CompareChart({ data, height = 560 }: Props) {
     render();
     const ro = new ResizeObserver(() => render());
     ro.observe(container);
-    return () => ro.disconnect();
+    window.addEventListener("resize", render);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", render);
+    };
   }, [data, height]);
 
   return (
     <div
       ref={containerRef}
-      className="chart-container"
-      style={{ position: "relative", width: "100%", height }}
+      className="chart-container full-chart"
+      style={{ position: "relative", width: "100%" }}
     >
       <svg ref={svgRef} style={{ position: "absolute", left: 0, top: 0 }} />
     </div>

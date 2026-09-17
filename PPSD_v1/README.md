@@ -40,6 +40,20 @@ npm run dev
 브라우저에서 `http://localhost:5173` 열기. dev 서버는 `/api/*` 요청을
 `http://localhost:8000` 으로 프록시합니다.
 
+### 모바일에서 접속
+
+프론트엔드는 모바일 화면에서 입력 패널과 결과를 세로 배치하고, 상단 탭은 가로
+스크롤하도록 반응형으로 구성되어 있습니다. 같은 네트워크의 모바일 기기에서
+개발 PC의 IP로 접속합니다.
+
+```text
+http://<개발-PC-IP>:5173
+```
+
+Vite 개발 서버는 `host: true`로 외부 접속을 허용합니다. Windows 방화벽에서
+5173 포트 접근이 허용되어 있어야 하며, 백엔드 API는 Vite의 `/api` 프록시를
+통해 호출됩니다. Docker 실행 시에는 `http://<개발-PC-IP>:8080`으로 접속합니다.
+
 ## Docker 로 실행
 
 ```powershell
@@ -284,6 +298,7 @@ python -m pip install "setuptools>=68,<81" setuptools-scm
 
 지정 가능한 기본값:
 
+- Input mode (Dropdown / Manual, 기본 **Dropdown**)
 - Percentiles Low / High (Single·Multi)
 - X 축 (Period / Frequency)
 - Colormap (`viridis`, `magma`, `plasma`, `inferno`, `cividis`, `turbo`, `hot`,

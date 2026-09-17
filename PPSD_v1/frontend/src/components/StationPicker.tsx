@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
 import { api, ChannelInfo, NetworkInfo, StationInfo } from "../api/client";
+import { useSettings } from "../settings/SettingsContext";
+import type { InputMode } from "../settings/appSettings";
+import { ManualNslcInput } from "./ManualNslcInput";
+import {
+  formatNslc,
+  nslcIsCompleteExact,
+  parseNslcInput,
+} from "../utils/nslc";
 
 export interface StationSelection {
   network: string;
@@ -13,15 +21,17 @@ interface Props {
   onChange: (v: StationSelection) => void;
 }
 
-type Mode = "dropdown" | "manual";
-
 export function StationPicker({ value, onChange }: Props) {
-  const [mode, setMode] = useState<Mode>("dropdown");
+  const { settings } = useSettings();
+  const [mode, setMode] = useState<InputMode>(settings.input_mode);
   const [networks, setNetworks] = useState<NetworkInfo[]>([]);
   const [stations, setStations] = useState<StationInfo[]>([]);
   const [channels, setChannels] = useState<ChannelInfo[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [manualQuery, setManualQuery] = useState(() =>
+    value.network && value.station && value.channel ? formatNslc(value) : ""
+  );
 
   useEffect(() => {
     if (mode !== "dropdown") return;
@@ -62,6 +72,18 @@ export function StationPicker({ value, onChange }: Props) {
   const set = (patch: Partial<StationSelection>) =>
     onChange({ ...value, ...patch });
 
+  const selectedManual: ChannelInfo[] =
+    value.network && value.station && value.channel
+      ? [
+          {
+            network: value.network,
+            station: value.station,
+            location: value.location,
+            channel: value.channel,
+          },
+        ]
+      : [];
+
   return (
     <div>
       <div className="toggle-row">
@@ -75,7 +97,12 @@ export function StationPicker({ value, onChange }: Props) {
         </button>
         <button
           className={mode === "manual" ? "active" : ""}
-          onClick={() => setMode("manual")}
+          onClick={() => {
+            setMode("manual");
+            if (value.network && value.station && value.channel) {
+              setManualQuery(formatNslc(value));
+            }
+          }}
           type="button"
         >
           Manual
@@ -143,48 +170,36 @@ export function StationPicker({ value, onChange }: Props) {
           </div>
         </>
       ) : (
-        <>
-          <div className="row-2">
-            <div className="field">
-              <label>Network</label>
-              <input
-                type="text"
-                value={value.network}
-                onChange={(e) => set({ network: e.target.value.toUpperCase() })}
-                placeholder="e.g. IU"
-              />
-            </div>
-            <div className="field">
-              <label>Station</label>
-              <input
-                type="text"
-                value={value.station}
-                onChange={(e) => set({ station: e.target.value.toUpperCase() })}
-                placeholder="e.g. ANMO"
-              />
-            </div>
-          </div>
-          <div className="row-2">
-            <div className="field">
-              <label>Location</label>
-              <input
-                type="text"
-                value={value.location}
-                onChange={(e) => set({ location: e.target.value })}
-                placeholder="00 (or empty)"
-              />
-            </div>
-            <div className="field">
-              <label>Channel</label>
-              <input
-                type="text"
-                value={value.channel}
-                onChange={(e) => set({ channel: e.target.value.toUpperCase() })}
-                placeholder="e.g. BHZ"
-              />
-            </div>
-          </div>
-        </>
+        <ManualNslcInput
+          query={manualQuery}
+          singleSelect
+          onQueryChange={(text) => {
+            setManualQuery(text);
+            const parsed = parseNslcInput(text);
+            if (parsed && nslcIsCompleteExact(parsed)) {
+              onChange({
+                network: parsed.network,
+                station: parsed.station,
+                location: parsed.location,
+                channel: parsed.channel,
+              });
+            }
+          }}
+          selected={selectedManual}
+          onSelectedChange={(chs) => {
+            const c = chs[0];
+            if (!c) {
+              onChange({ network: "", station: "", location: "", channel: "" });
+              return;
+            }
+            onChange({
+              network: c.network,
+              station: c.station,
+              location: c.location,
+              channel: c.channel,
+            });
+          }}
+        />
       )}
     </div>
   );
