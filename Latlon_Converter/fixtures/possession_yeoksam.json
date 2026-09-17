@@ -1,0 +1,33 @@
+{
+  "possessions": {
+    "pageNo": "1",
+    "numOfRows": "10",
+    "totalCount": "1",
+    "resultCode": "",
+    "resultMsg": "",
+    "field": [
+      {
+        "pnu": "1168010100108080000",
+        "ldCode": "1168010100",
+        "ldCodeNm": "서울특별시 강남구 역삼동",
+        "regstrSeCode": "1",
+        "regstrSeCodeNm": "토지대장",
+        "mnnmSlno": "808",
+        "posesnSeCode": "01",
+        "posesnSeCodeNm": "개인",
+        "nationInsttSeCode": "ZZ",
+        "nationInsttSeCodeNm": "구분없음",
+        "resdncSeCode": "02",
+        "resdncSeCodeNm": "시도내",
+        "ownshipChgCauseCode": "06",
+        "ownshipChgCauseCodeNm": "주소경정",
+        "ownshipChgDe": "2017-06-30",
+        "cnrsPsnCo": "0",
+        "lndcgrCode": "08",
+        "lndcgrCodeNm": "대",
+        "lndpclAr": "738.1",
+        "lastUpdtDt": "2025-08-26"
+      }
+    ]
+  }
+}

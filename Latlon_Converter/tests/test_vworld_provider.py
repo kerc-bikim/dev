@@ -82,6 +82,8 @@ def test_cadastral_request_parameters(settings):
     # POINT는 경도가 먼저다.
     assert params["geomFilter"] == "POINT(127.02505 37.50435)"
     assert params["crs"] == "EPSG:4326"
+    assert params["geometry"] == "true"
+    assert params["size"] == "10"
     assert params["key"] == "TEST-KEY"
     assert params["domain"] == "http://localhost"
 
@@ -120,6 +122,7 @@ def test_ned_requests_carry_pnu_and_domain(settings):
     session = FakeSession(
         {
             vworld_module.LADFRL_URL: FakeResponse(load("ladfrl_yeoksam.json")),
+            vworld_module.POSSESSION_URL: FakeResponse(load("possession_yeoksam.json")),
             vworld_module.LANDCHAR_URL: FakeResponse(load("landchar_yeoksam.json")),
         }
     )
@@ -129,13 +132,28 @@ def test_ned_requests_carry_pnu_and_domain(settings):
     characteristics = provider.get_characteristics("1168010100108080000", 2025)
 
     assert ledger is not None and ledger.ownership_type == "개인"
+    assert ledger.residence_type == "시도내"
+    assert ledger.ownership_agency == ""
     assert characteristics is not None and characteristics.use_area1 == "일반상업지역"
-    for url in (vworld_module.LADFRL_URL, vworld_module.LANDCHAR_URL):
+    for url in (vworld_module.LADFRL_URL, vworld_module.POSSESSION_URL, vworld_module.LANDCHAR_URL):
         params = session.params_for(url)
         assert params["pnu"] == "1168010100108080000"
         assert params["format"] == "json"
         assert params["domain"] == "http://localhost"
     assert session.params_for(vworld_module.LANDCHAR_URL)["stdrYear"] == "2025"
+
+
+def test_possession_failure_keeps_ledger(settings):
+    session = FakeSession(
+        {
+            vworld_module.LADFRL_URL: FakeResponse(load("ladfrl_mountain.json")),
+            vworld_module.POSSESSION_URL: ConnectionError("timeout"),
+        }
+    )
+    ledger = VWorldProvider(settings, session=session).get_ledger("4215038023200120003")
+    assert ledger is not None
+    assert ledger.ownership_type == "국유지"
+    assert ledger.ownership_agency == ""
 
 
 def test_error_payloads_are_classified(settings):
@@ -183,3 +201,38 @@ def test_transport_failure_is_retried_then_raises(settings):
     with pytest.raises(NetworkError):
         VWorldProvider(settings, session=session).get_parcel(37.5, 127.0)
     assert len(session.calls) == 3
+
+
+def test_nearby_uses_box_filter(settings):
+    session = FakeSession({vworld_module.DATA_URL: FakeResponse(load("cadastral_yeoksam.json"))})
+    hits = VWorldProvider(settings, session=session).find_nearby(37.50435, 127.02505, radius_m=150)
+    params = session.params_for(vworld_module.DATA_URL)
+    assert params["geomFilter"].startswith("BOX(")
+    assert params["geometry"] == "true"
+    assert hits[0].pnu == "1168010100108080000"
+
+
+def test_search_address_parameters(settings):
+    payload = {
+        "response": {
+            "status": "OK",
+            "result": {
+                "items": [
+                    {
+                        "id": "1168010100108080000",
+                        "title": "서울특별시 강남구 역삼동 808",
+                        "point": {"x": "127.02505", "y": "37.50435"},
+                        "address": {"parcel": "서울특별시 강남구 역삼동 808"},
+                    }
+                ]
+            },
+        }
+    }
+    session = FakeSession({vworld_module.SEARCH_URL: FakeResponse(payload)})
+    hits = VWorldProvider(settings, session=session).search_address("역삼동 808")
+    params = session.params_for(vworld_module.SEARCH_URL)
+    assert params["query"] == "역삼동 808"
+    assert params["category"] == "parcel"
+    assert "domain" not in params
+    assert hits[0].lat == 37.50435
+    assert hits[0].lon == 127.02505

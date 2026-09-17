@@ -1,6 +1,6 @@
 """브이월드 응답 파싱.
 
-`ladfrlList`는 루트가 `fields`, 토지특성/공시지가는 루트가 `response`로
+`ladfrlList`는 루트가 `fields`, 토지특성/토지소유/공시지가는 루트가 `response`로
 봉투 구조가 서로 다르다. 응답 형태가 조금씩 달라도 견디도록 알려진 키를
 재귀로 찾아 쓴다. mock 프로바이더도 같은 파서를 거치므로 두 경로가
 같은 스키마를 보증한다.
@@ -39,14 +39,23 @@ def _as_text(value: Any) -> str:
 
 
 def find_records(payload: Any, key: str) -> list[dict[str, Any]]:
-    """중첩 응답 어디에 있든 `key` 목록을 찾아 dict 리스트로 돌려준다."""
+    """중첩 응답 어디에 있든 `key` 목록을 찾아 dict 리스트로 돌려준다.
+
+    브이월드 NED는 같은 키로 봉투를 한 겹 더 씌우는 경우가 있다.
+    `ladfrlVOList: { pageNo, ladfrlVOList: [레코드...] }` 이면 안쪽 목록을 쓴다.
+    """
     if isinstance(payload, dict):
         if key in payload:
             found = payload[key]
-            if isinstance(found, dict):
-                return [found]
             if isinstance(found, list):
                 return [item for item in found if isinstance(item, dict)]
+            if isinstance(found, dict):
+                nested = found.get(key)
+                if isinstance(nested, list):
+                    return [item for item in nested if isinstance(item, dict)]
+                if isinstance(nested, dict):
+                    return [nested]
+                return [found]
         for value in payload.values():
             records = find_records(value, key)
             if records:
@@ -136,9 +145,7 @@ def parse_cadastral(payload: Any) -> Parcel | None:
 def select_parcel(features: list[CadastralFeature], lat: float, lon: float) -> Parcel | None:
     """한 점에 걸린 여러 필지 중 하나를 고른다.
 
-    점을 실제로 품는 필지만 남긴 뒤, 그중 가장 작은 필지를 고른다. 지적도
-    필지와 임야도 필지가 겹쳐 있을 때 더 촘촘히 등록된 쪽을 뜻한다.
-    고르지 못한 나머지는 `alternatives`에 담아 눈에 보이게 한다.
+    점을 실제로 품는 필지만 남긴 뒤, 그중 가장 작은 필지를 고른다.
     """
     if not features:
         return None
@@ -148,17 +155,18 @@ def select_parcel(features: list[CadastralFeature], lat: float, lon: float) -> P
             feature,
             geometry.point_in_geometry(lon, lat, feature.geometry),
             geometry.approx_area_m2(feature.geometry, lat),
+            geometry.min_edge_distance_m(lon, lat, feature.geometry),
         )
         for feature in features
     ]
     containing = [entry for entry in scored if entry[1] is True]
     pool = containing or scored
-    # 면적을 모르면(도형 없음) 응답 순서를 그대로 따른다.
     pool = sorted(pool, key=lambda entry: entry[2] if entry[2] is not None else math.inf)
 
-    chosen_feature, contains, _ = pool[0]
+    chosen_feature, contains, _, edge_m = pool[0]
     parcel = chosen_feature.parcel
     parcel.contains_point = contains
+    parcel.distance_m = edge_m
     parcel.alternatives = [
         ParcelCandidate(
             pnu=feature.parcel.pnu,
@@ -166,8 +174,9 @@ def select_parcel(features: list[CadastralFeature], lat: float, lon: float) -> P
             jibun=feature.parcel.jibun,
             contains_point=inside,
             approx_area_m2=area,
+            distance_m=distance,
         )
-        for feature, inside, area in scored
+        for feature, inside, area, distance in scored
         if feature is not chosen_feature
     ]
     return parcel
@@ -194,6 +203,34 @@ def _parse_cadastral_properties(properties: Any) -> Parcel | None:
         price_month=_as_text(properties.get("gosi_month")),
         source="cadastral",
     )
+
+
+def parse_search_items(payload: Any) -> list[ParcelCandidate]:
+    """검색 API 응답에서 주소 후보를 읽는다."""
+    raise_for_error(payload, "주소 검색")
+    items = find_records(payload, "items")
+    hits: list[ParcelCandidate] = []
+    for item in items:
+        point = item.get("point") if isinstance(item.get("point"), dict) else {}
+        address = item.get("address") if isinstance(item.get("address"), dict) else {}
+        parcel_text = _as_text(address.get("parcel")) or _as_text(item.get("title"))
+        lon_text = _as_text(point.get("x"))
+        lat_text = _as_text(point.get("y"))
+        try:
+            lon = float(lon_text) if lon_text else None
+            lat = float(lat_text) if lat_text else None
+        except ValueError:
+            lon = lat = None
+        hits.append(
+            ParcelCandidate(
+                pnu=_as_text(item.get("id")) or _as_text(address.get("parcel")),
+                jibun_address=parcel_text,
+                jibun=parcel_text,
+                lat=lat,
+                lon=lon,
+            )
+        )
+    return hits
 
 
 def _derive_ld_name(address: str, jibun: str) -> str:
@@ -267,6 +304,7 @@ def parse_ledger(payload: Any) -> LandLedger | None:
     """토지임야정보(ladfrlList) 응답을 읽는다."""
     raise_for_error(payload, "토지임야정보 조회")
     records = find_records(payload, "ladfrlVOList")
+    records = [record for record in records if _as_text(record.get("pnu")) or _as_text(record.get("posesnSeCodeNm"))]
     if not records:
         return None
     record = records[0]
@@ -299,6 +337,84 @@ def parse_ledger(payload: Any) -> LandLedger | None:
         scale=codes.scale_name(_as_text(record.get("ladFrtlSc")), _as_text(record.get("ladFrtlScNm"))),
         last_update=_as_text(record.get("lastUpdtDt")),
     )
+
+
+def parse_possession(payload: Any) -> LandLedger | None:
+    """토지소유정보(getPossessionAttr) 응답을 읽는다.
+
+    소유구분은 ladfrlList와 같고, 국유지는 국가기관구분(중앙부처 등),
+    개인은 거주지구분(시도내 등)이 한 단계 더 온다. 성명은 없다.
+    """
+    raise_for_error(payload, "토지소유정보 조회")
+    records = find_records(payload, "field")
+    records = [
+        record
+        for record in records
+        if _as_text(record.get("pnu")) or _as_text(record.get("posesnSeCodeNm"))
+    ]
+    if not records:
+        return None
+    record = records[0]
+    return LandLedger(
+        pnu=_as_text(record.get("pnu")),
+        ld_code=_as_text(record.get("ldCode")),
+        ld_name=_as_text(record.get("ldCodeNm")),
+        jibun=_as_text(record.get("mnnmSlno")),
+        register_type=codes.register_type_name(
+            _as_text(record.get("regstrSeCode")), _as_text(record.get("regstrSeCodeNm"))
+        ),
+        land_category=codes.land_category_name(
+            _as_text(record.get("lndcgrCode")), _as_text(record.get("lndcgrCodeNm"))
+        ),
+        area=_as_text(record.get("lndpclAr")),
+        ownership_type=codes.ownership_type_name(
+            _as_text(record.get("posesnSeCode")), _as_text(record.get("posesnSeCodeNm"))
+        ),
+        ownership_agency=codes.agency_name(
+            _as_text(record.get("nationInsttSeCode")),
+            _as_text(record.get("nationInsttSeCodeNm")),
+        ),
+        residence_type=codes.residence_name(
+            _as_text(record.get("resdncSeCode")),
+            _as_text(record.get("resdncSeCodeNm")),
+        ),
+        co_owner_count=_as_text(record.get("cnrsPsnCo")),
+        ownership_change_reason=_as_text(record.get("ownshipChgCauseCodeNm")),
+        ownership_change_date=_as_text(record.get("ownshipChgDe")),
+        last_update=_as_text(record.get("lastUpdtDt")),
+    )
+
+
+def merge_ledger_possession(ledger: LandLedger | None, possession: LandLedger | None) -> LandLedger | None:
+    """대장 항목을 우선하고, 비어 있는 소유 세부만 토지소유정보로 채운다."""
+    if ledger is None:
+        return possession
+    if possession is None:
+        return ledger
+    return LandLedger(
+        pnu=_prefer(ledger.pnu, possession.pnu),
+        ld_code=_prefer(ledger.ld_code, possession.ld_code),
+        ld_name=_prefer(ledger.ld_name, possession.ld_name),
+        jibun=_prefer(ledger.jibun, possession.jibun),
+        register_type=_prefer(ledger.register_type, possession.register_type),
+        land_category=_prefer(ledger.land_category, possession.land_category),
+        area=_prefer(ledger.area, possession.area),
+        ownership_type=_prefer(ledger.ownership_type, possession.ownership_type),
+        ownership_agency=_prefer(ledger.ownership_agency, possession.ownership_agency),
+        residence_type=_prefer(ledger.residence_type, possession.residence_type),
+        co_owner_count=_prefer(ledger.co_owner_count, possession.co_owner_count),
+        ownership_change_reason=_prefer(ledger.ownership_change_reason, possession.ownership_change_reason),
+        ownership_change_date=_prefer(ledger.ownership_change_date, possession.ownership_change_date),
+        scale=_prefer(ledger.scale, possession.scale),
+        last_update=_prefer(ledger.last_update, possession.last_update),
+    )
+
+
+def _prefer(*values: str) -> str:
+    for value in values:
+        if value:
+            return value
+    return ""
 
 
 def parse_characteristics(payload: Any, stdr_year: str = "") -> LandCharacteristics | None:

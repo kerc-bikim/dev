@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from latlon_converter.errors import AuthError, InputError, LatlonError, QuotaError
-from latlon_converter.models import LandCharacteristics, LandLedger, Parcel
+from latlon_converter.models import LandCharacteristics, LandLedger, Parcel, ParcelCandidate
 from latlon_converter.providers.mock import MOCK_LABEL, MockProvider
 from latlon_converter.service import LandLookupService, LookupOptions, current_year
 
@@ -157,3 +157,37 @@ def test_mock_fixture_result_is_not_flagged():
     result = service.lookup_point(37.50435, 127.02505)
     assert result.parcel is not None and result.parcel.pnu == "1168010100108080000"
     assert not any("합성 데이터" in warning for warning in result.warnings)
+
+
+def test_tokyo_crs_transforms_before_lookup():
+    class Recording(StubProvider):
+        def __init__(self):
+            super().__init__(parcel=make_parcel())
+            self.points: list[tuple[float, float]] = []
+
+        def get_parcel(self, lat, lon, with_road=False):
+            self.points.append((lat, lon))
+            return self._parcel
+
+    provider = Recording()
+    result = LandLookupService(provider).lookup_point(
+        37.968352, 124.645289, LookupOptions(crs="tokyo")
+    )
+    lat, lon = provider.points[0]
+    assert lon > 124.645289
+    assert any("동경측지계" in warning for warning in result.warnings)
+
+
+def test_nearby_is_attached_and_excludes_chosen_parcel():
+    class NearbyProvider(StubProvider):
+        def find_nearby(self, lat, lon, radius_m=300, size=50):
+            return [
+                ParcelCandidate(pnu="1168010100108080000", jibun_address="선택된 필지"),
+                ParcelCandidate(pnu="2872033023108530000", jibun_address="가을리 853", distance_m=206),
+            ]
+
+    result = LandLookupService(NearbyProvider(parcel=make_parcel())).lookup_point(
+        37.5, 127.0, LookupOptions(nearby_m=300)
+    )
+    assert [item.pnu for item in result.nearby] == ["2872033023108530000"]
+    assert any("주변 300m 필지" in warning for warning in result.warnings)

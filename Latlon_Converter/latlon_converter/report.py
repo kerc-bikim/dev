@@ -7,7 +7,7 @@ import json
 from dataclasses import asdict
 from typing import Iterable, TextIO
 
-from .models import OUTPUT_COLUMNS, OWNER_NAME_NOTICE, LookupResult
+from .models import OUTPUT_COLUMNS, OWNER_NAME_NOTICE, LookupResult, ParcelCandidate
 
 # 한 화면에 보여 줄 항목과 표시 순서.
 _DETAIL_FIELDS: tuple[str, ...] = (
@@ -20,6 +20,8 @@ _DETAIL_FIELDS: tuple[str, ...] = (
     "지목",
     "면적(㎡)",
     "소유구분",
+    "국가기관구분",
+    "거주지구분",
     "공유인수",
     "소유권변동원인",
     "소유권변동일자",
@@ -64,6 +66,19 @@ def render_table(result: LookupResult) -> str:
     lines.append("-" * 56)
     lines.append(f"소유자 성명  {OWNER_NAME_NOTICE}")
     lines.append(f"등기 열람    {row['등기열람URL']}")
+
+    alternatives = result.parcel.alternatives if result.parcel else []
+    if alternatives:
+        lines.append("")
+        lines.append("같은 점의 다른 필지")
+        for item in alternatives[:8]:
+            lines.append(f"  · {item.describe()}")
+    if result.nearby:
+        lines.append("")
+        lines.append("주변 필지")
+        for item in result.nearby[:12]:
+            lines.append(f"  · {item.describe()}")
+
     for warning in result.warnings:
         lines.append(f"[알림] {warning}")
     return "\n".join(lines)
@@ -128,6 +143,7 @@ def render_json(results: LookupResult | list[LookupResult]) -> str:
             else [],
             "ledger": asdict(item.ledger) if item.ledger else None,
             "characteristics": asdict(item.characteristics) if item.characteristics else None,
+            "nearby": [asdict(candidate) for candidate in item.nearby],
             "owner_name_notice": OWNER_NAME_NOTICE,
             "registry_url": item.registry_url,
             "warnings": item.warnings,
@@ -137,6 +153,24 @@ def render_json(results: LookupResult | list[LookupResult]) -> str:
     if not isinstance(results, list):
         return json.dumps(payload[0], ensure_ascii=False, indent=2)
     return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def render_search(hits: list[ParcelCandidate], query: str) -> str:
+    lines = [f"검색 {query}", "-" * 56]
+    if not hits:
+        lines.append("결과가 없습니다.")
+        return "\n".join(lines)
+    for hit in hits:
+        lines.append(f"  · {hit.describe()}")
+    return "\n".join(lines)
+
+
+def render_search_json(hits: list[ParcelCandidate], query: str) -> str:
+    return json.dumps(
+        {"query": query, "count": len(hits), "items": [asdict(hit) for hit in hits]},
+        ensure_ascii=False,
+        indent=2,
+    )
 
 
 def write_csv(stream: TextIO, rows: Iterable[tuple[dict[str, str], LookupResult]]) -> int:

@@ -20,6 +20,8 @@ OUTPUT_COLUMNS: tuple[str, ...] = (
     "지목",
     "면적(㎡)",
     "소유구분",
+    "국가기관구분",
+    "거주지구분",
     "공유인수",
     "소유권변동원인",
     "소유권변동일자",
@@ -35,7 +37,7 @@ OUTPUT_COLUMNS: tuple[str, ...] = (
 
 @dataclass
 class ParcelCandidate:
-    """같은 지점에서 함께 조회된 다른 필지."""
+    """같은 지점 또는 주변에서 함께 조회된 필지."""
 
     pnu: str
     jibun_address: str = ""
@@ -43,6 +45,8 @@ class ParcelCandidate:
     contains_point: bool | None = None
     approx_area_m2: float | None = None
     distance_m: float | None = None
+    lat: float | None = None
+    lon: float | None = None
 
     def describe(self) -> str:
         parts = [self.jibun_address or self.jibun or self.pnu]
@@ -52,8 +56,13 @@ class ParcelCandidate:
             parts.append(f"약 {round(self.approx_area_m2):,}㎡")
         if self.contains_point is True:
             parts.append("점 포함")
-        elif self.distance_m is not None:
-            parts.append(f"{self.distance_m:.0f}m")
+        if self.distance_m is not None:
+            if self.contains_point is True:
+                parts.append(f"경계 {self.distance_m:.0f}m")
+            else:
+                parts.append(f"{self.distance_m:.0f}m")
+        if self.lat is not None and self.lon is not None:
+            parts.append(f"{self.lat:.6f}, {self.lon:.6f}")
         return " · ".join(parts)
 
 
@@ -71,9 +80,8 @@ class Parcel:
     price_year: str = ""
     price_month: str = ""
     source: str = "cadastral"
-    # 경계 안에 실제로 들어가는지. 도형을 못 받으면 None.
     contains_point: bool | None = None
-    # 같은 점에서 함께 걸린 다른 필지들.
+    distance_m: float | None = None
     alternatives: list[ParcelCandidate] = field(default_factory=list)
 
 
@@ -89,6 +97,8 @@ class LandLedger:
     land_category: str = ""
     area: str = ""
     ownership_type: str = ""
+    ownership_agency: str = ""
+    residence_type: str = ""
     co_owner_count: str = ""
     ownership_change_reason: str = ""
     ownership_change_date: str = ""
@@ -123,6 +133,7 @@ class LookupResult:
     parcel: Parcel | None = None
     ledger: LandLedger | None = None
     characteristics: LandCharacteristics | None = None
+    nearby: list[ParcelCandidate] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
     @property
@@ -160,6 +171,8 @@ class LookupResult:
             "지목": (ledger.land_category if ledger and ledger.land_category else (chars.land_category if chars else "")),
             "면적(㎡)": (ledger.area if ledger and ledger.area else (chars.area if chars else "")),
             "소유구분": ledger.ownership_type if ledger else "",
+            "국가기관구분": ledger.ownership_agency if ledger else "",
+            "거주지구분": ledger.residence_type if ledger else "",
             "공유인수": ledger.co_owner_count if ledger else "",
             "소유권변동원인": ledger.ownership_change_reason if ledger else "",
             "소유권변동일자": ledger.ownership_change_date if ledger else "",

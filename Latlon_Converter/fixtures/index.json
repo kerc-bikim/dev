@@ -9,6 +9,7 @@
       "cadastral": "cadastral_yeoksam.json",
       "geocoder": "geocoder_yeoksam.json",
       "ledger": "ladfrl_yeoksam.json",
+      "possession": "possession_yeoksam.json",
       "characteristics": "landchar_yeoksam.json"
     },
     {
@@ -17,6 +18,7 @@
       "lon": 128.8761,
       "cadastral": "cadastral_mountain.json",
       "ledger": "ladfrl_mountain.json",
+      "possession": "possession_mountain.json",
       "characteristics": "landchar_mountain.json"
     },
     {

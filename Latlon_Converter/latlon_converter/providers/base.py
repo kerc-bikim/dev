@@ -27,3 +27,15 @@ class LandDataProvider(Protocol):
 
     def get_characteristics(self, pnu: str, stdr_year: int) -> LandCharacteristics | None:
         """해당 기준연도의 토지특성정보를 가져온다."""
+
+    def find_nearby(
+        self,
+        lat: float,
+        lon: float,
+        radius_m: float = 300,
+        size: int = 50,
+    ) -> list[ParcelCandidate]:
+        """좌표 주변 필지를 가까운 순으로 돌려준다. 없으면 빈 목록."""
+
+    def search_address(self, query: str) -> list[ParcelCandidate]:
+        """지번 주소로 좌표 후보를 찾는다. 없으면 빈 목록."""

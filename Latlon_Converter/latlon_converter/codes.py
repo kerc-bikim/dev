@@ -52,6 +52,15 @@ REGISTER_TYPE: dict[str, str] = {
 
 # 소유구분코드 (posesnSeCode)
 OWNERSHIP_TYPE: dict[str, str] = {
+    "01": "개인",
+    "02": "국유지",
+    "03": "외국인,외국공공기관",
+    "04": "시.도유지",
+    "05": "군유지",
+    "06": "법인",
+    "07": "종중",
+    "08": "종교단체",
+    "09": "기타단체",
     "3300": "일본인,창씨명",
     "3301": "개인",
     "3302": "국유지",
@@ -64,8 +73,31 @@ OWNERSHIP_TYPE: dict[str, str] = {
     "3309": "기타단체",
 }
 
+# 국가기관구분코드 (nationInsttSeCode) — 국유지·공유지만 채워진다.
+NATION_INSTT: dict[str, str] = {
+    "01": "중앙부처",
+    "02": "지자체",
+    "03": "정부투자기관",
+    "04": "정부출연기관",
+    "05": "지방공기업",
+}
+
+# 거주지구분코드 (resdncSeCode) — 개인 소유일 때 채워진다.
+RESIDENCE_TYPE: dict[str, str] = {
+    "01": "시도외",
+    "02": "시도내",
+    "03": "시군구외",
+    "04": "시군구내",
+}
+
+# 응답에 오는 자리채움 값. 표·CSV에는 비워 둔다.
+_BLANK_LABELS = frozenset({"구분없음", "지정되지않음", "해당없음", "zz", "ZZ", "0000", "00"})
+
 # 축척구분코드 (ladFrtlSc)
 SCALE_TYPE: dict[str, str] = {
+    "00": "수치",
+    "12": "1:1200",
+    "60": "1:6000",
     "5505": "1:500",
     "5506": "1:600",
     "5510": "1:1000",
@@ -92,7 +124,18 @@ def _lookup(table: dict[str, str], code: str | None, name: str | None) -> str:
 
 
 def land_category_name(code: str | None, name: str | None = None) -> str:
-    return _lookup(LAND_CATEGORY, code, name)
+    if name and name.strip():
+        return name.strip()
+    key = (code or "").strip()
+    if not key:
+        return ""
+    if key in LAND_CATEGORY:
+        return LAND_CATEGORY[key]
+    if key.isdigit():
+        padded = key.zfill(4)
+        if padded in LAND_CATEGORY:
+            return LAND_CATEGORY[padded]
+    return f"알수없음({key})"
 
 
 def register_type_name(code: str | None, name: str | None = None) -> str:
@@ -101,6 +144,34 @@ def register_type_name(code: str | None, name: str | None = None) -> str:
 
 def ownership_type_name(code: str | None, name: str | None = None) -> str:
     return _lookup(OWNERSHIP_TYPE, code, name)
+
+
+def public_label(name: str | None) -> str:
+    """자리채움 명칭은 빈 문자열로 만든다."""
+    text = (name or "").strip()
+    if not text or text in _BLANK_LABELS or text.lower() == "zz":
+        return ""
+    return text
+
+
+def agency_name(code: str | None, name: str | None = None) -> str:
+    cleaned = public_label(name)
+    if cleaned:
+        return cleaned
+    key = (code or "").strip()
+    if not key or key.upper() in {"ZZ", "00", "0000"}:
+        return ""
+    return NATION_INSTT.get(key, f"알수없음({key})")
+
+
+def residence_name(code: str | None, name: str | None = None) -> str:
+    cleaned = public_label(name)
+    if cleaned:
+        return cleaned
+    key = (code or "").strip()
+    if not key or key.upper() in {"ZZ", "00", "0000"}:
+        return ""
+    return RESIDENCE_TYPE.get(key, f"알수없음({key})")
 
 
 def scale_name(code: str | None, name: str | None = None) -> str:

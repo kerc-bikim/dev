@@ -9,13 +9,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
-from .. import parsers
+from .. import geometry, parsers
 from ..config import FIXTURES_DIR
 from ..models import LandCharacteristics, LandLedger, Parcel, ParcelCandidate
 from ..pnu import build_pnu, format_jibun, parse_pnu
+
+logger = logging.getLogger(__name__)
 
 # 국내를 대강 감싸는 사각 범위. 해상도 들어가는 근사치라 mock 안에서만 쓴다.
 # 이 밖이면 필지가 없는 것으로 본다.
@@ -116,6 +119,7 @@ class MockProvider:
             parcel = parsers.parse_cadastral(self._payload(entry["cadastral"]))
             if parcel and with_road and entry.get("geocoder"):
                 parcel.road_address = parsers.parse_road_address(self._payload(entry["geocoder"]))
+            logger.info("mock fixtures 재생 %s", entry.get("label") or entry.get("cadastral"))
             return parcel
 
         lat_min, lat_max, lon_min, lon_max = KOREA_BBOX
@@ -124,29 +128,78 @@ class MockProvider:
         parcel = parsers.parse_cadastral(_synth_cadastral(lat, lon))
         if parcel:
             parcel.source = SYNTHESIZED_SOURCE
+            logger.info("mock 합성 필지 PNU %s", parcel.pnu)
         return parcel
 
-    def find_nearby(self, lat: float, lon: float, meters: float) -> list[ParcelCandidate]:
-        """mock에는 경계 도형이 없으므로 그 좌표의 필지 하나만 돌려준다."""
-        parcel = self.get_parcel(lat, lon)
-        if parcel is None:
-            return []
-        return [
-            ParcelCandidate(
-                pnu=parcel.pnu,
-                jibun_address=parcel.jibun_address,
-                jibun=parcel.jibun,
-                distance_m=0.0,
+    def find_nearby(
+        self,
+        lat: float,
+        lon: float,
+        radius_m: float = 300,
+        size: int = 50,
+    ) -> list[ParcelCandidate]:
+        hits: list[ParcelCandidate] = []
+        for entry in self.points:
+            cadastral = entry.get("cadastral")
+            if not cadastral:
+                continue
+            parcel = parsers.parse_cadastral(self._payload(cadastral))
+            if parcel is None:
+                continue
+            distance = geometry.distance_m(lon, lat, float(entry["lon"]), float(entry["lat"]))
+            if distance > radius_m:
+                continue
+            hits.append(
+                ParcelCandidate(
+                    pnu=parcel.pnu,
+                    jibun_address=parcel.jibun_address,
+                    jibun=parcel.jibun,
+                    distance_m=distance,
+                    lat=float(entry["lat"]),
+                    lon=float(entry["lon"]),
+                    contains_point=distance <= self.tolerance * geometry.METERS_PER_DEGREE_LAT,
+                )
             )
-        ]
+        hits.sort(key=lambda item: item.distance_m if item.distance_m is not None else 9e9)
+        return hits[: max(int(size), 0)]
+
+    def search_address(self, query: str) -> list[ParcelCandidate]:
+        needle = query.replace(" ", "")
+        hits: list[ParcelCandidate] = []
+        for entry in self.points:
+            cadastral = entry.get("cadastral")
+            if not cadastral:
+                continue
+            parcel = parsers.parse_cadastral(self._payload(cadastral))
+            if parcel is None:
+                continue
+            haystack = f"{parcel.jibun_address}{parcel.jibun}".replace(" ", "")
+            if needle and (needle in haystack or haystack in needle):
+                hits.append(
+                    ParcelCandidate(
+                        pnu=parcel.pnu,
+                        jibun_address=parcel.jibun_address,
+                        jibun=parcel.jibun,
+                        lat=float(entry["lat"]),
+                        lon=float(entry["lon"]),
+                    )
+                )
+        return hits
 
     def get_ledger(self, pnu: str) -> LandLedger | None:
         entry = self._entry_for_pnu(pnu)
         if entry is not None:
             if not entry.get("ledger"):
                 return None
-            return parsers.parse_ledger(self._payload(entry["ledger"]))
-        return parsers.parse_ledger(_synth_ledger(pnu))
+            ledger = parsers.parse_ledger(self._payload(entry["ledger"]))
+            possession = None
+            if entry.get("possession"):
+                possession = parsers.parse_possession(self._payload(entry["possession"]))
+            return parsers.merge_ledger_possession(ledger, possession)
+        return parsers.merge_ledger_possession(
+            parsers.parse_ledger(_synth_ledger(pnu)),
+            parsers.parse_possession(_synth_possession(pnu)),
+        )
 
     def get_characteristics(self, pnu: str, stdr_year: int) -> LandCharacteristics | None:
         entry = self._entry_for_pnu(pnu)
@@ -233,6 +286,49 @@ def _synth_ledger(pnu: str) -> dict:
                     "posesnChgDe": f"20{10 + seed % 15:02d}{1 + seed % 12:02d}{1 + seed % 28:02d}",
                     "ladFrtlSc": "5512",
                     "ladFrtlScNm": "1:1200",
+                    "lastUpdtDt": "2025-08-31",
+                }
+            ],
+        }
+    }
+
+
+def _synth_possession(pnu: str) -> dict:
+    parts = parse_pnu(pnu)
+    seed = _seed(pnu)
+    ownership_code, ownership_name = _SAMPLE_OWNERSHIP[seed % len(_SAMPLE_OWNERSHIP)]
+    if ownership_name == "국유지":
+        agency_code, agency_name = "01", "중앙부처"
+        residence_code, residence_name = "ZZ", "구분없음"
+    elif ownership_name == "시.도유지":
+        agency_code, agency_name = "02", "지자체"
+        residence_code, residence_name = "ZZ", "구분없음"
+    elif ownership_name == "개인":
+        agency_code, agency_name = "ZZ", "구분없음"
+        residence_code, residence_name = "02", "시도내"
+    else:
+        agency_code, agency_name = "ZZ", "구분없음"
+        residence_code, residence_name = "ZZ", "구분없음"
+    return {
+        "possessions": {
+            "totalCount": "1",
+            "field": [
+                {
+                    "pnu": pnu,
+                    "ldCode": parts.ld_code,
+                    "ldCodeNm": _ld_name_for(parts.ld_code),
+                    "regstrSeCode": "2" if parts.is_mountain else "1",
+                    "regstrSeCodeNm": "임야대장" if parts.is_mountain else "토지대장",
+                    "mnnmSlno": format_jibun(parts.bonbun, parts.bubun),
+                    "posesnSeCode": ownership_code,
+                    "posesnSeCodeNm": ownership_name,
+                    "nationInsttSeCode": agency_code,
+                    "nationInsttSeCodeNm": agency_name,
+                    "resdncSeCode": residence_code,
+                    "resdncSeCodeNm": residence_name,
+                    "ownshipChgCauseCodeNm": "매매" if ownership_code == "3301" else "소유권보존",
+                    "ownshipChgDe": f"20{10 + seed % 15:02d}-{1 + seed % 12:02d}-{1 + seed % 28:02d}",
+                    "cnrsPsnCo": str(1 + seed % 3),
                     "lastUpdtDt": "2025-08-31",
                 }
             ],

@@ -13,6 +13,7 @@ import pytest
 from latlon_converter import parsers
 from latlon_converter.config import FIXTURES_DIR
 from latlon_converter.errors import AuthError, LatlonError, QuotaError
+from latlon_converter.models import Parcel
 
 
 def load(name: str) -> dict:
@@ -68,6 +69,35 @@ def test_parse_ledger_marks_mountain_jibun():
     assert ledger.ownership_type == "국유지"
 
 
+def test_parse_possession_personal_residence():
+    possession = parsers.parse_possession(load("possession_yeoksam.json"))
+    assert possession is not None
+    assert possession.ownership_type == "개인"
+    assert possession.residence_type == "시도내"
+    assert possession.ownership_agency == ""
+    assert possession.ownership_change_reason == "주소경정"
+
+
+def test_parse_possession_national_agency():
+    possession = parsers.parse_possession(load("possession_mountain.json"))
+    assert possession is not None
+    assert possession.ownership_type == "국유지"
+    assert possession.ownership_agency == "중앙부처"
+    assert possession.residence_type == ""
+
+
+def test_merge_fills_blank_ownership_detail():
+    ledger = parsers.parse_ledger(load("ladfrl_yeoksam.json"))
+    possession = parsers.parse_possession(load("possession_yeoksam.json"))
+    merged = parsers.merge_ledger_possession(ledger, possession)
+    assert merged is not None
+    assert merged.ownership_type == "개인"
+    assert merged.residence_type == "시도내"
+    assert merged.ownership_agency == ""
+    assert merged.co_owner_count == "1"
+    assert merged.ownership_change_reason == "매매"
+
+
 def test_parse_characteristics_handles_both_envelopes():
     # landchar_yeoksam은 루트가 landCharacteristicss, mountain은 루트가 response다.
     seoul = parsers.parse_characteristics(load("landchar_yeoksam.json"))
@@ -100,3 +130,90 @@ def test_find_records_searches_nested_payload():
     payload = {"a": {"b": {"ladfrlVOList": {"pnu": "1"}}}}
     assert parsers.find_records(payload, "ladfrlVOList") == [{"pnu": "1"}]
     assert parsers.find_records({"a": []}, "ladfrlVOList") == []
+
+
+def test_find_records_unwraps_same_key_envelope():
+    payload = {
+        "ladfrlVOList": {
+            "pageNo": "1",
+            "totalCount": "1",
+            "ladfrlVOList": [
+                {
+                    "pnu": "2872033023108530000",
+                    "posesnSeCode": "02",
+                    "posesnSeCodeNm": "국유지",
+                    "regstrSeCode": "1",
+                    "regstrSeCodeNm": "토지대장",
+                    "ldCode": "2872033023",
+                    "ldCodeNm": "인천광역시 옹진군 백령면 가을리",
+                    "mnnmSlno": "853",
+                    "lndcgrCode": "28",
+                    "lndcgrCodeNm": "잡종지",
+                    "lndpclAr": "7618",
+                }
+            ],
+        }
+    }
+    records = parsers.find_records(payload, "ladfrlVOList")
+    assert len(records) == 1
+    assert records[0]["pnu"] == "2872033023108530000"
+    ledger = parsers.parse_ledger(payload)
+    assert ledger is not None
+    assert ledger.ownership_type == "국유지"
+    assert ledger.land_category == "잡종지"
+    assert ledger.register_type == "토지대장"
+
+
+def _square(lon: float, lat: float, half: float) -> dict:
+    return {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [lon - half, lat - half],
+                [lon + half, lat - half],
+                [lon + half, lat + half],
+                [lon - half, lat + half],
+                [lon - half, lat - half],
+            ]
+        ],
+    }
+
+
+def test_select_parcel_prefers_smallest_containing_feature():
+    big = parsers.CadastralFeature(
+        parcel=Parcel(pnu="1", jibun_address="큰필지"),
+        geometry=_square(127.0, 37.5, 0.01),
+    )
+    small = parsers.CadastralFeature(
+        parcel=Parcel(pnu="2", jibun_address="작은필지"),
+        geometry=_square(127.0, 37.5, 0.001),
+    )
+    chosen = parsers.select_parcel([big, small], 37.5, 127.0)
+    assert chosen is not None
+    assert chosen.pnu == "2"
+    assert chosen.contains_point is True
+    assert chosen.alternatives[0].pnu == "1"
+    assert chosen.alternatives[0].contains_point is True
+
+
+def test_parse_search_items_reads_point_and_parcel():
+    payload = {
+        "response": {
+            "status": "OK",
+            "result": {
+                "items": [
+                    {
+                        "id": "2872033023108530000",
+                        "title": "인천광역시 옹진군 백령면 가을리 853",
+                        "point": {"x": "124.648201", "y": "37.968579"},
+                        "address": {"parcel": "인천광역시 옹진군 백령면 가을리 853"},
+                    }
+                ]
+            },
+        }
+    }
+    hits = parsers.parse_search_items(payload)
+    assert len(hits) == 1
+    assert hits[0].pnu == "2872033023108530000"
+    assert hits[0].lat == 37.968579
+    assert hits[0].lon == 124.648201
