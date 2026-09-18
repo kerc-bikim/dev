@@ -15,7 +15,7 @@
 | M7 Edge Agent | 완료 | Enrollment·Spool·단절 중 수집·원격 연결 시험. 운영 mTLS 는 M8 |
 | M8 Edge 통합 | 완료 | Ingest 멱등·지연 도달·mTLS 폐기·Edge 화면·장애 상관 |
 | M9 Grafana | 완료 | 대시보드 7종·알림 7종·Deep Link. Grafana 컨테이너는 Docker 환경에서 확인 |
-| M10 운영 강화 | 착수 전 | |
+| M10 운영 강화 | 부분 | 절차·시험·프로파일 완료. 실장비 파일럿·확대는 조사표 대기 |
 | M11 확장성 검증 | 착수 전 | 명명 Lint 는 이미 동작 |
 
 ---
@@ -376,12 +376,33 @@ make soak devices=100 ticks=3
 
 ---
 
+## M10 운영 강화와 파일럿
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M10.1 | 백업·복구 | 완료(SQLite 리허설) | `scripts/ops_backup.py` · `ops_restore.py`. Postgres/Influx 는 Docker 환경에서 재확인 |
+| M10.2 | 보존정책·다운샘플 | 완료(파일) | 원본 180일, `soh_5m` 2년, `soh_1h` 5년. Flux 는 Git 원본 |
+| M10.3 | 부하 시험 | 완료(축소) | `tests/load/test_soak.py` + `make soak devices=100` |
+| M10.4 | 보안 점검 | 완료 | [`operations/security-checklist.md`](operations/security-checklist.md), `check_secrets.py` |
+| M10.5 | E2E | 완료(API) | `tests/e2e/test_lifecycle.py`. Playwright 는 `frontend/e2e` (브라우저 선택) |
+| M10.6 | 장애 리허설 12종 | 완료 | [`operations/failure-rehearsal.md`](operations/failure-rehearsal.md) |
+| M10.7 | 파일럿 3~5 관측소 | 대기 | 양식 [`operations/pilot-log.md`](operations/pilot-log.md). 실장비 필요 |
+| M10.8 | 임계값 튜닝 | 완료(프로파일) | `12V 배터리 감시` · `24V 직류 감시`. 기본 프로파일은 전압 알림 없음 |
+| M10.9 | 운영 문서 | 완료 | [`operations/`](operations/) 설치·등록·장애·FAQ |
+| M10.10 | 전체 확대 | 대기 | 양식 [`operations/rollout.md`](operations/rollout.md) |
+
+### 설계 판단
+
+- **비밀은 묶음에 넣지 않는다.** 백업은 이름만 적고 값은 금고에 둔다.
+- **전압 임계는 전원 구성 프로파일에만 있다.** 12V 와 24V 를 한 숫자에 묶지 않는다.
+- **Playwright 는 선택이다.** 등록→수집→장애→복구의 게이트는 API+수집기 시험이다.
+
+---
+
 ## 다음 착수 지점
 
-1. **M10 운영 강화** — 백업·복구, 비밀 순환, 파일럿 운영 절차.
-2. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 `envelope.py`·`parser.py` 를 실제
-   형태로 맞추고 기준선 대조 시험을 켠다.
-3. **실제 InfluxDB·Grafana 연결 검증** — Docker 환경에서 `make dev` 로 적재·조회·대시보드를 확인한다.
-   현재는 Point 구성과 Provisioning 파일만 시험됐다.
+1. **M11 확장성 검증** — 가상 제조사 Adapter, 공통 계층 무변경 확인.
+2. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 파일럿(M10.7) 도 시작한다.
+3. **실제 InfluxDB·Grafana·Postgres 복구** — Docker 환경에서 `influx backup` 과 `pg_dump` 를 한 번 돈다.
 4. **M2.11** — SeedLink/FDSN 기반 데이터 연속성 검사. 센서 상태만으로는 파형 정지를 잡지 못한다.
 

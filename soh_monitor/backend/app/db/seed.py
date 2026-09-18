@@ -178,6 +178,42 @@ def seed_default_profiles(session: Session) -> None:
             )
         )
 
+    seed_power_profiles(session, catalog)
+
+
+def seed_power_profiles(session: Session, catalog) -> None:
+    """전원 구성별 전압 프로파일. 기본 프로파일에는 전압 임계를 넣지 않는다.
+
+    12V 배터리와 24V 직류를 한 숫자에 묶으면 한쪽은 항상 장애가 된다.
+    관측소 `powerProfile` 에 맞춰 이 프로파일을 고른다.
+    """
+    presets: tuple[tuple[str, str, float, float], ...] = (
+        ("12V 배터리 감시", "12V 납축전지. 주의 11.8V, 장애 11.0V.", 11.8, 11.0),
+        ("24V 직류 감시", "24V 직류. 주의 22.0V, 장애 20.0V.", 22.0, 20.0),
+    )
+    for name, description, warn, critical in presets:
+        existing = session.scalar(select(MetricProfile).where(MetricProfile.name == name))
+        if existing is not None:
+            continue
+        profile = MetricProfile(name=name, description=description, is_default=False)
+        session.add(profile)
+        session.flush()
+        if "power.input_voltage_v" not in catalog.metrics:
+            continue
+        session.add(
+            ProfileMetric(
+                profile_id=profile.id,
+                metric_key="power.input_voltage_v",
+                enabled=True,
+                alerting_enabled=True,
+                warning_condition={"op": "<=", "value": warn},
+                critical_condition={"op": "<=", "value": critical},
+                hold_seconds=300,
+                recovery_seconds=600,
+                consecutive_violations=2,
+            )
+        )
+
 
 def seed_admin_user(session: Session) -> str | None:
     """관리자가 없으면 하나 만든다. 생성한 1회용 비밀번호를 돌려준다."""
