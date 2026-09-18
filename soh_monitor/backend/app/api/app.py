@@ -5,14 +5,25 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routers import contracts, devices, health, health_status
+from app.api.routers import (
+    audit,
+    auth,
+    contracts,
+    devices,
+    health,
+    health_status,
+    maintenance,
+    profiles,
+    stations,
+    users,
+)
 from app.config.settings import get_settings
 from app.metrics.catalog import load_catalog
 from app.metrics.status import load_status_mappings
 from app.observability.logging import configure_logging, get_logger
 
 API_TITLE = "관측소 SOH 통합 모니터링 API"
-API_VERSION = "0.1.0"
+API_VERSION = "0.5.0"
 
 
 @asynccontextmanager
@@ -53,9 +64,15 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router)
+    app.include_router(auth.router)
     app.include_router(contracts.router)
+    app.include_router(stations.router)
     app.include_router(devices.router)
+    app.include_router(profiles.router)
     app.include_router(health_status.router)
+    app.include_router(users.router)
+    app.include_router(audit.router)
+    app.include_router(maintenance.router)
     return app
 
 

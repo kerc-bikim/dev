@@ -269,6 +269,9 @@ class Device(UuidPrimaryKey, Timestamped, Base):
     sensors: Mapped[list["Sensor"]] = relationship(
         back_populates="device", cascade="all, delete-orphan"
     )
+    external_channels: Mapped[list["ExternalSohChannel"]] = relationship(
+        back_populates="device", cascade="all, delete-orphan"
+    )
     manufacturer: Mapped["Manufacturer | None"] = relationship(lazy="joined")
     device_model: Mapped["DeviceModel | None"] = relationship(lazy="joined")
     collection_profile: Mapped["CollectionProfile | None"] = relationship(lazy="joined")
@@ -354,6 +357,8 @@ class ExternalSohChannel(UuidPrimaryKey, Timestamped, Base):
     critical_low: Mapped[float | None] = mapped_column(Float)
     critical_high: Mapped[float | None] = mapped_column(Float)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    device: Mapped["Device"] = relationship(back_populates="external_channels")
 
 
 class DeviceCapability(UuidPrimaryKey, Timestamped, Base):

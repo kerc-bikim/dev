@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import desc, func, select
 
+from app.api.deps import RequireOperate, RequireRead
 from app.db.models import (
     Device,
     DeviceRuntimeState,
@@ -36,7 +37,7 @@ def _parse_uuid(value: str, label: str) -> uuid.UUID:
 
 
 @router.get("/fleet/summary", summary="전체 현황")
-def fleet_summary() -> dict[str, object]:
+def fleet_summary(actor: RequireRead) -> dict[str, object]:
     with session_scope() as session:
         total = session.scalar(select(func.count()).select_from(Device)) or 0
 
@@ -84,7 +85,7 @@ def fleet_summary() -> dict[str, object]:
 
 
 @router.get("/devices/{device_id}/current-health", summary="장비 현재 상태")
-def device_health(device_id: str) -> dict[str, object]:
+def device_health(device_id: str, actor: RequireRead) -> dict[str, object]:
     identifier = _parse_uuid(device_id, "장비 식별자")
 
     with session_scope() as session:
@@ -141,6 +142,7 @@ def device_health(device_id: str) -> dict[str, object]:
 
 @router.get("/incidents", summary="장애 목록")
 def list_incidents(
+    actor: RequireRead,
     status: str | None = Query(default="open", description="open | resolved | all"),
     limit: int = Query(default=50, ge=1, le=500),
 ) -> dict[str, object]:
@@ -184,14 +186,14 @@ def list_incidents(
 
 
 @router.post("/incidents/{incident_id}/acknowledge", summary="장애 확인")
-def acknowledge_incident(incident_id: str, message: str = "") -> dict[str, object]:
+def acknowledge_incident(incident_id: str, actor: RequireOperate, message: str = "") -> dict[str, object]:
     identifier = _parse_uuid(incident_id, "장애 식별자")
 
     with session_scope() as session:
         incident = incident_ops.acknowledge(
             session,
             identifier,
-            actor_id=None,  # M5 에서 인증 사용자로 바뀐다
+            actor_id=actor.id,
             occurred_at=datetime.now(timezone.utc),
             message=message,
         )
@@ -206,7 +208,7 @@ def acknowledge_incident(incident_id: str, message: str = "") -> dict[str, objec
 
 
 @router.get("/incidents/{incident_id}/events", summary="장애 이력")
-def incident_events(incident_id: str) -> dict[str, object]:
+def incident_events(incident_id: str, actor: RequireRead) -> dict[str, object]:
     identifier = _parse_uuid(incident_id, "장애 식별자")
 
     with session_scope() as session:
