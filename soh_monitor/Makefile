@@ -48,8 +48,9 @@ revision: ## 모델 변경으로부터 마이그레이션 생성 (m="설명")
 # ------------------------------------------------------------------ 계약
 
 .PHONY: contracts
-contracts: ## 카탈로그에서 백엔드 상수·프론트 타입 생성
+contracts: ## 카탈로그에서 백엔드 상수·프론트 타입 생성, OpenAPI 추출
 	$(PY) scripts/gen_metrics.py
+	$(PY) scripts/export_openapi.py
 
 .PHONY: fixtures
 fixtures: ## 가상 서버 응답을 Fixture 로 다시 떠 놓기
@@ -68,8 +69,9 @@ soak: ## 수집기 부하·안정성 시험 (기본 50대 5회)
 	$(PY) scripts/soak_collector.py --devices $(or $(devices),50) --ticks $(or $(ticks),5)
 
 .PHONY: contracts-check
-contracts-check: ## 생성물이 카탈로그와 일치하는지 검사 (CI 게이트)
+contracts-check: ## 생성물이 카탈로그·OpenAPI 와 일치하는지 검사 (CI 게이트)
 	$(PY) scripts/gen_metrics.py --check
+	$(PY) scripts/export_openapi.py --check
 
 .PHONY: naming-check
 naming-check: ## 공통 계층에 제조사 이름이 새어 들어왔는지 검사 (CI 게이트)

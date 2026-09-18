@@ -91,3 +91,17 @@ def test_adapters_응답에_비밀값이_들어_있지_않다(client):
     assert "secretFields" in body
     for leaked in ("password=", "credentialReference", "device_credential_key"):
         assert leaked not in body
+
+
+def test_관리_API_경로가_OpenAPI에_있다(client):
+    spec = client.get("/openapi.json").json()
+    for path in (
+        "/api/v1/auth/login",
+        "/api/v1/stations",
+        "/api/v1/stations/import",
+        "/api/v1/devices/{device_id}/test-connection",
+        "/api/v1/devices/{device_id}/soh-preview",
+        "/api/v1/metric-profiles",
+        "/api/v1/audit-logs",
+    ):
+        assert path in spec["paths"]
