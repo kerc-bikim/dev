@@ -1,0 +1,16 @@
+# 기본 정책. Edge Offline 과 기록계 장애를 같은 그룹으로 묶지 않는다.
+# station_code / edge_code / scope 로 나눠 하위 장비가 Edge 장애에 편승하지 않게 한다.
+apiVersion: 1
+
+policies:
+  - orgId: 1
+    receiver: soh-ops
+    group_by:
+      - grafana_folder
+      - alertname
+      - station_code
+      - edge_code
+      - scope
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h

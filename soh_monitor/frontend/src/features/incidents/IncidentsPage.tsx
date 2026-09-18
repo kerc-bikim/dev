@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { SeverityBadge } from "../../components/SeverityBadge";
+import { edgeGrafanaLink, fleetGrafanaLink, stationGrafanaLink } from "../../lib/grafana";
 
 export function IncidentsPage() {
   const { can } = useAuth();
@@ -37,6 +38,9 @@ export function IncidentsPage() {
       <h1 className="page-title">장애</h1>
       <p className="page-subtitle">확인은 복구가 아니다. 담당자가 보고 있다는 표시만 남긴다.</p>
       <div className="toolbar">
+        <a className="btn ghost" href={fleetGrafanaLink()} target="_blank" rel="noreferrer">
+          Grafana 함대
+        </a>
         <select value={filter} onChange={(event) => setFilter(event.target.value)}>
           <option value="open">열림</option>
           <option value="resolved">복구</option>
@@ -53,6 +57,7 @@ export function IncidentsPage() {
               <th>제목</th>
               <th>처음</th>
               <th>확인</th>
+              <th>Grafana</th>
               {can("operate") && <th></th>}
             </tr>
           </thead>
@@ -75,6 +80,23 @@ export function IncidentsPage() {
                   {incident.acknowledgedAt
                     ? `${incident.acknowledgedBy ?? "담당자"} · ${incident.acknowledgedAt.replace("T", " ").slice(0, 19)}`
                     : "—"}
+                </td>
+                <td>
+                  {incident.stationCode ? (
+                    <a
+                      href={stationGrafanaLink(incident.stationCode, incident.category)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      추세
+                    </a>
+                  ) : incident.dimension ? (
+                    <a href={edgeGrafanaLink(incident.dimension)} target="_blank" rel="noreferrer">
+                      Edge
+                    </a>
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 {can("operate") && (
                   <td>

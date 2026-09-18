@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { api, type StationDto, type TopologyEdgeDto, type TopologyRegionDto } from "../../api/client";
 import { SeverityBadge } from "../../components/SeverityBadge";
+import { collectorGrafanaLink, fleetGrafanaLink, kioskGrafanaLink } from "../../lib/grafana";
 
 const KOREA = { minLat: 33.0, maxLat: 38.8, minLon: 124.5, maxLon: 132.0 };
 
@@ -95,6 +96,17 @@ export function OverviewPage() {
     <>
       <h1 className="page-title">통합 현황</h1>
       <p className="page-subtitle">15초마다 갱신한다. 갱신 중에도 목록이 비워지지 않는다.</p>
+      <div className="toolbar">
+        <a className="btn ghost" href={fleetGrafanaLink()} target="_blank" rel="noreferrer">
+          Grafana 함대
+        </a>
+        <a className="btn ghost" href={kioskGrafanaLink()} target="_blank" rel="noreferrer">
+          관제 화면
+        </a>
+        <a className="btn ghost" href={collectorGrafanaLink()} target="_blank" rel="noreferrer">
+          수집기 운영
+        </a>
+      </div>
 
       <div className="stat-grid">
         <div className="stat">

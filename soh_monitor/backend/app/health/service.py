@@ -331,7 +331,7 @@ class HealthService:
             report.points.append(
                 PointSpec(
                     measurement=HEALTH_MEASUREMENT,
-                    tags={**tags.as_dict(), "category": category},
+                    tags={**tags.as_dict(), "category": category, "scope": "device"},
                     fields={"severity": severity.code, "is_stale": report.is_stale},
                     timestamp=now,
                 )
@@ -341,7 +341,7 @@ class HealthService:
         report.points.append(
             PointSpec(
                 measurement=HEALTH_MEASUREMENT,
-                tags={**tags.as_dict(), "category": "overall"},
+                tags={**tags.as_dict(), "category": "overall", "scope": "device"},
                 fields={"severity": report.overall.code, "is_stale": report.is_stale},
                 timestamp=now,
             )

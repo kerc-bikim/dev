@@ -3,7 +3,7 @@
   "info": {
     "title": "관측소 SOH 통합 모니터링 API",
     "description": "Centaur CTR 계열을 1차 대상으로 하는 기록계 SOH 통합 모니터링 API. 제조사 고유 필드는 노출하지 않고 표준 Metric 만 다룬다.",
-    "version": "0.8.0"
+    "version": "0.9.0"
   },
   "paths": {
     "/healthz": {

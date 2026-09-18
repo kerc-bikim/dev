@@ -56,8 +56,8 @@ backend/app/adapters/<vendor_model>/
 7. `app/adapters/registry.py` 의 `get_registry()` 에 등록
 8. 계약 시험 통과 — 정상, 느린 응답, 연결 실패, 인증 실패, 비정상 JSON, 필드 누락,
    모델 차이, 상태 미등록 값, 신원 불일치
-9. 제조사 전용 Grafana 대시보드가 필요하면 `deploy/grafana/dashboards/` 에 추가.
-   공통 대시보드는 표준 Metric 만 쓰므로 고치지 않는다
+9. 제조사 전용 Grafana 대시보드는 `scripts/gen_grafana.py` 에 패널을 추가한 뒤
+   생성한다. 공통 대시보드(`01`·`02`·`04`–`07`)에는 `vendor.*` 를 넣지 않는다.
 
 ## 가상 기록계로 시험하기
 

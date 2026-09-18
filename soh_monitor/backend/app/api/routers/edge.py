@@ -372,8 +372,11 @@ def heartbeat(request: Request, body: dict[str, Any]) -> dict:
         if edge.status is not EdgeStatus.DISABLED:
             edge.status = EdgeStatus.DEGRADED if collector is not Severity.OK else EdgeStatus.ONLINE
         from app.health.edge_watch import evaluate_edge
+        from app.health.ops_points import edge_points
+        from app.ingest.writer import sink_for
 
         evaluate_edge(session, edge)
+        sink_for(request.app).write(edge_points(edge, state, now))
         tasks = edge_ops.pending_tasks(session, edge)
         return {
             "serverTime": iso_z(now),

@@ -279,4 +279,29 @@ def process_batch(
         edge.spool_used_bytes = int(spool["usedBytes"])
     if spool.get("limitBytes") is not None:
         edge.spool_limit_bytes = int(spool["limitBytes"])
+
+    from app.db.models import EdgeRuntimeState
+    from app.domain.enums import Severity
+    from app.health.ops_points import collector_point, edge_points
+
+    runtime = session.get(EdgeRuntimeState, edge.id)
+    if runtime is None:
+        runtime = EdgeRuntimeState(edge_id=edge.id)
+        session.add(runtime)
+        session.flush()
+    used, limit = edge.spool_used_bytes, edge.spool_limit_bytes
+    if used is None or not limit:
+        runtime.spool_status = Severity.UNKNOWN
+    else:
+        ratio = used / limit
+        if ratio >= 0.9:
+            runtime.spool_status = Severity.CRITICAL
+        elif ratio >= 0.8:
+            runtime.spool_status = Severity.WARNING
+        else:
+            runtime.spool_status = Severity.OK
+    ops = edge_points(edge, runtime, now)
+    ops.append(collector_point(now, success=True))
+    if sink.write(ops):
+        report.points_written += len(ops)
     return report

@@ -24,7 +24,7 @@ from app.metrics.status import load_status_mappings
 from app.observability.logging import configure_logging, get_logger
 
 API_TITLE = "관측소 SOH 통합 모니터링 API"
-API_VERSION = "0.8.0"
+API_VERSION = "0.9.0"
 
 
 @asynccontextmanager

@@ -14,7 +14,7 @@
 | M6 관리 Frontend | 완료 | 로그인·현황·지도·등록 마법사·프로파일·장애. Edge 화면은 M8 에서 연결 |
 | M7 Edge Agent | 완료 | Enrollment·Spool·단절 중 수집·원격 연결 시험. 운영 mTLS 는 M8 |
 | M8 Edge 통합 | 완료 | Ingest 멱등·지연 도달·mTLS 폐기·Edge 화면·장애 상관 |
-| M9 Grafana | 부분 | Datasource·Dashboard Provisioning 골격만 |
+| M9 Grafana | 완료 | 대시보드 7종·알림 7종·Deep Link. Grafana 컨테이너는 Docker 환경에서 확인 |
 | M10 운영 강화 | 착수 전 | |
 | M11 확장성 검증 | 착수 전 | 명명 Lint 는 이미 동작 |
 
@@ -348,12 +348,40 @@ make soak devices=100 ticks=3
 
 ---
 
+## M9 Grafana Provisioning + 알림
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M9.1 | Datasource·Folder Provisioning | 완료 | UID `soh-influx`, 폴더 `관측소 SOH`, UI 수정 금지 |
+| M9.2 | `01-fleet-overview` | 완료 | 집계·Geomap·분류 행렬·현재 장애 |
+| M9.3 | `02-station-detail` | 완료 | `var-station`, 전 분류. 제조사 전용 없음 |
+| M9.4 | `03-centaur-ctr-detail` | 완료 | `recorder_vendor_metric` 만 |
+| M9.5 | `04-edge-fleet` | 완료 | 통신·Spool·대기 Batch·인증서 |
+| M9.6 | `05-collector-operations` | 완료 | Poll·지연·연속 실패·Influx 쓰기 |
+| M9.7 | `06-data-quality` | 완료 | 샘플 경과·Gap·채널 활성 |
+| M9.8 | 알림 규칙 7종 | 완료 | severity 감시. Edge 하위 편승 없음. 복구 알림 켬 |
+| M9.9 | 관제 Kiosk | 완료 | `07-kiosk-overview` 10초 갱신, 장애 우선 |
+| M9.10 | 관리 Web Deep Link | 완료 | 관측소 탭·Edge·현황·장애 → `/grafana/d/...` |
+
+문서: [`grafana.md`](grafana.md). 생성기: `scripts/gen_grafana.py`.
+
+### 설계 판단
+
+- **임계값은 백엔드에만 있다.** Grafana 는 `recorder_health.severity` 를 본다.
+  Edge·수집기 자체도 같은 measurement 에 `scope=edge|collector` 로 적재한다.
+- **공통 화면은 제조사를 모른다.** `vendor.*` 는 03 대시보드에만 있다.
+  `check_naming.py` 와 시험이 공통 JSON 을 막는다.
+- **Influx 가 죽으면 점이 끊긴다.** `Influx Write Failure` 는 noData 도 장애다.
+  쓰기에 성공해야만 수집기 heartbeat 점이 남는다.
+
+---
+
 ## 다음 착수 지점
 
-1. **M9 Grafana** — Datasource·Dashboard Provisioning 과 알림.
+1. **M10 운영 강화** — 백업·복구, 비밀 순환, 파일럿 운영 절차.
 2. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 `envelope.py`·`parser.py` 를 실제
    형태로 맞추고 기준선 대조 시험을 켠다.
-3. **실제 InfluxDB 연결 검증** — Docker 환경에서 `make dev` 로 적재·조회·보존정책을 확인한다.
-   현재는 Point 구성만 시험됐다.
+3. **실제 InfluxDB·Grafana 연결 검증** — Docker 환경에서 `make dev` 로 적재·조회·대시보드를 확인한다.
+   현재는 Point 구성과 Provisioning 파일만 시험됐다.
 4. **M2.11** — SeedLink/FDSN 기반 데이터 연속성 검사. 센서 상태만으로는 파형 정지를 잡지 못한다.
 

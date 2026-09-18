@@ -76,6 +76,11 @@ soak: ## 수집기 부하·안정성 시험 (기본 50대 5회)
 contracts-check: ## 생성물이 카탈로그·OpenAPI 와 일치하는지 검사 (CI 게이트)
 	$(PY) scripts/gen_metrics.py --check
 	$(PY) scripts/export_openapi.py --check
+	$(PY) scripts/gen_grafana.py --check
+
+.PHONY: grafana
+grafana: ## Grafana 대시보드 JSON 생성
+	$(PY) scripts/gen_grafana.py
 
 .PHONY: naming-check
 naming-check: ## 공통 계층에 제조사 이름이 새어 들어왔는지 검사 (CI 게이트)

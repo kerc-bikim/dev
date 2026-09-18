@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { SeverityBadge } from "../../components/SeverityBadge";
+import { stationGrafanaLink } from "../../lib/grafana";
 
 const TABS = [
   { id: "summary", label: "요약" },
@@ -31,10 +32,6 @@ const CATEGORY_TAB: Record<string, string> = {
   connectivity: "summary",
   device: "summary",
 };
-
-function grafanaLink(stationCode: string): string {
-  return `/grafana/d/02-station-detail?var-station=${encodeURIComponent(stationCode)}`;
-}
 
 export function StationDetailPage() {
   const { stationId = "" } = useParams();
@@ -109,7 +106,12 @@ export function StationDetailPage() {
             지금 수집
           </button>
         )}
-        <a className="btn ghost" href={grafanaLink(station.stationCode)} target="_blank" rel="noreferrer">
+        <a
+          className="btn ghost"
+          href={stationGrafanaLink(station.stationCode, tab)}
+          target="_blank"
+          rel="noreferrer"
+        >
           Grafana에서 추세 보기
         </a>
       </div>

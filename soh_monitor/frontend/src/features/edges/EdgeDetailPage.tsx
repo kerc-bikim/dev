@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import { ApiError, api } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { SeverityBadge } from "../../components/SeverityBadge";
+import { edgeGrafanaLink } from "../../lib/grafana";
 
 function formatWhen(value: string | null | undefined): string {
   return value ? value.replace("T", " ").slice(0, 19) : "—";
@@ -73,6 +74,13 @@ export function EdgeDetailPage() {
       <p className="page-subtitle">
         <Link to="/edges">목록</Link> · {body?.edgeCode} · {body?.status}
       </p>
+      {body && (
+        <div className="toolbar">
+          <a className="btn ghost" href={edgeGrafanaLink(body.edgeCode)} target="_blank" rel="noreferrer">
+            Grafana에서 추세 보기
+          </a>
+        </div>
+      )}
       {error && <div className="notice warn">{error}</div>}
       {token && (
         <div className="notice">

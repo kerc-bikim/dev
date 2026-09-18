@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import { fleetGrafanaLink } from "../lib/grafana";
 
 const NAV_ITEMS: { to: string; label: string; ready: boolean; administer?: boolean }[] = [
   { to: "/overview", label: "통합 현황", ready: true },
@@ -34,6 +35,9 @@ export function Layout() {
               {!item.ready && <span className="pending">준비 중</span>}
             </NavLink>
           ))}
+          <a href={fleetGrafanaLink()} target="_blank" rel="noreferrer">
+            <span>Grafana</span>
+          </a>
         </nav>
         <div className="sidebar-user">
           <div>
