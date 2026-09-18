@@ -11,7 +11,6 @@
 """
 from __future__ import annotations
 
-import ipaddress
 import re
 import uuid
 from pathlib import Path
@@ -27,6 +26,7 @@ from app.adapters.contract import (
 )
 from app.domain.enums import PollErrorCode
 from app.domain.models import CapabilityReport, DeviceIdentity, PollResult, utcnow
+from app.net.ssrf import is_allowed_host
 
 from . import capabilities as capability_detector
 from .client import CentaurClient, build_base_url
@@ -343,20 +343,6 @@ class CentaurCtrAdapter(RecorderAdapter):
         return payload
 
 
-def is_allowed_host(hostname: str, allowed_networks: list[str]) -> bool:
-    """연결 시험 SSRF 차단용 보조 판정.
-
-    사설망 또는 승인된 대역만 허용한다. 호스트명이 IP 가 아니면 여기서 판정하지 않고
-    호출 측에서 이름을 해석한 뒤 다시 확인한다.
-    """
-    try:
-        address = ipaddress.ip_address(hostname)
-    except ValueError:
-        return False
-    for network in allowed_networks:
-        try:
-            if address in ipaddress.ip_network(network, strict=False):
-                return True
-        except ValueError:
-            continue
-    return False
+# 연결 시험 SSRF 차단의 주소 판정. 구현은 공통 모듈에 있고, Adapter 시험이
+# 기존 경로에서 가져갈 수 있게 여기로 다시 노출한다.
+__all__ = ("CentaurCtrAdapter", "MANIFEST_PATH", "is_allowed_host")

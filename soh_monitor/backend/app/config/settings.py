@@ -107,6 +107,19 @@ class Settings(BaseSettings):
             return direct
         return _read_secret_file(f"SOH_{name.upper()}") or ""
 
+    def session_signing_key(self) -> str:
+        """쿠키 서명 키.
+
+        개발 환경에서 비어 있으면 고정값을 쓴다. 운영에서는 비어 있으면 안 되며
+        `startup_problems` 가 기동을 막는다.
+        """
+        key = self.resolved_secret("session_secret")
+        if key:
+            return key
+        if self.is_production:
+            return ""
+        return "dev-only-session-secret-not-for-production"
+
     def startup_problems(self) -> list[str]:
         """운영 환경에서 비어 있으면 안 되는 값을 점검한다."""
         problems: list[str] = []
