@@ -240,10 +240,264 @@ code {
 }
 
 select,
-input[type="search"] {
+input[type="search"],
+input[type="text"],
+input[type="password"],
+input[type="number"],
+textarea {
   font: inherit;
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--surface);
+  width: 100%;
 }
+
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+}
+
+.login-card {
+  width: min(420px, 100%);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.85rem;
+  font-size: 0.92rem;
+}
+
+.field.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.field small,
+.muted {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn.ghost {
+  background: transparent;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin: 0 0 1rem;
+}
+
+.toolbar input,
+.toolbar select {
+  width: auto;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .split {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+.sidebar-user {
+  margin-top: auto;
+  padding: 1rem 1.25rem 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.wizard-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0;
+  list-style: none;
+  margin: 0 0 1rem;
+}
+
+.wizard-steps li {
+  font-size: 0.82rem;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+}
+
+.wizard-steps li.current {
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.wizard-steps li.done {
+  color: var(--ok);
+}
+
+.station-map {
+  margin-top: 0.5rem;
+}
+
+.map-canvas {
+  position: relative;
+  height: 320px;
+  background: linear-gradient(#e7eef2, #d5e0e6);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.map-mark {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.72rem;
+}
+
+.map-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.map-ok {
+  color: var(--ok);
+}
+.map-warning {
+  color: var(--warning);
+}
+.map-critical {
+  color: var(--critical);
+}
+.map-unknown {
+  color: var(--unknown);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.tabs button {
+  font: inherit;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 8px 8px 0 0;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.linkish {
+  background: none;
+  border: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.plain {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.json-editor {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 0.82rem;
+  min-height: 280px;
+}
+
+.busy-group {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.stat-time {
+  font-size: 0.95rem;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.map-code {
+  background: rgba(255, 255, 255, 0.75);
+  padding: 0 0.2rem;
+  border-radius: 3px;
+}
+
+fieldset.card {
+  margin: 0;
+}
+
