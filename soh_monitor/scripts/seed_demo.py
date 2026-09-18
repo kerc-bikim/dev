@@ -62,6 +62,16 @@ DEMO_THRESHOLDS: dict[str, tuple[dict, dict]] = {
 
 REGIONS = {"A": "수도권", "B": "중부", "C": "남부", "D": "동해"}
 
+# 지도에 겹치지 않게 관측소 코드를 한반도 좌표에 고정한다.
+DEMO_COORDS = {
+    "A01": (37.57, 126.98),
+    "A02": (37.46, 126.70),
+    "B01": (36.35, 127.38),
+    "B02": (36.64, 127.49),
+    "C01": (35.16, 126.85),
+    "C02": (35.18, 129.07),
+}
+
 DEMO_USERS = (
     ("operator", "시연 운영자", UserRole.OPERATOR, "operator-pass-123"),
     ("viewer", "시연 조회자", UserRole.VIEWER, "viewer-pass-123"),
@@ -139,13 +149,14 @@ def seed(session_factory, fleet) -> None:
 
         for virtual in fleet.all():
             region = regions.get(virtual.station_code[0])
+            lat, lon = DEMO_COORDS.get(virtual.station_code, (36.5, 127.8))
             station = Station(
                 station_code=virtual.station_code,
                 network_code="KS",
                 name=f"{virtual.station_code} 관측소",
                 region_id=region.id if region else None,
-                latitude=37.5 + (hash(virtual.station_code) % 100) / 100,
-                longitude=127.0 + (hash(virtual.station_code) % 90) / 100,
+                latitude=lat,
+                longitude=lon,
                 elevation_m=50.0,
                 power_profile="12V 배터리",
                 status=LifecycleStatus.ACTIVE,

@@ -200,7 +200,7 @@ make soak              # 수집기 부하·안정성 시험 (50대, 장애 생�
 make soak devices=100 ticks=3
 ```
 
-현재 결과: 백엔드 테스트 437개 통과(1개 skip — 실장비 Fixture 대조 시험). Frontend `npm run typecheck` 와 `npm run build` 통과.
+현재 결과: 백엔드 테스트 438개 통과(1개 skip — 실장비 Fixture 대조 시험). Frontend `npm run typecheck` 와 `npm run build` 통과.
 
 부하 시험(50대, 느린 장비 5대 800ms, 실패 장비 5대, 동시 20):
 
