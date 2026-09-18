@@ -11,7 +11,7 @@
 | M3 Direct Collector | 완료(InfluxDB 미검증) | 스케줄러·Lease·재시도·적재. 실제 InfluxDB 연결은 Docker 환경에서 확인 필요 |
 | M4 상태 판정 엔진 | 완료 | 임계값·Hysteresis·Incident 생명주기·유지보수 억제 |
 | M5 관리 API | 완료 | 인증·CRUD·연결 시험·CSV·감사. Edge 등록은 M7 |
-| M6 관리 Frontend | 착수 전 | 화면 골격과 표준 Metric 화면만 존재 |
+| M6 관리 Frontend | 완료 | 로그인·현황·지도·등록 마법사·프로파일·장애. Edge 화면은 M7 |
 | M7 Edge Agent | 착수 전 | 실행점과 Schema 만 존재 |
 | M8 Edge 통합 | 착수 전 | |
 | M9 Grafana | 부분 | Datasource·Dashboard Provisioning 골격만 |
@@ -200,7 +200,7 @@ make soak              # 수집기 부하·안정성 시험 (50대, 장애 생�
 make soak devices=100 ticks=3
 ```
 
-현재 결과: 백엔드 테스트 436개 통과(1개 skip — 실장비 Fixture 대조 시험).
+현재 결과: 백엔드 테스트 437개 통과(1개 skip — 실장비 Fixture 대조 시험). Frontend `npm run typecheck` 와 `npm run build` 통과.
 
 부하 시험(50대, 느린 장비 5대 800ms, 실패 장비 5대, 동시 20):
 
@@ -260,12 +260,49 @@ make soak devices=100 ticks=3
 
 ---
 
+## M6 관리 Frontend
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M6.1 | 레이아웃·권한별 메뉴 | 완료 | VIEWER 에게 설정 메뉴·등록·폐기·편집 버튼이 보이지 않는다 |
+| M6.2 | 로그인·세션 만료 | 완료 | 초기 비밀번호 변경 강제. 401 이면 재로그인과 작업 손실 안내 |
+| M6.3 | 통합 현황 | 완료 | 장비 수·장애·통신·마지막 수집. 15초 갱신, 갱신 중 목록 유지 |
+| M6.4 | 관측소 지도 | 완료 | 색+도형(●정상 ◆주의 ▲장애 ■확인불가). 위경도 없는 점은 올리지 않음 |
+| M6.5 | 관측소 목록 | 완료 | 통신·전원·시각·센서·저장소·데이터 컬럼. 미지원/미수집은 `—` |
+| M6.6 | 등록 마법사 | 완료 | 기본정보→Adapter→접속→시험·탐지→센서·외부SOH→프로파일→검토/저장 |
+| M6.7 | 연결 시험 진행 표시 | 완료 | 경과 초와 취소(`AbortController`) |
+| M6.8 | 탐지 불일치 | 완료 | Instrument ID·모델·시리얼·펌웨어를 저장 전에 보여 준다 |
+| M6.9 | Schema 기반 폼 | 완료 | Adapter Manifest `configurationSchema`. `secretFields` 는 `credentialReference` |
+| M6.10 | 관측소 상세 | 완료 | 분류 탭·현재값·수집 이력·Grafana Deep Link |
+| M6.11 | 프로파일 | 완료 | 영향 장비 수, 저장 전 차이, 복제 |
+| M6.12 | 장애 확인 | 완료 | 확인 시 담당자·시각. VIEWER 는 확인 버튼이 없다 |
+| M6.13 | 상태 자동 갱신 | 완료 | TanStack Query 15초 `refetchInterval` + `keepPreviousData` |
+
+마법사 10절의 10단계는 화면에서 7단계로 묶었다. 제조사 선택과 수집 방식, 연결 시험과
+자동 탐지를 한 화면에 둔다. EDGE 수집은 선택지만 보이고 비활성이다(M7).
+
+브라우저는 기록계에 붙지 않는다. Vite 개발 서버가 `/api` 를 백엔드로 넘기고 세션 쿠키는
+같은 출처로 오간다.
+
+시연 계정: `admin` (초기 비밀번호 변경 강제), `operator` / `viewer` (`scripts/seed_demo.py`).
+
+### 설계 판단
+
+- **목록 API 에 분류 상태를 실었다.** 화면이 관측소마다 `current-health` 를 부르면
+  N+1 이 된다. `GET /stations` 가 분류 집계·마지막 성공·수집 방식을 같이 준다.
+- **비밀번호 칸을 두지 않는다.** Manifest 의 `secretFields` 는 Secret 참조 입력으로
+  바뀐다. 평문을 저장할 자리가 화면에도 없다.
+- **세션 만료는 로그인 화면으로 되돌린다.** 저장 중이던 마법사 값은 메모리에만 있으므로
+  손실 안내를 띄운다. 토큰 갱신은 두지 않았다.
+
+---
+
 ## 다음 착수 지점
 
-1. **M6 관리 Frontend** — 로그인, 관측소 목록/등록 마법사, 프로파일 편집, 장애 확인.
-   API 는 M5 에서 준비됐다.
+1. **M7 Edge Agent** — Enrollment, Spool, 단절 중 수집. 관리 화면의 Edge 항목은 여기서 연다.
 2. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 `envelope.py`·`parser.py` 를 실제
    형태로 맞추고 기준선 대조 시험을 켠다.
 3. **실제 InfluxDB 연결 검증** — Docker 환경에서 `make dev` 로 적재·조회·보존정책을 확인한다.
    현재는 Point 구성만 시험됐다.
 4. **M2.11** — SeedLink/FDSN 기반 데이터 연속성 검사. 센서 상태만으로는 파형 정지를 잡지 못한다.
+
