@@ -211,3 +211,22 @@ class MaintenanceWrite(ApiModel):
     ends_at: datetime
     reason: str | None = None
     suppress_alerts: bool = True
+
+
+class EdgeCreateRequest(ApiModel):
+    edge_code: str = Field(min_length=2, max_length=64)
+    name: str = Field(min_length=1, max_length=128)
+    region_id: str | None = None
+    notes: str | None = None
+
+
+class EdgeAssignmentRequest(ApiModel):
+    device_id: str = Field(min_length=1)
+    role: str = Field(default="primary", max_length=16)
+
+
+class EdgeEnrollRequest(ApiModel):
+    edge_id: str = Field(min_length=1, max_length=64)
+    enrollment_token: str = Field(min_length=8, max_length=256)
+    agent_version: str | None = Field(default=None, max_length=32)
+    installed_adapters: list[str] = Field(default_factory=list)

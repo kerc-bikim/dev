@@ -103,5 +103,8 @@ def test_관리_API_경로가_OpenAPI에_있다(client):
         "/api/v1/devices/{device_id}/soh-preview",
         "/api/v1/metric-profiles",
         "/api/v1/audit-logs",
+        "/api/v1/edges",
+        "/api/v1/edge/enroll",
+        "/api/v1/edge/ingest/batches",
     ):
         assert path in spec["paths"]

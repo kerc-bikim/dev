@@ -135,6 +135,9 @@ def _apply_device_fields(session: Session, device: Device, body: DeviceWriteRequ
     _apply_endpoint(session, device, body.endpoint)
     if device.collection_mode is CollectionMode.EDGE and device.edge_id is None:
         raise HTTPException(status_code=400, detail="EDGE 수집은 Edge 지정이 필요하다")
+    from app.api import edge_ops
+
+    edge_ops.sync_device_assignment(session, device)
 
 
 @router.post(
@@ -466,6 +469,31 @@ async def test_connection(device_id: str, actor: RequireOperate) -> dict:
         body = _endpoint_probe_request(device)
         station = session.get(Station, device.station_id)
         station_code = station.station_code if station else "PROBE"
+        if device.collection_mode is CollectionMode.EDGE:
+            if device.edge_id is None:
+                raise HTTPException(status_code=409, detail="EDGE 수집 장비에 Edge 가 없다")
+            from app.api import edge_ops
+            from app.db.models import EdgeCollector
+
+            edge = session.get(EdgeCollector, device.edge_id)
+            if edge is None:
+                raise HTTPException(status_code=404, detail="없는 Edge 다")
+            payload = body.model_dump(by_alias=True)
+            payload["deviceId"] = str(device.id)
+            payload["stationCode"] = station_code
+            task = edge_ops.enqueue_task(
+                session,
+                edge,
+                task_type="test_connection",
+                payload=payload,
+                device_id=device.id,
+            )
+            return {
+                "queued": True,
+                "taskId": str(task.id),
+                "edgeId": str(edge.id),
+                "message": "지역 Edge 가 연결 시험을 수행한다",
+            }
     return await _run_test_connection(body, station_code=station_code)
 
 
@@ -559,6 +587,30 @@ def poll_now(device_id: str, response: Response, actor: RequireOperate) -> dict[
             raise HTTPException(status_code=404, detail="등록되지 않은 장비다")
         if not device.enabled:
             raise HTTPException(status_code=409, detail="수집이 비활성된 장비다")
+        if device.collection_mode is CollectionMode.EDGE:
+            if device.edge_id is None:
+                raise HTTPException(status_code=409, detail="EDGE 수집 장비에 Edge 가 없다")
+            from app.api import edge_ops
+            from app.db.models import EdgeCollector
+
+            edge = session.get(EdgeCollector, device.edge_id)
+            if edge is None:
+                raise HTTPException(status_code=404, detail="없는 Edge 다")
+            task = edge_ops.enqueue_task(
+                session,
+                edge,
+                task_type="poll_now",
+                payload={"deviceId": str(device.id)},
+                device_id=identifier,
+            )
+            response.headers["Retry-After"] = "10"
+            return {
+                "deviceId": device_id,
+                "accepted": True,
+                "queued": True,
+                "taskId": str(task.id),
+                "detail": "지역 Edge 가 다음 Tick 에서 이 장비를 수집한다",
+            }
         repo.request_immediate_poll(session, identifier)
 
     response.headers["Retry-After"] = "10"

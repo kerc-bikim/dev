@@ -49,6 +49,17 @@ REQUIRED_PATHS = (
     "/api/v1/incidents/{incident_id}/acknowledge",
     "/api/v1/maintenance-windows",
     "/api/v1/audit-logs",
+    "/api/v1/edges",
+    "/api/v1/edges/{edge_id}",
+    "/api/v1/edges/{edge_id}/enrollment-token",
+    "/api/v1/edges/{edge_id}/assignments",
+    "/api/v1/edges/{edge_id}/assignments/{device_id}",
+    "/api/v1/edges/{edge_id}/health",
+    "/api/v1/edge/enroll",
+    "/api/v1/edge/heartbeat",
+    "/api/v1/edge/config",
+    "/api/v1/edge/ingest/batches",
+    "/api/v1/edge/tasks/{task_id}/result",
 )
 
 

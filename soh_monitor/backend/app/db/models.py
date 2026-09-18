@@ -82,6 +82,12 @@ class BatchStatus(str, enum.Enum):
     REJECTED = "REJECTED"
 
 
+class EdgeTaskStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+
+
 # --------------------------------------------------------------------- 제조사·Adapter
 
 
@@ -587,6 +593,28 @@ class EdgeRuntimeState(Timestamped, Base):
     oldest_pending_age_seconds: Mapped[float | None] = mapped_column(Float)
     clock_offset_ms: Mapped[float | None] = mapped_column(Float)
     detail: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class EdgeTask(UuidPrimaryKey, Timestamped, Base):
+    """중앙이 Edge 에 맡긴 원격 작업. 연결 시험이 대표 예다."""
+
+    __tablename__ = "edge_tasks"
+    __table_args__ = (Index("ix_edge_tasks_edge_status", "edge_id", "status"),)
+
+    edge_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("edge_collectors.id", ondelete="CASCADE"), nullable=False
+    )
+    device_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("devices.id", ondelete="SET NULL")
+    )
+    task_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    status: Mapped[EdgeTaskStatus] = mapped_column(
+        _enum(EdgeTaskStatus, "edge_task_status"), nullable=False, default=EdgeTaskStatus.PENDING
+    )
+    result: Mapped[dict | None] = mapped_column(JSON)
+    requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 # --------------------------------------------------------------------- 수집·상태·장애

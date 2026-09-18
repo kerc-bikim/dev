@@ -63,6 +63,8 @@ class Settings(BaseSettings):
     edge_spool_limit_bytes: int = 5 * 1024 * 1024 * 1024
     edge_heartbeat_seconds: int = 30
     edge_upload_timeout_seconds: int = 30
+    edge_enrollment_token: str | None = None
+    edge_cert_dir: Path = Path("/var/lib/soh-edge/certs")
 
     # --- 보안 ---
     session_secret: str = ""

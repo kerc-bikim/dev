@@ -13,6 +13,7 @@ Nanometrics **Centaur CTR** 계열 기록계의 SOH를 설정한 분 주기로 �
 | [`docs/progress.md`](docs/progress.md) | 마일스톤별 실제 진행 상태와 계약에서 못 박은 규칙 |
 | [`docs/inventory.md`](docs/inventory.md) | M-1 장비·환경 조사표 양식 |
 | [`docs/adapter-development.md`](docs/adapter-development.md) | 새 기록계 Adapter 를 붙이는 절차와 지켜야 할 규칙 |
+| [`docs/edge-deployment/README.md`](docs/edge-deployment/README.md) | 지역 Edge Collector 설치·등록·확인 절차 |
 
 ## 구조
 

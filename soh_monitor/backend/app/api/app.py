@@ -10,6 +10,7 @@ from app.api.routers import (
     auth,
     contracts,
     devices,
+    edge,
     health,
     health_status,
     maintenance,
@@ -23,7 +24,7 @@ from app.metrics.status import load_status_mappings
 from app.observability.logging import configure_logging, get_logger
 
 API_TITLE = "관측소 SOH 통합 모니터링 API"
-API_VERSION = "0.5.0"
+API_VERSION = "0.7.0"
 
 
 @asynccontextmanager
@@ -73,6 +74,8 @@ def create_app() -> FastAPI:
     app.include_router(users.router)
     app.include_router(audit.router)
     app.include_router(maintenance.router)
+    app.include_router(edge.manager)
+    app.include_router(edge.agent)
     return app
 
 

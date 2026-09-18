@@ -10,10 +10,10 @@
 | M2 Centaur CTR Adapter | 완료(실장비 미검증) | 가상 서버 + Adapter. 응답 형태는 실응답으로 확정해야 한다 |
 | M3 Direct Collector | 완료(InfluxDB 미검증) | 스케줄러·Lease·재시도·적재. 실제 InfluxDB 연결은 Docker 환경에서 확인 필요 |
 | M4 상태 판정 엔진 | 완료 | 임계값·Hysteresis·Incident 생명주기·유지보수 억제 |
-| M5 관리 API | 완료 | 인증·CRUD·연결 시험·CSV·감사. Edge 등록은 M7 |
-| M6 관리 Frontend | 완료 | 로그인·현황·지도·등록 마법사·프로파일·장애. Edge 화면은 M7 |
-| M7 Edge Agent | 착수 전 | 실행점과 Schema 만 존재 |
-| M8 Edge 통합 | 착수 전 | |
+| M5 관리 API | 완료 | 인증·CRUD·연결 시험·CSV·감사. Edge 등록 API 는 M7 |
+| M6 관리 Frontend | 완료 | 로그인·현황·지도·등록 마법사·프로파일·장애. Edge 화면은 M8 |
+| M7 Edge Agent | 완료 | Enrollment·Spool·단절 중 수집·원격 연결 시험. 운영 mTLS 는 M8 |
+| M8 Edge 통합 | 착수 전 | 멱등 Ingest 강화·Edge 관리 화면·mTLS |
 | M9 Grafana | 부분 | Datasource·Dashboard Provisioning 골격만 |
 | M10 운영 강화 | 착수 전 | |
 | M11 확장성 검증 | 착수 전 | 명명 Lint 는 이미 동작 |
@@ -279,7 +279,7 @@ make soak devices=100 ticks=3
 | M6.13 | 상태 자동 갱신 | 완료 | TanStack Query 15초 `refetchInterval` + `keepPreviousData` |
 
 마법사 10절의 10단계는 화면에서 7단계로 묶었다. 제조사 선택과 수집 방식, 연결 시험과
-자동 탐지를 한 화면에 둔다. EDGE 수집은 선택지만 보이고 비활성이다(M7).
+자동 탐지를 한 화면에 둔다. EDGE 수집은 선택지만 보이고 비활성이다(M8).
 
 브라우저는 기록계에 붙지 않는다. Vite 개발 서버가 `/api` 를 백엔드로 넘기고 세션 쿠키는
 같은 출처로 오간다.
@@ -299,9 +299,35 @@ make soak devices=100 ticks=3
 
 ---
 
+## M7 Edge Agent
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M7.1 | Edge 실행 모드 분리 | 완료 | `main_edge.py` + `edgeagent/runtime.py`. 중앙과 같은 `poll_device`·Adapter |
+| M7.2 | Enrollment | 완료 | 일회용 Token → 자리 표시 인증서 + HMAC 클라이언트 토큰. Token 파일 폐기 |
+| M7.3 | 설정 동기·원자 적용·Rollback | 완료 | Schema·edgeId·중복 장비·미등록 Adapter 검증. 실패 시 previous.json |
+| M7.4 | 로컬 Spool | 완료 | SQLite WAL + gzip Segment. 파일 먼저, 행 커밋 |
+| M7.5 | Sequence·Batch·ACK | 완료 | ACK 전 삭제 없음. 재전송 시 같은 batchId 는 멱등 |
+| M7.6 | Uploader | 완료 | gzip Batch, 실패 시 PENDING 복귀와 Backoff |
+| M7.7 | 디스크 한도 | 완료 | ACK 분 → 정상 Poll. 장애 Poll 은 최후 |
+| M7.8 | Heartbeat·자체 진단 | 완료 | CPU·메모리·디스크·시각오차. 중앙 `GET /edges/{id}/health` |
+| M7.9 | 중앙 단절 중 수집 | 완료 | 중앙이 꺼져도 Spool 이 늘고, 복구 후 sequence 순으로 업로드 |
+| M7.10 | 원격 연결 시험 | 완료 | EDGE 장비 `test-connection` 은 작업 대기열. Edge 가 대행 |
+| M7.11 | 배포 문서 | 완료 | [`edge-deployment/README.md`](edge-deployment/README.md) |
+
+운영 mTLS 검증·폐기와 InfluxDB 적재·지연 도달 보호의 중앙 강화는 M8.
+
+### 설계 판단
+
+- **중앙 Postgres 를 Edge 에 두지 않는다.** 수집 대상은 내려받은 설정과 로컬 일정만 본다.
+- **Placeholder 인증서는 등록이 끝났다는 표시다.** 통신 식별은 HMAC `clientToken` 이다.
+- **4xx 등록 실패는 Token 을 버린다.** 네트워크 실패는 다음 Tick 에 같은 Token 으로 재시도한다.
+
+---
+
 ## 다음 착수 지점
 
-1. **M7 Edge Agent** — Enrollment, Spool, 단절 중 수집. 관리 화면의 Edge 항목은 여기서 연다.
+1. **M8 Edge 통합** — Ingest 멱등·지연 도달 보호, Edge 관리 화면, 운영 mTLS.
 2. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 `envelope.py`·`parser.py` 를 실제
    형태로 맞추고 기준선 대조 시험을 켠다.
 3. **실제 InfluxDB 연결 검증** — Docker 환경에서 `make dev` 로 적재·조회·보존정책을 확인한다.

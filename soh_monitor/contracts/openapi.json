@@ -3,7 +3,7 @@
   "info": {
     "title": "관측소 SOH 통합 모니터링 API",
     "description": "Centaur CTR 계열을 1차 대상으로 하는 기록계 SOH 통합 모니터링 API. 제조사 고유 필드는 노출하지 않고 표준 Metric 만 다룬다.",
-    "version": "0.5.0"
+    "version": "0.7.0"
   },
   "paths": {
     "/healthz": {
@@ -2199,6 +2199,561 @@
           }
         }
       }
+    },
+    "/api/v1/edges": {
+      "get": {
+        "tags": [
+          "edges"
+        ],
+        "summary": "Edge 목록",
+        "operationId": "list_edges_api_v1_edges_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response List Edges Api V1 Edges Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "edges"
+        ],
+        "summary": "Edge 등록",
+        "operationId": "create_edge_api_v1_edges_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Create Edge Api V1 Edges Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/edges/{edge_id}": {
+      "get": {
+        "tags": [
+          "edges"
+        ],
+        "summary": "Edge 상세",
+        "operationId": "get_edge_api_v1_edges__edge_id__get",
+        "parameters": [
+          {
+            "name": "edge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Edge Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Get Edge Api V1 Edges  Edge Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/edges/{edge_id}/enrollment-token": {
+      "post": {
+        "tags": [
+          "edges"
+        ],
+        "summary": "등록 Token 재발급",
+        "operationId": "reissue_token_api_v1_edges__edge_id__enrollment_token_post",
+        "parameters": [
+          {
+            "name": "edge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Edge Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Reissue Token Api V1 Edges  Edge Id  Enrollment Token Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/edges/{edge_id}/assignments": {
+      "post": {
+        "tags": [
+          "edges"
+        ],
+        "summary": "장비 할당",
+        "operationId": "assign_device_api_v1_edges__edge_id__assignments_post",
+        "parameters": [
+          {
+            "name": "edge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Edge Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeAssignmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Assign Device Api V1 Edges  Edge Id  Assignments Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/edges/{edge_id}/assignments/{device_id}": {
+      "delete": {
+        "tags": [
+          "edges"
+        ],
+        "summary": "장비 할당 해제",
+        "operationId": "unassign_device_api_v1_edges__edge_id__assignments__device_id__delete",
+        "parameters": [
+          {
+            "name": "edge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Edge Id"
+            }
+          },
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Unassign Device Api V1 Edges  Edge Id  Assignments  Device Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/edges/{edge_id}/health": {
+      "get": {
+        "tags": [
+          "edges"
+        ],
+        "summary": "Edge 상태",
+        "operationId": "edge_health_api_v1_edges__edge_id__health_get",
+        "parameters": [
+          {
+            "name": "edge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Edge Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Edge Health Api V1 Edges  Edge Id  Health Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/edges/{edge_id}/tasks": {
+      "post": {
+        "tags": [
+          "edges"
+        ],
+        "summary": "원격 작업 요청",
+        "operationId": "enqueue_task_api_v1_edges__edge_id__tasks_post",
+        "parameters": [
+          {
+            "name": "edge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Edge Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Enqueue Task Api V1 Edges  Edge Id  Tasks Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/edge/enroll": {
+      "post": {
+        "tags": [
+          "edge-agent"
+        ],
+        "summary": "일회용 Token 으로 등록",
+        "operationId": "enroll_api_v1_edge_enroll_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdgeEnrollRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Enroll Api V1 Edge Enroll Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/edge/config": {
+      "get": {
+        "tags": [
+          "edge-agent"
+        ],
+        "summary": "설정 동기화",
+        "operationId": "get_config_api_v1_edge_config_get",
+        "parameters": [
+          {
+            "name": "currentVersion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Currentversion"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Get Config Api V1 Edge Config Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/edge/heartbeat": {
+      "post": {
+        "tags": [
+          "edge-agent"
+        ],
+        "summary": "상태 보고",
+        "operationId": "heartbeat_api_v1_edge_heartbeat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Heartbeat Api V1 Edge Heartbeat Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/edge/ingest/batches": {
+      "post": {
+        "tags": [
+          "edge-agent"
+        ],
+        "summary": "수집 Batch 업로드",
+        "operationId": "ingest_batches_api_v1_edge_ingest_batches_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Ingest Batches Api V1 Edge Ingest Batches Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/edge/tasks/{task_id}/result": {
+      "post": {
+        "tags": [
+          "edge-agent"
+        ],
+        "summary": "원격 작업 결과",
+        "operationId": "task_result_api_v1_edge_tasks__task_id__result_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Task Result Api V1 Edge Tasks  Task Id  Result Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2656,6 +3211,114 @@
         "additionalProperties": false,
         "type": "object",
         "title": "DeviceWriteRequest"
+      },
+      "EdgeAssignmentRequest": {
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Deviceid"
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 16,
+            "title": "Role",
+            "default": "primary"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "deviceId"
+        ],
+        "title": "EdgeAssignmentRequest"
+      },
+      "EdgeCreateRequest": {
+        "properties": {
+          "edgeCode": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Edgecode"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "regionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regionid"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "edgeCode",
+          "name"
+        ],
+        "title": "EdgeCreateRequest"
+      },
+      "EdgeEnrollRequest": {
+        "properties": {
+          "edgeId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Edgeid"
+          },
+          "enrollmentToken": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 8,
+            "title": "Enrollmenttoken"
+          },
+          "agentVersion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentversion"
+          },
+          "installedAdapters": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Installedadapters"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "edgeId",
+          "enrollmentToken"
+        ],
+        "title": "EdgeEnrollRequest"
       },
       "EndpointWrite": {
         "properties": {

@@ -33,6 +33,10 @@ api: ## 로컬 API 실행 (SQLite)
 collector: ## 로컬 Collector 실행 (SQLite)
 	cd backend && SOH_DATABASE_URL_OVERRIDE=$(LOCAL_DB) ../$(PY) -m app.main_collector
 
+.PHONY: edge
+edge: ## 로컬 Edge Agent 실행 (SQLite Spool)
+	cd backend && SOH_EDGE_SPOOL_PATH=/tmp/soh-edge-spool ../$(PY) -m app.main_edge
+
 .PHONY: web
 web: ## 로컬 프론트엔드 개발 서버
 	cd frontend && npm run dev
