@@ -10,7 +10,7 @@
 | M2 Centaur CTR Adapter | 완료(실장비 미검증) | 가상 서버 + Adapter. 응답 형태는 실응답으로 확정해야 한다 |
 | M3 Direct Collector | 완료(InfluxDB 미검증) | 스케줄러·Lease·재시도·적재. 실제 InfluxDB 연결은 Docker 환경에서 확인 필요 |
 | M4 상태 판정 엔진 | 완료 | 임계값·Hysteresis·Incident 생명주기·유지보수 억제 |
-| M5 관리 API | 착수 전 | 계약 조회 API 만 존재 |
+| M5 관리 API | 완료 | 인증·CRUD·연결 시험·CSV·감사. Edge 등록은 M7 |
 | M6 관리 Frontend | 착수 전 | 화면 골격과 표준 Metric 화면만 존재 |
 | M7 Edge Agent | 착수 전 | 실행점과 Schema 만 존재 |
 | M8 Edge 통합 | 착수 전 | |
@@ -54,7 +54,7 @@ Docker 가 있는 환경에서 `make images` 와 `make dev` 로 확인해야 한
 | M1.8 | Capability 정의 | 완료 | `capabilities.yaml`, 20개 기능 / 5개 지원 상태 |
 | M1.9 | Edge Schema | 완료 | `contracts/edge/config.schema.json`, `ingest.schema.json` |
 | M1.10 | InfluxDB 초기화 | 완료(미검증) | `deploy/influxdb/init/10-buckets.sh` |
-| M1.11 | OpenAPI·클라이언트 | 부분 | FastAPI 자동 생성 스키마 사용. 파일 추출과 TS 클라이언트 생성은 M5 에서 |
+| M1.11 | OpenAPI·클라이언트 | 완료 | `contracts/openapi.json`, `frontend/src/generated/api-paths.ts`. `--check` 로 경로 불일치 실패 |
 
 ### 계약에서 못 박은 규칙
 
@@ -200,7 +200,7 @@ make soak              # 수집기 부하·안정성 시험 (50대, 장애 생�
 make soak devices=100 ticks=3
 ```
 
-현재 결과: 백엔드 테스트 387개 통과(1개 skip — 실장비 Fixture 대조 시험), 프론트 타입 검사·빌드 통과.
+현재 결과: 백엔드 테스트 436개 통과(1개 skip — 실장비 Fixture 대조 시험).
 
 부하 시험(50대, 느린 장비 5대 800ms, 실패 장비 5대, 동시 20):
 
@@ -218,10 +218,52 @@ make soak devices=100 ticks=3
 
 ---
 
+---
+
+## M5 관리 API
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M5.1 | 인증·세션·역할 3종 | 완료 | 서명 쿠키 세션. ADMIN/OPERATOR/VIEWER. 초기 비밀번호 변경 강제 |
+| M5.2 | 관측소 CRUD + retired | 완료 | 물리 삭제 없음. `/retire` 가 하위 장비도 비활성 |
+| M5.3 | 기록계 CRUD + Credential 분리 | 완료 | `credentialReference`(env:/file:) 만 저장. 평문 비밀번호 거절 |
+| M5.4 | 센서·축·외부 SOH | 완료 | 축 기본 U/V/W. 외부 SOH 는 `value = raw × scale + offset` |
+| M5.5 | test-connection·probe·soh-preview | 완료 | 등록 전/후 모두. 미리보기는 Adapter `redact()` |
+| M5.6 | SSRF 화이트리스트 | 완료 | RFC1918 기본. 메타데이터·링크 로컬은 허용 목록에 넣어도 거부 |
+| M5.7 | 수집·Metric 프로파일 | 완료 | 영향 장비 수(`affectedDeviceCount`)를 응답에 포함 |
+| M5.8 | 장비 Override | 완료 | 카탈로그·조건 검증 후 저장. 차원값 포함 |
+| M5.9 | CSV 일괄 등록 | 완료 | 오류 행만 실패. 수식 주입(`=`, `+`, `@`) 거부 |
+| M5.10 | fleet/summary·current-health | 완료(M4) | 인증을 붙였다 |
+| M5.11 | 감사 로그 | 완료 | 설정 변경 주체·전후 값. 비밀값은 `***` |
+| M5.12 | OpenAPI·클라이언트 | 완료 | `scripts/export_openapi.py --check` |
+
+### 설계 판단
+
+- **세션 저장소를 두지 않았다.** HMAC 서명 쿠키면 API 프로세스를 여러 대 띄워도
+  공유 상태가 필요 없다. 토큰에 비밀번호를 넣지 않는다.
+- **연결 시험만 API 가 관측소망으로 나간다.** `poll-now` 는 여전히 collector 가
+  담당한다. 나가는 경로를 등록 화면의 읽기 동작으로 한정한다.
+- **호스트명 해석 결과가 하나라도 허용 대역 밖이면 거부한다.** 사설 이름 뒤에
+  공인 IP 가 붙어 있는 DNS 재바인딩을 막기 위한 것이다. 해석 실패도 거부한다.
+- **역할은 API 에서 강제한다.** VIEWER 는 조회, OPERATOR 는 연결 시험·장애 확인·
+  유지보수, ADMIN 은 설정 전체. 화면에서 버튼을 숨기는 것만으로는 부족하다.
+
+### 권한
+
+| | VIEWER | OPERATOR | ADMIN |
+|--|:------:|:--------:|:-----:|
+| 조회 (관측소·상태·프로파일) | ○ | ○ | ○ |
+| 연결 시험·Probe·미리보기·수동 수집 | | ○ | ○ |
+| 장애 확인·유지보수 시간 | | ○ | ○ |
+| 관측소·장비·프로파일·CSV | | | ○ |
+| 사용자·감사 로그 | | | ○ |
+
+---
+
 ## 다음 착수 지점
 
-1. **M5 관리 API** — 관측소·기록계 CRUD, 프로파일 편집, 연결 시험, CSV 일괄 등록, 권한.
-   현재는 계약 조회와 상태·장애 조회만 있다.
+1. **M6 관리 Frontend** — 로그인, 관측소 목록/등록 마법사, 프로파일 편집, 장애 확인.
+   API 는 M5 에서 준비됐다.
 2. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 `envelope.py`·`parser.py` 를 실제
    형태로 맞추고 기준선 대조 시험을 켠다.
 3. **실제 InfluxDB 연결 검증** — Docker 환경에서 `make dev` 로 적재·조회·보존정책을 확인한다.
