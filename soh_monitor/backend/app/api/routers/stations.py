@@ -54,16 +54,13 @@ def _counts(session: Session) -> dict[uuid.UUID, int]:
     return {row[0]: row[1] for row in rows}
 
 
-def _worst_by_station(session: Session) -> dict[uuid.UUID, str]:
-    rows = session.execute(
-        select(Device.station_id, DeviceRuntimeState.overall_severity).join(
-            DeviceRuntimeState, DeviceRuntimeState.device_id == Device.id
-        )
-    )
-    grouped: dict[uuid.UUID, list[Severity]] = {}
-    for station_id, severity in rows:
-        grouped.setdefault(station_id, []).append(severity)
-    return {station_id: rollup(values).value for station_id, values in grouped.items()}
+def _worst_from_categories(categories: dict[uuid.UUID, dict[str, str]]) -> dict[uuid.UUID, str]:
+    """장비 통신 성공 여부가 아니라 분류 상태의 최악값이다."""
+    result: dict[uuid.UUID, str] = {}
+    for station_id, cats in categories.items():
+        values = [Severity(value) for value in cats.values()]
+        result[station_id] = rollup(values).value if values else "UNKNOWN"
+    return result
 
 
 def _categories_by_station(session: Session) -> dict[uuid.UUID, dict[str, str]]:
@@ -139,8 +136,8 @@ def list_stations(
             )
         stations = session.scalars(query).all()
         counts = _counts(session)
-        worst = _worst_by_station(session)
         categories = _categories_by_station(session)
+        worst = _worst_from_categories(categories)
         last_success = _last_success_by_station(session)
         modes = _modes_by_station(session)
         return {
@@ -304,26 +301,40 @@ def station_health(station_id: str, actor: RequireRead) -> dict:
         if station is None:
             raise HTTPException(status_code=404, detail="없는 관측소다")
         devices = session.scalars(select(Device).where(Device.station_id == identifier)).all()
+        device_ids = [device.id for device in devices]
         runtimes = {
             state.device_id: state
             for state in session.scalars(
                 select(DeviceRuntimeState).where(
-                    DeviceRuntimeState.device_id.in_([device.id for device in devices] or [uuid.uuid4()])
+                    DeviceRuntimeState.device_id.in_(device_ids or [uuid.uuid4()])
                 )
             )
         }
-        severities = [runtimes[device.id].overall_severity for device in devices if device.id in runtimes]
+        category_rows = session.execute(
+            select(HealthState.device_id, HealthState.severity).where(
+                HealthState.device_id.in_(device_ids or [uuid.uuid4()]),
+                HealthState.metric_key == "",
+            )
+        )
+        by_device: dict[uuid.UUID, list[Severity]] = {}
+        for device_id, severity in category_rows:
+            by_device.setdefault(device_id, []).append(severity)
+        device_overall = {
+            device_id: rollup(values).value if values else "UNKNOWN"
+            for device_id, values in by_device.items()
+        }
+        station_severities = [Severity(value) for value in device_overall.values()]
         return {
             "stationId": station_id,
             "stationCode": station.station_code,
-            "overall": rollup(severities).value if severities else "UNKNOWN",
+            "overall": rollup(station_severities).value if station_severities else "UNKNOWN",
             "devices": [
                 {
                     "deviceId": str(device.id),
                     "label": device.label,
                     "enabled": device.enabled,
                     "status": device.status.value,
-                    "overall": runtimes[device.id].overall_severity.value if device.id in runtimes else "UNKNOWN",
+                    "overall": device_overall.get(device.id, "UNKNOWN"),
                     "lastSuccessAt": iso(runtimes[device.id].last_success_at) if device.id in runtimes else None,
                     "consecutiveFailures": (
                         runtimes[device.id].consecutive_failures if device.id in runtimes else 0

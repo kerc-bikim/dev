@@ -210,6 +210,17 @@ class Test관측소:
         assert row["categories"] == {}
         assert row["deviceCount"] == 1
 
+    def test_종합상태는_분류의_최악값이다(self):
+        import uuid
+
+        from app.api.routers.stations import _worst_from_categories
+
+        station_id = uuid.uuid4()
+        worst = _worst_from_categories(
+            {station_id: {"power": "OK", "timing": "CRITICAL", "storage": "WARNING"}}
+        )
+        assert worst[station_id] == "CRITICAL"
+
     def test_같은_코드는_거절한다(self, client):
         login(client)
         create_station(client, "A01")

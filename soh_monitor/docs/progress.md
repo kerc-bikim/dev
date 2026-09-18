@@ -290,6 +290,8 @@ make soak devices=100 ticks=3
 
 - **목록 API 에 분류 상태를 실었다.** 화면이 관측소마다 `current-health` 를 부르면
   N+1 이 된다. `GET /stations` 가 분류 집계·마지막 성공·수집 방식을 같이 준다.
+  종합(`worstSeverity`)은 통신 성공 여부(`device_runtime_state.overall_severity`)가 아니라
+  분류 상태의 최악값이다. 통신만 되면 시각이 CRITICAL 이어도 정상이라고 보이면 안 된다.
 - **비밀번호 칸을 두지 않는다.** Manifest 의 `secretFields` 는 Secret 참조 입력으로
   바뀐다. 평문을 저장할 자리가 화면에도 없다.
 - **세션 만료는 로그인 화면으로 되돌린다.** 저장 중이던 마법사 값은 메모리에만 있으므로
