@@ -15,7 +15,7 @@ M8)으로만 한다. 중앙이 꺼져 있어도 수집은 멈추지 않고 로�
 
 ## 1. 중앙에서 Edge 만들기
 
-관리 API (또는 이후 M8 화면)에서 Edge 를 만든다. Token 은 **응답에 한 번만** 실리고
+관리 API (또는 Edge 화면)에서 Edge 를 만든다. Token 은 **응답에 한 번만** 실리고
 저장소에는 해시만 남는다.
 
 ```bash
@@ -104,5 +104,9 @@ EDGE 장비의 `POST /api/v1/devices/{id}/test-connection` 은 중앙이 기록�
 
 - Spool 볼륨을 지우면 ACK 받지 못한 수집분이 사라진다. 컨테이너만 갈아도 볼륨은 남긴다
 - Adapter 자동 업데이트는 하지 않는다. 새 Adapter 는 이미지를 다시 빌드해 배포한다
-- 운영 mTLS(클라이언트 인증서 검증·폐기)는 M8 에서 연다. 지금은 HMAC 클라이언트 토큰이다
+- 운영에서는 nginx `ssl_verify_client` 를 켠다. 중앙은 `X-Edge-Certificate-Serial` 이
+  등록 일련번호와 다르거나, 관리자가 `POST /api/v1/edges/{id}/revoke` 한 Edge 의
+  요청을 즉시 403 한다. 개발 Compose 는 HMAC `clientToken` 만으로 식별한다
 - Edge 간 통신은 없다. 같은 장비를 두 Edge 에 동시에 할당하면 DB 가 거부한다
+- Heartbeat 가 2회 빠지면 주의, 3회 빠지면 장애다. 하위 기록계는
+  `UNKNOWN / EDGE UNREACHABLE` 로 접히고 열린 장애는 함대 집계에서 빠진다

@@ -3,7 +3,7 @@
   "info": {
     "title": "관측소 SOH 통합 모니터링 API",
     "description": "Centaur CTR 계열을 1차 대상으로 하는 기록계 SOH 통합 모니터링 API. 제조사 고유 필드는 노출하지 않고 표준 Metric 만 다룬다.",
-    "version": "0.7.0"
+    "version": "0.8.0"
   },
   "paths": {
     "/healthz": {
@@ -1937,6 +1937,28 @@
         }
       }
     },
+    "/api/v1/fleet/topology": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "지역 → Edge → 관측소 계층",
+        "operationId": "fleet_topology_api_v1_fleet_topology_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Fleet Topology Api V1 Fleet Topology Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users": {
       "get": {
         "tags": [
@@ -2436,6 +2458,49 @@
                 "schema": {
                   "type": "object",
                   "title": "Response Unassign Device Api V1 Edges  Edge Id  Assignments  Device Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/edges/{edge_id}/revoke": {
+      "post": {
+        "tags": [
+          "edges"
+        ],
+        "summary": "인증서 폐기",
+        "operationId": "revoke_edge_api_v1_edges__edge_id__revoke_post",
+        "parameters": [
+          {
+            "name": "edge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Edge Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Revoke Edge Api V1 Edges  Edge Id  Revoke Post"
                 }
               }
             }

@@ -4,10 +4,11 @@ import { Layout } from "./Layout";
 import { AuthProvider } from "../auth/AuthProvider";
 import { RequireAuth } from "../auth/RequireAuth";
 import { ContractsPage } from "../pages/ContractsPage";
-import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { LoginPage } from "../features/auth/LoginPage";
 import { ChangePasswordPage } from "../features/auth/ChangePasswordPage";
 import { OverviewPage } from "../features/overview/OverviewPage";
+import { EdgesPage } from "../features/edges/EdgesPage";
+import { EdgeDetailPage } from "../features/edges/EdgeDetailPage";
 import { StationsPage } from "../features/stations/StationsPage";
 import { StationWizardPage } from "../features/stations/StationWizardPage";
 import { StationDetailPage } from "../features/stations/StationDetailPage";
@@ -67,21 +68,8 @@ export const routes: RouteObject[] = [
             ),
           },
           { path: "contracts", element: <ContractsPage /> },
-          {
-            path: "edges",
-            element: (
-              <PlaceholderPage
-                title="Edge Collector"
-                milestone="M7 · M8 (Edge Agent와 통합)"
-                scope={[
-                  "Edge 목록과 마지막 Heartbeat",
-                  "할당된 기록계와 수집 성공률",
-                  "로컬 Spool 사용량과 미전송 Batch",
-                  "설정 버전·프로그램 버전·인증서 만료",
-                ]}
-              />
-            ),
-          },
+          { path: "edges", element: <EdgesPage /> },
+          { path: "edges/:edgeId", element: <EdgeDetailPage /> },
           { path: "*", element: <Navigate to="/overview" replace /> },
         ],
       },

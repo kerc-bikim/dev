@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.domain.enums import Severity
-from app.domain.models import PollResult
+from app.domain.enums import PollErrorCode, Severity, SupportState
+from app.domain.models import CapabilityReport, MetricSample, PollResult
 
 
 def iso_z(moment: datetime) -> str:
@@ -59,6 +59,58 @@ def poll_to_ingest(result: PollResult, sequence: int) -> dict:
         "capabilities": capabilities,
         "samples": samples,
     }
+
+
+def parse_iso(value: str) -> datetime:
+    raw = value.strip()
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    moment = datetime.fromisoformat(raw)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc)
+
+
+def ingest_to_poll(poll: dict) -> PollResult:
+    """중앙 Ingest 가 받은 Poll JSON 을 Adapter 결과와 같은 형태로 되돌린다."""
+    samples: list[MetricSample] = []
+    for item in poll.get("samples") or []:
+        status = item.get("valueStatus")
+        timestamp = item.get("valueTimestamp")
+        support = item.get("supportState")
+        samples.append(
+            MetricSample(
+                metric_key=item["metricKey"],
+                dimensions=item.get("dimensions") or {},
+                value_float=item.get("valueFloat"),
+                value_int=item.get("valueInt"),
+                value_bool=item.get("valueBool"),
+                value_text=item.get("valueText"),
+                value_status=Severity(status) if status else None,
+                value_timestamp=parse_iso(timestamp) if timestamp else None,
+                raw_value=item.get("rawValue"),
+                support_state=SupportState(support) if support else SupportState.SUPPORTED_ENABLED,
+            )
+        )
+    capabilities = {
+        key: SupportState(state) for key, state in (poll.get("capabilities") or {}).items()
+    }
+    error = poll.get("errorCode")
+    return PollResult(
+        poll_id=str(poll["pollId"]),
+        device_id=str(poll["deviceId"]),
+        adapter_key=str(poll.get("adapterKey") or "unknown"),
+        adapter_version=str(poll.get("adapterVersion") or "1.0"),
+        observed_at=parse_iso(str(poll["observedAt"])),
+        success=bool(poll.get("success")),
+        samples=tuple(samples),
+        capabilities=CapabilityReport(states=capabilities),
+        latency_ms=poll.get("latencyMs"),
+        http_status=poll.get("httpStatus"),
+        payload_bytes=poll.get("payloadBytes"),
+        error_code=PollErrorCode(error) if error else None,
+        error_message=poll.get("errorMessage"),
+    )
 
 
 def is_incident_poll(result: PollResult) -> bool:

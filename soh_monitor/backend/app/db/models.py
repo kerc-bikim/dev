@@ -506,6 +506,10 @@ class EdgeCollector(UuidPrimaryKey, Timestamped, Base):
     spool_limit_bytes: Mapped[int | None] = mapped_column(BigInteger)
     ip_address: Mapped[str | None] = mapped_column(String(64))
     registered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        doc="인증서·토큰 폐기 시각. 값이 있으면 Agent 요청은 즉시 403 이다.",
+    )
     notes: Mapped[str | None] = mapped_column(Text)
 
 
@@ -540,6 +544,25 @@ class EdgeAssignment(UuidPrimaryKey, Timestamped, Base):
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="primary")
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EdgeIngestSequence(UuidPrimaryKey, Timestamped, Base):
+    """Edge 가 올린 Poll 의 sequence 멱등 표.
+
+    batch_id 가 달라도 같은 sequence 는 한 번만 적재한다. 재전송·분할 업로드가
+    시계열을 두 번 쌓지 못하게 DB 가 막는다.
+    """
+
+    __tablename__ = "edge_ingest_sequences"
+    __table_args__ = (UniqueConstraint("edge_id", "sequence"),)
+
+    edge_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("edge_collectors.id", ondelete="CASCADE"), nullable=False
+    )
+    sequence: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    poll_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    batch_id: Mapped[str | None] = mapped_column(String(64))
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class EdgeIngestBatch(UuidPrimaryKey, Timestamped, Base):
@@ -726,6 +749,16 @@ class Incident(UuidPrimaryKey, Timestamped, Base):
             unique=True,
             postgresql_where=text("status <> 'RESOLVED'"),
             sqlite_where=text("status <> 'RESOLVED'"),
+        ),
+        Index(
+            "uq_incidents_open_edge",
+            "edge_id",
+            "category",
+            "metric_key",
+            "dimension_value",
+            unique=True,
+            postgresql_where=text("status <> 'RESOLVED' AND device_id IS NULL AND edge_id IS NOT NULL"),
+            sqlite_where=text("status <> 'RESOLVED' AND device_id IS NULL AND edge_id IS NOT NULL"),
         ),
     )
 

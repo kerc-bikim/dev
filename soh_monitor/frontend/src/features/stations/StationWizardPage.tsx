@@ -38,7 +38,8 @@ export function StationWizardPage() {
 
   const [adapterKey, setAdapterKey] = useState("");
   const [model, setModel] = useState("");
-  const [collectionMode] = useState("DIRECT");
+  const [collectionMode, setCollectionMode] = useState("DIRECT");
+  const [edgeId, setEdgeId] = useState("");
   const [connection, setConnection] = useState<ConnectionDraft>(emptyConnection());
 
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -52,6 +53,7 @@ export function StationWizardPage() {
   const adapters = useQuery({ queryKey: ["adapters"], queryFn: api.adapters });
   const collections = useQuery({ queryKey: ["collection-profiles"], queryFn: api.collectionProfiles });
   const metrics = useQuery({ queryKey: ["metric-profiles"], queryFn: api.metricProfiles });
+  const edges = useQuery({ queryKey: ["edges"], queryFn: api.edges });
 
   const adapter: AdapterDto | undefined = useMemo(
     () => (adapters.data?.adapters ?? []).find((item) => item.adapterKey === adapterKey),
@@ -80,6 +82,10 @@ export function StationWizardPage() {
   function next() {
     if (step === 0 && (!stationCode.trim() || !name.trim() || !networkCode.trim())) {
       setError("네트워크, 관측소 코드, 이름은 필수다");
+      return;
+    }
+    if (step === 1 && collectionMode === "EDGE" && !edgeId) {
+      setError("EDGE 수집은 Edge 를 골라야 한다");
       return;
     }
     setError(null);
@@ -136,6 +142,7 @@ export function StationWizardPage() {
         serialNumber: identity?.serialNumber || null,
         firmwareVersion: identity?.firmwareVersion || null,
         collectionMode,
+        edgeId: collectionMode === "EDGE" ? edgeId : null,
         collectionProfileId: collectionProfileId || null,
         metricProfileId: metricProfileId || null,
         endpoint: {
@@ -252,11 +259,27 @@ export function StationWizardPage() {
           )}
           <label className="field">
             <span>수집 방식</span>
-            <select value={collectionMode} disabled>
+            <select value={collectionMode} onChange={(event) => setCollectionMode(event.target.value)}>
               <option value="DIRECT">DIRECT (중앙이 직접 수집)</option>
-              <option value="EDGE">EDGE (지역 Edge — M7에서 연다)</option>
+              <option value="EDGE">EDGE (지역 Edge 가 수집)</option>
             </select>
           </label>
+          {collectionMode === "EDGE" && (
+            <label className="field">
+              <span>Edge</span>
+              <select value={edgeId} onChange={(event) => setEdgeId(event.target.value)}>
+                <option value="">선택</option>
+                {(edges.data?.edges ?? []).map((item) => (
+                  <option key={item.id} value={item.id} disabled={item.status === "DISABLED"}>
+                    {item.edgeCode} · {item.name} ({item.status})
+                  </option>
+                ))}
+              </select>
+              {(edges.data?.edges.length ?? 0) === 0 && (
+                <small>등록된 Edge 가 없다. 먼저 Edge Collector 화면에서 만든다.</small>
+              )}
+            </label>
+          )}
         </div>
       )}
 
@@ -265,7 +288,15 @@ export function StationWizardPage() {
       )}
       {step === 2 && !adapter && <div className="notice warn">먼저 Adapter 를 고른다.</div>}
 
-      {step === 3 && (
+      {step === 3 && collectionMode === "EDGE" && (
+        <div className="card">
+          <p>
+            EDGE 모드는 중앙이 기록계에 붙지 않는다. 연결 시험은 할당한 Edge 가 지역망에서
+            대행한다. 접속 정보는 Edge 설정으로 내려간다.
+          </p>
+        </div>
+      )}
+      {step === 3 && collectionMode !== "EDGE" && (
         <div className="card">
           <p>등록 전에 장비가 응답하는지 확인한다. 이 동작만 API 가 관측소망으로 나간다.</p>
           <BusyButton busy={busy} onCancel={() => controller?.abort()} onClick={() => void runProbe()}>
@@ -445,6 +476,15 @@ export function StationWizardPage() {
               <tr>
                 <th>Adapter</th>
                 <td>{adapterKey}</td>
+              </tr>
+              <tr>
+                <th>수집</th>
+                <td>
+                  {collectionMode}
+                  {collectionMode === "EDGE"
+                    ? ` · ${(edges.data?.edges ?? []).find((item) => item.id === edgeId)?.edgeCode ?? edgeId}`
+                    : ""}
+                </td>
               </tr>
               <tr>
                 <th>접속</th>

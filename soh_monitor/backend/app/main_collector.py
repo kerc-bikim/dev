@@ -63,6 +63,11 @@ async def run_collector(max_ticks: int | None = None, sink: MetricSink | None = 
 
     async def tick() -> None:
         await scheduler.tick()
+        from app.db.session import session_scope
+        from app.health.edge_watch import evaluate_all
+
+        with session_scope() as session:
+            evaluate_all(session)
 
     service = PeriodicService(
         "collector",

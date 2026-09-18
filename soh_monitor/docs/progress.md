@@ -11,9 +11,9 @@
 | M3 Direct Collector | 완료(InfluxDB 미검증) | 스케줄러·Lease·재시도·적재. 실제 InfluxDB 연결은 Docker 환경에서 확인 필요 |
 | M4 상태 판정 엔진 | 완료 | 임계값·Hysteresis·Incident 생명주기·유지보수 억제 |
 | M5 관리 API | 완료 | 인증·CRUD·연결 시험·CSV·감사. Edge 등록 API 는 M7 |
-| M6 관리 Frontend | 완료 | 로그인·현황·지도·등록 마법사·프로파일·장애. Edge 화면은 M8 |
+| M6 관리 Frontend | 완료 | 로그인·현황·지도·등록 마법사·프로파일·장애. Edge 화면은 M8 에서 연결 |
 | M7 Edge Agent | 완료 | Enrollment·Spool·단절 중 수집·원격 연결 시험. 운영 mTLS 는 M8 |
-| M8 Edge 통합 | 착수 전 | 멱등 Ingest 강화·Edge 관리 화면·mTLS |
+| M8 Edge 통합 | 완료 | Ingest 멱등·지연 도달·mTLS 폐기·Edge 화면·장애 상관 |
 | M9 Grafana | 부분 | Datasource·Dashboard Provisioning 골격만 |
 | M10 운영 강화 | 착수 전 | |
 | M11 확장성 검증 | 착수 전 | 명명 Lint 는 이미 동작 |
@@ -279,7 +279,7 @@ make soak devices=100 ticks=3
 | M6.13 | 상태 자동 갱신 | 완료 | TanStack Query 15초 `refetchInterval` + `keepPreviousData` |
 
 마법사 10절의 10단계는 화면에서 7단계로 묶었다. 제조사 선택과 수집 방식, 연결 시험과
-자동 탐지를 한 화면에 둔다. EDGE 수집은 선택지만 보이고 비활성이다(M8).
+자동 탐지를 한 화면에 둔다. EDGE 수집은 Edge 를 고르면 활성화된다.
 
 브라우저는 기록계에 붙지 않는다. Vite 개발 서버가 `/api` 를 백엔드로 넘기고 세션 쿠키는
 같은 출처로 오간다.
@@ -325,9 +325,32 @@ make soak devices=100 ticks=3
 
 ---
 
+## M8 Edge 통합
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M8.1 | Ingest gzip·Schema·크기 제한 | 완료 | 압축·해제 모두 `SOH_EDGE_INGEST_MAX_BYTES`(기본 6MB). 초과는 413 |
+| M8.2 | 멱등 (`edge_id`+`sequence`+`batch_id`) | 완료 | `edge_ingest_sequences`. 같은 Batch 재전송은 Point 수 불변 |
+| M8.3 | 지연 데이터 `observed_at` 적재 | 완료 | Influx timestamp 는 관측 시각. 현재 상태는 최신 관측만 갱신 |
+| M8.4 | mTLS 검증·인증서 폐기 | 완료 | `X-Edge-Certificate-Serial` 불일치·`POST /edges/{id}/revoke` → 403 |
+| M8.5 | Edge 등록·할당 화면 | 완료 | `features/edges`. 미지원 Adapter·낮은 Edge 버전은 409 |
+| M8.6 | Edge 상세 (Spool·버전·인증서) | 완료 | `/edges/:id` |
+| M8.7 | Edge 장애 시 하위 억제 | 완료 | Heartbeat 2회 WARNING / 3회 CRITICAL. 장비 장애는 `suppressed_by_edge` |
+| M8.8 | `UNKNOWN / EDGE UNREACHABLE` | 완료 | 관측소 목록·현황. 기록계 장애와 구분 |
+| M8.9 | Adapter·Core 버전 호환 | 완료 | `installed_adapters`·`minimumEdgeVersion` |
+| M8.10 | 지역 토폴로지 | 완료 | `GET /api/v1/fleet/topology`, 통합 현황 계층 |
+
+### 설계 판단
+
+- **시계열은 늦어도 채우고, 현재 상태는 되돌리지 않는다.** 하루 늦은 Poll 이 그래프의 빈칸을 메우는 것은 맞다. 그 값으로 '지금 정상' 이라고 바꾸면 안 된다.
+- **함대 열린 장애 수는 Edge 억제분을 뺀다.** Edge 한 대가 죽으면 하위 수십 건이 아니라 Edge 장애 1건이 집계된다. 목록에는 억제 표시를 남겨 추적이 가능하게 한다.
+- **nginx mTLS 는 배포 스위치다.** Compose 개발은 HMAC `clientToken` 만 쓴다. 운영에서 `ssl_verify_client` 를 켜면 일련번호 헤더가 오고, 폐기된 Edge 는 API 가 403 한다.
+
+---
+
 ## 다음 착수 지점
 
-1. **M8 Edge 통합** — Ingest 멱등·지연 도달 보호, Edge 관리 화면, 운영 mTLS.
+1. **M9 Grafana** — Datasource·Dashboard Provisioning 과 알림.
 2. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 `envelope.py`·`parser.py` 를 실제
    형태로 맞추고 기준선 대조 시험을 켠다.
 3. **실제 InfluxDB 연결 검증** — Docker 환경에서 `make dev` 로 적재·조회·보존정책을 확인한다.

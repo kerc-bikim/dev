@@ -18,6 +18,7 @@ from app.api.deps import Actor
 from app.api.presenters import endpoint_payload, iso, parse_uuid
 from app.config.settings import get_settings
 from app.db.models import (
+    AdapterVersion,
     CollectionMode,
     Device,
     DeviceEndpoint,
@@ -61,6 +62,59 @@ def bump_config_version(session: Session, edge_id: uuid.UUID) -> int:
     return edge.last_config_version
 
 
+def parse_version(value: str) -> tuple[int, ...]:
+    parts: list[int] = []
+    for token in (value or "0").split("."):
+        digits = "".join(ch for ch in token if ch.isdigit())
+        parts.append(int(digits) if digits else 0)
+    return tuple(parts or (0,))
+
+
+def installed_adapter_keys(edge: EdgeCollector) -> set[str] | None:
+    raw = edge.installed_adapters or {}
+    if not raw:
+        return None
+    if isinstance(raw, dict):
+        return {str(key) for key, enabled in raw.items() if enabled}
+    if isinstance(raw, list):
+        return {str(key) for key in raw}
+    return None
+
+
+def assert_assignment_compatible(session: Session, edge: EdgeCollector, device: Device) -> None:
+    """Adapter 가 Edge 에 없거나 프로그램 버전이 모자라면 할당을 막는다."""
+    if edge.status is EdgeStatus.DISABLED or edge.revoked_at is not None:
+        raise HTTPException(status_code=409, detail="폐기된 Edge 에는 장비를 할당할 수 없다")
+    keys = installed_adapter_keys(edge)
+    if keys is not None and device.adapter_key not in keys:
+        raise HTTPException(
+            status_code=409,
+            detail=f"이 Edge 에 {device.adapter_key} Adapter 가 설치되어 있지 않다",
+        )
+    min_version = None
+    try:
+        from app.adapters.registry import get_registry
+
+        min_version = get_registry().get(device.adapter_key).manifest.minimum_edge_version
+    except Exception:  # noqa: BLE001 - 레지스트리에 없으면 DB 버전 표를 본다
+        row = session.scalar(
+            select(AdapterVersion)
+            .where(AdapterVersion.adapter_key == device.adapter_key)
+            .order_by(AdapterVersion.released_at.desc())
+        )
+        if row is not None:
+            min_version = row.minimum_edge_version
+    if min_version and edge.software_version:
+        if parse_version(edge.software_version) < parse_version(min_version):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Edge 프로그램 {edge.software_version} 은 "
+                    f"{device.adapter_key} 최소 버전 {min_version} 보다 낮다"
+                ),
+            )
+
+
 def sync_device_assignment(session: Session, device: Device) -> None:
     """장비의 Edge 지정과 활성 할당 행을 맞춘다."""
     now = utcnow()
@@ -76,6 +130,7 @@ def sync_device_assignment(session: Session, device: Device) -> None:
         edge = session.get(EdgeCollector, device.edge_id)
         if edge is None:
             raise HTTPException(status_code=404, detail="없는 Edge 다")
+        assert_assignment_compatible(session, edge, device)
         keep = None
         for row in actives:
             if row.edge_id == device.edge_id:
@@ -115,6 +170,7 @@ def assign_device(
     role: str = "primary",
 ) -> EdgeAssignment:
     now = utcnow()
+    assert_assignment_compatible(session, edge, device)
     for row in session.scalars(
         select(EdgeAssignment).where(
             EdgeAssignment.device_id == device.id,
@@ -320,6 +376,8 @@ def edge_payload(edge: EdgeCollector, *, health: EdgeRuntimeState | None = None)
         "spoolLimitBytes": edge.spool_limit_bytes,
         "ipAddress": edge.ip_address,
         "registeredAt": iso(edge.registered_at),
+        "revokedAt": iso(edge.revoked_at),
+        "certificateSerial": edge.certificate_serial,
         "notes": edge.notes,
         "hasEnrollmentToken": bool(edge.enrollment_token_hash),
     }
@@ -348,9 +406,35 @@ def current_edge_from_request(request: Request, session: Session) -> EdgeCollect
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
     edge = load_edge_by_code(session, edge_code)
-    if edge is None or edge.status is EdgeStatus.DISABLED:
+    if edge is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="등록되지 않은 Edge 다")
+    if edge.status is EdgeStatus.DISABLED or edge.revoked_at is not None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="폐기된 Edge 다")
+    verify = (request.headers.get("x-edge-certificate-verify") or "").strip().upper()
+    serial = (request.headers.get("x-edge-certificate-serial") or "").strip()
+    if verify == "FAILED":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="클라이언트 인증서가 유효하지 않다")
+    if verify == "SUCCESS" or serial:
+        expected = (edge.certificate_serial or "").strip()
+        if verify == "SUCCESS" and not serial:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="인증서 일련번호가 없다")
+        if expected and serial and serial.lower() != expected.lower():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="인증서 일련번호가 등록된 Edge 와 다르다",
+            )
     return edge
+
+
+def revoke_edge(session: Session, edge: EdgeCollector) -> None:
+    now = utcnow()
+    edge.status = EdgeStatus.DISABLED
+    edge.revoked_at = now
+    edge.enrollment_token_hash = None
+    edge.enrollment_token_expires_at = None
+    health = runtime_of(session, edge)
+    health.certificate_status = Severity.CRITICAL
+    health.connectivity_status = Severity.DISABLED
 
 
 def record_edge_audit(

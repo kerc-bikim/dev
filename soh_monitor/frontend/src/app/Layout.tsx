@@ -5,7 +5,7 @@ import { useAuth } from "../auth/AuthProvider";
 const NAV_ITEMS: { to: string; label: string; ready: boolean; administer?: boolean }[] = [
   { to: "/overview", label: "통합 현황", ready: true },
   { to: "/stations", label: "관측소", ready: true },
-  { to: "/edges", label: "Edge Collector", ready: false },
+  { to: "/edges", label: "Edge Collector", ready: true },
   { to: "/profiles", label: "프로파일", ready: true },
   { to: "/incidents", label: "장애", ready: true },
   { to: "/settings", label: "설정", ready: true, administer: true },

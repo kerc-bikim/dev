@@ -180,6 +180,60 @@ def due_devices(
     return result
 
 
+def load_due_device(
+    session: Session,
+    device_id: uuid.UUID,
+    *,
+    default_interval_minutes: int = 5,
+) -> DueDevice | None:
+    """Ingest Writer 가 장비 한 대의 태그·프로파일을 읽을 때 쓴다."""
+    row = session.execute(
+        select(Device, DeviceEndpoint, Station, Region)
+        .join(Station, Station.id == Device.station_id)
+        .outerjoin(DeviceEndpoint, DeviceEndpoint.device_id == Device.id)
+        .outerjoin(Region, Region.id == Station.region_id)
+        .where(Device.id == device_id)
+    ).first()
+    if row is None:
+        return None
+    device, endpoint, station, region = row
+    profile = device.collection_profile
+    interval = profile.poll_interval_minutes if profile else default_interval_minutes
+    retry_count = profile.retry_count if profile else 1
+    retry_delay = profile.retry_delay_seconds if profile else 10
+    connect_timeout = endpoint.connect_timeout_ms if endpoint else 5000
+    request_timeout = endpoint.request_timeout_ms if endpoint else 15000
+    state = session.get(DeviceRuntimeState, device.id)
+    return DueDevice(
+        device_id=device.id,
+        station_id=station.id,
+        station_code=station.station_code,
+        adapter_key=device.adapter_key,
+        collection_mode=device.collection_mode,
+        connection=_connection_from(endpoint, device),
+        credential_reference=endpoint.credential_reference if endpoint else None,
+        connect_timeout_ms=connect_timeout,
+        request_timeout_ms=request_timeout,
+        poll_interval_minutes=interval,
+        retry_count=retry_count,
+        retry_delay_seconds=retry_delay,
+        consecutive_failures=state.consecutive_failures if state else 0,
+        last_observed_at=as_utc(state.last_observed_at) if state else None,
+        tags=DeviceTags(
+            device_id=str(device.id),
+            station_id=str(station.id),
+            station_code=station.station_code,
+            collection_mode=device.collection_mode.value,
+            generation=device.device_model.generation if device.device_model else None,
+            model=device.device_model.model_code if device.device_model else None,
+            product_family=device.device_model.product_family if device.device_model else None,
+            manufacturer=(device.manufacturer.manufacturer_code if device.manufacturer else None),
+            region=region.region_code if region else None,
+            edge_id=str(device.edge_id) if device.edge_id else None,
+        ),
+    )
+
+
 def acquire_lease(
     session: Session,
     device_id: uuid.UUID,
@@ -292,9 +346,11 @@ def record_poll_run(
     result: PollResult,
     *,
     received_at: datetime | None = None,
+    edge_id: uuid.UUID | None = None,
 ) -> PollRun:
     run = PollRun(
         device_id=device.device_id,
+        edge_id=edge_id,
         poll_id=result.poll_id,
         collection_mode=device.collection_mode,
         adapter_key=result.adapter_key,

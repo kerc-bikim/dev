@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
-import { api, type StationDto } from "../../api/client";
+import { api, type StationDto, type TopologyEdgeDto, type TopologyRegionDto } from "../../api/client";
 import { SeverityBadge } from "../../components/SeverityBadge";
 
 const KOREA = { minLat: 33.0, maxLat: 38.8, minLon: 124.5, maxLon: 132.0 };
@@ -76,6 +76,12 @@ export function OverviewPage() {
     refetchInterval: 15_000,
     placeholderData: keepPreviousData,
   });
+  const topology = useQuery({
+    queryKey: ["fleet-topology"],
+    queryFn: api.fleetTopology,
+    refetchInterval: 15_000,
+    placeholderData: keepPreviousData,
+  });
 
   const fleet = summary.data;
   const connectivity = fleet?.connectivity ?? {};
@@ -144,6 +150,64 @@ export function OverviewPage() {
       </div>
 
       <div className="card">
+        <h2>지역 토폴로지</h2>
+        <p className="muted">지역 → Edge → 관측소. Edge 가 끊기면 하위 관측소는 EDGE UNREACHABLE 이다.</p>
+        <div className="topology">
+          {(topology.data?.regions ?? []).map((region: TopologyRegionDto) => (
+            <div className="topology-region" key={region.id}>
+              <strong>
+                {region.regionCode} {region.name}
+              </strong>
+              {region.edges.map((edge: TopologyEdgeDto) => (
+                <div className="topology-edge" key={edge.id}>
+                  <Link to={`/edges/${edge.id}`}>
+                    {edge.edgeCode} · {edge.status}
+                  </Link>
+                  <div className="topology-stations">
+                    {edge.stations.map((station) => (
+                      <Link
+                        key={station.id}
+                        className={`topology-station ${station.edgeUnreachable ? "unreachable" : ""}`}
+                        to={`/stations/${station.id}`}
+                      >
+                        {station.stationCode}{" "}
+                        <SeverityBadge severity={station.worstSeverity} />
+                        {station.edgeUnreachable ? " EDGE UNREACHABLE" : ""}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {region.stationsWithoutEdge.length > 0 && (
+                <div className="topology-edge">
+                  <span className="muted">Edge 없음 (DIRECT)</span>
+                  <div className="topology-stations">
+                    {region.stationsWithoutEdge.map((station) => (
+                      <Link key={station.id} className="topology-station" to={`/stations/${station.id}`}>
+                        {station.stationCode} <SeverityBadge severity={station.worstSeverity} />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          {(topology.data?.unassigned.edges.length || topology.data?.unassigned.stations.length) ? (
+            <div className="topology-region">
+              <strong>미지정 지역</strong>
+              {(topology.data?.unassigned.edges ?? []).map((edge) => (
+                <div className="topology-edge" key={edge.id}>
+                  <Link to={`/edges/${edge.id}`}>
+                    {edge.edgeCode} · {edge.status}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="card">
         <h2>현재 장애</h2>
         {(incidents.data?.incidents.length ?? 0) === 0 ? (
           <p className="muted">열린 장애가 없다.</p>
@@ -158,7 +222,10 @@ export function OverviewPage() {
               </tr>
             </thead>
             <tbody>
-              {(incidents.data?.incidents ?? []).slice(0, 12).map((incident) => (
+            {(incidents.data?.incidents ?? [])
+              .filter((incident) => !incident.suppressedByEdge)
+              .slice(0, 12)
+              .map((incident) => (
                 <tr key={incident.incidentId}>
                   <td>{incident.stationCode ?? "—"}</td>
                   <td>

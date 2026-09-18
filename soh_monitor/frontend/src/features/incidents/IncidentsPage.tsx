@@ -68,6 +68,7 @@ export function IncidentsPage() {
                   <button className="linkish" type="button" onClick={() => setOpenId(incident.incidentId)}>
                     {incident.title}
                   </button>
+                  {incident.suppressedByEdge && <span className="badge-suppressed">Edge 억제</span>}
                 </td>
                 <td>{incident.firstObservedAt?.replace("T", " ").slice(0, 19)}</td>
                 <td>

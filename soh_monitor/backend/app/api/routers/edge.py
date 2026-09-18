@@ -21,13 +21,14 @@ from app.api.presenters import parse_uuid
 from app.api.schemas import EdgeAssignmentRequest, EdgeCreateRequest, EdgeEnrollRequest
 from app.config.settings import get_settings
 from app.db.models import (
-    BatchStatus,
+    Device,
+    EdgeAssignment,
     EdgeCollector,
-    EdgeIngestBatch,
     EdgeStatus,
     EdgeTask,
     EdgeTaskStatus,
     Region,
+    Station,
 )
 from app.db.session import session_scope
 from app.domain.enums import Severity
@@ -52,14 +53,18 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _decode_batch(raw: bytes) -> dict:
+def _decode_batch(raw: bytes, *, max_bytes: int) -> dict:
     if not raw:
         raise HTTPException(status_code=400, detail="빈 Batch 다")
+    if len(raw) > max_bytes:
+        raise HTTPException(status_code=413, detail="Batch 가 크기 한도를 넘었다")
     if raw.startswith(b"\x1f\x8b"):
         try:
             raw = gzip.decompress(raw)
         except OSError as exc:
             raise HTTPException(status_code=400, detail="gzip 을 풀 수 없다") from exc
+    if len(raw) > max_bytes:
+        raise HTTPException(status_code=413, detail="Batch 가 크기 한도를 넘었다")
     try:
         return json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -69,6 +74,9 @@ def _decode_batch(raw: bytes) -> dict:
 @manager.get("", summary="Edge 목록")
 def list_edges(actor: RequireRead) -> dict:
     with session_scope() as session:
+        from app.health.edge_watch import evaluate_all
+
+        evaluate_all(session)
         edges = session.scalars(select(EdgeCollector).order_by(EdgeCollector.edge_code)).all()
         items = []
         for edge in edges:
@@ -117,6 +125,9 @@ def create_edge(body: EdgeCreateRequest, request: Request, actor: RequireAdmin) 
 @manager.get("/{edge_id}", summary="Edge 상세")
 def get_edge(edge_id: str, actor: RequireRead) -> dict:
     with session_scope() as session:
+        from app.health.edge_watch import evaluate_all
+
+        evaluate_all(session)
         edge = edge_ops.load_edge(session, edge_id)
         health = edge_ops.runtime_of(session, edge)
         from app.db.models import EdgeAssignment
@@ -124,6 +135,17 @@ def get_edge(edge_id: str, actor: RequireRead) -> dict:
         assignments = session.scalars(
             select(EdgeAssignment).where(EdgeAssignment.edge_id == edge.id, EdgeAssignment.enabled.is_(True))
         ).all()
+        device_ids = [row.device_id for row in assignments]
+        devices = {
+            device.id: device
+            for device in session.scalars(select(Device).where(Device.id.in_(device_ids))).all()
+        } if device_ids else {}
+        stations = {
+            station.id: station
+            for station in session.scalars(
+                select(Station).where(Station.id.in_({device.station_id for device in devices.values()}))
+            ).all()
+        } if devices else {}
         body = edge_ops.edge_payload(edge, health=health)
         body["assignments"] = [
             {
@@ -133,6 +155,14 @@ def get_edge(edge_id: str, actor: RequireRead) -> dict:
                 "role": row.role,
                 "enabled": row.enabled,
                 "assignedAt": row.assigned_at.isoformat() if row.assigned_at else None,
+                "adapterKey": devices[row.device_id].adapter_key if row.device_id in devices else None,
+                "label": devices[row.device_id].label if row.device_id in devices else None,
+                "stationId": str(devices[row.device_id].station_id) if row.device_id in devices else None,
+                "stationCode": (
+                    stations[devices[row.device_id].station_id].station_code
+                    if row.device_id in devices and devices[row.device_id].station_id in stations
+                    else None
+                ),
             }
             for row in assignments
         ]
@@ -203,6 +233,22 @@ def unassign_device(edge_id: str, device_id: str, request: Request, actor: Requi
             request=request,
         )
         return {"ok": True, "configVersion": edge.last_config_version}
+
+
+@manager.post("/{edge_id}/revoke", summary="인증서 폐기")
+def revoke_edge(edge_id: str, request: Request, actor: RequireAdmin) -> dict:
+    with session_scope() as session:
+        edge = edge_ops.load_edge(session, edge_id)
+        edge_ops.revoke_edge(session, edge)
+        edge_ops.record_edge_audit(
+            session,
+            actor=actor,
+            action="revoke",
+            edge=edge,
+            after={"status": edge.status.value, "revokedAt": edge.revoked_at.isoformat() if edge.revoked_at else None},
+            request=request,
+        )
+        return {"edge": edge_ops.edge_payload(edge, health=edge_ops.runtime_of(session, edge))}
 
 
 @manager.get("/{edge_id}/health", summary="Edge 상태")
@@ -325,6 +371,9 @@ def heartbeat(request: Request, body: dict[str, Any]) -> dict:
         state.collector_status = collector
         if edge.status is not EdgeStatus.DISABLED:
             edge.status = EdgeStatus.DEGRADED if collector is not Severity.OK else EdgeStatus.ONLINE
+        from app.health.edge_watch import evaluate_edge
+
+        evaluate_edge(session, edge)
         tasks = edge_ops.pending_tasks(session, edge)
         return {
             "serverTime": iso_z(now),
@@ -335,8 +384,11 @@ def heartbeat(request: Request, body: dict[str, Any]) -> dict:
 
 @agent.post("/ingest/batches", summary="수집 Batch 업로드")
 async def ingest_batches(request: Request) -> dict:
+    settings = get_settings()
     raw = await request.body()
-    document = _decode_batch(raw)
+    if len(raw) > settings.edge_ingest_max_bytes:
+        raise HTTPException(status_code=413, detail="Batch 가 크기 한도를 넘었다")
+    document = _decode_batch(raw, max_bytes=settings.edge_ingest_max_bytes)
     errors = sorted(_INGEST_VALIDATOR.iter_errors(document), key=lambda item: list(item.path))
     if errors:
         details = "; ".join(
@@ -350,49 +402,30 @@ async def ingest_batches(request: Request) -> dict:
         edge = edge_ops.current_edge_from_request(request, session)
         if document.get("edgeId") != edge.edge_code:
             raise HTTPException(status_code=400, detail="Batch 의 edgeId 가 인증된 Edge 와 다르다")
-        batch_id = str(document["batchId"])
-        existing = session.scalar(
-            select(EdgeIngestBatch).where(
-                EdgeIngestBatch.edge_id == edge.id,
-                EdgeIngestBatch.batch_id == batch_id,
-            )
-        )
-        if existing is not None:
-            existing.status = BatchStatus.DUPLICATE
-            return {
-                "accepted": True,
-                "duplicate": True,
-                "batchId": batch_id,
-                "firstSequence": existing.first_sequence,
-                "lastSequence": existing.last_sequence,
-            }
+        from app.ingest import writer
 
-        polls = document.get("polls") or []
-        sample_count = sum(len(poll.get("samples") or []) for poll in polls)
-        row = EdgeIngestBatch(
-            edge_id=edge.id,
-            batch_id=batch_id,
-            first_sequence=int(document["firstSequence"]),
-            last_sequence=int(document["lastSequence"]),
-            poll_count=len(polls),
-            sample_count=sample_count,
+        report = writer.process_batch(
+            session,
+            edge,
+            document,
+            sink=writer.sink_for(request.app),
+            settings=settings,
             received_at=now,
-            processed_at=now,
-            status=BatchStatus.RECEIVED,
         )
-        session.add(row)
-        edge.last_upload_at = now
-        if document.get("edgeHealth", {}).get("spool"):
-            spool = document["edgeHealth"]["spool"]
-            if spool.get("usedBytes") is not None:
-                edge.spool_used_bytes = int(spool["usedBytes"])
+        from app.health.edge_watch import evaluate_edge
+
+        evaluate_edge(session, edge, now=now, settings=settings)
         return {
-            "accepted": True,
-            "duplicate": False,
-            "batchId": batch_id,
-            "firstSequence": row.first_sequence,
-            "lastSequence": row.last_sequence,
-            "pollCount": row.poll_count,
+            "accepted": report.accepted,
+            "duplicate": report.duplicate,
+            "batchId": report.batch_id,
+            "firstSequence": report.first_sequence,
+            "lastSequence": report.last_sequence,
+            "pollCount": report.poll_count,
+            "written": report.written,
+            "skippedDuplicate": report.skipped_duplicate,
+            "delayed": report.delayed,
+            "pointsWritten": report.points_written,
         }
 
 

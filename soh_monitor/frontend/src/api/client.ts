@@ -157,8 +157,9 @@ export interface StationDto {
   deviceCount: number;
   worstSeverity: string | null;
   categories: Record<string, string>;
-  lastSuccessAt: string | null;
+    lastSuccessAt: string | null;
   collectionMode: string | null;
+  edgeUnreachable?: boolean;
 }
 
 export interface EndpointDto {
@@ -278,6 +279,7 @@ export interface IncidentDto {
   thresholdValue: number | null;
   maintenanceRelated: boolean;
   suppressedByEdge: boolean;
+  edgeId?: string | null;
   detail: Record<string, unknown>;
 }
 
@@ -361,6 +363,92 @@ export interface PollRunDto {
   sampleCount: number;
   errorCode: string | null;
   errorMessage: string | null;
+}
+
+export interface EdgeHealthDto {
+  connectivityStatus: string;
+  configStatus: string;
+  collectorStatus: string;
+  spoolStatus: string;
+  certificateStatus: string;
+  clockStatus: string;
+  pendingBatches: number | null;
+  oldestPendingAgeSeconds: number | null;
+  clockOffsetMs: number | null;
+  detail: Record<string, unknown>;
+}
+
+export interface EdgeAssignmentDto {
+  id: string;
+  deviceId: string;
+  assignmentEpoch: number;
+  role: string;
+  enabled: boolean;
+  assignedAt: string | null;
+  adapterKey?: string | null;
+  label?: string | null;
+  stationId?: string | null;
+  stationCode?: string | null;
+}
+
+export interface EdgeDto {
+  id: string;
+  edgeCode: string;
+  name: string;
+  regionId: string | null;
+  status: string;
+  softwareVersion: string | null;
+  installedAdapters: Record<string, unknown>;
+  certificateExpiresAt: string | null;
+  certificateSerial?: string | null;
+  lastHeartbeatAt: string | null;
+  lastUploadAt: string | null;
+  lastConfigVersion: number;
+  lastConfigAppliedVersion: number;
+  spoolUsedBytes: number | null;
+  spoolLimitBytes: number | null;
+  ipAddress: string | null;
+  registeredAt: string | null;
+  revokedAt?: string | null;
+  notes: string | null;
+  hasEnrollmentToken: boolean;
+  enrollmentToken?: string;
+  enrollmentTokenExpiresAt?: string | null;
+  health?: EdgeHealthDto;
+  assignments?: EdgeAssignmentDto[];
+}
+
+export interface TopologyStationDto {
+  id: string;
+  stationCode: string;
+  networkCode: string;
+  name: string;
+  worstSeverity: string | null;
+  edgeUnreachable: boolean;
+  collectionMode: string | null;
+}
+
+export interface TopologyEdgeDto {
+  id: string;
+  edgeCode: string;
+  name: string;
+  status: string;
+  softwareVersion: string | null;
+  lastHeartbeatAt: string | null;
+  stations: TopologyStationDto[];
+}
+
+export interface TopologyRegionDto {
+  id: string;
+  regionCode: string;
+  name: string;
+  edges: TopologyEdgeDto[];
+  stationsWithoutEdge: TopologyStationDto[];
+}
+
+export interface FleetTopologyDto {
+  regions: TopologyRegionDto[];
+  unassigned: { edges: TopologyEdgeDto[]; stations: TopologyStationDto[] };
 }
 
 export const api = {
@@ -466,6 +554,7 @@ export const api = {
   deviceHealth: (deviceId: string) => request<DeviceHealthDto>(`/api/v1/devices/${deviceId}/current-health`),
 
   fleetSummary: () => request<FleetSummaryDto>("/api/v1/fleet/summary"),
+  fleetTopology: () => request<FleetTopologyDto>("/api/v1/fleet/topology"),
   incidents: (status = "open") =>
     request<{ incidents: IncidentDto[] }>(`/api/v1/incidents?status=${encodeURIComponent(status)}`),
   acknowledgeIncident: (id: string, message = "") =>
@@ -503,4 +592,25 @@ export const api = {
   createUser: (body: Record<string, unknown>) =>
     request<{ user: UserDto }>("/api/v1/users", { method: "POST", body: JSON.stringify(body) }),
   auditLogs: () => request<{ logs: AuditLogDto[] }>("/api/v1/audit-logs?limit=100"),
+
+  regions: () =>
+    request<{ regions: { id: string; regionCode: string; name: string }[] }>("/api/v1/regions"),
+  edges: () => request<{ edges: EdgeDto[] }>("/api/v1/edges"),
+  edge: (id: string) => request<{ edge: EdgeDto }>(`/api/v1/edges/${id}`),
+  createEdge: (body: Record<string, unknown>) =>
+    request<{ edge: EdgeDto }>("/api/v1/edges", { method: "POST", body: JSON.stringify(body) }),
+  reissueEnrollment: (id: string) =>
+    request<{ enrollmentToken: string; enrollmentTokenExpiresAt: string | null }>(
+      `/api/v1/edges/${id}/enrollment-token`,
+      { method: "POST" },
+    ),
+  revokeEdge: (id: string) =>
+    request<{ edge: EdgeDto }>(`/api/v1/edges/${id}/revoke`, { method: "POST" }),
+  assignDevice: (edgeId: string, deviceId: string) =>
+    request<{ assignment: Record<string, unknown> }>(`/api/v1/edges/${edgeId}/assignments`, {
+      method: "POST",
+      body: JSON.stringify({ deviceId }),
+    }),
+  unassignDevice: (edgeId: string, deviceId: string) =>
+    request<{ ok: boolean }>(`/api/v1/edges/${edgeId}/assignments/${deviceId}`, { method: "DELETE" }),
 };

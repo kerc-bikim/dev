@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     edge_upload_timeout_seconds: int = 30
     edge_enrollment_token: str | None = None
     edge_cert_dir: Path = Path("/var/lib/soh-edge/certs")
+    edge_ingest_max_bytes: int = 6 * 1024 * 1024
+    edge_heartbeat_miss_warning: int = 2
+    edge_heartbeat_miss_critical: int = 3
 
     # --- 보안 ---
     session_secret: str = ""

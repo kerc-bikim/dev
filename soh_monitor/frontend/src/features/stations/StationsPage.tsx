@@ -142,7 +142,15 @@ export function StationsPage() {
                     )}
                   </td>
                 ))}
-                <td>{station.collectionMode ?? "—"}</td>
+                <td>
+                  {station.edgeUnreachable ? (
+                    <span title="기록계 장애가 아니라 Edge 가 응답하지 않는다">
+                      EDGE UNREACHABLE
+                    </span>
+                  ) : (
+                    (station.collectionMode ?? "—")
+                  )}
+                </td>
                 <td>{station.lastSuccessAt?.replace("T", " ").slice(0, 19) ?? "—"}</td>
                 {can("configure") && (
                   <td>

@@ -98,6 +98,20 @@ def _modes_by_station(session: Session) -> dict[uuid.UUID, str]:
     return result
 
 
+def _edge_unreachable_stations(session: Session) -> set[uuid.UUID]:
+    from app.health.edge_watch import EDGE_UNREACHABLE
+
+    rows = session.execute(
+        select(Device.station_id)
+        .join(HealthState, HealthState.device_id == Device.id)
+        .where(
+            HealthState.metric_key == "connectivity.reachable",
+            HealthState.value_text == EDGE_UNREACHABLE,
+        )
+    )
+    return {row[0] for row in rows}
+
+
 @router.get("/regions", summary="지역 목록")
 def list_regions(actor: RequireRead) -> dict:
     with session_scope() as session:
@@ -140,6 +154,7 @@ def list_stations(
         worst = _worst_from_categories(categories)
         last_success = _last_success_by_station(session)
         modes = _modes_by_station(session)
+        unreachable = _edge_unreachable_stations(session)
         return {
             "stations": [
                 station_payload(
@@ -149,6 +164,7 @@ def list_stations(
                     categories=categories.get(station.id),
                     last_success_at=last_success.get(station.id),
                     collection_mode=modes.get(station.id),
+                    edge_unreachable=station.id in unreachable,
                 )
                 for station in stations
             ]

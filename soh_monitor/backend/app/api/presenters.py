@@ -58,6 +58,7 @@ def station_payload(
     categories: dict[str, str] | None = None,
     last_success_at: datetime | None = None,
     collection_mode: str | None = None,
+    edge_unreachable: bool = False,
 ) -> dict[str, Any]:
     return {
         "id": str(station.id),
@@ -81,6 +82,7 @@ def station_payload(
         "categories": categories or {},
         "lastSuccessAt": iso(last_success_at),
         "collectionMode": collection_mode,
+        "edgeUnreachable": edge_unreachable,
         "createdAt": iso(station.created_at),
         "updatedAt": iso(station.updated_at),
     }
