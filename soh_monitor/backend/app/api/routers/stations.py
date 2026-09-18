@@ -19,6 +19,7 @@ from app.db.models import (
     Device,
     DeviceEndpoint,
     DeviceRuntimeState,
+    HealthState,
     LifecycleStatus,
     MetricProfile,
     Region,
@@ -65,6 +66,41 @@ def _worst_by_station(session: Session) -> dict[uuid.UUID, str]:
     return {station_id: rollup(values).value for station_id, values in grouped.items()}
 
 
+def _categories_by_station(session: Session) -> dict[uuid.UUID, dict[str, str]]:
+    rows = session.execute(
+        select(Device.station_id, HealthState.category, HealthState.severity)
+        .join(HealthState, HealthState.device_id == Device.id)
+        .where(HealthState.metric_key == "")
+    )
+    grouped: dict[uuid.UUID, dict[str, list[Severity]]] = {}
+    for station_id, category, severity in rows:
+        grouped.setdefault(station_id, {}).setdefault(category, []).append(severity)
+    return {
+        station_id: {category: rollup(values).value for category, values in categories.items()}
+        for station_id, categories in grouped.items()
+    }
+
+
+def _last_success_by_station(session: Session) -> dict[uuid.UUID, object]:
+    rows = session.execute(
+        select(Device.station_id, func.max(DeviceRuntimeState.last_success_at)).join(
+            DeviceRuntimeState, DeviceRuntimeState.device_id == Device.id
+        ).group_by(Device.station_id)
+    )
+    return {row[0]: row[1] for row in rows if row[1] is not None}
+
+
+def _modes_by_station(session: Session) -> dict[uuid.UUID, str]:
+    rows = session.execute(select(Device.station_id, Device.collection_mode))
+    grouped: dict[uuid.UUID, set[str]] = {}
+    for station_id, mode in rows:
+        grouped.setdefault(station_id, set()).add(mode.value)
+    result: dict[uuid.UUID, str] = {}
+    for station_id, modes in grouped.items():
+        result[station_id] = next(iter(modes)) if len(modes) == 1 else "MIXED"
+    return result
+
+
 @router.get("/regions", summary="지역 목록")
 def list_regions(actor: RequireRead) -> dict:
     with session_scope() as session:
@@ -104,12 +140,18 @@ def list_stations(
         stations = session.scalars(query).all()
         counts = _counts(session)
         worst = _worst_by_station(session)
+        categories = _categories_by_station(session)
+        last_success = _last_success_by_station(session)
+        modes = _modes_by_station(session)
         return {
             "stations": [
                 station_payload(
                     station,
                     device_count=counts.get(station.id, 0),
                     worst_severity=worst.get(station.id),
+                    categories=categories.get(station.id),
+                    last_success_at=last_success.get(station.id),
+                    collection_mode=modes.get(station.id),
                 )
                 for station in stations
             ]

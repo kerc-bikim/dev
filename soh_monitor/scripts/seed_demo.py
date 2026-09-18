@@ -24,6 +24,7 @@ from app.adapters.centaur_ctr.adapter import MANIFEST_PATH, CentaurCtrAdapter  #
 from app.adapters.registry import AdapterRegistry  # noqa: E402
 from app.collector.scheduler import CollectorScheduler  # noqa: E402
 from app.config.settings import get_settings  # noqa: E402
+from app.auth.passwords import hash_password  # noqa: E402
 from app.db.models import (  # noqa: E402
     CollectionMode,
     CollectionProfile,
@@ -35,6 +36,8 @@ from app.db.models import (  # noqa: E402
     ProfileMetric,
     Region,
     Station,
+    User,
+    UserRole,
 )
 from app.db.session import get_session_factory  # noqa: E402
 from app.health.notifier import LoggingNotifier  # noqa: E402
@@ -59,9 +62,34 @@ DEMO_THRESHOLDS: dict[str, tuple[dict, dict]] = {
 
 REGIONS = {"A": "수도권", "B": "중부", "C": "남부", "D": "동해"}
 
+DEMO_USERS = (
+    ("operator", "시연 운영자", UserRole.OPERATOR, "operator-pass-123"),
+    ("viewer", "시연 조회자", UserRole.VIEWER, "viewer-pass-123"),
+)
+
+
+def ensure_demo_users(session) -> None:
+    for username, display_name, role, password in DEMO_USERS:
+        if session.scalar(select(User).where(User.username == username)) is not None:
+            continue
+        session.add(
+            User(
+                username=username,
+                display_name=display_name,
+                password_hash=hash_password(password),
+                role=role,
+                enabled=True,
+                must_change_password=False,
+            )
+        )
+
 
 def seed(session_factory, fleet) -> None:
     from app.db.seed import seed_metric_definitions
+
+    with session_factory() as session:
+        ensure_demo_users(session)
+        session.commit()
 
     with session_factory() as session:
         if session.scalar(select(Device).limit(1)) is not None:

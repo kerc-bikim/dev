@@ -180,6 +180,10 @@ class Test관측소:
         station_id = create_station(client, "A01")
         listed = client.get("/api/v1/stations").json()["stations"]
         assert listed[0]["stationCode"] == "A01"
+        assert listed[0]["categories"] == {}
+        assert listed[0]["lastSuccessAt"] is None
+        assert listed[0]["collectionMode"] is None
+        assert "worstSeverity" in listed[0]
 
         updated = client.put(
             f"/api/v1/stations/{station_id}",
@@ -195,6 +199,16 @@ class Test관측소:
         still = client.get(f"/api/v1/stations/{station_id}")
         assert still.status_code == 200
         assert still.json()["station"]["status"] == "RETIRED"
+
+    def test_목록은_장비_수집방식과_분류상태를_같이_준다(self, client):
+        login(client)
+        station_id = create_station(client, "B02")
+        create_device(client, station_id, host="10.10.1.21")
+        listed = client.get("/api/v1/stations").json()["stations"]
+        row = next(item for item in listed if item["stationCode"] == "B02")
+        assert row["collectionMode"] == "DIRECT"
+        assert row["categories"] == {}
+        assert row["deviceCount"] == 1
 
     def test_같은_코드는_거절한다(self, client):
         login(client)

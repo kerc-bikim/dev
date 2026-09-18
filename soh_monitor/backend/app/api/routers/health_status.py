@@ -20,6 +20,7 @@ from app.db.models import (
     IncidentEvent,
     IncidentStatus,
     Station,
+    User,
 )
 from app.db.session import session_scope
 from app.health import incidents as incident_ops
@@ -157,6 +158,15 @@ def list_incidents(
         station_codes = {
             station.id: station.station_code for station in session.scalars(select(Station))
         }
+        actor_ids = {incident.acknowledged_by for incident in incidents if incident.acknowledged_by}
+        actor_names = (
+            {
+                user.id: user.display_name
+                for user in session.scalars(select(User).where(User.id.in_(actor_ids)))
+            }
+            if actor_ids
+            else {}
+        )
 
         return {
             "incidents": [
@@ -174,6 +184,7 @@ def list_incidents(
                     "lastObservedAt": as_utc(incident.last_observed_at),
                     "resolvedAt": as_utc(incident.resolved_at),
                     "acknowledgedAt": as_utc(incident.acknowledged_at),
+                    "acknowledgedBy": actor_names.get(incident.acknowledged_by) if incident.acknowledged_by else None,
                     "worstValue": incident.worst_value,
                     "thresholdValue": incident.threshold_value,
                     "maintenanceRelated": incident.maintenance_related,
@@ -204,6 +215,7 @@ def acknowledge_incident(incident_id: str, actor: RequireOperate, message: str =
             "incidentId": incident_id,
             "status": incident.status.value,
             "acknowledgedAt": as_utc(incident.acknowledged_at),
+            "acknowledgedBy": actor.display_name,
         }
 
 
@@ -222,6 +234,16 @@ def incident_events(incident_id: str, actor: RequireRead) -> dict[str, object]:
             .order_by(IncidentEvent.occurred_at)
         ).all()
 
+        actor_ids = {event.actor_id for event in events if event.actor_id}
+        actor_names = (
+            {
+                user.id: user.display_name
+                for user in session.scalars(select(User).where(User.id.in_(actor_ids)))
+            }
+            if actor_ids
+            else {}
+        )
+
         return {
             "incidentId": incident_id,
             "title": incident.title,
@@ -232,6 +254,7 @@ def incident_events(incident_id: str, actor: RequireRead) -> dict[str, object]:
                     "fromStatus": event.from_status.value if event.from_status else None,
                     "toStatus": event.to_status.value if event.to_status else None,
                     "message": event.message,
+                    "actorName": actor_names.get(event.actor_id) if event.actor_id else None,
                 }
                 for event in events
             ],

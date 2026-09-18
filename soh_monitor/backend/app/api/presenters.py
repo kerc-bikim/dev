@@ -50,7 +50,15 @@ def reject_secret_fields(payload: dict[str, Any]) -> None:
         )
 
 
-def station_payload(station: Station, *, device_count: int = 0, worst_severity: str | None = None) -> dict[str, Any]:
+def station_payload(
+    station: Station,
+    *,
+    device_count: int = 0,
+    worst_severity: str | None = None,
+    categories: dict[str, str] | None = None,
+    last_success_at: datetime | None = None,
+    collection_mode: str | None = None,
+) -> dict[str, Any]:
     return {
         "id": str(station.id),
         "networkCode": station.network_code,
@@ -70,6 +78,9 @@ def station_payload(station: Station, *, device_count: int = 0, worst_severity: 
         "notes": station.notes,
         "deviceCount": device_count,
         "worstSeverity": worst_severity,
+        "categories": categories or {},
+        "lastSuccessAt": iso(last_success_at),
+        "collectionMode": collection_mode,
         "createdAt": iso(station.created_at),
         "updatedAt": iso(station.updated_at),
     }
