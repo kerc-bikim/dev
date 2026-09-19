@@ -306,6 +306,68 @@ class Test기록계:
         )
         assert bad.status_code == 400
 
+    def test_데이터서버_URI를_바꾸고_비울_수_있다(self, client):
+        login(client)
+        station_id = create_station(client)
+        device_id = create_device(client, station_id)
+        uri = "seedlink://10.0.0.8:18000/KS_A01"
+
+        updated = client.put(f"/api/v1/devices/{device_id}", json={"dataSourceUri": uri})
+        assert updated.status_code == 200, updated.text
+        assert updated.json()["device"]["dataSourceUri"] == uri
+
+        kept = client.put(f"/api/v1/devices/{device_id}", json={"label": "CTR-6b"})
+        assert kept.status_code == 200
+        assert kept.json()["device"]["dataSourceUri"] == uri
+        assert kept.json()["device"]["label"] == "CTR-6b"
+
+        cleared = client.put(f"/api/v1/devices/{device_id}", json={"dataSourceUri": None})
+        assert cleared.status_code == 200, cleared.text
+        assert cleared.json()["device"]["dataSourceUri"] is None
+
+        restored = client.put(
+            f"/api/v1/devices/{device_id}",
+            json={"dataSourceUri": "https://10.0.0.8/fdsnws/availability/1/query?net=KS&sta=A01"},
+        )
+        assert restored.status_code == 200
+        blank = client.put(f"/api/v1/devices/{device_id}", json={"dataSourceUri": "  "})
+        assert blank.status_code == 200
+        assert blank.json()["device"]["dataSourceUri"] is None
+
+    def test_허용하지_않는_데이터서버_스킴은_거절한다(self, client):
+        login(client)
+        station_id = create_station(client)
+        device_id = create_device(client, station_id)
+        response = client.put(
+            f"/api/v1/devices/{device_id}",
+            json={"dataSourceUri": "ftp://example/data"},
+        )
+        assert response.status_code in {400, 422}
+        assert "dataSourceUri" in response.text or "스킴" in response.text
+
+        created = client.post(
+            f"/api/v1/stations/{station_id}/devices",
+            json={
+                "adapterKey": "nanometrics.centaur.ctr",
+                "label": "CTR-ftp",
+                "endpoint": {"hostname": "10.10.1.22"},
+                "dataSourceUri": "ftp://example/data",
+            },
+        )
+        assert created.status_code in {400, 422}
+
+    def test_OPERATOR는_데이터서버_URI를_못_바꾼다(self, client):
+        login(client)
+        station_id = create_station(client)
+        device_id = create_device(client, station_id)
+        client.post("/api/v1/auth/logout")
+        login(client, "operator", OPERATOR_PASSWORD)
+        response = client.put(
+            f"/api/v1/devices/{device_id}",
+            json={"dataSourceUri": "http://10.0.0.8/availability"},
+        )
+        assert response.status_code == 403
+
 
 class Test연결시험:
     def test_공인_주소는_연결_시험이_막힌다(self, client):

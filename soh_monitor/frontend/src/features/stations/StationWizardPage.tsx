@@ -273,7 +273,7 @@ export function StationWizardPage() {
               onChange={(event) => setDataSourceUri(event.target.value)}
               placeholder="https://10.0.0.8/fdsnws/availability/1/query?net=KS&sta=A01&format=json"
             />
-            <small>비우면 파형 연속성 검사는 미지원이다. 센서 상태만으로는 정지를 못 잡는다.</small>
+            <small>비우면 파형 연속성 검사는 미지원이다. http, https, fdsnws, seedlink 만 허용한다.</small>
           </label>
           {collectionMode === "EDGE" && (
             <label className="field">

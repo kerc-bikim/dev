@@ -3,8 +3,25 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+ALLOWED_DATA_SOURCE_SCHEMES = frozenset({"http", "https", "fdsnws", "seedlink"})
+
+
+def normalize_data_source_uri(value: str | None) -> str | None:
+    """빈 값은 미지원(None). 스킴은 수집기가 아는 것만 받는다."""
+    if value is None:
+        return None
+    stripped = value.strip()
+    if not stripped:
+        return None
+    scheme = urlparse(stripped).scheme.lower()
+    if scheme not in ALLOWED_DATA_SOURCE_SCHEMES:
+        allowed = ", ".join(sorted(ALLOWED_DATA_SOURCE_SCHEMES))
+        raise ValueError(f"dataSourceUri 스킴은 {allowed} 만 허용한다")
+    return stripped
 
 
 def _to_camel(name: str) -> str:
@@ -106,6 +123,11 @@ class DeviceWriteRequest(ApiModel):
     status: str | None = None
     notes: str | None = None
     endpoint: EndpointWrite | None = None
+
+    @field_validator("data_source_uri")
+    @classmethod
+    def _data_source_uri(cls, value: str | None) -> str | None:
+        return normalize_data_source_uri(value)
 
 
 class AxisWrite(ApiModel):

@@ -111,6 +111,7 @@ Centaur CTR 의 경우 매뉴얼에 응답 본문 예시가 없어 형태 추측
 availability 로 **SOH 와 따로** 산출한다. 구현은 `backend/app/adapters/data_availability/` 다.
 
 - 관측소에 데이터 서버 URI 가 없으면 capability 는 `UNSUPPORTED` 이고 값을 만들지 않는다.
+  URI 는 등록 마법사 또는 관측소 상세 설정에서 넣고, `null`/공백이면 지워진다.
 - URI 가 있으면 HTTP/FDSN JSON 을 읽고 채널별 경과·공백·활성을 표준 Metric 으로 옮긴다.
 - SeedLink(`seedlink://host:port` 또는 `seedlink://host:port/NET_STA`) 는 HELLO 뒤
   `INFO STREAMS` XML 을 읽어 채널 끝 시각을 만든다. DATA 스트림은 열지 않는다.

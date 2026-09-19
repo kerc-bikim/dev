@@ -1,12 +1,77 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { api } from "../../api/client";
+import { ApiError, api } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { SeverityBadge } from "../../components/SeverityBadge";
 import { stationTabVisibility, type StationTabId } from "../../lib/capabilityTabs";
 import { stationGrafanaLink } from "../../lib/grafana";
+
+function DataSourceUriField({ deviceId, value }: { deviceId: string; value: string | null }) {
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState(value ?? "");
+  const [notice, setNotice] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
+
+  useEffect(() => {
+    setDraft(value ?? "");
+    setNotice(null);
+  }, [deviceId]);
+
+  useEffect(() => {
+    setDraft(value ?? "");
+  }, [value]);
+
+  const save = useMutation({
+    mutationFn: () => api.updateDevice(deviceId, { dataSourceUri: draft.trim() || null }),
+    onSuccess: (body) => {
+      const next = body.device.dataSourceUri;
+      setDraft(next ?? "");
+      setNotice({
+        kind: "ok",
+        text: next
+          ? "데이터 서버 URI를 저장했다."
+          : "데이터 서버 URI를 비웠다. 파형 검사는 미지원이다.",
+      });
+      void queryClient.invalidateQueries({ queryKey: ["station"] });
+      void queryClient.invalidateQueries({ queryKey: ["device-capabilities"] });
+      void queryClient.invalidateQueries({ queryKey: ["device-health"] });
+    },
+    onError: (err) =>
+      setNotice({
+        kind: "warn",
+        text: err instanceof ApiError ? err.message : "저장에 실패했다",
+      }),
+  });
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        save.mutate();
+      }}
+    >
+      <label className="field">
+        <input
+          type="text"
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setNotice(null);
+          }}
+          placeholder="https://10.0.0.8/fdsnws/availability/1/query?net=KS&sta=A01&format=json"
+          autoComplete="off"
+          aria-label="데이터 서버 URI"
+        />
+        <small>http, https, fdsnws, seedlink 만 허용한다. 비우면 파형 검사는 미지원이다.</small>
+      </label>
+      <button className="btn primary" type="submit" disabled={save.isPending}>
+        {save.isPending ? "저장 중" : "URI 저장"}
+      </button>
+      {notice && <div className={notice.kind === "warn" ? "notice warn" : "notice"}>{notice.text}</div>}
+    </form>
+  );
+}
 
 const CATEGORY_TAB: Record<string, string> = {
   power: "power",
@@ -164,7 +229,13 @@ export function StationDetailPage() {
               </tr>
               <tr>
                 <th>데이터 서버</th>
-                <td>{device?.dataSourceUri ?? "없음 (파형 검사 미지원)"}</td>
+                <td>
+                  {can("configure") && device ? (
+                    <DataSourceUriField deviceId={device.id} value={device.dataSourceUri} />
+                  ) : (
+                    device?.dataSourceUri ?? "없음 (파형 검사 미지원)"
+                  )}
+                </td>
               </tr>
             </tbody>
           </table>

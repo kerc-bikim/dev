@@ -121,7 +121,7 @@ def _apply_device_fields(session: Session, device: Device, body: DeviceWriteRequ
         device.metric_profile_id = (
             parse_uuid(body.metric_profile_id, "Metric 프로파일") if body.metric_profile_id else None
         )
-    if body.data_source_uri is not None:
+    if "data_source_uri" in body.model_fields_set:
         device.data_source_uri = body.data_source_uri
     if body.enabled is not None:
         device.enabled = body.enabled

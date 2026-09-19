@@ -231,6 +231,10 @@ code {
   background: #fbf3e3;
 }
 
+form .notice {
+  margin-top: 0.75rem;
+}
+
 .filter-row {
   display: flex;
   gap: 0.6rem;
