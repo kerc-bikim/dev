@@ -115,6 +115,7 @@ export interface AdapterDto {
   generation?: string | null;
   supportedModels: string[];
   protocols: string[];
+  capabilities?: string[];
   status: string;
   selectable: boolean;
   configurationSchema?: {
@@ -552,6 +553,11 @@ export const api = {
   pollRuns: (deviceId: string) =>
     request<{ runtime: Record<string, unknown>; runs: PollRunDto[] }>(`/api/v1/devices/${deviceId}/poll-runs`),
   deviceHealth: (deviceId: string) => request<DeviceHealthDto>(`/api/v1/devices/${deviceId}/current-health`),
+  deviceCapabilities: (deviceId: string) =>
+    request<{
+      deviceId: string;
+      capabilities: { key: string; dimension: string | null; supportState: string }[];
+    }>(`/api/v1/devices/${deviceId}/capabilities`),
 
   fleetSummary: () => request<FleetSummaryDto>("/api/v1/fleet/summary"),
   fleetTopology: () => request<FleetTopologyDto>("/api/v1/fleet/topology"),

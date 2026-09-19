@@ -16,7 +16,7 @@
 | M8 Edge 통합 | 완료 | Ingest 멱등·지연 도달·mTLS 폐기·Edge 화면·장애 상관 |
 | M9 Grafana | 완료 | 대시보드 7종·알림 7종·Deep Link. Grafana 컨테이너는 Docker 환경에서 확인 |
 | M10 운영 강화 | 부분 | 절차·시험·프로파일 완료. 실장비 파일럿·확대는 조사표 대기 |
-| M11 확장성 검증 | 착수 전 | 명명 Lint 는 이미 동작 |
+| M11 확장성 검증 | 완료 | 가상 제조사 `acme.mock.recorder`. 수집·스키마·공통 Grafana 무변경 |
 
 ---
 
@@ -399,10 +399,30 @@ make soak devices=100 ticks=3
 
 ---
 
+## M11 확장성 검증
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M11.1 | 가상 제조사 Adapter | 완료 | `adapters/mock_recorder/`. mV·0~1 비율·GOOD/BAD. 센서·외부 SOH 없음 |
+| M11.2 | Collector·Scheduler 무변경 | 완료 | 수집 계층은 제조사 모듈을 import 하지 않는다. `poll_device` 그대로 수집 |
+| M11.3 | DB 스키마 무변경 | 완료 | Alembic 은 `0004` 까지. 제조사 테이블 없음 |
+| M11.4 | 공통 대시보드 재사용 | 완료 | `01`·`02`·`04`–`07` 에 `vendor.` 없음 |
+| M11.5 | Capability 화면 | 완료 | 미지원 탭은 비활성 + `미지원` 표시 |
+| M11.6 | 비HTTP Transport | 완료 | `adapters/transport/` HTTP + SNMP/gRPC stub |
+| M11.7 | gRPC Runner 설계 | 완료 | [`adapter-development/grpc-runner.md`](adapter-development/grpc-runner.md) |
+| M11.8 | Gen5 체크리스트 | 완료 | [`gen5-checklist.md`](gen5-checklist.md) |
+| M11.9 | Adapter 개발 가이드 | 완료 | [`adapter-development.md`](adapter-development.md) 확장 |
+
+### 설계 판단
+
+- **두 번째 Adapter 가 확장의 증거다.** 필드명과 단위가 달라도 표준 Metric 만 나간다.
+- **Transport 는 Adapter 내부다.** 수집기는 SNMP 존재를 모른다.
+- **SDK 예외는 PollResult 다.** 프로세스를 죽이지 않는다. 실제 네이티브 SDK 는 Runner 로 격리한다.
+
 ## 다음 착수 지점
 
-1. **M11 확장성 검증** — 가상 제조사 Adapter, 공통 계층 무변경 확인.
-2. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 파일럿(M10.7) 도 시작한다.
-3. **실제 InfluxDB·Grafana·Postgres 복구** — Docker 환경에서 `influx backup` 과 `pg_dump` 를 한 번 돈다.
-4. **M2.11** — SeedLink/FDSN 기반 데이터 연속성 검사. 센서 상태만으로는 파형 정지를 잡지 못한다.
+1. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 파일럿(M10.7) 도 시작한다.
+2. **실제 InfluxDB·Grafana·Postgres 복구** — Docker 환경에서 `influx backup` 과 `pg_dump` 를 한 번 돈다.
+3. **M2.11** — SeedLink/FDSN 기반 데이터 연속성 검사. 센서 상태만으로는 파형 정지를 잡지 못한다.
+4. **Gen5** — [`gen5-checklist.md`](gen5-checklist.md) 조사 후 `adapters/centaur_gen5/` 만 추가한다.
 

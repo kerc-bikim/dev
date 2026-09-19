@@ -1,0 +1,14 @@
+{
+  "deviceId": "MR-1001",
+  "model": "MR-100",
+  "reportedAt": "2026-09-18T00:00:00Z",
+  "readings": {
+    "sys.health": "QUANTUM",
+    "psu.millivolts": 12600,
+    "clk.state": "WEIRD",
+    "clk.quality": 0.5,
+    "disk.used_ratio": 0.1,
+    "disk.record": "ACTIVE",
+    "fw.rev": "2.4.0"
+  }
+}

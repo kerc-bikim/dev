@@ -5,20 +5,8 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { SeverityBadge } from "../../components/SeverityBadge";
+import { stationTabVisibility, type StationTabId } from "../../lib/capabilityTabs";
 import { stationGrafanaLink } from "../../lib/grafana";
-
-const TABS = [
-  { id: "summary", label: "요약" },
-  { id: "power", label: "전원" },
-  { id: "timing", label: "시각·GNSS" },
-  { id: "sensor", label: "센서" },
-  { id: "storage", label: "저장소" },
-  { id: "data", label: "데이터" },
-  { id: "external", label: "외부 SOH" },
-  { id: "history", label: "수집 이력" },
-  { id: "settings", label: "설정" },
-  { id: "incidents", label: "장애" },
-] as const;
 
 const CATEGORY_TAB: Record<string, string> = {
   power: "power",
@@ -37,7 +25,7 @@ export function StationDetailPage() {
   const { stationId = "" } = useParams();
   const { can } = useAuth();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("summary");
+  const [tab, setTab] = useState<StationTabId>("summary");
 
   const detail = useQuery({
     queryKey: ["station", stationId],
@@ -70,11 +58,22 @@ export function StationDetailPage() {
     enabled: tab === "incidents",
   });
 
+  const adapters = useQuery({
+    queryKey: ["adapters"],
+    queryFn: api.adapters,
+  });
+  const capabilities = useQuery({
+    queryKey: ["device-capabilities", deviceId],
+    queryFn: () => api.deviceCapabilities(deviceId!),
+    enabled: Boolean(deviceId),
+  });
+
   const pollNow = useMutation({
     mutationFn: api.pollNow,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["poll-runs"] });
       void queryClient.invalidateQueries({ queryKey: ["device-health"] });
+      void queryClient.invalidateQueries({ queryKey: ["device-capabilities"] });
     },
   });
 
@@ -83,10 +82,16 @@ export function StationDetailPage() {
 
   const station = detail.data.station;
   const device = detail.data.devices[0];
+  const adapterCapabilities = (adapters.data?.adapters ?? []).find(
+    (item) => item.adapterKey === device?.adapterKey,
+  )?.capabilities;
+  const tabs = stationTabVisibility(capabilities.data?.capabilities, adapterCapabilities);
+  const activeTab = tabs.find((item) => item.id === tab && !item.unsupported) ? tab : "summary";
   const metrics = (deviceHealth.data?.metrics ?? []).filter((metric) => {
-    if (tab === "summary") return true;
-    return CATEGORY_TAB[metric.category] === tab;
+    if (activeTab === "summary") return true;
+    return CATEGORY_TAB[metric.category] === activeTab;
   });
+  const currentTabMeta = tabs.find((item) => item.id === activeTab);
 
   return (
     <>
@@ -108,7 +113,7 @@ export function StationDetailPage() {
         )}
         <a
           className="btn ghost"
-          href={stationGrafanaLink(station.stationCode, tab)}
+          href={stationGrafanaLink(station.stationCode, activeTab)}
           target="_blank"
           rel="noreferrer"
         >
@@ -117,19 +122,22 @@ export function StationDetailPage() {
       </div>
 
       <div className="tabs">
-        {TABS.map((item) => (
+        {tabs.map((item) => (
           <button
             key={item.id}
-            className={tab === item.id ? "active" : undefined}
+            className={activeTab === item.id ? "active" : item.unsupported ? "unsupported" : undefined}
             type="button"
-            onClick={() => setTab(item.id)}
+            disabled={item.unsupported}
+            onClick={() => {
+              if (!item.unsupported) setTab(item.id);
+            }}
           >
-            {item.label}
+            {item.unsupported ? `${item.label} · 미지원` : item.label}
           </button>
         ))}
       </div>
 
-      {tab === "settings" && (
+      {activeTab === "settings" && (
         <div className="card">
           <h2>등록 정보</h2>
           <table>
@@ -159,7 +167,7 @@ export function StationDetailPage() {
         </div>
       )}
 
-      {tab === "history" && (
+      {activeTab === "history" && (
         <div className="card">
           <h2>수집 이력</h2>
           <table>
@@ -185,7 +193,7 @@ export function StationDetailPage() {
         </div>
       )}
 
-      {tab === "incidents" && (
+      {activeTab === "incidents" && (
         <div className="card">
           <h2>이 관측소 장애</h2>
           <ul>
@@ -200,9 +208,9 @@ export function StationDetailPage() {
         </div>
       )}
 
-      {tab !== "settings" && tab !== "history" && tab !== "incidents" && (
+      {activeTab !== "settings" && activeTab !== "history" && activeTab !== "incidents" && (
         <div className="card">
-          <h2>현재 값</h2>
+          <h2>{currentTabMeta?.unsupported ? `${currentTabMeta.label} 미지원` : "현재 값"}</h2>
           <table>
             <thead>
               <tr>

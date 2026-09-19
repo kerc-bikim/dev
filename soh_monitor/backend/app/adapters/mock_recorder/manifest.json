@@ -1,0 +1,97 @@
+{
+  "adapterKey": "acme.mock.recorder",
+  "adapterVersion": "1.0",
+  "manufacturer": "ACME",
+  "productFamilies": ["Mock Recorder"],
+  "generation": "mock",
+  "supportedModels": ["MR-100", "MR-200"],
+  "protocols": ["http", "https", "snmp", "grpc"],
+  "capabilities": [
+    "device.overall_status",
+    "device.firmware_status",
+    "device.temperature",
+    "power.input_voltage",
+    "power.current",
+    "timing.status",
+    "timing.quality",
+    "gnss.receiver",
+    "storage.internal"
+  ],
+  "providedMetrics": [
+    "device.overall_status",
+    "device.firmware_version",
+    "device.temperature_c",
+    "power.input_voltage_v",
+    "power.current_a",
+    "power.consumption_w",
+    "timing.status",
+    "timing.quality_percent",
+    "gnss.satellite_count",
+    "storage.used_percent",
+    "storage.recording_status"
+  ],
+  "minimumCollectorVersion": "0.1.0",
+  "minimumEdgeVersion": "0.1.0",
+  "status": "experimental",
+  "configurationSchema": {
+    "type": "object",
+    "properties": {
+      "protocol": {
+        "type": "string",
+        "enum": ["http", "https", "snmp", "grpc"],
+        "default": "http",
+        "title": "프로토콜",
+        "description": "HTTP 가 기본이다. SNMP·gRPC 는 시험용 stub 이며 실제 수집은 하지 않는다."
+      },
+      "scheme": {
+        "type": "string",
+        "enum": ["http", "https"],
+        "default": "http",
+        "title": "HTTP 스킴"
+      },
+      "hostname": {
+        "type": "string",
+        "minLength": 1,
+        "title": "IP 또는 호스트명"
+      },
+      "port": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 65535,
+        "title": "포트"
+      },
+      "path": {
+        "type": "string",
+        "default": "/soh",
+        "title": "SOH 경로"
+      },
+      "tlsVerify": {
+        "type": "boolean",
+        "default": true,
+        "title": "TLS 인증서 검증"
+      },
+      "apiToken": {
+        "type": "string",
+        "title": "API 토큰",
+        "description": "암호화 저장되며 화면·로그·미리보기에 표시되지 않는다."
+      },
+      "community": {
+        "type": "string",
+        "title": "SNMP community",
+        "description": "SNMP stub 에서만 쓰며 값은 미리보기에 남기지 않는다."
+      }
+    },
+    "required": ["hostname"],
+    "secretFields": ["apiToken", "community"]
+  },
+  "uiHints": {
+    "groups": [
+      { "title": "접속", "fields": ["protocol", "scheme", "hostname", "port", "path", "tlsVerify"] },
+      { "title": "인증", "fields": ["apiToken", "community"] }
+    ],
+    "notes": [
+      "확장성 검증용 가상 제조사다. 필드명·상태문자열·단위가 Centaur CTR 과 다르다.",
+      "센서·외장 SD·외부 SOH·아카이브는 이 모델에 없다. 화면에서 미지원으로 표시되어야 한다."
+    ]
+  }
+}

@@ -2,7 +2,7 @@
 
 Nanometrics **Centaur CTR** 계열 기록계의 SOH를 설정한 분 주기로 수집해 InfluxDB에 적재하고, Grafana로 관측소를 통합 감시하는 시스템이다. Centaur Gen5와 타 제조사 기록계는 Adapter 추가만으로 편입한다.
 
-진행 상태: **M0–M9 완료, M10 운영 절차·시험 착수.** 실장비 파일럿(M10.7·M10.10)은 조사표가 비어 있어 양식만 있다. 작업별 상태는 [`docs/progress.md`](docs/progress.md) 에 있다.
+진행 상태: **M0–M11 완료.** 실장비 파일럿(M10.7·M10.10)과 Docker 라이브 검증은 조사표·실행 환경이 필요하다. 작업별 상태는 [`docs/progress.md`](docs/progress.md) 에 있다.
 
 ## 문서
 
@@ -13,6 +13,7 @@ Nanometrics **Centaur CTR** 계열 기록계의 SOH를 설정한 분 주기로 �
 | [`docs/progress.md`](docs/progress.md) | 마일스톤별 실제 진행 상태와 계약에서 못 박은 규칙 |
 | [`docs/inventory.md`](docs/inventory.md) | M-1 장비·환경 조사표 양식 |
 | [`docs/adapter-development.md`](docs/adapter-development.md) | 새 기록계 Adapter 를 붙이는 절차와 지켜야 할 규칙 |
+| [`docs/gen5-checklist.md`](docs/gen5-checklist.md) | Centaur Gen5 착수 전 조사 항목 |
 | [`docs/edge-deployment/README.md`](docs/edge-deployment/README.md) | 지역 Edge Collector 설치·등록·확인 절차 |
 | [`docs/grafana.md`](docs/grafana.md) | Grafana 대시보드·알림·Deep Link |
 | [`docs/operations/`](docs/operations/) | 설치·등록·백업·장애대응·보안·FAQ |

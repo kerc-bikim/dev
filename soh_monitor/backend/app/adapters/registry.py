@@ -111,8 +111,13 @@ def get_registry() -> AdapterRegistry:
         registry = AdapterRegistry()
 
         from app.adapters.centaur_ctr.adapter import MANIFEST_PATH, CentaurCtrAdapter
+        from app.adapters.mock_recorder.adapter import (
+            MANIFEST_PATH as MOCK_MANIFEST_PATH,
+        )
+        from app.adapters.mock_recorder.adapter import MockRecorderAdapter
 
         registry.register(CentaurCtrAdapter(), manifest_path=MANIFEST_PATH)
+        registry.register(MockRecorderAdapter(), manifest_path=MOCK_MANIFEST_PATH)
         _registry = registry
     return _registry
 

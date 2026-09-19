@@ -4,7 +4,9 @@
 
 1. 관리자 또는 운영자로 로그인한다. VIEWER 는 등록 버튼이 없다.
 2. **관측소 → 등록**. 네트워크 코드·관측소 코드·이름·위경도·전원 구성을 넣는다.
-3. 기록계 Adapter 를 고른다. 지금은 `nanometrics.centaur.ctr`.
+3. 기록계 Adapter 를 고른다. 운영 대상은 `nanometrics.centaur.ctr` 이다.
+   확장성 시험용 `acme.mock.recorder` 도 목록에 보인다. 센서·외부 SOH 가 없는
+   모델이라 해당 탭은 미지원으로 표시되어야 한다.
 4. 수집 방식:
    - DIRECT: 중앙이 기록계에 직접 붙는다. 호스트는 허용 대역(사설망)이어야 한다.
    - EDGE: 지역 Edge 를 고른다. Adapter 가 Edge 에 없거나 버전이 낮으면 할당이 거부된다.

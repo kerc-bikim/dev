@@ -4,6 +4,9 @@
 수집 스케줄러, DB 스키마, 공통 화면, 공통 Grafana 대시보드는 손대지 않는다.
 
 Centaur CTR(`backend/app/adapters/centaur_ctr/`)이 첫 번째 구현체이며 참고 기준이다.
+확장성 검증용 두 번째 구현체는 `backend/app/adapters/mock_recorder/` 다. 필드명·상태
+문자열·단위가 CTR 과 다르다. 이 Adapter 를 추가할 때 수집기·DB·공통 Grafana 는
+한 줄도 바꾸지 않았다.
 
 ## 파일 구성
 
@@ -99,3 +102,33 @@ Timeout 은 실 HTTP 로 확인한다.
 
 Centaur CTR 의 경우 매뉴얼에 응답 본문 예시가 없어 형태 추측이 `mock/centaur_mock/envelope.py`
 한 파일에 갇혀 있다. 실응답을 확보하면 그 파일과 `parser.py` 만 고친다.
+
+## Transport
+
+통신 프로토콜 교체는 Adapter 내부에 한정한다. 수집기는 HTTP 인지 SNMP 인지 모른다.
+
+```
+backend/app/adapters/transport/
+├─ http.py     JSON GET. Bearer 토큰만 다룬다
+├─ stub.py     SNMP·gRPC 자리. 실제 OID/SDK 호출은 없다
+└─ base.py     TransportResult. 실패도 예외가 아니다
+```
+
+제조사 고유 인증(예: Centaur 세션 MD5)은 해당 Adapter `client.py` 에 남긴다.
+공통 Transport 에 제조사 절차를 넣지 않는다.
+
+SNMP 나 전용 SDK 가 필요하면 stub 을 실제 호출로 바꾸되, 예외는 반드시
+`TransportResult` / `PollResult(success=False)` 로 가둔다. 프로세스 격리 설계는
+[외부 Adapter Runner](adapter-development/grpc-runner.md) 를 따른다.
+
+## 가상 제조사로 확장성을 확인하는 방법
+
+```bash
+# Registry 에 acme.mock.recorder 가 보인다
+curl -s http://127.0.0.1:8000/api/v1/adapters | python -m json.tool
+```
+
+관측소 등록 화면에서 ACME Mock Recorder 를 고르면 센서·외부 SOH 탭이
+**미지원**으로 표시된다. Manifest 에 없는 capability 는 빈 표로 남지 않는다.
+
+Gen5 착수 전에 조사할 항목은 [Gen5 체크리스트](gen5-checklist.md) 다.

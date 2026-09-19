@@ -126,6 +126,7 @@ class Test제조사격리:
             for measurement in VENDOR_MEASUREMENTS:
                 assert measurement not in blob, f"{uid} 가 {measurement} 를 쓴다"
             assert "vendor.nanometrics" not in blob, f"{uid} 에 제조사 Metric 키가 있다"
+            assert "vendor." not in blob, f"{uid} 에 vendor.* 가 있다"
 
     def test_전용_대시보드만_vendor를_쓴다(self):
         blob = json.dumps(_dashboards()[VENDOR_ONLY_UID], ensure_ascii=False)
