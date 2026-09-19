@@ -342,8 +342,8 @@ class Test기록계:
             f"/api/v1/devices/{device_id}",
             json={"dataSourceUri": "ftp://example/data"},
         )
-        assert response.status_code in {400, 422}
-        assert "dataSourceUri" in response.text or "스킴" in response.text
+        assert response.status_code == 400
+        assert "스킴" in response.json()["detail"]
 
         created = client.post(
             f"/api/v1/stations/{station_id}/devices",
@@ -354,7 +354,7 @@ class Test기록계:
                 "dataSourceUri": "ftp://example/data",
             },
         )
-        assert created.status_code in {400, 422}
+        assert created.status_code == 400
 
     def test_OPERATOR는_데이터서버_URI를_못_바꾼다(self, client):
         login(client)

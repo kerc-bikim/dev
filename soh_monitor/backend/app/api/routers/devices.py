@@ -29,6 +29,7 @@ from app.api.schemas import (
     ExternalSohWrite,
     OverrideWrite,
     SensorWrite,
+    normalize_data_source_uri,
 )
 from app.auth.credentials import CredentialResolver
 from app.db.models import (
@@ -122,7 +123,10 @@ def _apply_device_fields(session: Session, device: Device, body: DeviceWriteRequ
             parse_uuid(body.metric_profile_id, "Metric 프로파일") if body.metric_profile_id else None
         )
     if "data_source_uri" in body.model_fields_set:
-        device.data_source_uri = body.data_source_uri
+        try:
+            device.data_source_uri = normalize_data_source_uri(body.data_source_uri)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     if body.enabled is not None:
         device.enabled = body.enabled
     if body.status is not None:

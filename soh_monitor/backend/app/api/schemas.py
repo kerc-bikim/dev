@@ -127,7 +127,10 @@ class DeviceWriteRequest(ApiModel):
     @field_validator("data_source_uri")
     @classmethod
     def _data_source_uri(cls, value: str | None) -> str | None:
-        return normalize_data_source_uri(value)
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
 
 
 class AxisWrite(ApiModel):

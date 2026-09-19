@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { ApiError, api } from "../../api/client";
@@ -12,15 +12,6 @@ function DataSourceUriField({ deviceId, value }: { deviceId: string; value: stri
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState(value ?? "");
   const [notice, setNotice] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
-
-  useEffect(() => {
-    setDraft(value ?? "");
-    setNotice(null);
-  }, [deviceId]);
-
-  useEffect(() => {
-    setDraft(value ?? "");
-  }, [value]);
 
   const save = useMutation({
     mutationFn: () => api.updateDevice(deviceId, { dataSourceUri: draft.trim() || null }),
@@ -231,7 +222,11 @@ export function StationDetailPage() {
                 <th>데이터 서버</th>
                 <td>
                   {can("configure") && device ? (
-                    <DataSourceUriField deviceId={device.id} value={device.dataSourceUri} />
+                    <DataSourceUriField
+                      key={device.id}
+                      deviceId={device.id}
+                      value={device.dataSourceUri}
+                    />
                   ) : (
                     device?.dataSourceUri ?? "없음 (파형 검사 미지원)"
                   )}
