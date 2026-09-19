@@ -64,6 +64,10 @@ fixtures: ## 가상 서버 응답을 Fixture 로 다시 떠 놓기
 mock: ## 가상 Centaur CTR 서버 실행 (http://127.0.0.1:8090)
 	PYTHONPATH=. $(PY) -m mock.centaur_mock
 
+.PHONY: mock-seedlink
+mock-seedlink: ## 가상 SeedLink 서버 실행 (seedlink://127.0.0.1:18000)
+	PYTHONPATH=backend:. $(PY) -m mock.seedlink_mock.server
+
 .PHONY: mock-load
 mock-load: ## 부하 시험용 가상 기록계 100대 (20% 느린 장비)
 	PYTHONPATH=. MOCK_FLEET_SIZE=100 MOCK_SLOW_RATIO=0.2 MOCK_PORT=8091 $(PY) -m mock.centaur_mock

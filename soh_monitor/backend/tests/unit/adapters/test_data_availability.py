@@ -62,6 +62,14 @@ class Test파서:
         assert channels[0].channel == "HHZ"
         assert channels[0].ranges == ()
 
+    def test_SeedLink_시각_공백형식을_읽는다(self):
+        from app.adapters.data_availability.parser import parse_timestamp
+
+        parsed = parse_timestamp("2026-09-19 01:30:00")
+        assert parsed is not None
+        assert parsed.hour == 1
+        assert parsed.tzinfo is not None
+
 
 class Test매핑:
     def test_경과와_공백을_계산한다(self):
@@ -216,6 +224,108 @@ class Test검사기:
         merged = merge_availability(soh, samples, report)
         assert merged.success is True
         assert merged.capabilities.state_of("acquisition.data_check") is SupportState.ERROR
+
+    async def test_SeedLink_INFO_STREAMS를_표준_Metric으로_옮긴다(self):
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+        from mock.seedlink_mock.server import SeedLinkMock, fresh_streams
+
+        from app.adapters.data_availability.seedlink import info_xml_to_bands, pack_info_xml, unpack_info_payload
+
+        xml = (
+            b'<?xml version="1.0"?><seedlink>'
+            b'<station name="A01" network="KS">'
+            b'<stream location="" seedname="HHZ" begin_time="2026-09-19 00:00:00" end_time="2026-09-19 01:59:30"/>'
+            b"</station></seedlink>"
+        )
+        packed = pack_info_xml(xml)
+        assert packed.startswith(b"SLINFO")
+        assert unpack_info_payload(packed).startswith(b"<?xml")
+        bands = info_xml_to_bands(xml.decode(), station="A01")
+        assert bands["bands"][0]["channel"] == "HHZ"
+
+        async with SeedLinkMock(streams=fresh_streams(now=NOW, stale_minutes=0)) as server:
+            samples, report = await DataAvailabilityChecker().collect(
+                context(),
+                data_source_uri=server.uri,
+                now=NOW,
+                poll_interval_minutes=5,
+            )
+        assert report.state_of("acquisition.data_check") is SupportState.SUPPORTED_ENABLED
+        assert samples
+        for sample in samples:
+            validate_sample(sample)
+        ages = [s.value_float for s in samples if s.metric_key == "acquisition.latest_sample_age_seconds"]
+        assert ages and max(ages) < 120
+        assert any(s.metric_key == "acquisition.channel_active" and s.value_bool is True for s in samples)
+
+    async def test_SeedLink_낡은_스트림은_활성이_아니다(self):
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+        from mock.seedlink_mock.server import SeedLinkMock, fresh_streams
+
+        async with SeedLinkMock(streams=fresh_streams(now=NOW, stale_minutes=40)) as server:
+            samples, report = await DataAvailabilityChecker().collect(
+                context(),
+                data_source_uri=f"{server.uri}/KS_A01",
+                now=NOW,
+                poll_interval_minutes=5,
+            )
+        assert report.state_of("acquisition.data_check") is SupportState.SUPPORTED_ENABLED
+        ages = [s.value_float for s in samples if s.metric_key == "acquisition.latest_sample_age_seconds"]
+        assert ages and min(ages) >= 40 * 60
+        assert any(s.metric_key == "acquisition.channel_active" and s.value_bool is False for s in samples)
+
+    async def test_SeedLink_성공도_SOH를_뒤집지_않는다(self):
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+        from mock.seedlink_mock.server import SeedLinkMock, fresh_streams
+
+        soh = PollResult(
+            poll_id="p1",
+            device_id="d1",
+            adapter_key="nanometrics.centaur.ctr",
+            adapter_version="1.0",
+            success=True,
+        )
+        async with SeedLinkMock(streams=fresh_streams(now=NOW)) as server:
+            samples, report = await DataAvailabilityChecker().collect(
+                context(), data_source_uri=server.uri, now=NOW
+            )
+        merged = merge_availability(soh, samples, report)
+        assert merged.success is True
+        assert merged.capabilities.state_of("acquisition.data_check") is SupportState.SUPPORTED_ENABLED
+        assert any(s.metric_key == "acquisition.latest_sample_age_seconds" for s in merged.samples)
+
+    async def test_SeedLink_다른_관측소는_채널이_없다(self):
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+        from mock.seedlink_mock.server import SeedLinkMock, fresh_streams
+
+        from app.adapters.data_availability.seedlink import split_seedlink_uri
+
+        host, port, net, sta = split_seedlink_uri("seedlink://10.0.0.8:18000/KS_A01")
+        assert host == "10.0.0.8"
+        assert port == 18000
+        assert net == "KS"
+        assert sta == "A01"
+
+        async with SeedLinkMock(streams=fresh_streams(now=NOW, station="A01")) as server:
+            samples, report = await DataAvailabilityChecker().collect(
+                context(),
+                data_source_uri=f"{server.uri}/KS_ZZZ",
+                now=NOW,
+            )
+        assert samples == ()
+        assert report.state_of("acquisition.data_check") is SupportState.ERROR
 
 
 async def test_poll_device가_SOH와_파형검사를_함께_붙인다():

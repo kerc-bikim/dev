@@ -625,6 +625,7 @@ M-1 장비 조사 ──► M0 골격 ──► M1 계약 확정 ──┬─►
 | M2.9 | Adapter Manifest 작성·등록 | `manifest.json`, `registry.py` | `GET /api/v1/adapters`에 CTR이 노출 |
 | M2.10 | Fixture 기반 계약 테스트 | `tests/unit/adapters/` | M-1.2 실응답 4종 + Mock 9종 전부 통과 |
 | M2.11 | 데이터 연속성 Adapter (SeedLink/FDSN) 분리 구현 | `adapters/data_availability/` | 채널별 Sample Age·Gap을 SOH와 독립적으로 산출 |
+| M2.12 | SeedLink INFO STREAMS | `data_availability/seedlink.py` | HELLO + SLINFO XML로 채널 끝 시각을 산출. DATA 스트림은 열지 않음 |
 
 **Exit:** 서로 다른 CTR 모델·펌웨어의 응답이 **동일한 표준 Metric 집합**으로 변환되고, 미지원 항목은 `UNSUPPORTED`로 표시된다.
 

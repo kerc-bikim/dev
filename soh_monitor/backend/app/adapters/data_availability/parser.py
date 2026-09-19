@@ -38,6 +38,9 @@ def parse_timestamp(raw: Any) -> datetime | None:
     if not isinstance(raw, str) or not raw.strip():
         return None
     text = raw.strip().replace("Z", "+00:00")
+    # SeedLink INFO XML 은 `YYYY-MM-DD HH:MM:SS` 를 쓴다.
+    if "T" not in text and text.count(" ") == 1 and ":" in text:
+        text = text.replace(" ", "T", 1)
     try:
         parsed = datetime.fromisoformat(text)
     except ValueError:

@@ -110,7 +110,8 @@ availability 로 **SOH 와 따로** 산출한다. 구현은 `backend/app/adapter
 
 - 관측소에 데이터 서버 URI 가 없으면 capability 는 `UNSUPPORTED` 이고 값을 만들지 않는다.
 - URI 가 있으면 HTTP/FDSN JSON 을 읽고 채널별 경과·공백·활성을 표준 Metric 으로 옮긴다.
-- SeedLink(`seedlink://host:port`) 는 연결 stub 이다. INFO STREAMS 파싱은 실서버에서 교체한다.
+- SeedLink(`seedlink://host:port` 또는 `seedlink://host:port/NET_STA`) 는 HELLO 뒤
+  `INFO STREAMS` XML 을 읽어 채널 끝 시각을 만든다. DATA 스트림은 열지 않는다.
 - 이 검사가 실패해도 SOH `PollResult.success` 를 뒤집지 않는다.
 
 ## Transport

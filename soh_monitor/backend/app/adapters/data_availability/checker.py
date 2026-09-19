@@ -50,6 +50,7 @@ class DataAvailabilityChecker:
                 target,
                 connect_timeout_ms=context.connect_timeout_ms,
                 request_timeout_ms=context.request_timeout_ms,
+                station_code=context.station_code,
             )
         else:
             fetched = await self._http.fetch(
