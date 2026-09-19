@@ -33,6 +33,7 @@ KNOWN_MIGRATIONS = {
     "0002_health_state_metric_key.py",
     "0003_edge_tasks.py",
     "0004_edge_ingest_sequences.py",
+    "0005_adapter_mapping_source_path.py",
 }
 
 

@@ -406,7 +406,7 @@ make soak devices=100 ticks=3
 |----|------|------|------|
 | M11.1 | 가상 제조사 Adapter | 완료 | `adapters/mock_recorder/`. mV·0~1 비율·GOOD/BAD. 센서·외부 SOH 없음 |
 | M11.2 | Collector·Scheduler 무변경 | 완료 | 수집 계층은 제조사 모듈을 import 하지 않는다. `poll_device` 그대로 수집 |
-| M11.3 | DB 스키마 무변경 | 완료 | Alembic 은 `0004` 까지. 제조사 테이블 없음 |
+| M11.3 | DB 스키마 무변경 | 완료 | Alembic 은 `0005` 까지. 제조사 테이블 없음. Mapping 표는 공통 |
 | M11.4 | 공통 대시보드 재사용 | 완료 | `01`·`02`·`04`–`07` 에 `vendor.` 없음 |
 | M11.5 | Capability 화면 | 완료 | 미지원 탭은 비활성 + `미지원` 표시 |
 | M11.6 | 비HTTP Transport | 완료 | `adapters/transport/` HTTP + SNMP/gRPC stub |
