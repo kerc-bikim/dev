@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { ApiError, api } from "../../api/client";
+import { ApiError, api, type MaintenanceWindowDto } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { SeverityBadge } from "../../components/SeverityBadge";
 import { stationTabVisibility, type StationTabId } from "../../lib/capabilityTabs";
@@ -62,6 +62,187 @@ function DataSourceUriField({ deviceId, value }: { deviceId: string; value: stri
       {notice && <div className={notice.kind === "warn" ? "notice warn" : "notice"}>{notice.text}</div>}
     </form>
   );
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+function toLocalInput(date: Date): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function formatWhen(value: string | null | undefined): string {
+  return value ? value.replace("T", " ").slice(0, 19) : "—";
+}
+
+function windowPhase(startsAt: string | null, endsAt: string | null, now = Date.now()): "진행" | "예정" | "종료" {
+  const start = startsAt ? Date.parse(startsAt) : Number.NaN;
+  const end = endsAt ? Date.parse(endsAt) : Number.NaN;
+  if (Number.isFinite(start) && Number.isFinite(end) && start <= now && end >= now) return "진행";
+  if (Number.isFinite(start) && start > now) return "예정";
+  return "종료";
+}
+
+function defaultWindowRange(): { start: string; end: string } {
+  const start = new Date();
+  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  return { start: toLocalInput(start), end: toLocalInput(end) };
+}
+
+function MaintenanceWindowsCard({ stationId }: { stationId: string }) {
+  const { can } = useAuth();
+  const queryClient = useQueryClient();
+  const range = defaultWindowRange();
+  const [reason, setReason] = useState("");
+  const [startsAt, setStartsAt] = useState(range.start);
+  const [endsAt, setEndsAt] = useState(range.end);
+  const [notice, setNotice] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
+
+  const windows = useQuery({
+    queryKey: ["maintenance", "station", stationId],
+    queryFn: () => api.maintenanceWindows({ scope: "station", scopeId: stationId }),
+    enabled: Boolean(stationId),
+    refetchInterval: 15_000,
+  });
+
+  function refresh() {
+    void queryClient.invalidateQueries({ queryKey: ["maintenance", "station", stationId] });
+    void queryClient.invalidateQueries({ queryKey: ["station-health", stationId] });
+  }
+
+  const create = useMutation({
+    mutationFn: () =>
+      api.createMaintenanceWindow({
+        scope: "station",
+        scopeId: stationId,
+        startsAt: new Date(startsAt).toISOString(),
+        endsAt: new Date(endsAt).toISOString(),
+        reason: reason.trim() || null,
+        suppressAlerts: true,
+      }),
+    onSuccess: () => {
+      setReason("");
+      const next = defaultWindowRange();
+      setStartsAt(next.start);
+      setEndsAt(next.end);
+      setNotice({ kind: "ok", text: "유지보수 창을 열었다. 이 시간대 알림은 억제된다." });
+      refresh();
+    },
+    onError: (err) =>
+      setNotice({
+        kind: "warn",
+        text: err instanceof ApiError ? err.message : "유지보수 창을 열지 못했다",
+      }),
+  });
+
+  const close = useMutation({
+    mutationFn: api.closeMaintenanceWindow,
+    onSuccess: () => {
+      setNotice({ kind: "ok", text: "유지보수 창을 닫았다." });
+      refresh();
+    },
+    onError: (err) =>
+      setNotice({
+        kind: "warn",
+        text: err instanceof ApiError ? err.message : "유지보수 창을 닫지 못했다",
+      }),
+  });
+
+  const rows = windows.data?.windows ?? [];
+
+  return (
+    <div className="card">
+      <h2>유지보수 창</h2>
+      <p className="muted">열리면 알림은 억제되고 상태는 MAINTENANCE 로 남는다. 없는 값을 정상으로 바꾸지 않는다.</p>
+      {notice && <div className={notice.kind === "warn" ? "notice warn" : "notice"}>{notice.text}</div>}
+      <table>
+        <thead>
+          <tr>
+            <th>상태</th>
+            <th>시작</th>
+            <th>종료</th>
+            <th>사유</th>
+            {can("operate") && <th></th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((window) => {
+            const phase = windowPhase(window.startsAt, window.endsAt);
+            return (
+              <tr key={window.id}>
+                <td>{phase}</td>
+                <td>{formatWhen(window.startsAt)}</td>
+                <td>{formatWhen(window.endsAt)}</td>
+                <td>{window.reason ?? "—"}</td>
+                {can("operate") && (
+                  <td>
+                    {phase !== "종료" && (
+                      <button
+                        className="btn ghost"
+                        type="button"
+                        disabled={close.isPending}
+                        onClick={() => close.mutate(window.id)}
+                      >
+                        지금 닫기
+                      </button>
+                    )}
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {rows.length === 0 && <p className="muted">등록된 유지보수 창이 없다.</p>}
+      {can("operate") && (
+        <form
+          className="form-grid"
+          onSubmit={(event) => {
+            event.preventDefault();
+            create.mutate();
+          }}
+        >
+          <label className="field">
+            <span>시작</span>
+            <input
+              type="datetime-local"
+              required
+              value={startsAt}
+              onChange={(event) => setStartsAt(event.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>종료</span>
+            <input
+              type="datetime-local"
+              required
+              value={endsAt}
+              onChange={(event) => setEndsAt(event.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>사유</span>
+            <input
+              type="text"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="센서 교체"
+            />
+          </label>
+          <div>
+            <button className="btn primary" type="submit" disabled={create.isPending}>
+              {create.isPending ? "여는 중" : "유지보수 열기"}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function activeStationWindow(windows: MaintenanceWindowDto[] | undefined): MaintenanceWindowDto | undefined {
+  return (windows ?? []).find((item) => windowPhase(item.startsAt, item.endsAt) === "진행");
 }
 
 const CATEGORY_TAB: Record<string, string> = {
@@ -124,6 +305,13 @@ export function StationDetailPage() {
     enabled: Boolean(deviceId),
   });
 
+  const windows = useQuery({
+    queryKey: ["maintenance", "station", stationId],
+    queryFn: () => api.maintenanceWindows({ scope: "station", scopeId: stationId }),
+    enabled: Boolean(stationId),
+    refetchInterval: 15_000,
+  });
+
   const pollNow = useMutation({
     mutationFn: api.pollNow,
     onSuccess: () => {
@@ -148,6 +336,7 @@ export function StationDetailPage() {
     return CATEGORY_TAB[metric.category] === activeTab;
   });
   const currentTabMeta = tabs.find((item) => item.id === activeTab);
+  const activeWindow = activeStationWindow(windows.data?.windows);
 
   return (
     <>
@@ -160,6 +349,13 @@ export function StationDetailPage() {
       <p className="page-subtitle">
         종합 <SeverityBadge severity={health.data?.overall ?? station.worstSeverity} /> · 장비 {station.deviceCount}대
       </p>
+
+      {activeWindow && (
+        <div className="notice">
+          유지보수 중이다. 알림은 억제되고 상태는 MAINTENANCE 로 남는다.
+          {activeWindow.reason ? ` 사유: ${activeWindow.reason}` : ""}
+        </div>
+      )}
 
       <div className="toolbar">
         {can("operate") && device && (
@@ -236,6 +432,8 @@ export function StationDetailPage() {
           </table>
         </div>
       )}
+
+      {activeTab === "settings" && <MaintenanceWindowsCard stationId={station.id} />}
 
       {activeTab === "history" && (
         <div className="card">

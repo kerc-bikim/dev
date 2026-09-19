@@ -45,6 +45,7 @@ export const API_PATHS = {
   incidentsIncidentIdAcknowledge: "/api/v1/incidents/{incident_id}/acknowledge",
   incidentsIncidentIdEvents: "/api/v1/incidents/{incident_id}/events",
   maintenanceWindows: "/api/v1/maintenance-windows",
+  maintenanceWindowsWindowIdClose: "/api/v1/maintenance-windows/{window_id}/close",
   metricCatalog: "/api/v1/metric-catalog",
   metricProfiles: "/api/v1/metric-profiles",
   metricProfilesProfileId: "/api/v1/metric-profiles/{profile_id}",

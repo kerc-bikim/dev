@@ -248,6 +248,7 @@ input[type="search"],
 input[type="text"],
 input[type="password"],
 input[type="number"],
+input[type="datetime-local"],
 textarea {
   font: inherit;
   padding: 0.35rem 0.5rem;

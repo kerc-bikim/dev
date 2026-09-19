@@ -18,5 +18,8 @@ Git 이 원본이다. `scripts/gen_grafana.py` 로 고치고 배포한다.
 **VIEWER 가 설정을 못 본다.**  
 의도다. 조회만 한다.
 
+**센서 교체 때 장애가 열린다.**  
+관측소 상세 설정에서 유지보수 창을 연다. 알림은 억제되고 상태는 `MAINTENANCE` 다.
+
 **실장비 SOH JSON 이 가상 서버와 다르다.**  
 `inventory.md` 를 채우고 Fixture 를 `testdata/real-*.json` 에 넣는다. 파서가 실응답을 따른다.

@@ -23,6 +23,7 @@
 | Edge Spool Critical | 중앙 업로드가 막혔는지. ACK 전 삭제는 하지 않는다 |
 | Influx Write Failure | Influx 컨테이너·디스크. 수집은 계속된다. 그래프만 멈춘다 |
 
-유지보수 창을 열면 그 시간대 알림은 억제되고 상태는 `MAINTENANCE` 다.
+유지보수 창은 관측소 상세 **설정** 에서 OPERATOR 가 연다. 그 시간대 알림은
+억제되고 상태는 `MAINTENANCE` 다. 작업이 끝나면 **지금 닫기** 로 일찍 끝낼 수 있다.
 
 복구 알림이 오면 장애 목록에서 RESOLVED 를 확인한다. 안 오면 Grafana 연락처 SMTP 를 본다.

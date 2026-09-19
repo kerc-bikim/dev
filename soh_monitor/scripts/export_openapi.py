@@ -49,6 +49,7 @@ REQUIRED_PATHS = (
     "/api/v1/incidents",
     "/api/v1/incidents/{incident_id}/acknowledge",
     "/api/v1/maintenance-windows",
+    "/api/v1/maintenance-windows/{window_id}/close",
     "/api/v1/audit-logs",
     "/api/v1/edges",
     "/api/v1/edges/{edge_id}",

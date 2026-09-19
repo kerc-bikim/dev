@@ -284,6 +284,16 @@ export interface IncidentDto {
   detail: Record<string, unknown>;
 }
 
+export interface MaintenanceWindowDto {
+  id: string;
+  scope: string;
+  scopeId: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  reason: string | null;
+  suppressAlerts: boolean;
+}
+
 export interface HealthMetricDto {
   metricKey: string;
   category: string;
@@ -568,6 +578,22 @@ export const api = {
       `/api/v1/incidents/${id}/acknowledge?message=${encodeURIComponent(message)}`,
       { method: "POST" },
     ),
+  maintenanceWindows: (params?: { scope?: string; scopeId?: string; active?: boolean }) => {
+    const query = new URLSearchParams();
+    if (params?.scope) query.set("scope", params.scope);
+    if (params?.scopeId) query.set("scopeId", params.scopeId);
+    if (params?.active) query.set("active", "true");
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return request<{ windows: MaintenanceWindowDto[] }>(`/api/v1/maintenance-windows${suffix}`);
+  },
+  createMaintenanceWindow: (body: Record<string, unknown>) =>
+    request<{ window: MaintenanceWindowDto }>("/api/v1/maintenance-windows", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  closeMaintenanceWindow: (id: string) =>
+    request<{ window: MaintenanceWindowDto }>(`/api/v1/maintenance-windows/${id}/close`, { method: "POST" }),
+
   incidentEvents: (id: string) =>
     request<{
       incidentId: string;

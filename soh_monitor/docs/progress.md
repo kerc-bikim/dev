@@ -144,7 +144,7 @@ Docker 가 있는 환경에서 `make images` 와 `make dev` 로 확인해야 한
 | M4.3 | 분류별 상태 집계 | 완료 | Metric 행과 분류 집계 행을 함께 저장. 장비 종합은 분류들의 최악값 |
 | M4.4 | 미지원·확인불가 제외 | 완료 | UNSUPPORTED 는 판정 제외, UNKNOWN 은 OK 보다 나쁘게 집계 |
 | M4.5 | Incident 상태기계 | 완료 | OPEN → ACKNOWLEDGED → RESOLVED. 열린 장애 유일성은 DB 부분 인덱스로 보장 |
-| M4.6 | 유지보수 억제 | 완료 | 장비·관측소·Edge·지역·전체 범위. 상태는 MAINTENANCE 로 기록 |
+| M4.6 | 유지보수 억제 | 완료 | 장비·관측소·Edge·지역·전체 범위. 상태는 MAINTENANCE 로 기록. 화면에서 열고 `/close` 로 일찍 종료 |
 | M4.7 | `recorder_health` 적재 | 완료 | 분류별 + overall severity·is_stale. Grafana 는 이 값만 감시한다 |
 | M4.8 | 지연 도달 데이터 보호 | 완료 | M3 의 `observed_at` 최신성 검사 + 낡은 값 표시 |
 | M4.9 | 알림 중복 억제 | 완료 | 알림은 Incident 상태 전이에서만 나온다. 구조적으로 중복이 없다 |
@@ -278,6 +278,7 @@ make soak devices=100 ticks=3
 | M6.11 | 프로파일 | 완료 | 영향 장비 수, 저장 전 차이, 복제 |
 | M6.12 | 장애 확인 | 완료 | 확인 시 담당자·시각. VIEWER 는 확인 버튼이 없다 |
 | M6.13 | 상태 자동 갱신 | 완료 | TanStack Query 15초 `refetchInterval` + `keepPreviousData` |
+| M6.14 | 유지보수 창 | 완료 | 관측소 설정에서 열고 닫기. 진행 중이면 상세 상단에 안내 |
 
 마법사 10절의 10단계는 화면에서 7단계로 묶었다. 제조사 선택과 수집 방식, 연결 시험과
 자동 탐지를 한 화면에 둔다. EDGE 수집은 Edge 를 고르면 활성화된다.

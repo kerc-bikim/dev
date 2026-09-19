@@ -500,3 +500,34 @@ class Test유지보수:
         )
         assert response.status_code == 201, response.text
         assert response.json()["window"]["scope"] == "station"
+        window_id = response.json()["window"]["id"]
+
+        listed = client.get(
+            "/api/v1/maintenance-windows",
+            params={"scope": "station", "scopeId": station_id, "active": True},
+        )
+        assert listed.status_code == 200
+        assert listed.json()["windows"][0]["id"] == window_id
+
+        closed = client.post(f"/api/v1/maintenance-windows/{window_id}/close")
+        assert closed.status_code == 200, closed.text
+        ended = datetime.fromisoformat(closed.json()["window"]["endsAt"].replace("Z", "+00:00"))
+        assert ended <= datetime.now(timezone.utc)
+
+        again = client.post(f"/api/v1/maintenance-windows/{window_id}/close")
+        assert again.status_code == 409
+
+        client.post("/api/v1/auth/logout")
+        login(client, "viewer", VIEWER_PASSWORD)
+        assert client.get("/api/v1/maintenance-windows").status_code == 200
+        blocked = client.post(
+            "/api/v1/maintenance-windows",
+            json={
+                "scope": "station",
+                "scopeId": station_id,
+                "startsAt": now.isoformat(),
+                "endsAt": (now + timedelta(hours=1)).isoformat(),
+                "reason": "불가",
+            },
+        )
+        assert blocked.status_code == 403

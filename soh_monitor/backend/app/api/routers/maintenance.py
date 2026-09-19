@@ -1,12 +1,15 @@
 """유지보수 시간대. OPERATOR 가 열고 닫는다."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import desc, select
 
 from app.api import audit
 from app.api.deps import RequireOperate, RequireRead
 from app.api.presenters import iso, parse_uuid
+from app.repository.postgres.collector_repo import as_utc
 from app.api.schemas import MaintenanceWrite
 from app.db.models import MaintenanceWindow
 from app.db.session import session_scope
@@ -14,26 +17,40 @@ from app.db.session import session_scope
 router = APIRouter(prefix="/api/v1", tags=["maintenance"])
 
 
+def _window_payload(row: MaintenanceWindow) -> dict:
+    return {
+        "id": str(row.id),
+        "scope": row.scope,
+        "scopeId": str(row.scope_id) if row.scope_id else None,
+        "startsAt": iso(row.starts_at),
+        "endsAt": iso(row.ends_at),
+        "reason": row.reason,
+        "suppressAlerts": row.suppress_alerts,
+    }
+
+
 @router.get("/maintenance-windows", summary="유지보수 시간대 목록")
-def list_windows(actor: RequireRead, limit: int = Query(default=50, ge=1, le=200)) -> dict:
+def list_windows(
+    actor: RequireRead,
+    limit: int = Query(default=50, ge=1, le=200),
+    scope: str | None = None,
+    scope_id: str | None = Query(default=None, alias="scopeId"),
+    active: bool = False,
+) -> dict:
+    now = datetime.now(timezone.utc)
     with session_scope() as session:
-        rows = session.scalars(
-            select(MaintenanceWindow).order_by(desc(MaintenanceWindow.starts_at)).limit(limit)
-        ).all()
-        return {
-            "windows": [
-                {
-                    "id": str(row.id),
-                    "scope": row.scope,
-                    "scopeId": str(row.scope_id) if row.scope_id else None,
-                    "startsAt": iso(row.starts_at),
-                    "endsAt": iso(row.ends_at),
-                    "reason": row.reason,
-                    "suppressAlerts": row.suppress_alerts,
-                }
-                for row in rows
-            ]
-        }
+        query = select(MaintenanceWindow)
+        if scope:
+            query = query.where(MaintenanceWindow.scope == scope)
+        if scope_id:
+            query = query.where(MaintenanceWindow.scope_id == parse_uuid(scope_id, "범위 식별자"))
+        if active:
+            query = query.where(
+                MaintenanceWindow.starts_at <= now,
+                MaintenanceWindow.ends_at >= now,
+            )
+        rows = session.scalars(query.order_by(desc(MaintenanceWindow.starts_at)).limit(limit)).all()
+        return {"windows": [_window_payload(row) for row in rows]}
 
 
 @router.post("/maintenance-windows", status_code=status.HTTP_201_CREATED, summary="유지보수 시간대 등록")
@@ -64,14 +81,36 @@ def create_window(body: MaintenanceWrite, request: Request, actor: RequireOperat
             after={"scope": window.scope, "reason": window.reason},
             request=request,
         )
-        return {
-            "window": {
-                "id": str(window.id),
-                "scope": window.scope,
-                "scopeId": str(window.scope_id) if window.scope_id else None,
-                "startsAt": iso(window.starts_at),
-                "endsAt": iso(window.ends_at),
-                "reason": window.reason,
-                "suppressAlerts": window.suppress_alerts,
-            }
-        }
+        return {"window": _window_payload(window)}
+
+
+@router.post("/maintenance-windows/{window_id}/close", summary="유지보수 시간대 종료")
+def close_window(window_id: str, request: Request, actor: RequireOperate) -> dict:
+    identifier = parse_uuid(window_id, "유지보수 식별자")
+    now = datetime.now(timezone.utc)
+    with session_scope() as session:
+        window = session.get(MaintenanceWindow, identifier)
+        if window is None:
+            raise HTTPException(status_code=404, detail="없는 유지보수 시간대다")
+        ends_at = as_utc(window.ends_at)
+        starts_at = as_utc(window.starts_at)
+        if ends_at is None or starts_at is None:
+            raise HTTPException(status_code=409, detail="시각이 없는 유지보수 시간대다")
+        if ends_at <= now:
+            raise HTTPException(status_code=409, detail="이미 끝난 유지보수 시간대다")
+        before = {"endsAt": iso(window.ends_at), "startsAt": iso(window.starts_at)}
+        if starts_at > now:
+            window.ends_at = window.starts_at
+        else:
+            window.ends_at = now
+        audit.record(
+            session,
+            actor=actor,
+            action="close",
+            entity_type="maintenance_window",
+            entity_id=str(window.id),
+            before=before,
+            after={"endsAt": iso(window.ends_at)},
+            request=request,
+        )
+        return {"window": _window_payload(window)}
