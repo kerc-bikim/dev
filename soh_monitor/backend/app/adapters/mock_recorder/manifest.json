@@ -5,7 +5,7 @@
   "productFamilies": ["Mock Recorder"],
   "generation": "mock",
   "supportedModels": ["MR-100", "MR-200"],
-  "protocols": ["http", "https", "snmp", "grpc"],
+  "protocols": ["http", "https", "snmp", "vendor_sdk"],
   "capabilities": [
     "device.overall_status",
     "device.firmware_status",
@@ -41,7 +41,7 @@
         "enum": ["http", "https", "snmp", "grpc"],
         "default": "http",
         "title": "프로토콜",
-        "description": "HTTP 가 기본이다. SNMP·gRPC 는 시험용 stub 이며 실제 수집은 하지 않는다."
+        "description": "HTTP 가 기본이다. SNMP 와 gRPC(vendor_sdk) 는 시험용 stub 이며 실제 수집은 하지 않는다."
       },
       "scheme": {
         "type": "string",
