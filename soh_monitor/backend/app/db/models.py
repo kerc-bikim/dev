@@ -158,7 +158,12 @@ class AdapterMetricMapping(UuidPrimaryKey, Timestamped, Base):
     __tablename__ = "adapter_metric_mappings"
     __table_args__ = (
         UniqueConstraint(
-            "adapter_key", "adapter_version", "firmware_range", "canonical_metric_key", "dimension_value"
+            "adapter_key",
+            "adapter_version",
+            "firmware_range",
+            "source_path",
+            "canonical_metric_key",
+            "dimension_value",
         ),
         Index("ix_adapter_metric_mappings_lookup", "adapter_key", "adapter_version"),
     )

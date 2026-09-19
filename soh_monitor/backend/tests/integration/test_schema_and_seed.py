@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.base import Base
 from app.db.models import (
+    AdapterMetricMapping,
     CollectionMode,
     Device,
     DeviceEndpoint,
@@ -140,6 +141,16 @@ class TestSeed:
         rows = {row.metric_key for row in session.scalars(select(MetricDefinitionRow))}
         assert rows == set(catalog.metrics)
         assert result["metric_definitions_inserted"] == len(catalog.metrics)
+
+    def test_Adapter_매핑표가_DB로_복제된다(self, session):
+        result = seed_all(session)
+        rows = list(session.scalars(select(AdapterMetricMapping)))
+        assert rows
+        assert result["adapter_mappings_inserted"] == len(rows)
+        assert any(row.source_path == "power/voltage" for row in rows)
+        seed_all(session)
+        again = list(session.scalars(select(AdapterMetricMapping)))
+        assert len(again) == len(rows)
 
     def test_두_번_실행해도_결과가_같다(self, session):
         seed_all(session)

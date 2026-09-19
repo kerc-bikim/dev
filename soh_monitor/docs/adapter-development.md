@@ -16,6 +16,7 @@ backend/app/adapters/<vendor_model>/
 ├─ client.py          통신과 실패 분류
 ├─ parser.py          제조사 응답 → {채널 이름: 원값}
 ├─ mapper.py          채널 → 표준 Metric (단위·상태 변환)
+├─ mappings.yaml      펌웨어별 원본 경로 별칭. 코드 분기 대신 행을 추가한다
 ├─ capabilities.py    기능 지원 상태 판정
 ├─ adapter.py         RecorderAdapter 구현
 └─ testdata/          실장비 응답 Fixture (real-*) 와 가상 응답 (synthetic-*)
@@ -54,7 +55,8 @@ backend/app/adapters/<vendor_model>/
    (`make contracts` 로 생성물 재생성)
 3. `contracts/metrics/status-mappings.yaml` 에 상태 문자열 Mapping 추가
 4. `manifest.json` 작성 — `capabilities` 와 `providedMetrics` 는 계약에 있는 키만 쓸 수 있다
-5. `parser.py` / `mapper.py` / `capabilities.py` / `adapter.py` 구현
+5. `parser.py` / `mapper.py` / `mappings.yaml` / `capabilities.py` / `adapter.py` 구현
+   펌웨어가 필드명을 바꾸면 mapper 에 `if` 를 넣지 말고 표에 별칭 행을 추가한다.
 6. `testdata/` 에 Fixture 추가
 7. `app/adapters/registry.py` 의 `get_registry()` 에 등록
 8. 계약 시험 통과 — 정상, 느린 응답, 연결 실패, 인증 실패, 비정상 JSON, 필드 누락,

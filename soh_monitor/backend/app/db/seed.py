@@ -9,12 +9,15 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.adapters.metric_mappings import load_mapping_table
 from app.auth.passwords import generate_password, hash_password
 from app.db.models import (
+    AdapterMetricMapping,
     CollectionProfile,
     MetricDefinitionRow,
     MetricProfile,
@@ -256,13 +259,85 @@ def seed_admin_user(session: Session) -> str | None:
     return generated
 
 
+MAPPING_FILES = (
+    Path(__file__).resolve().parents[1] / "adapters" / "centaur_ctr" / "mappings.yaml",
+)
+
+
+def seed_adapter_mappings(session: Session) -> tuple[int, int]:
+    """Adapter YAML 매핑을 DB 로 복사한다. 수집은 YAML 을 직접 읽는다."""
+    inserted = 0
+    updated = 0
+    for path in MAPPING_FILES:
+        if not path.exists():
+            continue
+        table = load_mapping_table(path)
+        existing = {
+            (
+                row.adapter_key,
+                row.adapter_version,
+                row.firmware_range,
+                row.source_path,
+                row.canonical_metric_key,
+                row.dimension_value,
+            ): row
+            for row in session.scalars(
+                select(AdapterMetricMapping).where(AdapterMetricMapping.adapter_key == table.adapter_key)
+            )
+        }
+        seen: set[tuple] = set()
+        for rule in table.rules:
+            key = (
+                rule.adapter_key,
+                rule.adapter_version,
+                rule.firmware_range,
+                rule.source_path,
+                rule.canonical_metric_key,
+                rule.dimension_value,
+            )
+            seen.add(key)
+            values = dict(
+                source_unit=rule.source_unit,
+                target_unit=rule.target_unit,
+                scale=rule.scale,
+                offset=rule.offset,
+                notes=rule.notes,
+            )
+            row = existing.get(key)
+            if row is None:
+                session.add(
+                    AdapterMetricMapping(
+                        adapter_key=rule.adapter_key,
+                        adapter_version=rule.adapter_version,
+                        firmware_range=rule.firmware_range,
+                        source_path=rule.source_path,
+                        canonical_metric_key=rule.canonical_metric_key,
+                        dimension_value=rule.dimension_value,
+                        **values,
+                    )
+                )
+                inserted += 1
+                continue
+            if any(getattr(row, name) != value for name, value in values.items()):
+                for name, value in values.items():
+                    setattr(row, name, value)
+                updated += 1
+        for key, row in existing.items():
+            if key not in seen:
+                session.delete(row)
+    return inserted, updated
+
+
 def seed_all(session: Session) -> dict[str, object]:
     inserted, updated = seed_metric_definitions(session)
+    mapping_inserted, mapping_updated = seed_adapter_mappings(session)
     seed_default_profiles(session)
     generated_password = seed_admin_user(session)
     session.commit()
     return {
         "metric_definitions_inserted": inserted,
         "metric_definitions_updated": updated,
+        "adapter_mappings_inserted": mapping_inserted,
+        "adapter_mappings_updated": mapping_updated,
         "generated_admin_password": generated_password,
     }

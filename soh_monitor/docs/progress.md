@@ -81,7 +81,7 @@ Docker 가 있는 환경에서 `make images` 와 `make dev` 로 확인해야 한
 | M2.2 | HTTP Client 와 실패 분류 | 완료 | DNS·연결거부·연결/응답 Timeout·HTTP·인증·본문 오류를 서로 다른 코드로 |
 | M2.3 | SOH Parser | 완료 | 응답 형태 3종(channels 배열 / soh 객체 / 평평한 객체) 관용 처리 |
 | M2.4 | 표준 Metric Mapper | 완료 | 단위 인식 변환(µV·mV·m°C), SD 미장착 −1 → 값 없음, 축 W/V/U 매핑 |
-| M2.5 | 펌웨어별 Mapping | 부분 | 수치 코드(예전 형태) 처리. `adapter_metric_mappings` 표 활용은 실응답 확보 후 |
+| M2.5 | 펌웨어별 Mapping | 완료 | YAML 표 + `adapter_metric_mappings` Seed. 별칭 경로는 펌웨어 범위로 흡수. 실경로는 M-1.2 |
 | M2.6 | Capability 자동 탐지 | 완료 | 3채널 Sensor B → UNSUPPORTED, 슬롯 없음/카드 없음 구분 |
 | M2.7 | Probe | 완료 | Instrument ID 로 채널 수·시리얼 추정. 모델명은 SOH API 에 없어 비워 둔다 |
 | M2.8 | 민감정보 제거 | 완료 | `redact()` 재귀 처리. 수집 결과에 비밀값 없음을 시험으로 확인 |
@@ -424,5 +424,6 @@ make soak devices=100 ticks=3
 
 1. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 파일럿(M10.7) 도 시작한다.
 2. **실제 InfluxDB·Grafana·Postgres 복구** — Docker 환경에서 `influx backup` 과 `pg_dump` 를 한 번 돈다.
-3. **Gen5** — [`gen5-checklist.md`](gen5-checklist.md) 조사 후 `adapters/centaur_gen5/` 만 추가한다.
+3. **Gen5** — [`gen5-checklist.md`](gen5-checklist.md) 조사 후 `adapters/centaur_gen5/` 와
+   `mappings.yaml` 만 추가한다.
 
