@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     edge_spool_limit_bytes: int = 5 * 1024 * 1024 * 1024
     edge_heartbeat_seconds: int = 30
     edge_upload_timeout_seconds: int = 30
+    edge_enrollment_token: str | None = None
+    edge_cert_dir: Path = Path("/var/lib/soh-edge/certs")
+    edge_ingest_max_bytes: int = 6 * 1024 * 1024
+    edge_heartbeat_miss_warning: int = 2
+    edge_heartbeat_miss_critical: int = 3
 
     # --- 보안 ---
     session_secret: str = ""
@@ -106,6 +111,19 @@ class Settings(BaseSettings):
         if direct:
             return direct
         return _read_secret_file(f"SOH_{name.upper()}") or ""
+
+    def session_signing_key(self) -> str:
+        """쿠키 서명 키.
+
+        개발 환경에서 비어 있으면 고정값을 쓴다. 운영에서는 비어 있으면 안 되며
+        `startup_problems` 가 기동을 막는다.
+        """
+        key = self.resolved_secret("session_secret")
+        if key:
+            return key
+        if self.is_production:
+            return ""
+        return "dev-only-session-secret-not-for-production"
 
     def startup_problems(self) -> list[str]:
         """운영 환경에서 비어 있으면 안 되는 값을 점검한다."""

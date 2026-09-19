@@ -165,5 +165,5 @@ def test_기본_Registry는_Manifest_파일_원본으로_검증한다():
 
     reset_registry()
     registry = get_registry()
-    assert registry.keys() == ("nanometrics.centaur.ctr",)
+    assert registry.keys() == ("acme.mock.recorder", "nanometrics.centaur.ctr")
     reset_registry()

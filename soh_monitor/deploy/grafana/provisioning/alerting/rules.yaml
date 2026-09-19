@@ -1,0 +1,407 @@
+# Grafana 는 임계값을 다시 계산하지 않는다. 백엔드가 적재한
+# recorder_health.severity (0=OK 1=WARNING 2=CRITICAL 3=UNKNOWN) 만 본다.
+#
+# 7종. Edge Offline 은 scope=edge 만 본다. 하위 기록계는 이미 UNKNOWN 으로
+# 접혀 있으므로 여기서 다시 올리지 않는다.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: soh-health
+    folder: 관측소 SOH
+    interval: 1m
+    rules:
+      - uid: soh-recorder-offline
+        title: Recorder Offline
+        condition: C
+        for: 2m
+        keep_firing_for: 0s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        annotations:
+          summary: 기록계가 응답하지 않는다
+          description: "관측소 {{ $labels.station_code }} 통신이 CRITICAL 이다. UNKNOWN(Edge 단절) 은 이 규칙이 아니다."
+        labels:
+          severity: critical
+          alertname: Recorder Offline
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: soh-influx
+            model:
+              refId: A
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource: {type: influxdb, uid: soh-influx}
+              query: |
+                from(bucket: "soh")
+                  |> range(start: -10m)
+                  |> filter(fn: (r) => r._measurement == "recorder_health")
+                  |> filter(fn: (r) => r._field == "severity")
+                  |> filter(fn: (r) => r.category == "connectivity")
+                  |> filter(fn: (r) => not exists(r.scope) or r.scope == "device")
+                  |> last()
+                  |> filter(fn: (r) => r._value == 2)
+          - refId: B
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              reducer: last
+              expression: A
+              refId: B
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+          - refId: C
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              refId: C
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {params: [0], type: gt}
+                  operator: {type: and}
+                  query: {params: ["C"]}
+                  reducer: {params: [], type: last}
+                  type: query
+
+      - uid: soh-edge-offline
+        title: Edge Offline
+        condition: C
+        for: 1m
+        keep_firing_for: 0s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        annotations:
+          summary: Edge Collector 가 응답하지 않는다
+          description: "Edge {{ $labels.edge_code }} Heartbeat 가 빠졌다. 하위 기록계 장애는 억제한다."
+        labels:
+          severity: critical
+          alertname: Edge Offline
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: soh-influx
+            model:
+              refId: A
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource: {type: influxdb, uid: soh-influx}
+              query: |
+                from(bucket: "soh")
+                  |> range(start: -10m)
+                  |> filter(fn: (r) => r._measurement == "recorder_health")
+                  |> filter(fn: (r) => r._field == "severity")
+                  |> filter(fn: (r) => r.scope == "edge")
+                  |> filter(fn: (r) => r.category == "connectivity")
+                  |> last()
+                  |> filter(fn: (r) => r._value >= 1)
+          - refId: B
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              reducer: last
+              expression: A
+              refId: B
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+          - refId: C
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              refId: C
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {params: [0], type: gt}
+                  operator: {type: and}
+                  query: {params: ["C"]}
+                  reducer: {params: [], type: last}
+                  type: query
+
+      - uid: soh-timing-error
+        title: Timing Error
+        condition: C
+        for: 2m
+        keep_firing_for: 0s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        annotations:
+          summary: 시각이 어긋났다
+          description: "관측소 {{ $labels.station_code }} 시각 분류가 CRITICAL 이다."
+        labels:
+          severity: critical
+          alertname: Timing Error
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: soh-influx
+            model:
+              refId: A
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource: {type: influxdb, uid: soh-influx}
+              query: |
+                from(bucket: "soh")
+                  |> range(start: -10m)
+                  |> filter(fn: (r) => r._measurement == "recorder_health")
+                  |> filter(fn: (r) => r._field == "severity")
+                  |> filter(fn: (r) => r.category == "timing")
+                  |> filter(fn: (r) => not exists(r.scope) or r.scope == "device")
+                  |> last()
+                  |> filter(fn: (r) => r._value == 2)
+          - refId: B
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              reducer: last
+              expression: A
+              refId: B
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+          - refId: C
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              refId: C
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {params: [0], type: gt}
+                  operator: {type: and}
+                  query: {params: ["C"]}
+                  reducer: {params: [], type: last}
+                  type: query
+
+      - uid: soh-recording-stopped
+        title: Recording Stopped
+        condition: C
+        for: 1m
+        keep_firing_for: 0s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        annotations:
+          summary: 기록이 멈췄다
+          description: "관측소 {{ $labels.station_code }} recording_status 가 CRITICAL 이다."
+        labels:
+          severity: critical
+          alertname: Recording Stopped
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: soh-influx
+            model:
+              refId: A
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource: {type: influxdb, uid: soh-influx}
+              query: |
+                from(bucket: "soh")
+                  |> range(start: -10m)
+                  |> filter(fn: (r) => r._measurement == "recorder_storage")
+                  |> filter(fn: (r) => r._field == "recording_status")
+                  |> last()
+                  |> filter(fn: (r) => r._value == 2)
+          - refId: B
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              reducer: last
+              expression: A
+              refId: B
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+          - refId: C
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              refId: C
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {params: [0], type: gt}
+                  operator: {type: and}
+                  query: {params: ["C"]}
+                  reducer: {params: [], type: last}
+                  type: query
+
+      - uid: soh-storage-critical
+        title: Storage Critical
+        condition: C
+        for: 2m
+        keep_firing_for: 0s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        annotations:
+          summary: 저장소가 가득 찼다
+          description: "관측소 {{ $labels.station_code }} 저장소 분류가 CRITICAL 이다."
+        labels:
+          severity: critical
+          alertname: Storage Critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: soh-influx
+            model:
+              refId: A
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource: {type: influxdb, uid: soh-influx}
+              query: |
+                from(bucket: "soh")
+                  |> range(start: -10m)
+                  |> filter(fn: (r) => r._measurement == "recorder_health")
+                  |> filter(fn: (r) => r._field == "severity")
+                  |> filter(fn: (r) => r.category == "storage")
+                  |> filter(fn: (r) => not exists(r.scope) or r.scope == "device")
+                  |> last()
+                  |> filter(fn: (r) => r._value == 2)
+          - refId: B
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              reducer: last
+              expression: A
+              refId: B
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+          - refId: C
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              refId: C
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {params: [0], type: gt}
+                  operator: {type: and}
+                  query: {params: ["C"]}
+                  reducer: {params: [], type: last}
+                  type: query
+
+      - uid: soh-edge-spool-critical
+        title: Edge Spool Critical
+        condition: C
+        for: 2m
+        keep_firing_for: 0s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        annotations:
+          summary: Edge Spool 이 가득 찼다
+          description: "Edge {{ $labels.edge_code }} Spool 사용률이 CRITICAL 이다. ACK 전 삭제는 하지 않는다."
+        labels:
+          severity: critical
+          alertname: Edge Spool Critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: soh-influx
+            model:
+              refId: A
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource: {type: influxdb, uid: soh-influx}
+              query: |
+                from(bucket: "soh")
+                  |> range(start: -10m)
+                  |> filter(fn: (r) => r._measurement == "recorder_health")
+                  |> filter(fn: (r) => r._field == "severity")
+                  |> filter(fn: (r) => r.scope == "edge")
+                  |> filter(fn: (r) => r.category == "storage")
+                  |> last()
+                  |> filter(fn: (r) => r._value == 2)
+          - refId: B
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              reducer: last
+              expression: A
+              refId: B
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+          - refId: C
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              refId: C
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {params: [0], type: gt}
+                  operator: {type: and}
+                  query: {params: ["C"]}
+                  reducer: {params: [], type: last}
+                  type: query
+
+      - uid: soh-influx-write-failure
+        title: Influx Write Failure
+        condition: C
+        for: 3m
+        keep_firing_for: 0s
+        noDataState: Alerting
+        execErrState: Alerting
+        isPaused: false
+        annotations:
+          summary: 시계열 적재가 실패하고 있다
+          description: 중앙 수집기가 InfluxDB 에 쓰지 못한다. 수집은 계속되지만 그래프와 알림이 멈춘다.
+        labels:
+          severity: critical
+          alertname: Influx Write Failure
+        data:
+          - refId: A
+            relativeTimeRange: {from: 900, to: 0}
+            datasourceUid: soh-influx
+            model:
+              refId: A
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource: {type: influxdb, uid: soh-influx}
+              query: |
+                from(bucket: "soh")
+                  |> range(start: -15m)
+                  |> filter(fn: (r) => r._measurement == "recorder_health")
+                  |> filter(fn: (r) => r._field == "severity")
+                  |> filter(fn: (r) => r.scope == "collector")
+                  |> last()
+          - refId: B
+            relativeTimeRange: {from: 900, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              reducer: last
+              expression: A
+              refId: B
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+          - refId: C
+            relativeTimeRange: {from: 900, to: 0}
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              refId: C
+              datasource: {name: Expression, type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {params: [1.5], type: gt}
+                  operator: {type: and}
+                  query: {params: ["C"]}
+                  reducer: {params: [], type: last}
+                  type: query

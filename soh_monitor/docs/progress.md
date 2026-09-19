@@ -10,13 +10,13 @@
 | M2 Centaur CTR Adapter | 완료(실장비 미검증) | 가상 서버 + Adapter. 응답 형태는 실응답으로 확정해야 한다 |
 | M3 Direct Collector | 완료(InfluxDB 미검증) | 스케줄러·Lease·재시도·적재. 실제 InfluxDB 연결은 Docker 환경에서 확인 필요 |
 | M4 상태 판정 엔진 | 완료 | 임계값·Hysteresis·Incident 생명주기·유지보수 억제 |
-| M5 관리 API | 착수 전 | 계약 조회 API 만 존재 |
-| M6 관리 Frontend | 착수 전 | 화면 골격과 표준 Metric 화면만 존재 |
-| M7 Edge Agent | 착수 전 | 실행점과 Schema 만 존재 |
-| M8 Edge 통합 | 착수 전 | |
-| M9 Grafana | 부분 | Datasource·Dashboard Provisioning 골격만 |
-| M10 운영 강화 | 착수 전 | |
-| M11 확장성 검증 | 착수 전 | 명명 Lint 는 이미 동작 |
+| M5 관리 API | 완료 | 인증·CRUD·연결 시험·CSV·감사. Edge 등록 API 는 M7 |
+| M6 관리 Frontend | 완료 | 로그인·현황·지도·등록 마법사·프로파일·장애. Edge 화면은 M8 에서 연결 |
+| M7 Edge Agent | 완료 | Enrollment·Spool·단절 중 수집·원격 연결 시험. 운영 mTLS 는 M8 |
+| M8 Edge 통합 | 완료 | Ingest 멱등·지연 도달·mTLS 폐기·Edge 화면·장애 상관 |
+| M9 Grafana | 완료 | 대시보드 7종·알림 7종·Deep Link. Grafana 컨테이너는 Docker 환경에서 확인 |
+| M10 운영 강화 | 부분 | 절차·시험·프로파일 완료. 실장비 파일럿·확대는 조사표 대기 |
+| M11 확장성 검증 | 완료 | 가상 제조사 `acme.mock.recorder`. 수집·스키마·공통 Grafana 무변경 |
 
 ---
 
@@ -54,7 +54,7 @@ Docker 가 있는 환경에서 `make images` 와 `make dev` 로 확인해야 한
 | M1.8 | Capability 정의 | 완료 | `capabilities.yaml`, 20개 기능 / 5개 지원 상태 |
 | M1.9 | Edge Schema | 완료 | `contracts/edge/config.schema.json`, `ingest.schema.json` |
 | M1.10 | InfluxDB 초기화 | 완료(미검증) | `deploy/influxdb/init/10-buckets.sh` |
-| M1.11 | OpenAPI·클라이언트 | 부분 | FastAPI 자동 생성 스키마 사용. 파일 추출과 TS 클라이언트 생성은 M5 에서 |
+| M1.11 | OpenAPI·클라이언트 | 완료 | `contracts/openapi.json`, `frontend/src/generated/api-paths.ts`. `--check` 로 경로 불일치 실패 |
 
 ### 계약에서 못 박은 규칙
 
@@ -81,13 +81,14 @@ Docker 가 있는 환경에서 `make images` 와 `make dev` 로 확인해야 한
 | M2.2 | HTTP Client 와 실패 분류 | 완료 | DNS·연결거부·연결/응답 Timeout·HTTP·인증·본문 오류를 서로 다른 코드로 |
 | M2.3 | SOH Parser | 완료 | 응답 형태 3종(channels 배열 / soh 객체 / 평평한 객체) 관용 처리 |
 | M2.4 | 표준 Metric Mapper | 완료 | 단위 인식 변환(µV·mV·m°C), SD 미장착 −1 → 값 없음, 축 W/V/U 매핑 |
-| M2.5 | 펌웨어별 Mapping | 부분 | 수치 코드(예전 형태) 처리. `adapter_metric_mappings` 표 활용은 실응답 확보 후 |
+| M2.5 | 펌웨어별 Mapping | 완료 | YAML 표 + `adapter_metric_mappings` Seed. 별칭 경로는 펌웨어 범위로 흡수. 실경로는 M-1.2 |
 | M2.6 | Capability 자동 탐지 | 완료 | 3채널 Sensor B → UNSUPPORTED, 슬롯 없음/카드 없음 구분 |
 | M2.7 | Probe | 완료 | Instrument ID 로 채널 수·시리얼 추정. 모델명은 SOH API 에 없어 비워 둔다 |
 | M2.8 | 민감정보 제거 | 완료 | `redact()` 재귀 처리. 수집 결과에 비밀값 없음을 시험으로 확인 |
 | M2.9 | Manifest 등록 | 완료 | 파일 원본으로 검증해 Registry 에 등록. 화면 선택 목록에 노출 |
 | M2.10 | Fixture 회귀 시험 | 완료 | synthetic 10종. `real-` 파일이 들어오면 기준선 대조 시험이 켜진다 |
-| M2.11 | 데이터 연속성 Adapter | 착수 전 | 가상 서버에 availability 응답만 준비 |
+| M2.11 | 데이터 연속성 Adapter | 완료 | `adapters/data_availability/`. URI 없으면 UNSUPPORTED. HTTP/FDSN JSON |
+| M2.12 | SeedLink INFO STREAMS | 완료 | HELLO + SLINFO XML. `seedlink://host:port/NET_STA`. DATA 스트림은 열지 않음 |
 
 ### 응답 형식이 아직 추측인 부분
 
@@ -143,7 +144,7 @@ Docker 가 있는 환경에서 `make images` 와 `make dev` 로 확인해야 한
 | M4.3 | 분류별 상태 집계 | 완료 | Metric 행과 분류 집계 행을 함께 저장. 장비 종합은 분류들의 최악값 |
 | M4.4 | 미지원·확인불가 제외 | 완료 | UNSUPPORTED 는 판정 제외, UNKNOWN 은 OK 보다 나쁘게 집계 |
 | M4.5 | Incident 상태기계 | 완료 | OPEN → ACKNOWLEDGED → RESOLVED. 열린 장애 유일성은 DB 부분 인덱스로 보장 |
-| M4.6 | 유지보수 억제 | 완료 | 장비·관측소·Edge·지역·전체 범위. 상태는 MAINTENANCE 로 기록 |
+| M4.6 | 유지보수 억제 | 완료 | 장비·관측소·Edge·지역·전체 범위. 상태는 MAINTENANCE 로 기록. 화면에서 열고 `/close` 로 일찍 종료 |
 | M4.7 | `recorder_health` 적재 | 완료 | 분류별 + overall severity·is_stale. Grafana 는 이 값만 감시한다 |
 | M4.8 | 지연 도달 데이터 보호 | 완료 | M3 의 `observed_at` 최신성 검사 + 낡은 값 표시 |
 | M4.9 | 알림 중복 억제 | 완료 | 알림은 Incident 상태 전이에서만 나온다. 구조적으로 중복이 없다 |
@@ -200,7 +201,7 @@ make soak              # 수집기 부하·안정성 시험 (50대, 장애 생�
 make soak devices=100 ticks=3
 ```
 
-현재 결과: 백엔드 테스트 387개 통과(1개 skip — 실장비 Fixture 대조 시험), 프론트 타입 검사·빌드 통과.
+현재 결과: 백엔드 테스트 438개 통과(1개 skip — 실장비 Fixture 대조 시험). Frontend `npm run typecheck` 와 `npm run build` 통과.
 
 부하 시험(50대, 느린 장비 5대 800ms, 실패 장비 5대, 동시 20):
 
@@ -218,12 +219,212 @@ make soak devices=100 ticks=3
 
 ---
 
+---
+
+## M5 관리 API
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M5.1 | 인증·세션·역할 3종 | 완료 | 서명 쿠키 세션. ADMIN/OPERATOR/VIEWER. 초기 비밀번호 변경 강제 |
+| M5.2 | 관측소 CRUD + retired | 완료 | 물리 삭제 없음. `/retire` 가 하위 장비도 비활성 |
+| M5.3 | 기록계 CRUD + Credential 분리 | 완료 | `credentialReference`(env:/file:) 만 저장. 평문 비밀번호 거절. `dataSourceUri` 는 PUT `null` 로 비우고 http/https/fdsnws/seedlink 만 허용 |
+| M5.4 | 센서·축·외부 SOH | 완료 | 축 기본 U/V/W. 외부 SOH 는 `value = raw × scale + offset` |
+| M5.5 | test-connection·probe·soh-preview | 완료 | 등록 전/후 모두. 미리보기는 Adapter `redact()` |
+| M5.6 | SSRF 화이트리스트 | 완료 | RFC1918 기본. 메타데이터·링크 로컬은 허용 목록에 넣어도 거부 |
+| M5.7 | 수집·Metric 프로파일 | 완료 | 영향 장비 수(`affectedDeviceCount`)를 응답에 포함 |
+| M5.8 | 장비 Override | 완료 | 카탈로그·조건 검증 후 저장. 차원값 포함 |
+| M5.9 | CSV 일괄 등록 | 완료 | 오류 행만 실패. 수식 주입(`=`, `+`, `@`) 거부 |
+| M5.10 | fleet/summary·current-health | 완료(M4) | 인증을 붙였다 |
+| M5.11 | 감사 로그 | 완료 | 설정 변경 주체·전후 값. 비밀값은 `***` |
+| M5.12 | OpenAPI·클라이언트 | 완료 | `scripts/export_openapi.py --check` |
+
+### 설계 판단
+
+- **세션 저장소를 두지 않았다.** HMAC 서명 쿠키면 API 프로세스를 여러 대 띄워도
+  공유 상태가 필요 없다. 토큰에 비밀번호를 넣지 않는다.
+- **연결 시험만 API 가 관측소망으로 나간다.** `poll-now` 는 여전히 collector 가
+  담당한다. 나가는 경로를 등록 화면의 읽기 동작으로 한정한다.
+- **호스트명 해석 결과가 하나라도 허용 대역 밖이면 거부한다.** 사설 이름 뒤에
+  공인 IP 가 붙어 있는 DNS 재바인딩을 막기 위한 것이다. 해석 실패도 거부한다.
+- **역할은 API 에서 강제한다.** VIEWER 는 조회, OPERATOR 는 연결 시험·장애 확인·
+  유지보수, ADMIN 은 설정 전체. 화면에서 버튼을 숨기는 것만으로는 부족하다.
+
+### 권한
+
+| | VIEWER | OPERATOR | ADMIN |
+|--|:------:|:--------:|:-----:|
+| 조회 (관측소·상태·프로파일) | ○ | ○ | ○ |
+| 연결 시험·Probe·미리보기·수동 수집 | | ○ | ○ |
+| 장애 확인·유지보수 시간 | | ○ | ○ |
+| 관측소·장비·프로파일·CSV | | | ○ |
+| 사용자·감사 로그 | | | ○ |
+
+---
+
+## M6 관리 Frontend
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M6.1 | 레이아웃·권한별 메뉴 | 완료 | VIEWER 에게 설정 메뉴·등록·폐기·편집 버튼이 보이지 않는다 |
+| M6.2 | 로그인·세션 만료 | 완료 | 초기 비밀번호 변경 강제. 401 이면 재로그인과 작업 손실 안내 |
+| M6.3 | 통합 현황 | 완료 | 장비 수·장애·통신·마지막 수집. 15초 갱신, 갱신 중 목록 유지 |
+| M6.4 | 관측소 지도 | 완료 | 색+도형(●정상 ◆주의 ▲장애 ■확인불가). 위경도 없는 점은 올리지 않음 |
+| M6.5 | 관측소 목록 | 완료 | 통신·전원·시각·센서·저장소·데이터 컬럼. 미지원/미수집은 `—` |
+| M6.6 | 등록 마법사 | 완료 | 기본정보→Adapter→접속→시험·탐지→센서·외부SOH→프로파일→검토/저장 |
+| M6.7 | 연결 시험 진행 표시 | 완료 | 경과 초와 취소(`AbortController`) |
+| M6.8 | 탐지 불일치 | 완료 | Instrument ID·모델·시리얼·펌웨어를 저장 전에 보여 준다 |
+| M6.9 | Schema 기반 폼 | 완료 | Adapter Manifest `configurationSchema`. `secretFields` 는 `credentialReference` |
+| M6.10 | 관측소 상세 | 완료 | 분류 탭·현재값·수집 이력·Grafana Deep Link. 설정 탭에서 데이터 서버 URI 수정(ADMIN) |
+| M6.11 | 프로파일 | 완료 | 영향 장비 수, 저장 전 차이, 복제 |
+| M6.12 | 장애 확인 | 완료 | 확인 시 담당자·시각. VIEWER 는 확인 버튼이 없다 |
+| M6.13 | 상태 자동 갱신 | 완료 | TanStack Query 15초 `refetchInterval` + `keepPreviousData` |
+| M6.14 | 유지보수 창 | 완료 | 관측소 설정에서 열고 닫기. 진행 중이면 상세 상단에 안내 |
+
+마법사 10절의 10단계는 화면에서 7단계로 묶었다. 제조사 선택과 수집 방식, 연결 시험과
+자동 탐지를 한 화면에 둔다. EDGE 수집은 Edge 를 고르면 활성화된다.
+
+브라우저는 기록계에 붙지 않는다. Vite 개발 서버가 `/api` 를 백엔드로 넘기고 세션 쿠키는
+같은 출처로 오간다.
+
+시연 계정: `admin` (초기 비밀번호 변경 강제), `operator` / `viewer` (`scripts/seed_demo.py`).
+
+### 설계 판단
+
+- **목록 API 에 분류 상태를 실었다.** 화면이 관측소마다 `current-health` 를 부르면
+  N+1 이 된다. `GET /stations` 가 분류 집계·마지막 성공·수집 방식을 같이 준다.
+  종합(`worstSeverity`)은 통신 성공 여부(`device_runtime_state.overall_severity`)가 아니라
+  분류 상태의 최악값이다. 통신만 되면 시각이 CRITICAL 이어도 정상이라고 보이면 안 된다.
+- **비밀번호 칸을 두지 않는다.** Manifest 의 `secretFields` 는 Secret 참조 입력으로
+  바뀐다. 평문을 저장할 자리가 화면에도 없다.
+- **세션 만료는 로그인 화면으로 되돌린다.** 저장 중이던 마법사 값은 메모리에만 있으므로
+  손실 안내를 띄운다. 토큰 갱신은 두지 않았다.
+
+---
+
+## M7 Edge Agent
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M7.1 | Edge 실행 모드 분리 | 완료 | `main_edge.py` + `edgeagent/runtime.py`. 중앙과 같은 `poll_device`·Adapter |
+| M7.2 | Enrollment | 완료 | 일회용 Token → 자리 표시 인증서 + HMAC 클라이언트 토큰. Token 파일 폐기 |
+| M7.3 | 설정 동기·원자 적용·Rollback | 완료 | Schema·edgeId·중복 장비·미등록 Adapter 검증. 실패 시 previous.json |
+| M7.4 | 로컬 Spool | 완료 | SQLite WAL + gzip Segment. 파일 먼저, 행 커밋 |
+| M7.5 | Sequence·Batch·ACK | 완료 | ACK 전 삭제 없음. 재전송 시 같은 batchId 는 멱등 |
+| M7.6 | Uploader | 완료 | gzip Batch, 실패 시 PENDING 복귀와 Backoff |
+| M7.7 | 디스크 한도 | 완료 | ACK 분 → 정상 Poll. 장애 Poll 은 최후 |
+| M7.8 | Heartbeat·자체 진단 | 완료 | CPU·메모리·디스크·시각오차. 중앙 `GET /edges/{id}/health` |
+| M7.9 | 중앙 단절 중 수집 | 완료 | 중앙이 꺼져도 Spool 이 늘고, 복구 후 sequence 순으로 업로드 |
+| M7.10 | 원격 연결 시험 | 완료 | EDGE 장비 `test-connection` 은 작업 대기열. Edge 가 대행 |
+| M7.11 | 배포 문서 | 완료 | [`edge-deployment/README.md`](edge-deployment/README.md) |
+
+운영 mTLS 검증·폐기와 InfluxDB 적재·지연 도달 보호의 중앙 강화는 M8.
+
+### 설계 판단
+
+- **중앙 Postgres 를 Edge 에 두지 않는다.** 수집 대상은 내려받은 설정과 로컬 일정만 본다.
+- **Placeholder 인증서는 등록이 끝났다는 표시다.** 통신 식별은 HMAC `clientToken` 이다.
+- **4xx 등록 실패는 Token 을 버린다.** 네트워크 실패는 다음 Tick 에 같은 Token 으로 재시도한다.
+
+---
+
+## M8 Edge 통합
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M8.1 | Ingest gzip·Schema·크기 제한 | 완료 | 압축·해제 모두 `SOH_EDGE_INGEST_MAX_BYTES`(기본 6MB). 초과는 413 |
+| M8.2 | 멱등 (`edge_id`+`sequence`+`batch_id`) | 완료 | `edge_ingest_sequences`. 같은 Batch 재전송은 Point 수 불변 |
+| M8.3 | 지연 데이터 `observed_at` 적재 | 완료 | Influx timestamp 는 관측 시각. 현재 상태는 최신 관측만 갱신 |
+| M8.4 | mTLS 검증·인증서 폐기 | 완료 | `X-Edge-Certificate-Serial` 불일치·`POST /edges/{id}/revoke` → 403 |
+| M8.5 | Edge 등록·할당 화면 | 완료 | `features/edges`. 미지원 Adapter·낮은 Edge 버전은 409 |
+| M8.6 | Edge 상세 (Spool·버전·인증서) | 완료 | `/edges/:id` |
+| M8.7 | Edge 장애 시 하위 억제 | 완료 | Heartbeat 2회 WARNING / 3회 CRITICAL. 장비 장애는 `suppressed_by_edge` |
+| M8.8 | `UNKNOWN / EDGE UNREACHABLE` | 완료 | 관측소 목록·현황. 기록계 장애와 구분 |
+| M8.9 | Adapter·Core 버전 호환 | 완료 | `installed_adapters`·`minimumEdgeVersion` |
+| M8.10 | 지역 토폴로지 | 완료 | `GET /api/v1/fleet/topology`, 통합 현황 계층 |
+
+### 설계 판단
+
+- **시계열은 늦어도 채우고, 현재 상태는 되돌리지 않는다.** 하루 늦은 Poll 이 그래프의 빈칸을 메우는 것은 맞다. 그 값으로 '지금 정상' 이라고 바꾸면 안 된다.
+- **함대 열린 장애 수는 Edge 억제분을 뺀다.** Edge 한 대가 죽으면 하위 수십 건이 아니라 Edge 장애 1건이 집계된다. 목록에는 억제 표시를 남겨 추적이 가능하게 한다.
+- **nginx mTLS 는 배포 스위치다.** Compose 개발은 HMAC `clientToken` 만 쓴다. 운영에서 `ssl_verify_client` 를 켜면 일련번호 헤더가 오고, 폐기된 Edge 는 API 가 403 한다.
+
+---
+
+## M9 Grafana Provisioning + 알림
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M9.1 | Datasource·Folder Provisioning | 완료 | UID `soh-influx`, 폴더 `관측소 SOH`, UI 수정 금지 |
+| M9.2 | `01-fleet-overview` | 완료 | 집계·Geomap·분류 행렬·현재 장애 |
+| M9.3 | `02-station-detail` | 완료 | `var-station`, 전 분류. 제조사 전용 없음 |
+| M9.4 | `03-centaur-ctr-detail` | 완료 | `recorder_vendor_metric` 만 |
+| M9.5 | `04-edge-fleet` | 완료 | 통신·Spool·대기 Batch·인증서 |
+| M9.6 | `05-collector-operations` | 완료 | Poll·지연·연속 실패·Influx 쓰기 |
+| M9.7 | `06-data-quality` | 완료 | 샘플 경과·Gap·채널 활성 |
+| M9.8 | 알림 규칙 7종 | 완료 | severity 감시. Edge 하위 편승 없음. 복구 알림 켬 |
+| M9.9 | 관제 Kiosk | 완료 | `07-kiosk-overview` 10초 갱신, 장애 우선 |
+| M9.10 | 관리 Web Deep Link | 완료 | 관측소 탭·Edge·현황·장애 → `/grafana/d/...` |
+
+문서: [`grafana.md`](grafana.md). 생성기: `scripts/gen_grafana.py`.
+
+### 설계 판단
+
+- **임계값은 백엔드에만 있다.** Grafana 는 `recorder_health.severity` 를 본다.
+  Edge·수집기 자체도 같은 measurement 에 `scope=edge|collector` 로 적재한다.
+- **공통 화면은 제조사를 모른다.** `vendor.*` 는 03 대시보드에만 있다.
+  `check_naming.py` 와 시험이 공통 JSON 을 막는다.
+- **Influx 가 죽으면 점이 끊긴다.** `Influx Write Failure` 는 noData 도 장애다.
+  쓰기에 성공해야만 수집기 heartbeat 점이 남는다.
+
+---
+
+## M10 운영 강화와 파일럿
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M10.1 | 백업·복구 | 완료(SQLite 리허설) | `scripts/ops_backup.py` · `ops_restore.py`. Postgres/Influx 는 Docker 환경에서 재확인 |
+| M10.2 | 보존정책·다운샘플 | 완료(파일) | 원본 180일, `soh_5m` 2년, `soh_1h` 5년. Flux 는 Git 원본 |
+| M10.3 | 부하 시험 | 완료(축소) | `tests/load/test_soak.py` + `make soak devices=100` |
+| M10.4 | 보안 점검 | 완료 | [`operations/security-checklist.md`](operations/security-checklist.md), `check_secrets.py` |
+| M10.5 | E2E | 완료(API) | `tests/e2e/test_lifecycle.py`. Playwright 는 `frontend/e2e` (브라우저 선택) |
+| M10.6 | 장애 리허설 12종 | 완료 | [`operations/failure-rehearsal.md`](operations/failure-rehearsal.md) |
+| M10.7 | 파일럿 3~5 관측소 | 대기 | 양식 [`operations/pilot-log.md`](operations/pilot-log.md). 실장비 필요 |
+| M10.8 | 임계값 튜닝 | 완료(프로파일) | `12V 배터리 감시` · `24V 직류 감시`. 기본 프로파일은 전압 알림 없음 |
+| M10.9 | 운영 문서 | 완료 | [`operations/`](operations/) 설치·등록·장애·FAQ |
+| M10.10 | 전체 확대 | 대기 | 양식 [`operations/rollout.md`](operations/rollout.md) |
+
+### 설계 판단
+
+- **비밀은 묶음에 넣지 않는다.** 백업은 이름만 적고 값은 금고에 둔다.
+- **전압 임계는 전원 구성 프로파일에만 있다.** 12V 와 24V 를 한 숫자에 묶지 않는다.
+- **Playwright 는 선택이다.** 등록→수집→장애→복구의 게이트는 API+수집기 시험이다.
+
+---
+
+## M11 확장성 검증
+
+| ID | 작업 | 상태 | 결과 |
+|----|------|------|------|
+| M11.1 | 가상 제조사 Adapter | 완료 | `adapters/mock_recorder/`. mV·0~1 비율·GOOD/BAD. 센서·외부 SOH 없음 |
+| M11.2 | Collector·Scheduler 무변경 | 완료 | 수집 계층은 제조사 모듈을 import 하지 않는다. `poll_device` 그대로 수집 |
+| M11.3 | DB 스키마 무변경 | 완료 | Alembic 은 `0005` 까지. 제조사 테이블 없음. Mapping 표는 공통 |
+| M11.4 | 공통 대시보드 재사용 | 완료 | `01`·`02`·`04`–`07` 에 `vendor.` 없음 |
+| M11.5 | Capability 화면 | 완료 | 미지원 탭은 비활성 + `미지원` 표시 |
+| M11.6 | 비HTTP Transport | 완료 | `adapters/transport/` HTTP + SNMP/gRPC stub |
+| M11.7 | gRPC Runner 설계 | 완료 | [`adapter-development/grpc-runner.md`](adapter-development/grpc-runner.md) |
+| M11.8 | Gen5 체크리스트 | 완료 | [`gen5-checklist.md`](gen5-checklist.md) |
+| M11.9 | Adapter 개발 가이드 | 완료 | [`adapter-development.md`](adapter-development.md) 확장 |
+
+### 설계 판단
+
+- **두 번째 Adapter 가 확장의 증거다.** 필드명과 단위가 달라도 표준 Metric 만 나간다.
+- **Transport 는 Adapter 내부다.** 수집기는 SNMP 존재를 모른다.
+- **SDK 예외는 PollResult 다.** 프로세스를 죽이지 않는다. 실제 네이티브 SDK 는 Runner 로 격리한다.
+
 ## 다음 착수 지점
 
-1. **M5 관리 API** — 관측소·기록계 CRUD, 프로파일 편집, 연결 시험, CSV 일괄 등록, 권한.
-   현재는 계약 조회와 상태·장애 조회만 있다.
-2. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 `envelope.py`·`parser.py` 를 실제
-   형태로 맞추고 기준선 대조 시험을 켠다.
-3. **실제 InfluxDB 연결 검증** — Docker 환경에서 `make dev` 로 적재·조회·보존정책을 확인한다.
-   현재는 Point 구성만 시험됐다.
-4. **M2.11** — SeedLink/FDSN 기반 데이터 연속성 검사. 센서 상태만으로는 파형 정지를 잡지 못한다.
+1. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 파일럿(M10.7) 도 시작한다.
+2. **실제 InfluxDB·Grafana·Postgres 복구** — Docker 환경에서 `influx backup` 과 `pg_dump` 를 한 번 돈다.
+3. **Gen5** — [`gen5-checklist.md`](gen5-checklist.md) 조사 후 `adapters/centaur_gen5/` 와
+   `mappings.yaml` 만 추가한다.
+

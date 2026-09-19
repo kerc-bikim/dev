@@ -15,11 +15,16 @@ from __future__ import annotations
 
 from typing import Any
 
+from pathlib import Path
+
+from app.adapters.metric_mappings import apply_mapping_table, load_mapping_table
 from app.domain.enums import Severity, SupportState
 from app.domain.models import MetricSample
 from app.metrics.status import load_status_mappings
 
 from .parser import ParsedSoh, parse_timestamp
+
+MAPPING_TABLE_PATH = Path(__file__).with_name("mappings.yaml")
 
 ADAPTER_KEY = "nanometrics.centaur.ctr"
 
@@ -364,6 +369,14 @@ def map_soh(soh: ParsedSoh) -> MappingResult:
             dimensions={"channel": f"EX{channel_number}"},
             digits=6,
         )
+
+    firmware = soh.raw("systemSoftwareVersion")
+    apply_mapping_table(
+        result,
+        soh,
+        load_mapping_table(MAPPING_TABLE_PATH),
+        firmware=str(firmware) if firmware is not None else None,
+    )
 
     return result
 

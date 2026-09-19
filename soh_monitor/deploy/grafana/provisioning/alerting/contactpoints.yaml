@@ -1,0 +1,15 @@
+# 알림 수신처. 주소는 환경에 맞게 덮어쓴다.
+# 복구 알림은 끈다(disableResolveMessage: false). 열림만 오고 닫힘이 없으면
+# 담당자가 복구를 모른다.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: soh-ops
+    receivers:
+      - uid: soh-ops-email
+        type: email
+        settings:
+          addresses: ${SOH_ALERT_EMAIL:-soh-ops@localhost}
+          singleEmail: true
+        disableResolveMessage: false

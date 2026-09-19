@@ -233,6 +233,35 @@ class CollectorScheduler:
         finally:
             self._in_flight.discard(str(device.device_id))
 
+    def _publish_ops_health(self, report: TickReport) -> None:
+        """Edge·수집기 자체 상태를 Grafana 가 감시할 수 있게 적재한다.
+
+        장비가 없어 Tick 이 비어도 이 점은 남긴다. Influx 가 죽으면 점이 끊기고
+        Grafana `Influx Write Failure` 가 noData 로 울린다.
+        """
+        from datetime import datetime, timezone
+
+        from app.health.ops_points import write_ops_health
+
+        now = datetime.now(timezone.utc)
+        failed_writes = getattr(self.sink, "failed_writes", 0)
+        dropped_points = getattr(self.sink, "dropped_points", 0)
+        try:
+            with self.session_factory() as session:
+                written = write_ops_health(
+                    session,
+                    self.sink,
+                    now,
+                    write_success=not report.sink_failed,
+                    failed_writes=failed_writes,
+                    dropped_points=dropped_points,
+                )
+                session.commit()
+            if written and not report.sink_failed:
+                report.points_written += len(written)
+        except Exception:  # noqa: BLE001 - 운영 지표 실패로 수집 Tick 을 죽이지 않는다
+            logger.exception("운영 상태 적재 실패")
+
     async def tick(self) -> TickReport:
         report = TickReport()
 
@@ -244,10 +273,10 @@ class CollectorScheduler:
             report.due = len(devices)
             claimed = self._claim(session, devices, report)
 
-        if not claimed:
-            return report
+        if claimed:
+            await asyncio.gather(*(self._run_one(device, report) for device in claimed))
 
-        await asyncio.gather(*(self._run_one(device, report) for device in claimed))
+        self._publish_ops_health(report)
 
         logger.info(
             "Tick 완료",

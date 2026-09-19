@@ -10,33 +10,18 @@ set -euo pipefail
 
 ORG="${DOCKER_INFLUXDB_INIT_ORG:-observatory}"
 RAW_BUCKET="${DOCKER_INFLUXDB_INIT_BUCKET:-soh}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+
+echo "[soh] 원본 Bucket 보존 180일"
+influx bucket update --name "$RAW_BUCKET" --retention 180d || true
 
 echo "[soh] 집계 Bucket 생성"
 influx bucket create --org "$ORG" --name "${RAW_BUCKET}_5m" --retention 730d || true
 influx bucket create --org "$ORG" --name "${RAW_BUCKET}_1h" --retention 1825d || true
 
 echo "[soh] 다운샘플링 Task 등록"
-cat <<FLUX > /tmp/downsample_5m.flux
-option task = {name: "soh downsample 5m", every: 5m, offset: 1m}
-
-from(bucket: "${RAW_BUCKET}")
-  |> range(start: -task.every)
-  |> filter(fn: (r) => r._measurement =~ /^recorder_/ or r._measurement == "edge_health")
-  |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
-  |> to(bucket: "${RAW_BUCKET}_5m", org: "${ORG}")
-FLUX
-
-cat <<FLUX > /tmp/downsample_1h.flux
-option task = {name: "soh downsample 1h", every: 1h, offset: 5m}
-
-from(bucket: "${RAW_BUCKET}_5m")
-  |> range(start: -task.every)
-  |> filter(fn: (r) => r._measurement =~ /^recorder_/ or r._measurement == "edge_health")
-  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
-  |> to(bucket: "${RAW_BUCKET}_1h", org: "${ORG}")
-FLUX
-
-influx task create --org "$ORG" --file /tmp/downsample_5m.flux || true
-influx task create --org "$ORG" --file /tmp/downsample_1h.flux || true
+# Task 본문은 Git 이 원본이다. 이 스크립트는 등록만 한다.
+influx task create --org "$ORG" --file "${HERE}/downsample_5m.flux" || true
+influx task create --org "$ORG" --file "${HERE}/downsample_1h.flux" || true
 
 echo "[soh] 초기화 완료"

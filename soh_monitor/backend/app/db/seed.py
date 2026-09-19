@@ -9,12 +9,15 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.adapters.metric_mappings import load_mapping_table
 from app.auth.passwords import generate_password, hash_password
 from app.db.models import (
+    AdapterMetricMapping,
     CollectionProfile,
     MetricDefinitionRow,
     MetricProfile,
@@ -130,6 +133,9 @@ def seed_default_profiles(session: Session) -> None:
         "sensor.status": ({"status": "WARNING"}, {"status": "CRITICAL"}, 0),
         "device.configuration_status": ({"status": "WARNING"}, {}, 600),
         "archive.continuous_status": ({"status": "WARNING"}, {"status": "CRITICAL"}, 0),
+        "acquisition.latest_sample_age_seconds": ({"op": ">=", "value": 180}, {"op": ">=", "value": 600}, 60),
+        "acquisition.gap_duration_seconds": ({"op": ">=", "value": 60}, {"op": ">=", "value": 300}, 60),
+        "acquisition.channel_active": ({}, {"expect": True}, 0),
     }
 
     # 전압·온도·Mass Position 은 공통 기준을 두지 않는다. 관측소 전원 구성과 센서 모델이
@@ -141,7 +147,6 @@ def seed_default_profiles(session: Session) -> None:
         "sensor.mass_position_v",
         "gnss.satellite_count",
         "timing.uncertainty_ns",
-        "acquisition.latest_sample_age_seconds",
         "external_soh.value",
     )
 
@@ -162,6 +167,20 @@ def seed_default_profiles(session: Session) -> None:
             )
         )
 
+    # 예전 Seed 는 경과 시간을 임계 없이 켜 두었다. 파형 정지를 잡으려면 값을 채운다.
+    stale = session.scalar(
+        select(ProfileMetric).where(
+            ProfileMetric.profile_id == metric_profile.id,
+            ProfileMetric.metric_key == "acquisition.latest_sample_age_seconds",
+        )
+    )
+    if stale is not None and not stale.warning_condition and not stale.critical_condition:
+        stale.alerting_enabled = True
+        stale.warning_condition = {"op": ">=", "value": 180}
+        stale.critical_condition = {"op": ">=", "value": 600}
+        stale.hold_seconds = 60
+        stale.recovery_seconds = 60
+
     for metric_key in monitored_without_threshold:
         if metric_key in existing_entries or metric_key not in catalog.metrics:
             continue
@@ -175,6 +194,42 @@ def seed_default_profiles(session: Session) -> None:
                 critical_condition={},
                 hold_seconds=0,
                 recovery_seconds=60,
+            )
+        )
+
+    seed_power_profiles(session, catalog)
+
+
+def seed_power_profiles(session: Session, catalog) -> None:
+    """전원 구성별 전압 프로파일. 기본 프로파일에는 전압 임계를 넣지 않는다.
+
+    12V 배터리와 24V 직류를 한 숫자에 묶으면 한쪽은 항상 장애가 된다.
+    관측소 `powerProfile` 에 맞춰 이 프로파일을 고른다.
+    """
+    presets: tuple[tuple[str, str, float, float], ...] = (
+        ("12V 배터리 감시", "12V 납축전지. 주의 11.8V, 장애 11.0V.", 11.8, 11.0),
+        ("24V 직류 감시", "24V 직류. 주의 22.0V, 장애 20.0V.", 22.0, 20.0),
+    )
+    for name, description, warn, critical in presets:
+        existing = session.scalar(select(MetricProfile).where(MetricProfile.name == name))
+        if existing is not None:
+            continue
+        profile = MetricProfile(name=name, description=description, is_default=False)
+        session.add(profile)
+        session.flush()
+        if "power.input_voltage_v" not in catalog.metrics:
+            continue
+        session.add(
+            ProfileMetric(
+                profile_id=profile.id,
+                metric_key="power.input_voltage_v",
+                enabled=True,
+                alerting_enabled=True,
+                warning_condition={"op": "<=", "value": warn},
+                critical_condition={"op": "<=", "value": critical},
+                hold_seconds=300,
+                recovery_seconds=600,
+                consecutive_violations=2,
             )
         )
 
@@ -204,13 +259,85 @@ def seed_admin_user(session: Session) -> str | None:
     return generated
 
 
+MAPPING_FILES = (
+    Path(__file__).resolve().parents[1] / "adapters" / "centaur_ctr" / "mappings.yaml",
+)
+
+
+def seed_adapter_mappings(session: Session) -> tuple[int, int]:
+    """Adapter YAML 매핑을 DB 로 복사한다. 수집은 YAML 을 직접 읽는다."""
+    inserted = 0
+    updated = 0
+    for path in MAPPING_FILES:
+        if not path.exists():
+            continue
+        table = load_mapping_table(path)
+        existing = {
+            (
+                row.adapter_key,
+                row.adapter_version,
+                row.firmware_range,
+                row.source_path,
+                row.canonical_metric_key,
+                row.dimension_value,
+            ): row
+            for row in session.scalars(
+                select(AdapterMetricMapping).where(AdapterMetricMapping.adapter_key == table.adapter_key)
+            )
+        }
+        seen: set[tuple] = set()
+        for rule in table.rules:
+            key = (
+                rule.adapter_key,
+                rule.adapter_version,
+                rule.firmware_range,
+                rule.source_path,
+                rule.canonical_metric_key,
+                rule.dimension_value,
+            )
+            seen.add(key)
+            values = dict(
+                source_unit=rule.source_unit,
+                target_unit=rule.target_unit,
+                scale=rule.scale,
+                offset=rule.offset,
+                notes=rule.notes,
+            )
+            row = existing.get(key)
+            if row is None:
+                session.add(
+                    AdapterMetricMapping(
+                        adapter_key=rule.adapter_key,
+                        adapter_version=rule.adapter_version,
+                        firmware_range=rule.firmware_range,
+                        source_path=rule.source_path,
+                        canonical_metric_key=rule.canonical_metric_key,
+                        dimension_value=rule.dimension_value,
+                        **values,
+                    )
+                )
+                inserted += 1
+                continue
+            if any(getattr(row, name) != value for name, value in values.items()):
+                for name, value in values.items():
+                    setattr(row, name, value)
+                updated += 1
+        for key, row in existing.items():
+            if key not in seen:
+                session.delete(row)
+    return inserted, updated
+
+
 def seed_all(session: Session) -> dict[str, object]:
     inserted, updated = seed_metric_definitions(session)
+    mapping_inserted, mapping_updated = seed_adapter_mappings(session)
     seed_default_profiles(session)
     generated_password = seed_admin_user(session)
     session.commit()
     return {
         "metric_definitions_inserted": inserted,
         "metric_definitions_updated": updated,
+        "adapter_mappings_inserted": mapping_inserted,
+        "adapter_mappings_updated": mapping_updated,
         "generated_admin_password": generated_password,
     }

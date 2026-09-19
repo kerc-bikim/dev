@@ -24,6 +24,7 @@ from app.adapters.centaur_ctr.adapter import MANIFEST_PATH, CentaurCtrAdapter  #
 from app.adapters.registry import AdapterRegistry  # noqa: E402
 from app.collector.scheduler import CollectorScheduler  # noqa: E402
 from app.config.settings import get_settings  # noqa: E402
+from app.auth.passwords import hash_password  # noqa: E402
 from app.db.models import (  # noqa: E402
     CollectionMode,
     CollectionProfile,
@@ -35,6 +36,8 @@ from app.db.models import (  # noqa: E402
     ProfileMetric,
     Region,
     Station,
+    User,
+    UserRole,
 )
 from app.db.session import get_session_factory  # noqa: E402
 from app.health.notifier import LoggingNotifier  # noqa: E402
@@ -59,9 +62,44 @@ DEMO_THRESHOLDS: dict[str, tuple[dict, dict]] = {
 
 REGIONS = {"A": "수도권", "B": "중부", "C": "남부", "D": "동해"}
 
+# 지도에 겹치지 않게 관측소 코드를 한반도 좌표에 고정한다.
+DEMO_COORDS = {
+    "A01": (37.57, 126.98),
+    "A02": (37.46, 126.70),
+    "B01": (36.35, 127.38),
+    "B02": (36.64, 127.49),
+    "C01": (35.16, 126.85),
+    "C02": (35.18, 129.07),
+}
+
+DEMO_USERS = (
+    ("operator", "시연 운영자", UserRole.OPERATOR, "operator-pass-123"),
+    ("viewer", "시연 조회자", UserRole.VIEWER, "viewer-pass-123"),
+)
+
+
+def ensure_demo_users(session) -> None:
+    for username, display_name, role, password in DEMO_USERS:
+        if session.scalar(select(User).where(User.username == username)) is not None:
+            continue
+        session.add(
+            User(
+                username=username,
+                display_name=display_name,
+                password_hash=hash_password(password),
+                role=role,
+                enabled=True,
+                must_change_password=False,
+            )
+        )
+
 
 def seed(session_factory, fleet) -> None:
     from app.db.seed import seed_metric_definitions
+
+    with session_factory() as session:
+        ensure_demo_users(session)
+        session.commit()
 
     with session_factory() as session:
         if session.scalar(select(Device).limit(1)) is not None:
@@ -111,13 +149,14 @@ def seed(session_factory, fleet) -> None:
 
         for virtual in fleet.all():
             region = regions.get(virtual.station_code[0])
+            lat, lon = DEMO_COORDS.get(virtual.station_code, (36.5, 127.8))
             station = Station(
                 station_code=virtual.station_code,
                 network_code="KS",
                 name=f"{virtual.station_code} 관측소",
                 region_id=region.id if region else None,
-                latitude=37.5 + (hash(virtual.station_code) % 100) / 100,
-                longitude=127.0 + (hash(virtual.station_code) % 90) / 100,
+                latitude=lat,
+                longitude=lon,
                 elevation_m=50.0,
                 power_profile="12V 배터리",
                 status=LifecycleStatus.ACTIVE,

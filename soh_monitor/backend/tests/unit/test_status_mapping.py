@@ -11,6 +11,7 @@ from app.domain.enums import Severity
 from app.metrics.status import load_status_mappings
 
 CTR = "nanometrics.centaur.ctr"
+MOCK = "acme.mock.recorder"
 
 
 @pytest.fixture(scope="module")
@@ -107,3 +108,30 @@ def test_참거짓_상태는_Adapter가_직접_변환해야_한다(mappings):
     result = mappings.resolve(CTR, "timing.status", True)
     assert result.severity is Severity.UNKNOWN
     assert result.mapped is False
+
+
+@pytest.mark.parametrize(
+    ("metric_key", "raw", "expected"),
+    [
+        ("device.overall_status", "GOOD", Severity.OK),
+        ("device.overall_status", "warn", Severity.WARNING),
+        ("device.overall_status", "BAD", Severity.CRITICAL),
+        ("timing.status", "LOCKED", Severity.OK),
+        ("timing.status", "drift", Severity.WARNING),
+        ("timing.status", "lost", Severity.CRITICAL),
+        ("storage.recording_status", "ACTIVE", Severity.OK),
+        ("storage.recording_status", "stopped", Severity.CRITICAL),
+    ],
+)
+def test_가상제조사_상태문자열_변환(mappings, metric_key, raw, expected):
+    """Centaur 와 다른 문자열도 Mapping 표만 바꾸면 표준 상태로 떨어진다."""
+    result = mappings.resolve(MOCK, metric_key, raw)
+    assert result.severity is expected
+    assert result.mapped is True
+
+
+def test_가상제조사_모르는_문자열도_UNKNOWN이다(mappings):
+    result = mappings.resolve(MOCK, "device.overall_status", "QUANTUM")
+    assert result.severity is Severity.UNKNOWN
+    assert result.mapped is False
+    assert result.raw_value == "QUANTUM"

@@ -23,14 +23,13 @@ services:
       SOH_EDGE_SPOOL_LIMIT_BYTES: ${SOH_EDGE_SPOOL_LIMIT_BYTES:-5368709120}
       SOH_EDGE_HEARTBEAT_SECONDS: ${SOH_EDGE_HEARTBEAT_SECONDS:-30}
       SOH_EDGE_UPLOAD_TIMEOUT_SECONDS: ${SOH_EDGE_UPLOAD_TIMEOUT_SECONDS:-30}
+      SOH_EDGE_ENROLLMENT_TOKEN: ${SOH_EDGE_ENROLLMENT_TOKEN:-}
       SOH_MAX_CONCURRENT_POLLS: ${SOH_MAX_CONCURRENT_POLLS:-10}
       SOH_DEVICE_CREDENTIAL_KEY_FILE: /run/secrets/device_credential_key
     secrets: [device_credential_key]
     volumes:
-      # ACK 받지 못한 데이터가 여기 남는다. 컨테이너를 갈아도 유실되지 않도록 볼륨으로 둔다.
+      # ACK 받지 못한 데이터와 등록 후 인증서·토큰이 여기 남는다.
       - edge-spool:/var/lib/soh-edge
-      # 중앙이 발급한 Edge 전용 클라이언트 인증서.
-      - ${SOH_EDGE_CERT_DIR:-./certs}:/etc/soh-edge/certs:ro
     # 지역 기록계 대역과 중앙으로만 나가면 된다. 들어오는 포트는 열지 않는다.
     logging:
       driver: json-file
