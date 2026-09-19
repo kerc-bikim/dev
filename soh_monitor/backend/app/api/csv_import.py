@@ -40,6 +40,8 @@ HEADER_ALIASES = {
     "serialnumber": "serial_number",
     "serial_number": "serial_number",
     "scheme": "scheme",
+    "datasourceuri": "data_source_uri",
+    "data_source_uri": "data_source_uri",
 }
 
 
@@ -68,6 +70,7 @@ class ParsedStationRow:
     instrument_id: str | None = None
     serial_number: str | None = None
     scheme: str = "http"
+    data_source_uri: str | None = None
 
 
 @dataclass
@@ -235,6 +238,7 @@ def parse_stations_csv(content: str) -> CsvImportResult:
                 instrument_id=_cell(normalized, "instrument_id") or None,
                 serial_number=_cell(normalized, "serial_number") or None,
                 scheme=scheme,
+                data_source_uri=_cell(normalized, "data_source_uri") or None,
             )
         )
 

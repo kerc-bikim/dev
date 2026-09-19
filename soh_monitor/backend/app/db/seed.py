@@ -130,6 +130,9 @@ def seed_default_profiles(session: Session) -> None:
         "sensor.status": ({"status": "WARNING"}, {"status": "CRITICAL"}, 0),
         "device.configuration_status": ({"status": "WARNING"}, {}, 600),
         "archive.continuous_status": ({"status": "WARNING"}, {"status": "CRITICAL"}, 0),
+        "acquisition.latest_sample_age_seconds": ({"op": ">=", "value": 180}, {"op": ">=", "value": 600}, 60),
+        "acquisition.gap_duration_seconds": ({"op": ">=", "value": 60}, {"op": ">=", "value": 300}, 60),
+        "acquisition.channel_active": ({}, {"expect": True}, 0),
     }
 
     # 전압·온도·Mass Position 은 공통 기준을 두지 않는다. 관측소 전원 구성과 센서 모델이
@@ -141,7 +144,6 @@ def seed_default_profiles(session: Session) -> None:
         "sensor.mass_position_v",
         "gnss.satellite_count",
         "timing.uncertainty_ns",
-        "acquisition.latest_sample_age_seconds",
         "external_soh.value",
     )
 
@@ -161,6 +163,20 @@ def seed_default_profiles(session: Session) -> None:
                 consecutive_violations=1,
             )
         )
+
+    # 예전 Seed 는 경과 시간을 임계 없이 켜 두었다. 파형 정지를 잡으려면 값을 채운다.
+    stale = session.scalar(
+        select(ProfileMetric).where(
+            ProfileMetric.profile_id == metric_profile.id,
+            ProfileMetric.metric_key == "acquisition.latest_sample_age_seconds",
+        )
+    )
+    if stale is not None and not stale.warning_condition and not stale.critical_condition:
+        stale.alerting_enabled = True
+        stale.warning_condition = {"op": ">=", "value": 180}
+        stale.critical_condition = {"op": ">=", "value": 600}
+        stale.hold_seconds = 60
+        stale.recovery_seconds = 60
 
     for metric_key in monitored_without_threshold:
         if metric_key in existing_entries or metric_key not in catalog.metrics:

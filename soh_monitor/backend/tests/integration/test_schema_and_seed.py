@@ -175,6 +175,28 @@ class TestSeed:
         assert entries["storage.used_percent"].warning_condition == {"op": ">=", "value": 80}
         assert entries["storage.used_percent"].critical_condition == {"op": ">=", "value": 90}
         assert entries["connectivity.consecutive_failures"].critical_condition["value"] == 3
+        assert entries["acquisition.latest_sample_age_seconds"].critical_condition == {
+            "op": ">=",
+            "value": 600,
+        }
+        assert entries["acquisition.channel_active"].critical_condition == {"expect": True}
+
+    def test_예전_빈_경과규칙에_임계값을_채운다(self, session):
+        seed_all(session)
+        profile = session.scalar(select(MetricProfile).where(MetricProfile.is_default.is_(True)))
+        entry = session.scalar(
+            select(ProfileMetric).where(
+                ProfileMetric.profile_id == profile.id,
+                ProfileMetric.metric_key == "acquisition.latest_sample_age_seconds",
+            )
+        )
+        entry.warning_condition = {}
+        entry.critical_condition = {}
+        session.flush()
+        seed_all(session)
+        session.refresh(entry)
+        assert entry.warning_condition == {"op": ">=", "value": 180}
+        assert entry.critical_condition == {"op": ">=", "value": 600}
 
     def test_전압과_Mass_Position은_기본_임계값을_강요하지_않는다(self, session):
         """전원 구성과 센서 모델이 다르면 하나의 기준이 곧 오탐이 된다."""

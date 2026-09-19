@@ -30,6 +30,16 @@ class TestCsv파서:
         assert row.hostname == "10.1.2.3"
         assert row.credential_reference == "env:SOH_DEVICE_PW_A01"
         assert row.elevation_m == 120
+        assert row.data_source_uri is None
+
+    def test_데이터서버_URI열을_읽는다(self):
+        text = (
+            "networkCode,stationCode,name,dataSourceUri\n"
+            "KS,A01,설악,https://10.0.0.8/fdsnws/availability/1/query?net=KS&sta=A01&format=json\n"
+        )
+        result = parse_stations_csv(text)
+        assert result.errors == []
+        assert result.rows[0].data_source_uri.startswith("https://10.0.0.8/")
 
     def test_수식_행만_실패하고_나머지는_남는다(self):
         text = (

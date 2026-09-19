@@ -37,6 +37,11 @@ class PayloadScenario(str, Enum):
     MISSING_FIELDS = "MISSING_FIELDS"                # 채널 누락에도 부분 결과를 내는지
     OLD_FIRMWARE = "OLD_FIRMWARE"                    # 수치 코드로 상태를 주는 예전 형태
 
+    # 데이터 연속성 (SOH 와 독립. availability 응답만 바뀐다)
+    WAVEFORM_STALE = "WAVEFORM_STALE"
+    WAVEFORM_GAP = "WAVEFORM_GAP"
+    WAVEFORM_STOPPED = "WAVEFORM_STOPPED"
+
 
 class TransportScenario(str, Enum):
     OK = "OK"

@@ -103,6 +103,16 @@ Timeout 은 실 HTTP 로 확인한다.
 Centaur CTR 의 경우 매뉴얼에 응답 본문 예시가 없어 형태 추측이 `mock/centaur_mock/envelope.py`
 한 파일에 갇혀 있다. 실응답을 확보하면 그 파일과 `parser.py` 만 고친다.
 
+## 데이터 연속성 검사
+
+기록계 SOH 의 센서 상태는 파형 정지를 잡지 못한다. `acquisition.*` 는 SeedLink/FDSN
+availability 로 **SOH 와 따로** 산출한다. 구현은 `backend/app/adapters/data_availability/` 다.
+
+- 관측소에 데이터 서버 URI 가 없으면 capability 는 `UNSUPPORTED` 이고 값을 만들지 않는다.
+- URI 가 있으면 HTTP/FDSN JSON 을 읽고 채널별 경과·공백·활성을 표준 Metric 으로 옮긴다.
+- SeedLink(`seedlink://host:port`) 는 연결 stub 이다. INFO STREAMS 파싱은 실서버에서 교체한다.
+- 이 검사가 실패해도 SOH `PollResult.success` 를 뒤집지 않는다.
+
 ## Transport
 
 통신 프로토콜 교체는 Adapter 내부에 한정한다. 수집기는 HTTP 인지 SNMP 인지 모른다.

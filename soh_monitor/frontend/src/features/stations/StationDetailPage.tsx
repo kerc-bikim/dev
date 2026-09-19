@@ -162,6 +162,10 @@ export function StationDetailPage() {
                 <th>인증 참조</th>
                 <td>{device?.endpoint?.credentialReference ?? "없음"}</td>
               </tr>
+              <tr>
+                <th>데이터 서버</th>
+                <td>{device?.dataSourceUri ?? "없음 (파형 검사 미지원)"}</td>
+              </tr>
             </tbody>
           </table>
         </div>

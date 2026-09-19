@@ -278,6 +278,8 @@ def build_config_document(session: Session, edge: EdgeCollector) -> dict[str, An
                 connection["instrumentId"] = device.instrument_id
             if endpoint.connection_options:
                 connection.update(endpoint.connection_options)
+            if device.data_source_uri:
+                connection["dataSourceUri"] = device.data_source_uri
         credential = None
         if endpoint is not None and endpoint.credential_reference:
             credential = {"reference": endpoint.credential_reference}

@@ -429,6 +429,7 @@ async def import_stations(
                     metric_profile_id=metric.id if metric else None,
                     enabled=True,
                     status=LifecycleStatus.PLANNED,
+                    data_source_uri=row.data_source_uri,
                 )
                 session.add(device)
                 session.flush()

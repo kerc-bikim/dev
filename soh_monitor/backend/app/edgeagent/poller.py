@@ -98,6 +98,7 @@ def to_due_device(device: dict, *, edge_id: str) -> DueDevice:
         retry_delay_seconds=10,
         consecutive_failures=0,
         last_observed_at=None,
+        data_source_uri=device.get("dataSourceUri") or connection.get("dataSourceUri"),
         tags=DeviceTags(
             device_id=device_id,
             station_id=str(station_id_raw),

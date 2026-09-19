@@ -87,7 +87,7 @@ Docker 가 있는 환경에서 `make images` 와 `make dev` 로 확인해야 한
 | M2.8 | 민감정보 제거 | 완료 | `redact()` 재귀 처리. 수집 결과에 비밀값 없음을 시험으로 확인 |
 | M2.9 | Manifest 등록 | 완료 | 파일 원본으로 검증해 Registry 에 등록. 화면 선택 목록에 노출 |
 | M2.10 | Fixture 회귀 시험 | 완료 | synthetic 10종. `real-` 파일이 들어오면 기준선 대조 시험이 켜진다 |
-| M2.11 | 데이터 연속성 Adapter | 착수 전 | 가상 서버에 availability 응답만 준비 |
+| M2.11 | 데이터 연속성 Adapter | 완료 | `adapters/data_availability/`. URI 없으면 UNSUPPORTED. HTTP/FDSN + SeedLink stub |
 
 ### 응답 형식이 아직 추측인 부분
 
@@ -423,6 +423,5 @@ make soak devices=100 ticks=3
 
 1. **M-1.2 / M-1.3** — 실장비 SOH 응답 확보. 확보되면 파일럿(M10.7) 도 시작한다.
 2. **실제 InfluxDB·Grafana·Postgres 복구** — Docker 환경에서 `influx backup` 과 `pg_dump` 를 한 번 돈다.
-3. **M2.11** — SeedLink/FDSN 기반 데이터 연속성 검사. 센서 상태만으로는 파형 정지를 잡지 못한다.
-4. **Gen5** — [`gen5-checklist.md`](gen5-checklist.md) 조사 후 `adapters/centaur_gen5/` 만 추가한다.
+3. **Gen5** — [`gen5-checklist.md`](gen5-checklist.md) 조사 후 `adapters/centaur_gen5/` 만 추가한다.
 

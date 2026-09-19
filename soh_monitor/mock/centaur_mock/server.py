@@ -24,7 +24,7 @@ from fastapi.responses import JSONResponse
 
 from .devices import DeviceRegistry, VirtualDevice, load_fleet
 from .envelope import UNITS, render
-from .scenarios import TransportScenario
+from .scenarios import PayloadScenario, TransportScenario
 from .values import soh_channels
 
 SESSION_COOKIE = "nmxsid"
@@ -163,23 +163,39 @@ def create_app(registry: DeviceRegistry | None = None) -> FastAPI:
 
         moment = state.now()
         channel_count = 3 * len(device.sensor_ports)
-        return JSONResponse(
-            {
-                "instrumentId": device.instrument_id,
-                "bands": [
+        axes = ("Z", "N", "E")[: min(3, channel_count)]
+        bands = []
+        for axis in axes:
+            if device.payload_scenario is PayloadScenario.WAVEFORM_STOPPED:
+                ranges: list[dict] = []
+            elif device.payload_scenario is PayloadScenario.WAVEFORM_STALE:
+                end = moment - timedelta(minutes=30)
+                ranges = [
                     {
-                        "channel": f"HH{axis}",
-                        "ranges": [
-                            {
-                                "start": (moment - timedelta(hours=6)).isoformat(),
-                                "end": moment.isoformat(),
-                            }
-                        ],
+                        "start": (end - timedelta(hours=5)).isoformat(),
+                        "end": end.isoformat(),
                     }
-                    for axis in ("Z", "N", "E")[: min(3, channel_count)]
-                ],
-            }
-        )
+                ]
+            elif device.payload_scenario is PayloadScenario.WAVEFORM_GAP:
+                ranges = [
+                    {
+                        "start": (moment - timedelta(hours=6)).isoformat(),
+                        "end": (moment - timedelta(hours=3)).isoformat(),
+                    },
+                    {
+                        "start": (moment - timedelta(hours=2)).isoformat(),
+                        "end": moment.isoformat(),
+                    },
+                ]
+            else:
+                ranges = [
+                    {
+                        "start": (moment - timedelta(hours=6)).isoformat(),
+                        "end": moment.isoformat(),
+                    }
+                ]
+            bands.append({"channel": f"HH{axis}", "ranges": ranges})
+        return JSONResponse({"instrumentId": device.instrument_id, "bands": bands})
 
     # ------------------------------------------------------------ 인증 (7.6 절)
 

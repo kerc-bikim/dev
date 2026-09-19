@@ -75,6 +75,7 @@ class DueDevice:
     consecutive_failures: int
     last_observed_at: datetime | None
     tags: DeviceTags
+    data_source_uri: str | None = None
 
 
 def _connection_from(endpoint: DeviceEndpoint | None, device: Device) -> dict:
@@ -160,6 +161,7 @@ def due_devices(
                 retry_delay_seconds=retry_delay,
                 consecutive_failures=state.consecutive_failures if state else 0,
                 last_observed_at=as_utc(state.last_observed_at) if state else None,
+                data_source_uri=device.data_source_uri,
                 tags=DeviceTags(
                     device_id=str(device.id),
                     station_id=str(station.id),
@@ -219,6 +221,7 @@ def load_due_device(
         retry_delay_seconds=retry_delay,
         consecutive_failures=state.consecutive_failures if state else 0,
         last_observed_at=as_utc(state.last_observed_at) if state else None,
+        data_source_uri=device.data_source_uri,
         tags=DeviceTags(
             device_id=str(device.id),
             station_id=str(station.id),

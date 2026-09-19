@@ -49,6 +49,7 @@ export function StationWizardPage() {
   const [channels, setChannels] = useState<SohDraft[]>([]);
   const [collectionProfileId, setCollectionProfileId] = useState("");
   const [metricProfileId, setMetricProfileId] = useState("");
+  const [dataSourceUri, setDataSourceUri] = useState("");
 
   const adapters = useQuery({ queryKey: ["adapters"], queryFn: api.adapters });
   const collections = useQuery({ queryKey: ["collection-profiles"], queryFn: api.collectionProfiles });
@@ -145,6 +146,7 @@ export function StationWizardPage() {
         edgeId: collectionMode === "EDGE" ? edgeId : null,
         collectionProfileId: collectionProfileId || null,
         metricProfileId: metricProfileId || null,
+        dataSourceUri: dataSourceUri.trim() || null,
         endpoint: {
           scheme: connection.scheme,
           hostname: connection.hostname,
@@ -263,6 +265,15 @@ export function StationWizardPage() {
               <option value="DIRECT">DIRECT (중앙이 직접 수집)</option>
               <option value="EDGE">EDGE (지역 Edge 가 수집)</option>
             </select>
+          </label>
+          <label className="field">
+            <span>데이터 서버 (SeedLink/FDSN, 선택)</span>
+            <input
+              value={dataSourceUri}
+              onChange={(event) => setDataSourceUri(event.target.value)}
+              placeholder="https://10.0.0.8/fdsnws/availability/1/query?net=KS&sta=A01&format=json"
+            />
+            <small>비우면 파형 연속성 검사는 미지원이다. 센서 상태만으로는 정지를 못 잡는다.</small>
           </label>
           {collectionMode === "EDGE" && (
             <label className="field">
@@ -485,6 +496,10 @@ export function StationWizardPage() {
                     ? ` · ${(edges.data?.edges ?? []).find((item) => item.id === edgeId)?.edgeCode ?? edgeId}`
                     : ""}
                 </td>
+              </tr>
+              <tr>
+                <th>데이터 서버</th>
+                <td>{dataSourceUri.trim() || "없음 (파형 검사 미지원)"}</td>
               </tr>
               <tr>
                 <th>접속</th>
