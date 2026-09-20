@@ -271,7 +271,7 @@ make soak devices=100 ticks=3
 | M6.4 | 관측소 지도 | 완료 | 색+도형(●정상 ◆주의 ▲장애 ■확인불가). 위경도 없는 점은 올리지 않음 |
 | M6.5 | 관측소 목록 | 완료 | 통신·전원·시각·센서·저장소·데이터 컬럼. 미지원/미수집은 `—` |
 | M6.6 | 등록 마법사 | 완료 | 기본정보→Adapter→접속→시험·탐지→센서·외부SOH→프로파일→검토/저장 |
-| M6.7 | 연결 시험 진행 표시 | 완료 | 경과 초와 취소(`AbortController`) |
+| M6.7 | 연결 시험 진행 표시 | 완료 | 경과 초와 취소(`AbortController`). 등록 후에도 관측소 상세에서 시험 |
 | M6.8 | 탐지 불일치 | 완료 | Instrument ID·모델·시리얼·펌웨어를 저장 전에 보여 준다 |
 | M6.9 | Schema 기반 폼 | 완료 | Adapter Manifest `configurationSchema`. `secretFields` 는 `credentialReference` |
 | M6.10 | 관측소 상세 | 완료 | 분류 탭·현재값·수집 이력·Grafana Deep Link. 설정 탭에서 데이터 서버 URI 수정(ADMIN) |

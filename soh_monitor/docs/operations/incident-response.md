@@ -16,7 +16,7 @@
 
 | 증상 | 먼저 할 일 |
 |------|------------|
-| Recorder Offline | 기록계 전원·회선. DIRECT 면 중앙에서 ping/연결 시험. EDGE 면 Edge 가 살아 있는지 |
+| Recorder Offline | 기록계 전원·회선. DIRECT 면 관측소 상세 **연결 시험**. EDGE 면 Edge 가 살아 있는지 |
 | Edge Offline | 지역 서버·회선. Heartbeat 가 돌아오면 하위 UNKNOWN 이 풀린다 |
 | Timing Error | GNSS 안테나·하늘. Duty Cycle 장비는 위성 수만으로 장애를 만들지 않게 프로파일을 확인 |
 | Recording Stopped / Storage Critical | SD·내부 저장소. 가득 찼으면 교체. 기록 중단은 즉시 |

@@ -331,6 +331,14 @@ textarea {
   width: auto;
 }
 
+.connection-test {
+  display: contents;
+}
+
+.toolbar .notice {
+  flex: 1 0 100%;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

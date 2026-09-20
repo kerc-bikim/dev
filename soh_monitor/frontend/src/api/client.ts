@@ -246,11 +246,14 @@ export interface IdentityDto {
 }
 
 export interface ConnectionTestDto {
-  reachable: boolean;
-  latencyMs: number | null;
-  httpStatus: number | null;
+  reachable?: boolean;
+  latencyMs?: number | null;
+  httpStatus?: number | null;
   message: string;
-  identity: IdentityDto | null;
+  identity?: IdentityDto | null;
+  queued?: boolean;
+  taskId?: string;
+  edgeId?: string;
 }
 
 export interface FleetSummaryDto {
@@ -546,6 +549,11 @@ export const api = {
     request<ConnectionTestDto>("/api/v1/devices/test-connection", {
       method: "POST",
       body: JSON.stringify(body),
+      signal,
+    }),
+  testDeviceConnection: (deviceId: string, signal?: AbortSignal) =>
+    request<ConnectionTestDto>(`/api/v1/devices/${deviceId}/test-connection`, {
+      method: "POST",
       signal,
     }),
   probe: (body: Record<string, unknown>, signal?: AbortSignal) =>

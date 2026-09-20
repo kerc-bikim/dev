@@ -404,6 +404,21 @@ class Test연결시험:
         assert probed.status_code == 200
         assert probed.json()["identity"]["channelCount"] == 6
 
+    def test_등록된_장비_연결_시험(self, client):
+        login(client)
+        station_id = create_station(client, "T01")
+        device_id = create_device(client, station_id, host="10.10.1.23")
+        client.post("/api/v1/auth/logout")
+        login(client, "operator", OPERATOR_PASSWORD)
+        tested = client.post(f"/api/v1/devices/{device_id}/test-connection")
+        assert tested.status_code == 200, tested.text
+        assert tested.json()["reachable"] is True
+        assert tested.json()["identity"]["instrumentId"] == "centaur-6__0242"
+
+        client.post("/api/v1/auth/logout")
+        login(client, "viewer", VIEWER_PASSWORD)
+        assert client.post(f"/api/v1/devices/{device_id}/test-connection").status_code == 403
+
     def test_미리보기에서_비밀값을_지운다(self, client):
         login(client)
         station_id = create_station(client)
