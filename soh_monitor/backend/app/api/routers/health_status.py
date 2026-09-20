@@ -26,7 +26,9 @@ from app.db.models import (
     User,
 )
 from app.db.session import session_scope
+from app.domain.enums import Severity
 from app.health import incidents as incident_ops
+from app.health.collection import collected_severity
 from app.health.state_machine import rollup
 from app.repository.postgres.collector_repo import as_utc
 
@@ -137,11 +139,23 @@ def device_health(device_id: str, actor: RequireRead) -> dict[str, object]:
         ]
 
         overall = rollup([state.severity for state in states if not state.metric_key])
+        if not device.enabled:
+            categories = {
+                key: {**value, "severity": Severity.DISABLED.value} for key, value in categories.items()
+            }
+            if not categories:
+                categories["connectivity"] = {
+                    "severity": Severity.DISABLED.value,
+                    "isStale": False,
+                    "evaluatedAt": None,
+                    "detail": {"reason": "수집 비활성"},
+                }
+            metrics = [{**item, "severity": Severity.DISABLED.value} for item in metrics]
 
         return {
             "deviceId": device_id,
             "stationCode": station.station_code if station else None,
-            "overall": overall.value,
+            "overall": collected_severity(device.enabled, overall),
             "lastSuccessAt": as_utc(runtime.last_success_at) if runtime else None,
             "lastPollAt": as_utc(runtime.last_poll_at) if runtime else None,
             "consecutiveFailures": runtime.consecutive_failures if runtime else 0,

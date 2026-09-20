@@ -27,6 +27,7 @@ from app.db.models import (
 )
 from app.db.session import session_scope
 from app.domain.enums import Severity
+from app.health.collection import collected_severity
 from app.health.state_machine import rollup
 from app.repository.postgres.collector_repo import as_utc
 
@@ -65,12 +66,20 @@ def _worst_from_categories(categories: dict[uuid.UUID, dict[str, str]]) -> dict[
 
 def _categories_by_station(session: Session) -> dict[uuid.UUID, dict[str, str]]:
     rows = session.execute(
-        select(Device.station_id, HealthState.category, HealthState.severity)
-        .join(HealthState, HealthState.device_id == Device.id)
-        .where(HealthState.metric_key == "")
+        select(Device.id, Device.station_id, Device.enabled, HealthState.category, HealthState.severity)
+        .outerjoin(
+            HealthState,
+            (HealthState.device_id == Device.id) & (HealthState.metric_key == ""),
+        )
     )
     grouped: dict[uuid.UUID, dict[str, list[Severity]]] = {}
-    for station_id, category, severity in rows:
+    for _device_id, station_id, enabled, category, severity in rows:
+        if not enabled:
+            label = category or "connectivity"
+            grouped.setdefault(station_id, {}).setdefault(label, []).append(Severity.DISABLED)
+            continue
+        if category is None:
+            continue
         grouped.setdefault(station_id, {}).setdefault(category, []).append(severity)
     return {
         station_id: {category: rollup(values).value for category, values in categories.items()}
@@ -339,7 +348,10 @@ def station_health(station_id: str, actor: RequireRead) -> dict:
             device_id: rollup(values).value if values else "UNKNOWN"
             for device_id, values in by_device.items()
         }
-        station_severities = [Severity(value) for value in device_overall.values()]
+        station_severities = [
+            Severity(collected_severity(device.enabled, device_overall.get(device.id)))
+            for device in devices
+        ]
         return {
             "stationId": station_id,
             "stationCode": station.station_code,
@@ -350,7 +362,7 @@ def station_health(station_id: str, actor: RequireRead) -> dict:
                     "label": device.label,
                     "enabled": device.enabled,
                     "status": device.status.value,
-                    "overall": device_overall.get(device.id, "UNKNOWN"),
+                    "overall": collected_severity(device.enabled, device_overall.get(device.id)),
                     "lastSuccessAt": iso(runtimes[device.id].last_success_at) if device.id in runtimes else None,
                     "consecutiveFailures": (
                         runtimes[device.id].consecutive_failures if device.id in runtimes else 0

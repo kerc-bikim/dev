@@ -274,7 +274,7 @@ make soak devices=100 ticks=3
 | M6.7 | 연결 시험 진행 표시 | 완료 | 경과 초와 취소(`AbortController`). 등록 후에도 관측소 상세에서 시험 |
 | M6.8 | 탐지 불일치 | 완료 | Instrument ID·모델·시리얼·펌웨어를 저장 전에 보여 준다 |
 | M6.9 | Schema 기반 폼 | 완료 | Adapter Manifest `configurationSchema`. `secretFields` 는 `credentialReference` |
-| M6.10 | 관측소 상세 | 완료 | 분류 탭·현재값·수집 이력·Grafana Deep Link. 설정 탭에서 접속 호스트·인증 참조·데이터 서버 URI 수정(ADMIN) |
+| M6.10 | 관측소 상세 | 완료 | 분류 탭·현재값·수집 이력·Grafana Deep Link. 설정 탭에서 접속 호스트·인증 참조·데이터 서버 URI·수집 켜기/끄기(ADMIN) |
 | M6.11 | 프로파일 | 완료 | 영향 장비 수, 저장 전 차이, 복제 |
 | M6.12 | 장애 확인 | 완료 | 확인 시 담당자·시각. VIEWER 는 확인 버튼이 없다 |
 | M6.13 | 상태 자동 갱신 | 완료 | TanStack Query 15초 `refetchInterval` + `keepPreviousData` |

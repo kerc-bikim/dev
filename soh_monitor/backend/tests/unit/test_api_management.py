@@ -446,6 +446,50 @@ class Test기록계:
         )
         assert response.status_code == 403
 
+    def test_수집을_끄고_켤_수_있다(self, client):
+        login(client)
+        station_id = create_station(client)
+        device_id = create_device(client, station_id)
+
+        disabled = client.put(f"/api/v1/devices/{device_id}", json={"enabled": False})
+        assert disabled.status_code == 200, disabled.text
+        assert disabled.json()["device"]["enabled"] is False
+
+        polled = client.post(f"/api/v1/devices/{device_id}/poll-now")
+        assert polled.status_code == 409
+        assert "비활성" in polled.json()["detail"]
+
+        health = client.get(f"/api/v1/devices/{device_id}/current-health")
+        assert health.status_code == 200
+        assert health.json()["overall"] == "DISABLED"
+        assert health.json()["categories"]["connectivity"]["severity"] == "DISABLED"
+
+        station_health = client.get(f"/api/v1/stations/{station_id}/current-health")
+        assert station_health.status_code == 200
+        assert station_health.json()["overall"] == "DISABLED"
+        assert station_health.json()["devices"][0]["enabled"] is False
+        assert station_health.json()["devices"][0]["overall"] == "DISABLED"
+
+        listed = client.get("/api/v1/stations").json()["stations"]
+        row = next(item for item in listed if item["id"] == station_id)
+        assert row["worstSeverity"] == "DISABLED"
+        assert row["categories"]["connectivity"] == "DISABLED"
+
+        enabled = client.put(f"/api/v1/devices/{device_id}", json={"enabled": True})
+        assert enabled.status_code == 200
+        assert enabled.json()["device"]["enabled"] is True
+        restored = client.post(f"/api/v1/devices/{device_id}/poll-now")
+        assert restored.status_code == 202, restored.text
+
+    def test_OPERATOR는_수집_여부를_못_바꾼다(self, client):
+        login(client)
+        station_id = create_station(client)
+        device_id = create_device(client, station_id)
+        client.post("/api/v1/auth/logout")
+        login(client, "operator", OPERATOR_PASSWORD)
+        response = client.put(f"/api/v1/devices/{device_id}", json={"enabled": False})
+        assert response.status_code == 403
+
 
 class Test연결시험:
     def test_공인_주소는_연결_시험이_막힌다(self, client):

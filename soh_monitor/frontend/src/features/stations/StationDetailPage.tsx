@@ -153,6 +153,51 @@ function DataSourceUriField({ deviceId, value }: { deviceId: string; value: stri
   );
 }
 
+function CollectionToggle({ deviceId, enabled }: { deviceId: string; enabled: boolean }) {
+  const queryClient = useQueryClient();
+  const [notice, setNotice] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
+
+  const save = useMutation({
+    mutationFn: (next: boolean) => api.updateDevice(deviceId, { enabled: next }),
+    onSuccess: (body) => {
+      const next = body.device.enabled;
+      setNotice({
+        kind: "ok",
+        text: next
+          ? "수집을 켰다. 다음 Tick 부터 다시 모은다."
+          : "수집을 껐다. 상태는 수집 제외다.",
+      });
+      void queryClient.invalidateQueries({ queryKey: ["station"] });
+      void queryClient.invalidateQueries({ queryKey: ["station-health"] });
+      void queryClient.invalidateQueries({ queryKey: ["device-health"] });
+      void queryClient.invalidateQueries({ queryKey: ["stations"] });
+    },
+    onError: (err) =>
+      setNotice({
+        kind: "warn",
+        text: err instanceof ApiError ? err.message : "저장에 실패했다",
+      }),
+  });
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        save.mutate(!enabled);
+      }}
+    >
+      <p>{enabled ? "수집 중" : "수집 꺼짐"}</p>
+      <small className="muted">끄면 스케줄과 지금 수집이 멈춘다. 꺼진 동안 상태는 수집 제외다.</small>
+      <div>
+        <button className="btn primary" type="submit" disabled={save.isPending}>
+          {save.isPending ? "저장 중" : enabled ? "수집 끄기" : "수집 켜기"}
+        </button>
+      </div>
+      {notice && <div className={notice.kind === "warn" ? "notice warn" : "notice"}>{notice.text}</div>}
+    </form>
+  );
+}
+
 function ConnectionTestControl({
   deviceId,
   onResult,
@@ -501,10 +546,19 @@ export function StationDetailPage() {
         </div>
       )}
 
+      {device && !device.enabled && (
+        <div className="notice warn">수집이 꺼져 있다. 상태는 수집 제외다. 지금 수집은 하지 않는다.</div>
+      )}
+
       <div className="toolbar">
         {can("operate") && device && (
           <>
-            <button className="btn ghost" type="button" onClick={() => pollNow.mutate(device.id)}>
+            <button
+              className="btn ghost"
+              type="button"
+              disabled={!device.enabled || pollNow.isPending}
+              onClick={() => pollNow.mutate(device.id)}
+            >
               지금 수집
             </button>
             <ConnectionTestControl deviceId={device.id} onResult={setTestNotice} />
@@ -551,6 +605,18 @@ export function StationDetailPage() {
               <tr>
                 <th>Adapter</th>
                 <td>{device?.adapterKey ?? "—"}</td>
+              </tr>
+              <tr>
+                <th>수집</th>
+                <td>
+                  {can("configure") && device ? (
+                    <CollectionToggle key={`${device.id}-enabled`} deviceId={device.id} enabled={device.enabled} />
+                  ) : device?.enabled === false ? (
+                    "꺼짐"
+                  ) : (
+                    "켜짐"
+                  )}
+                </td>
               </tr>
               <tr>
                 <th>접속</th>
