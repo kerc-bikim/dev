@@ -41,6 +41,23 @@ class TestCsv파서:
         assert result.errors == []
         assert result.rows[0].data_source_uri.startswith("https://10.0.0.8/")
 
+    def test_허용하지_않는_데이터서버_스킴은_거절한다(self):
+        text = (
+            "networkCode,stationCode,name,dataSourceUri\n"
+            "KS,A01,설악,ftp://example/data\n"
+        )
+        result = parse_stations_csv(text)
+        assert result.rows == []
+        assert result.errors[0].field == "dataSourceUri"
+        assert "스킴" in result.errors[0].message
+
+    def test_공인_주소는_접속_저장이_막힌다(self):
+        text = CSV_HEADER + "\nKS,A01,설악,8.8.8.8,env:SOH_DEVICE_PW_A01,38.1,120\n"
+        result = parse_stations_csv(text)
+        assert result.rows == []
+        assert result.errors[0].field == "hostname"
+        assert "허용 대역" in result.errors[0].message
+
     def test_수식_행만_실패하고_나머지는_남는다(self):
         text = (
             CSV_HEADER

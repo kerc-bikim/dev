@@ -10,7 +10,7 @@
 | 세션 쿠키 HMAC | 조치됨 | `soh_session`, 역할 ADMIN/OPERATOR/VIEWER |
 | VIEWER 는 설정·등록 숨김 | 조치됨 | Frontend `can("administer")` |
 | 연결 시험·접속 저장 SSRF | 조치됨 | RFC1918 허용 목록, 메타데이터 주소 거부. PUT/POST 호스트에도 적용 |
-| CSV 수식 주입 거부 | 조치됨 | `tests/unit/test_csv_import.py` |
+| CSV 수식 주입·URI·SSRF | 조치됨 | 수식 거부. dataSourceUri 스킴·호스트 허용 대역은 PUT 과 같음 |
 | Edge 는 Outbound 만 | 조치됨 | 중앙 Inbound 없음. Health 는 127.0.0.1 |
 | mTLS 폐기 | 조치됨 | `POST /edges/{id}/revoke` → 403 |
 | Postgres·Influx 포트 비공개 | 조치됨 | `compose.central.yml` data-net |

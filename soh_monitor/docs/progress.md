@@ -233,7 +233,7 @@ make soak devices=100 ticks=3
 | M5.6 | SSRF 화이트리스트 | 완료 | RFC1918 기본. 접속 저장·연결 시험 모두 적용. 메타데이터·링크 로컬은 허용 목록에 넣어도 거부 |
 | M5.7 | 수집·Metric 프로파일 | 완료 | 영향 장비 수(`affectedDeviceCount`)를 응답에 포함 |
 | M5.8 | 장비 Override | 완료 | 카탈로그·조건 검증 후 저장. 차원값 포함. 관측소 설정에서 ADMIN 이 편집 |
-| M5.9 | CSV 일괄 등록 | 완료 | 오류 행만 실패. 수식 주입(`=`, `+`, `@`) 거부 |
+| M5.9 | CSV 일괄 등록 | 완료 | 오류 행만 실패. 수식 주입(`=`, `+`, `@`) 거부. URI 스킴·호스트 SSRF 도 PUT 과 같음 |
 | M5.10 | fleet/summary·current-health | 완료(M4) | 인증을 붙였다 |
 | M5.11 | 감사 로그 | 완료 | 설정 변경 주체·전후 값. 비밀값은 `***` |
 | M5.12 | OpenAPI·클라이언트 | 완료 | `scripts/export_openapi.py --check` |

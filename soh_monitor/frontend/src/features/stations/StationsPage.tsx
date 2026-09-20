@@ -47,7 +47,15 @@ export function StationsPage() {
     setImportResult(null);
     try {
       const result = await api.importStations(file);
-      setImportResult(`${result.imported}곳 등록, ${result.failed}행 실패`);
+      const failed = result.errors
+        .slice(0, 5)
+        .map((item) => `${item.row}행${item.field ? ` ${item.field}` : ""}: ${item.message}`)
+        .join(" · ");
+      setImportResult(
+        failed
+          ? `${result.imported}곳 등록, ${result.failed}행 실패. ${failed}`
+          : `${result.imported}곳 등록, ${result.failed}행 실패`,
+      );
       await queryClient.invalidateQueries({ queryKey: ["stations"] });
     } catch (error) {
       setImportError(error instanceof ApiError ? error.message : "가져오지 못했다");

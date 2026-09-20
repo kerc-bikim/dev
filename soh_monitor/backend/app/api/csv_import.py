@@ -12,6 +12,10 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.api.schemas import normalize_data_source_uri
+from app.config.settings import get_settings
+from app.net.ssrf import SsrfError, resolve_safe_host
+
 FORMULA_PREFIXES = ("=", "+", "@", "\t", "\r", "\n")
 STATION_CODE_RE = re.compile(r"^[A-Za-z0-9_]{1,16}$")
 NETWORK_CODE_RE = re.compile(r"^[A-Za-z0-9]{1,8}$")
@@ -220,6 +224,21 @@ def parse_stations_csv(content: str) -> CsvImportResult:
             )
             continue
 
+        hostname = _cell(normalized, "hostname") or None
+        if hostname:
+            try:
+                resolve_safe_host(hostname, get_settings().allowed_device_networks)
+            except SsrfError as exc:
+                result.errors.append(CsvRowError(index, "hostname", str(exc)))
+                continue
+
+        data_source_uri = _cell(normalized, "data_source_uri") or None
+        try:
+            data_source_uri = normalize_data_source_uri(data_source_uri)
+        except ValueError as exc:
+            result.errors.append(CsvRowError(index, "dataSourceUri", str(exc)))
+            continue
+
         result.rows.append(
             ParsedStationRow(
                 row_number=index,
@@ -231,14 +250,14 @@ def parse_stations_csv(content: str) -> CsvImportResult:
                 elevation_m=elevation,
                 region_code=_cell(normalized, "region_code").upper() or None,
                 timezone=_cell(normalized, "timezone") or "Asia/Seoul",
-                hostname=_cell(normalized, "hostname") or None,
+                hostname=hostname,
                 port=port,
                 adapter_key=_cell(normalized, "adapter_key") or "nanometrics.centaur.ctr",
                 credential_reference=credential,
                 instrument_id=_cell(normalized, "instrument_id") or None,
                 serial_number=_cell(normalized, "serial_number") or None,
                 scheme=scheme,
-                data_source_uri=_cell(normalized, "data_source_uri") or None,
+                data_source_uri=data_source_uri,
             )
         )
 

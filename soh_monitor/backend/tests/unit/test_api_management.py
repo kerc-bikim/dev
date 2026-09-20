@@ -621,6 +621,27 @@ class TestCsv와감사:
         blob = str(logs).lower()
         assert "password" not in blob or "***" in blob
 
+    def test_CSV_공인주소와_잘못된_URI는_거절한다(self, client):
+        login(client)
+        csv_text = (
+            "networkCode,stationCode,name,hostname,dataSourceUri\n"
+            "KS,X01,공인,8.8.8.8,\n"
+            "KS,X02,ftp,,ftp://example/data\n"
+            "KS,X03,정상,10.1.1.4,\n"
+        )
+        response = client.post(
+            "/api/v1/stations/import",
+            files={"file": ("stations.csv", csv_text.encode("utf-8"), "text/csv")},
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["imported"] == 1
+        assert body["failed"] == 2
+        fields = {item["field"] for item in body["errors"]}
+        assert "hostname" in fields
+        assert "dataSourceUri" in fields
+        assert body["stations"][0]["stationCode"] == "X03"
+
     def test_VIEWER는_감사로그를_못_본다(self, client):
         login(client, "viewer", VIEWER_PASSWORD)
         assert client.get("/api/v1/audit-logs").status_code == 403
