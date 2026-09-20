@@ -75,10 +75,14 @@ def _default_profiles(session: Session) -> tuple[CollectionProfile | None, Metri
 def _apply_endpoint(session: Session, device: Device, endpoint_body) -> None:
     if endpoint_body is None:
         return
+    hostname = endpoint_body.hostname.strip()
+    if not hostname:
+        raise HTTPException(status_code=400, detail="접속 정보(hostname)가 필요하다")
+    connection_ops.assert_safe_target(hostname)
     existing = device.endpoint
     values = dict(
         scheme=endpoint_body.scheme,
-        hostname=endpoint_body.hostname.strip(),
+        hostname=hostname,
         port=endpoint_body.port,
         base_path=endpoint_body.base_path or "/",
         tls_verify=endpoint_body.tls_verify,

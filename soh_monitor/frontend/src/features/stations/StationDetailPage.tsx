@@ -2,12 +2,100 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { ApiError, api, type MaintenanceWindowDto } from "../../api/client";
+import { ApiError, api, type EndpointDto, type MaintenanceWindowDto } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { BusyButton } from "../../components/BusyButton";
 import { SeverityBadge } from "../../components/SeverityBadge";
 import { stationTabVisibility, type StationTabId } from "../../lib/capabilityTabs";
 import { stationGrafanaLink } from "../../lib/grafana";
+
+function EndpointSettingsField({
+  deviceId,
+  endpoint,
+}: {
+  deviceId: string;
+  endpoint: EndpointDto | null;
+}) {
+  const queryClient = useQueryClient();
+  const [hostname, setHostname] = useState(endpoint?.hostname ?? "");
+  const [credential, setCredential] = useState(endpoint?.credentialReference ?? "");
+  const [notice, setNotice] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
+
+  const save = useMutation({
+    mutationFn: () =>
+      api.updateDevice(deviceId, {
+        endpoint: {
+          scheme: endpoint?.scheme ?? "http",
+          hostname: hostname.trim(),
+          port: endpoint?.port ?? null,
+          basePath: endpoint?.basePath ?? "/",
+          tlsVerify: endpoint?.tlsVerify ?? true,
+          credentialReference: credential.trim() || null,
+          connectTimeoutMs: endpoint?.connectTimeoutMs ?? 5000,
+          requestTimeoutMs: endpoint?.requestTimeoutMs ?? 15000,
+          connectionOptions: endpoint?.connectionOptions ?? {},
+        },
+      }),
+    onSuccess: (body) => {
+      const next = body.device.endpoint;
+      setHostname(next?.hostname ?? "");
+      setCredential(next?.credentialReference ?? "");
+      setNotice({ kind: "ok", text: "접속 호스트와 인증 참조를 저장했다." });
+      void queryClient.invalidateQueries({ queryKey: ["station"] });
+    },
+    onError: (err) =>
+      setNotice({
+        kind: "warn",
+        text: err instanceof ApiError ? err.message : "저장에 실패했다",
+      }),
+  });
+
+  const scheme = endpoint?.scheme ?? "http";
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        save.mutate();
+      }}
+    >
+      <label className="field">
+        <span>호스트</span>
+        <input
+          type="text"
+          value={hostname}
+          onChange={(event) => {
+            setHostname(event.target.value);
+            setNotice(null);
+          }}
+          placeholder={`${scheme}://10.10.1.20`}
+          autoComplete="off"
+          aria-label="접속 호스트"
+        />
+        <small>허용 대역(사설망)만 저장한다. 스킴은 {scheme} 이다.</small>
+      </label>
+      <label className="field">
+        <span>인증 참조</span>
+        <input
+          type="text"
+          value={credential}
+          onChange={(event) => {
+            setCredential(event.target.value);
+            setNotice(null);
+          }}
+          placeholder="env:SOH_DEVICE_PW_C11 또는 file:/run/secrets/..."
+          autoComplete="off"
+          aria-label="인증 참조"
+        />
+        <small>비밀번호 평문은 저장하지 않는다. env: 또는 file: 만 받는다.</small>
+      </label>
+      <button className="btn primary" type="submit" disabled={save.isPending}>
+        {save.isPending ? "저장 중" : "접속 저장"}
+      </button>
+      {notice && <div className={notice.kind === "warn" ? "notice warn" : "notice"}>{notice.text}</div>}
+    </form>
+  );
+}
 
 function DataSourceUriField({ deviceId, value }: { deviceId: string; value: string | null }) {
   const queryClient = useQueryClient();
@@ -467,15 +555,25 @@ export function StationDetailPage() {
               <tr>
                 <th>접속</th>
                 <td>
-                  {device?.endpoint
-                    ? `${device.endpoint.scheme}://${device.endpoint.hostname}`
-                    : "없음"}
+                  {can("configure") && device ? (
+                    <EndpointSettingsField
+                      key={device.id}
+                      deviceId={device.id}
+                      endpoint={device.endpoint}
+                    />
+                  ) : device?.endpoint ? (
+                    `${device.endpoint.scheme}://${device.endpoint.hostname}`
+                  ) : (
+                    "없음"
+                  )}
                 </td>
               </tr>
-              <tr>
-                <th>인증 참조</th>
-                <td>{device?.endpoint?.credentialReference ?? "없음"}</td>
-              </tr>
+              {!(can("configure") && device) && (
+                <tr>
+                  <th>인증 참조</th>
+                  <td>{device?.endpoint?.credentialReference ?? "없음"}</td>
+                </tr>
+              )}
               <tr>
                 <th>데이터 서버</th>
                 <td>

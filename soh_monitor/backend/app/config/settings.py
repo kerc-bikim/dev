@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     device_credential_key: str = ""
     allowed_device_networks: list[str] = Field(
         default_factory=lambda: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
-        description="기록계 접속을 허용할 대역. 연결 시험 SSRF 차단에 쓴다.",
+        description="기록계 접속을 허용할 대역. 접속 저장·연결 시험 SSRF 차단에 쓴다.",
     )
 
     @field_validator("poll_jitter_percent")

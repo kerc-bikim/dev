@@ -368,6 +368,84 @@ class Test기록계:
         )
         assert response.status_code == 403
 
+    def test_접속_호스트와_인증_참조를_바꾼다(self, client):
+        login(client)
+        station_id = create_station(client)
+        device_id = create_device(client, station_id)
+        updated = client.put(
+            f"/api/v1/devices/{device_id}",
+            json={
+                "endpoint": {
+                    "hostname": "10.10.1.30",
+                    "scheme": "https",
+                    "credentialReference": "env:SOH_DEVICE_PW_C11",
+                }
+            },
+        )
+        assert updated.status_code == 200, updated.text
+        endpoint = updated.json()["device"]["endpoint"]
+        assert endpoint["hostname"] == "10.10.1.30"
+        assert endpoint["scheme"] == "https"
+        assert endpoint["credentialReference"] == "env:SOH_DEVICE_PW_C11"
+
+        cleared = client.put(
+            f"/api/v1/devices/{device_id}",
+            json={"endpoint": {"hostname": "10.10.1.30", "credentialReference": ""}},
+        )
+        assert cleared.status_code == 200, cleared.text
+        assert cleared.json()["device"]["endpoint"]["credentialReference"] is None
+
+    def test_공인_주소는_접속_저장이_막힌다(self, client):
+        login(client)
+        station_id = create_station(client)
+        device_id = create_device(client, station_id)
+        response = client.put(
+            f"/api/v1/devices/{device_id}",
+            json={"endpoint": {"hostname": "8.8.8.8"}},
+        )
+        assert response.status_code == 400
+        assert "허용 대역" in response.json()["detail"]
+        kept = client.get(f"/api/v1/devices/{device_id}").json()["device"]["endpoint"]
+        assert kept["hostname"] == "10.10.1.20"
+
+        created = client.post(
+            f"/api/v1/stations/{station_id}/devices",
+            json={
+                "adapterKey": "nanometrics.centaur.ctr",
+                "label": "공인",
+                "endpoint": {"hostname": "8.8.8.8"},
+            },
+        )
+        assert created.status_code == 400
+
+    def test_비밀번호_평문은_접속_수정에서도_거절한다(self, client):
+        login(client)
+        station_id = create_station(client)
+        device_id = create_device(client, station_id)
+        top_level = client.put(
+            f"/api/v1/devices/{device_id}",
+            json={"password": "plain-text", "endpoint": {"hostname": "10.10.1.20"}},
+        )
+        assert top_level.status_code in {400, 422}
+
+        reference = client.put(
+            f"/api/v1/devices/{device_id}",
+            json={"endpoint": {"hostname": "10.10.1.20", "credentialReference": "hunter2"}},
+        )
+        assert reference.status_code == 422
+
+    def test_OPERATOR는_접속을_못_바꾼다(self, client):
+        login(client)
+        station_id = create_station(client)
+        device_id = create_device(client, station_id)
+        client.post("/api/v1/auth/logout")
+        login(client, "operator", OPERATOR_PASSWORD)
+        response = client.put(
+            f"/api/v1/devices/{device_id}",
+            json={"endpoint": {"hostname": "10.10.1.31", "credentialReference": "env:SOH_DEVICE_PW_C11"}},
+        )
+        assert response.status_code == 403
+
 
 class Test연결시험:
     def test_공인_주소는_연결_시험이_막힌다(self, client):
