@@ -232,7 +232,7 @@ make soak devices=100 ticks=3
 | M5.5 | test-connection·probe·soh-preview | 완료 | 등록 전/후 모두. 미리보기는 Adapter `redact()` |
 | M5.6 | SSRF 화이트리스트 | 완료 | RFC1918 기본. 접속 저장·연결 시험 모두 적용. 메타데이터·링크 로컬은 허용 목록에 넣어도 거부 |
 | M5.7 | 수집·Metric 프로파일 | 완료 | 영향 장비 수(`affectedDeviceCount`)를 응답에 포함 |
-| M5.8 | 장비 Override | 완료 | 카탈로그·조건 검증 후 저장. 차원값 포함 |
+| M5.8 | 장비 Override | 완료 | 카탈로그·조건 검증 후 저장. 차원값 포함. 관측소 설정에서 ADMIN 이 편집 |
 | M5.9 | CSV 일괄 등록 | 완료 | 오류 행만 실패. 수식 주입(`=`, `+`, `@`) 거부 |
 | M5.10 | fleet/summary·current-health | 완료(M4) | 인증을 붙였다 |
 | M5.11 | 감사 로그 | 완료 | 설정 변경 주체·전후 값. 비밀값은 `***` |
@@ -274,7 +274,7 @@ make soak devices=100 ticks=3
 | M6.7 | 연결 시험 진행 표시 | 완료 | 경과 초와 취소(`AbortController`). 등록 후에도 관측소 상세에서 시험 |
 | M6.8 | 탐지 불일치 | 완료 | Instrument ID·모델·시리얼·펌웨어를 저장 전에 보여 준다 |
 | M6.9 | Schema 기반 폼 | 완료 | Adapter Manifest `configurationSchema`. `secretFields` 는 `credentialReference` |
-| M6.10 | 관측소 상세 | 완료 | 분류 탭·현재값·수집 이력·Grafana Deep Link. 설정 탭에서 접속 호스트·인증 참조·데이터 서버 URI·수집 켜기/끄기(ADMIN) |
+| M6.10 | 관측소 상세 | 완료 | 분류 탭·현재값·수집 이력·Grafana Deep Link. 설정 탭에서 접속·URI·수집 켜기/끄기·장비 Override(ADMIN) |
 | M6.11 | 프로파일 | 완료 | 영향 장비 수, 저장 전 차이, 복제 |
 | M6.12 | 장애 확인 | 완료 | 확인 시 담당자·시각. VIEWER 는 확인 버튼이 없다 |
 | M6.13 | 상태 자동 갱신 | 완료 | TanStack Query 15초 `refetchInterval` + `keepPreviousData` |

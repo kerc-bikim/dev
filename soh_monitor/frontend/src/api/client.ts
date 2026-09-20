@@ -334,6 +334,19 @@ export interface CollectionProfileDto {
   affectedDeviceCount: number;
 }
 
+export interface MetricOverrideDto {
+  id?: string;
+  metricKey: string;
+  dimensionValue: string | null;
+  enabled: boolean | null;
+  alertingEnabled: boolean | null;
+  warningCondition: Record<string, unknown> | null;
+  criticalCondition: Record<string, unknown> | null;
+  holdSeconds: number | null;
+  recoverySeconds: number | null;
+  reason: string | null;
+}
+
 export interface ProfileMetricDto {
   metricKey: string;
   enabled: boolean;
@@ -576,6 +589,13 @@ export const api = {
       deviceId: string;
       capabilities: { key: string; dimension: string | null; supportState: string }[];
     }>(`/api/v1/devices/${deviceId}/capabilities`),
+  deviceOverrides: (deviceId: string) =>
+    request<{ overrides: MetricOverrideDto[] }>(`/api/v1/devices/${deviceId}/metric-overrides`),
+  replaceDeviceOverrides: (deviceId: string, body: Record<string, unknown>[]) =>
+    request<{ overrides: MetricOverrideDto[] }>(`/api/v1/devices/${deviceId}/metric-overrides`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
 
   fleetSummary: () => request<FleetSummaryDto>("/api/v1/fleet/summary"),
   fleetTopology: () => request<FleetTopologyDto>("/api/v1/fleet/topology"),

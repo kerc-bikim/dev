@@ -306,6 +306,14 @@ class Test기록계:
         )
         assert bad.status_code == 400
 
+        client.post("/api/v1/auth/logout")
+        login(client, "operator", OPERATOR_PASSWORD)
+        forbidden = client.put(
+            f"/api/v1/devices/{device_id}/metric-overrides",
+            json=[{"metricKey": "power.input_voltage_v", "warningCondition": {"op": "<=", "value": 11.8}}],
+        )
+        assert forbidden.status_code == 403
+
     def test_데이터서버_URI를_바꾸고_비울_수_있다(self, client):
         login(client)
         station_id = create_station(client)

@@ -2,10 +2,11 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { ApiError, api, type EndpointDto, type MaintenanceWindowDto } from "../../api/client";
+import { ApiError, api, type EndpointDto, type MaintenanceWindowDto, type MetricOverrideDto } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { BusyButton } from "../../components/BusyButton";
 import { SeverityBadge } from "../../components/SeverityBadge";
+import { METRIC_DEFINITIONS } from "../../generated/metrics";
 import { stationTabVisibility, type StationTabId } from "../../lib/capabilityTabs";
 import { stationGrafanaLink } from "../../lib/grafana";
 
@@ -433,6 +434,268 @@ function activeStationWindow(windows: MaintenanceWindowDto[] | undefined): Maint
   return (windows ?? []).find((item) => windowPhase(item.startsAt, item.endsAt) === "진행");
 }
 
+const NUMERIC_OPS = [">=", "<=", ">", "<", "==", "!=", "abs>="];
+const OVERRIDE_METRICS = METRIC_DEFINITIONS.filter(
+  (item) => item.valueType === "float" || item.valueType === "integer",
+);
+
+type OverrideDraft = {
+  metricKey: string;
+  dimensionValue: string;
+  warningOp: string;
+  warningValue: string;
+  criticalOp: string;
+  criticalValue: string;
+  reason: string;
+};
+
+function parseNumericCondition(condition: Record<string, unknown> | null | undefined): { op: string; value: string } {
+  if (!condition || typeof condition.op !== "string" || condition.value == null) {
+    return { op: "", value: "" };
+  }
+  return { op: condition.op, value: String(condition.value) };
+}
+
+function toOverrideDraft(row: MetricOverrideDto): OverrideDraft {
+  const warning = parseNumericCondition(row.warningCondition);
+  const critical = parseNumericCondition(row.criticalCondition);
+  return {
+    metricKey: row.metricKey,
+    dimensionValue: row.dimensionValue ?? "",
+    warningOp: warning.op,
+    warningValue: warning.value,
+    criticalOp: critical.op,
+    criticalValue: critical.value,
+    reason: row.reason ?? "",
+  };
+}
+
+function emptyOverrideDraft(): OverrideDraft {
+  return {
+    metricKey: "power.input_voltage_v",
+    dimensionValue: "",
+    warningOp: "<=",
+    warningValue: "11.8",
+    criticalOp: "<=",
+    criticalValue: "11.0",
+    reason: "",
+  };
+}
+
+function conditionPayload(op: string, value: string): Record<string, unknown> {
+  if (!op || value.trim() === "") return {};
+  return { op, value: Number(value) };
+}
+
+function formatCondition(condition: Record<string, unknown> | null | undefined): string {
+  if (!condition || Object.keys(condition).length === 0) return "—";
+  if (typeof condition.op === "string" && condition.value != null) {
+    return `${condition.op} ${condition.value}`;
+  }
+  if (condition.op === "outside" || condition.op === "inside") {
+    return `${condition.op} ${condition.min}~${condition.max}`;
+  }
+  return JSON.stringify(condition);
+}
+
+function MetricOverridesCard({ deviceId }: { deviceId: string }) {
+  const { can } = useAuth();
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState<OverrideDraft[] | null>(null);
+  const [notice, setNotice] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
+
+  const overrides = useQuery({
+    queryKey: ["device-overrides", deviceId],
+    queryFn: () => api.deviceOverrides(deviceId),
+    enabled: Boolean(deviceId),
+  });
+
+  const rows = draft ?? (overrides.data?.overrides ?? []).map(toOverrideDraft);
+
+  function patch(index: number, next: Partial<OverrideDraft>) {
+    setDraft(rows.map((row, current) => (current === index ? { ...row, ...next } : row)));
+    setNotice(null);
+  }
+
+  const save = useMutation({
+    mutationFn: () =>
+      api.replaceDeviceOverrides(
+        deviceId,
+        rows
+          .filter((row) => row.metricKey)
+          .map((row) => ({
+            metricKey: row.metricKey,
+            dimensionValue: row.dimensionValue.trim() || "",
+            enabled: true,
+            alertingEnabled: true,
+            warningCondition: conditionPayload(row.warningOp, row.warningValue),
+            criticalCondition: conditionPayload(row.criticalOp, row.criticalValue),
+            reason: row.reason.trim() || null,
+          })),
+      ),
+    onSuccess: (body) => {
+      setDraft(body.overrides.map(toOverrideDraft));
+      setNotice({
+        kind: "ok",
+        text: body.overrides.length
+          ? `Override ${body.overrides.length}건을 저장했다.`
+          : "장비 Override 를 비웠다. 프로파일 기본값을 쓴다.",
+      });
+      void queryClient.invalidateQueries({ queryKey: ["device-overrides", deviceId] });
+      void queryClient.invalidateQueries({ queryKey: ["device-health"] });
+    },
+    onError: (err) =>
+      setNotice({
+        kind: "warn",
+        text: err instanceof ApiError ? err.message : "저장에 실패했다",
+      }),
+  });
+
+  return (
+    <div className="card">
+      <h2>장비 Override</h2>
+      <p className="muted">프로파일보다 이 장비만 임계를 달리 할 때 쓴다. 비우면 프로파일 기본값이다.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>주의</th>
+            <th>장애</th>
+            <th>사유</th>
+            {can("configure") && <th></th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={`${row.metricKey}-${index}`}>
+              <td>
+                {can("configure") ? (
+                  <select
+                    value={row.metricKey}
+                    aria-label="Override Metric"
+                    onChange={(event) => patch(index, { metricKey: event.target.value })}
+                  >
+                    {OVERRIDE_METRICS.map((item) => (
+                      <option key={item.key} value={item.key}>
+                        {item.displayName} ({item.key})
+                      </option>
+                    ))}
+                    {row.metricKey && !OVERRIDE_METRICS.some((item) => item.key === row.metricKey) && (
+                      <option value={row.metricKey}>{row.metricKey}</option>
+                    )}
+                  </select>
+                ) : (
+                  row.metricKey
+                )}
+              </td>
+              <td>
+                {can("configure") ? (
+                  <div className="filter-row">
+                    <select
+                      value={row.warningOp}
+                      aria-label="주의 연산"
+                      onChange={(event) => patch(index, { warningOp: event.target.value })}
+                    >
+                      <option value="">없음</option>
+                      {NUMERIC_OPS.map((op) => (
+                        <option key={op} value={op}>
+                          {op}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      step="any"
+                      value={row.warningValue}
+                      aria-label="주의 임계"
+                      onChange={(event) => patch(index, { warningValue: event.target.value })}
+                    />
+                  </div>
+                ) : (
+                  formatCondition(overrides.data?.overrides[index]?.warningCondition)
+                )}
+              </td>
+              <td>
+                {can("configure") ? (
+                  <div className="filter-row">
+                    <select
+                      value={row.criticalOp}
+                      aria-label="장애 연산"
+                      onChange={(event) => patch(index, { criticalOp: event.target.value })}
+                    >
+                      <option value="">없음</option>
+                      {NUMERIC_OPS.map((op) => (
+                        <option key={op} value={op}>
+                          {op}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      step="any"
+                      value={row.criticalValue}
+                      aria-label="장애 임계"
+                      onChange={(event) => patch(index, { criticalValue: event.target.value })}
+                    />
+                  </div>
+                ) : (
+                  formatCondition(overrides.data?.overrides[index]?.criticalCondition)
+                )}
+              </td>
+              <td>
+                {can("configure") ? (
+                  <input
+                    type="text"
+                    value={row.reason}
+                    aria-label="Override 사유"
+                    onChange={(event) => patch(index, { reason: event.target.value })}
+                    placeholder="12V 배터리"
+                  />
+                ) : (
+                  row.reason || "—"
+                )}
+              </td>
+              {can("configure") && (
+                <td>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={() => {
+                      setDraft(rows.filter((_, current) => current !== index));
+                      setNotice(null);
+                    }}
+                  >
+                    삭제
+                  </button>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {rows.length === 0 && <p className="muted">장비 Override 가 없다. 프로파일 기본값을 쓴다.</p>}
+      {can("configure") && (
+        <div className="filter-row">
+          <button
+            className="btn ghost"
+            type="button"
+            onClick={() => {
+              setDraft([...rows, emptyOverrideDraft()]);
+              setNotice(null);
+            }}
+          >
+            행 추가
+          </button>
+          <button className="btn primary" type="button" disabled={save.isPending} onClick={() => save.mutate()}>
+            {save.isPending ? "저장 중" : "Override 저장"}
+          </button>
+        </div>
+      )}
+      {notice && <div className={notice.kind === "warn" ? "notice warn" : "notice"}>{notice.text}</div>}
+    </div>
+  );
+}
+
 const CATEGORY_TAB: Record<string, string> = {
   power: "power",
   timing: "timing",
@@ -660,6 +923,7 @@ export function StationDetailPage() {
       )}
 
       {activeTab === "settings" && <MaintenanceWindowsCard stationId={station.id} />}
+      {activeTab === "settings" && device && <MetricOverridesCard deviceId={device.id} />}
 
       {activeTab === "history" && (
         <div className="card">

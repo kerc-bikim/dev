@@ -29,5 +29,8 @@ Git 이 원본이다. `scripts/gen_grafana.py` 로 고치고 배포한다.
 관측소 상세 **설정**에서 수집을 끈다. 스케줄과 지금 수집이 멈추고 상태는 `DISABLED` 다.
 다시 켜면 다음 Tick 부터 모은다.
 
+**12V 배터리인데 24V 임계로 장애가 열린다.**  
+관측소 상세 **설정**에서 장비 Override 로 그 장비만 덮는다. 비우면 프로파일 기본값이다.
+
 **실장비 SOH JSON 이 가상 서버와 다르다.**  
 `inventory.md` 를 채우고 Fixture 를 `testdata/real-*.json` 에 넣는다. 파서가 실응답을 따른다.

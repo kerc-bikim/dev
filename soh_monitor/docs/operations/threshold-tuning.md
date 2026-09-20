@@ -19,7 +19,9 @@ GNSS Duty Cycle 장비는 `gnss.satellite_count` 로 장애를 열지 않는다.
 
 1. 3~5 관측소를 이틀 돌린다.
 2. 열린 장애 중 실장애가 아닌 것을 [`pilot-log.md`](pilot-log.md) 에 적는다.
-3. 오탐이면 hold·recovery·연속 횟수를 늘리거나 Override 를 쓴다.
+3. 오탐이면 hold·recovery·연속 횟수를 늘리거나 관측소 상세 **설정**의 장비 Override 를 쓴다.
 4. 누락이면 임계를 당기거나 빠진 Metric 을 켠다.
+
+장비 Override 는 그 장비만 덮는다. 비우면 프로파일 기본값이다. ADMIN 만 저장한다.
 
 기본값(계획서 8절): 통신 2/3회, 저장소 80/90%, Heartbeat 2/3회, Recording·Timing 은 지속시간으로 한 번 깜빡임을 걸러 낸다.
