@@ -65,33 +65,38 @@ function DataSourceUriField({ deviceId, value }: { deviceId: string; value: stri
   );
 }
 
-function ConnectionTestControl({ deviceId }: { deviceId: string }) {
+function ConnectionTestControl({
+  deviceId,
+  onResult,
+}: {
+  deviceId: string;
+  onResult: (result: { kind: "ok" | "warn"; text: string } | null) => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [controller, setController] = useState<AbortController | null>(null);
-  const [result, setResult] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
 
   async function run() {
     const abort = new AbortController();
     setController(abort);
     setBusy(true);
-    setResult(null);
+    onResult(null);
     try {
       const body = await api.testDeviceConnection(deviceId, abort.signal);
       if (body.queued) {
-        setResult({ kind: "ok", text: body.message || "지역 Edge 가 연결 시험을 수행한다" });
+        onResult({ kind: "ok", text: body.message || "지역 Edge 가 연결 시험을 수행한다" });
         return;
       }
       const latency = body.latencyMs != null ? ` · ${Math.round(body.latencyMs)}ms` : "";
       const identity = body.identity?.instrumentId ? ` · ${body.identity.instrumentId}` : "";
-      setResult({
+      onResult({
         kind: body.reachable ? "ok" : "warn",
         text: `${body.message}${latency}${identity}`,
       });
     } catch (err) {
       if ((err as Error).name === "AbortError") {
-        setResult({ kind: "warn", text: "연결 시험을 취소했다" });
+        onResult({ kind: "warn", text: "연결 시험을 취소했다" });
       } else {
-        setResult({
+        onResult({
           kind: "warn",
           text: err instanceof ApiError ? err.message : "연결 시험에 실패했다",
         });
@@ -103,17 +108,14 @@ function ConnectionTestControl({ deviceId }: { deviceId: string }) {
   }
 
   return (
-    <div className="connection-test">
-      <BusyButton
-        className="btn ghost"
-        busy={busy}
-        onCancel={() => controller?.abort()}
-        onClick={() => void run()}
-      >
-        연결 시험
-      </BusyButton>
-      {result && <div className={result.kind === "warn" ? "notice warn" : "notice"}>{result.text}</div>}
-    </div>
+    <BusyButton
+      className="btn ghost"
+      busy={busy}
+      onCancel={() => controller?.abort()}
+      onClick={() => void run()}
+    >
+      연결 시험
+    </BusyButton>
   );
 }
 
@@ -316,6 +318,7 @@ export function StationDetailPage() {
   const { can } = useAuth();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<StationTabId>("summary");
+  const [testNotice, setTestNotice] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
 
   const detail = useQuery({
     queryKey: ["station", stationId],
@@ -416,7 +419,7 @@ export function StationDetailPage() {
             <button className="btn ghost" type="button" onClick={() => pollNow.mutate(device.id)}>
               지금 수집
             </button>
-            <ConnectionTestControl deviceId={device.id} />
+            <ConnectionTestControl deviceId={device.id} onResult={setTestNotice} />
           </>
         )}
         <a
@@ -428,6 +431,9 @@ export function StationDetailPage() {
           Grafana에서 추세 보기
         </a>
       </div>
+      {testNotice && (
+        <div className={testNotice.kind === "warn" ? "notice warn" : "notice"}>{testNotice.text}</div>
+      )}
 
       <div className="tabs">
         {tabs.map((item) => (
