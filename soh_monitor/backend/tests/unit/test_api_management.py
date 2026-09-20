@@ -286,6 +286,12 @@ class Test기록계:
         assert channel["formula"] == "value = raw × scale + offset"
         assert channel["scale"] == 0.001
 
+        detail = client.get(f"/api/v1/stations/{station_id}")
+        assert detail.status_code == 200
+        device_body = detail.json()["devices"][0]
+        assert device_body["sensors"][0]["model"] == "Trillium"
+        assert device_body["externalSohChannels"][0]["name"] == "도어"
+
         overrides = client.put(
             f"/api/v1/devices/{device_id}/metric-overrides",
             json=[
@@ -313,6 +319,23 @@ class Test기록계:
             json=[{"metricKey": "power.input_voltage_v", "warningCondition": {"op": "<=", "value": 11.8}}],
         )
         assert forbidden.status_code == 403
+
+    def test_OPERATOR는_센서를_못_바꾼다(self, client):
+        login(client)
+        station_id = create_station(client)
+        device_id = create_device(client, station_id)
+        client.post("/api/v1/auth/logout")
+        login(client, "operator", OPERATOR_PASSWORD)
+        response = client.put(
+            f"/api/v1/devices/{device_id}/sensors",
+            json=[{"port": "A", "model": "Trillium", "axisCount": 3}],
+        )
+        assert response.status_code == 403
+        soh = client.put(
+            f"/api/v1/devices/{device_id}/external-soh-channels",
+            json=[{"channelNumber": 1, "name": "도어", "scale": 0.001, "offset": 0.0}],
+        )
+        assert soh.status_code == 403
 
     def test_데이터서버_URI를_바꾸고_비울_수_있다(self, client):
         login(client)

@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { ApiError, api, type EndpointDto, type MaintenanceWindowDto, type MetricOverrideDto } from "../../api/client";
+import { ApiError, api, type EndpointDto, type ExternalSohDto, type MaintenanceWindowDto, type MetricOverrideDto, type SensorDto } from "../../api/client";
 import { useAuth } from "../../auth/AuthProvider";
 import { BusyButton } from "../../components/BusyButton";
 import { SeverityBadge } from "../../components/SeverityBadge";
@@ -249,6 +249,62 @@ function ConnectionTestControl({
       onClick={() => void run()}
     >
       연결 시험
+    </BusyButton>
+  );
+}
+
+function SohPreviewControl({
+  deviceId,
+  onResult,
+}: {
+  deviceId: string;
+  onResult: (result: { kind: "ok" | "warn"; text: string; payload?: unknown } | null) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [controller, setController] = useState<AbortController | null>(null);
+
+  async function run() {
+    const abort = new AbortController();
+    setController(abort);
+    setBusy(true);
+    onResult(null);
+    try {
+      const body = await api.sohPreview(deviceId, abort.signal);
+      if (!body.success) {
+        onResult({
+          kind: "warn",
+          text: body.errorMessage || body.errorCode || "미리보기에 실패했다",
+        });
+        return;
+      }
+      onResult({
+        kind: "ok",
+        text: "Adapter 가 민감정보를 지운 SOH 원본이다. 없는 값은 정상으로 보이지 않는다.",
+        payload: body.payload,
+      });
+    } catch (err) {
+      if ((err as Error).name === "AbortError") {
+        onResult({ kind: "warn", text: "미리보기를 취소했다" });
+      } else {
+        onResult({
+          kind: "warn",
+          text: err instanceof ApiError ? err.message : "미리보기에 실패했다",
+        });
+      }
+    } finally {
+      setBusy(false);
+      setController(null);
+    }
+  }
+
+  return (
+    <BusyButton
+      className="btn ghost"
+      busy={busy}
+      onCancel={() => controller?.abort()}
+      onClick={() => void run()}
+    >
+      SOH 미리보기
     </BusyButton>
   );
 }
@@ -696,6 +752,314 @@ function MetricOverridesCard({ deviceId }: { deviceId: string }) {
   );
 }
 
+function SensorsHardwareCard({
+  deviceId,
+  sensors,
+  channels,
+}: {
+  deviceId: string;
+  sensors: SensorDto[];
+  channels: ExternalSohDto[];
+}) {
+  const { can } = useAuth();
+  const queryClient = useQueryClient();
+  const [sensorDraft, setSensorDraft] = useState(() =>
+    sensors.map((item) => ({
+      port: item.port,
+      model: item.model ?? "",
+      axisCount: item.axisCount,
+      axes: item.axes,
+    })),
+  );
+  const [channelDraft, setChannelDraft] = useState(() =>
+    channels.map((item) => ({
+      channelNumber: item.channelNumber,
+      name: item.name,
+      scale: item.scale,
+      offset: item.offset,
+    })),
+  );
+  const [notice, setNotice] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const savedSensors = await api.replaceSensors(
+        deviceId,
+        sensorDraft
+          .filter((item) => item.port.trim())
+          .map((item) => ({
+            port: item.port.trim(),
+            model: item.model.trim() || null,
+            axisCount: item.axisCount,
+            axes: item.axes.map((axis) => ({
+              axisCode: axis.axisCode,
+              sohChannel: axis.sohChannel,
+              warningThreshold: axis.warningThreshold,
+              criticalThreshold: axis.criticalThreshold,
+              unit: axis.unit,
+            })),
+          })),
+      );
+      const savedChannels = await api.replaceExternalSoh(
+        deviceId,
+        channelDraft
+          .filter((item) => item.name.trim())
+          .map((item) => ({
+            channelNumber: item.channelNumber,
+            name: item.name.trim(),
+            scale: item.scale,
+            offset: item.offset,
+          })),
+      );
+      return { savedSensors, savedChannels };
+    },
+    onSuccess: (body) => {
+      setSensorDraft(
+        body.savedSensors.sensors.map((item) => ({
+          port: item.port,
+          model: item.model ?? "",
+          axisCount: item.axisCount,
+          axes: item.axes,
+        })),
+      );
+      setChannelDraft(
+        body.savedChannels.channels.map((item) => ({
+          channelNumber: item.channelNumber,
+          name: item.name,
+          scale: item.scale,
+          offset: item.offset,
+        })),
+      );
+      setNotice({ kind: "ok", text: "센서와 외부 SOH 를 저장했다." });
+      void queryClient.invalidateQueries({ queryKey: ["station"] });
+      void queryClient.invalidateQueries({ queryKey: ["device-capabilities"] });
+    },
+    onError: (err) =>
+      setNotice({
+        kind: "warn",
+        text: err instanceof ApiError ? err.message : "저장에 실패했다",
+      }),
+  });
+
+  return (
+    <div className="card">
+      <h2>센서·외부 SOH</h2>
+      <p className="muted">등록 뒤에도 센서 교체와 외부 채널을 맞춘다. 축을 생략하면 U/V/W 기본이다.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>포트</th>
+            <th>모델</th>
+            <th>축</th>
+            {can("configure") && <th></th>}
+          </tr>
+        </thead>
+        <tbody>
+          {sensorDraft.map((row, index) => (
+            <tr key={`sensor-${index}`}>
+              <td>
+                {can("configure") ? (
+                  <input
+                    type="text"
+                    value={row.port}
+                    aria-label="센서 포트"
+                    onChange={(event) => {
+                      setNotice(null);
+                      setSensorDraft((rows) =>
+                        rows.map((item, current) =>
+                          current === index ? { ...item, port: event.target.value } : item,
+                        ),
+                      );
+                    }}
+                  />
+                ) : (
+                  row.port
+                )}
+              </td>
+              <td>
+                {can("configure") ? (
+                  <input
+                    type="text"
+                    value={row.model}
+                    aria-label="센서 모델"
+                    onChange={(event) => {
+                      setNotice(null);
+                      setSensorDraft((rows) =>
+                        rows.map((item, current) =>
+                          current === index ? { ...item, model: event.target.value } : item,
+                        ),
+                      );
+                    }}
+                  />
+                ) : (
+                  row.model || "—"
+                )}
+              </td>
+              <td>{row.axisCount}</td>
+              {can("configure") && (
+                <td>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={() => {
+                      setNotice(null);
+                      setSensorDraft((rows) => rows.filter((_, current) => current !== index));
+                    }}
+                  >
+                    삭제
+                  </button>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {sensorDraft.length === 0 && <p className="muted">등록된 센서가 없다.</p>}
+      <table>
+        <thead>
+          <tr>
+            <th>채널</th>
+            <th>이름</th>
+            <th>scale</th>
+            <th>offset</th>
+            {can("configure") && <th></th>}
+          </tr>
+        </thead>
+        <tbody>
+          {channelDraft.map((row, index) => (
+            <tr key={`soh-${index}`}>
+              <td>
+                {can("configure") ? (
+                  <input
+                    type="number"
+                    value={row.channelNumber}
+                    aria-label="외부 SOH 채널"
+                    onChange={(event) => {
+                      setNotice(null);
+                      setChannelDraft((rows) =>
+                        rows.map((item, current) =>
+                          current === index ? { ...item, channelNumber: Number(event.target.value) } : item,
+                        ),
+                      );
+                    }}
+                  />
+                ) : (
+                  row.channelNumber
+                )}
+              </td>
+              <td>
+                {can("configure") ? (
+                  <input
+                    type="text"
+                    value={row.name}
+                    aria-label="외부 SOH 이름"
+                    onChange={(event) => {
+                      setNotice(null);
+                      setChannelDraft((rows) =>
+                        rows.map((item, current) =>
+                          current === index ? { ...item, name: event.target.value } : item,
+                        ),
+                      );
+                    }}
+                  />
+                ) : (
+                  row.name
+                )}
+              </td>
+              <td>
+                {can("configure") ? (
+                  <input
+                    type="number"
+                    step="any"
+                    value={row.scale}
+                    aria-label="외부 SOH scale"
+                    onChange={(event) => {
+                      setNotice(null);
+                      setChannelDraft((rows) =>
+                        rows.map((item, current) =>
+                          current === index ? { ...item, scale: Number(event.target.value) } : item,
+                        ),
+                      );
+                    }}
+                  />
+                ) : (
+                  row.scale
+                )}
+              </td>
+              <td>
+                {can("configure") ? (
+                  <input
+                    type="number"
+                    step="any"
+                    value={row.offset}
+                    aria-label="외부 SOH offset"
+                    onChange={(event) => {
+                      setNotice(null);
+                      setChannelDraft((rows) =>
+                        rows.map((item, current) =>
+                          current === index ? { ...item, offset: Number(event.target.value) } : item,
+                        ),
+                      );
+                    }}
+                  />
+                ) : (
+                  row.offset
+                )}
+              </td>
+              {can("configure") && (
+                <td>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={() => {
+                      setNotice(null);
+                      setChannelDraft((rows) => rows.filter((_, current) => current !== index));
+                    }}
+                  >
+                    삭제
+                  </button>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {channelDraft.length === 0 && <p className="muted">외부 SOH 채널이 없다. 변환식은 value = raw × scale + offset 이다.</p>}
+      {can("configure") && (
+        <div className="filter-row">
+          <button
+            className="btn ghost"
+            type="button"
+            onClick={() => {
+              setNotice(null);
+              setSensorDraft((rows) => [...rows, { port: rows.length ? "B" : "A", model: "", axisCount: 3, axes: [] }]);
+            }}
+          >
+            센서 추가
+          </button>
+          <button
+            className="btn ghost"
+            type="button"
+            onClick={() => {
+              setNotice(null);
+              setChannelDraft((rows) => [
+                ...rows,
+                { channelNumber: (rows[rows.length - 1]?.channelNumber ?? 0) + 1, name: "", scale: 0.001, offset: 0 },
+              ]);
+            }}
+          >
+            채널 추가
+          </button>
+          <button className="btn primary" type="button" disabled={save.isPending} onClick={() => save.mutate()}>
+            {save.isPending ? "저장 중" : "센서·SOH 저장"}
+          </button>
+        </div>
+      )}
+      {notice && <div className={notice.kind === "warn" ? "notice warn" : "notice"}>{notice.text}</div>}
+    </div>
+  );
+}
+
 const CATEGORY_TAB: Record<string, string> = {
   power: "power",
   timing: "timing",
@@ -715,6 +1079,7 @@ export function StationDetailPage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<StationTabId>("summary");
   const [testNotice, setTestNotice] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
+  const [preview, setPreview] = useState<{ kind: "ok" | "warn"; text: string; payload?: unknown } | null>(null);
 
   const detail = useQuery({
     queryKey: ["station", stationId],
@@ -825,6 +1190,7 @@ export function StationDetailPage() {
               지금 수집
             </button>
             <ConnectionTestControl deviceId={device.id} onResult={setTestNotice} />
+            <SohPreviewControl deviceId={device.id} onResult={setPreview} />
           </>
         )}
         <a
@@ -838,6 +1204,12 @@ export function StationDetailPage() {
       </div>
       {testNotice && (
         <div className={testNotice.kind === "warn" ? "notice warn" : "notice"}>{testNotice.text}</div>
+      )}
+      {preview && (
+        <div className={preview.kind === "warn" ? "notice warn" : "notice"}>{preview.text}</div>
+      )}
+      {preview?.payload != null && (
+        <pre className="soh-preview">{JSON.stringify(preview.payload, null, 2)}</pre>
       )}
 
       <div className="tabs">
@@ -924,6 +1296,14 @@ export function StationDetailPage() {
 
       {activeTab === "settings" && <MaintenanceWindowsCard stationId={station.id} />}
       {activeTab === "settings" && device && <MetricOverridesCard deviceId={device.id} />}
+      {activeTab === "settings" && device && (
+        <SensorsHardwareCard
+          key={`${device.id}-hardware`}
+          deviceId={device.id}
+          sensors={device.sensors ?? []}
+          channels={device.externalSohChannels ?? []}
+        />
+      )}
 
       {activeTab === "history" && (
         <div className="card">

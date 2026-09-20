@@ -575,10 +575,15 @@ export const api = {
       body: JSON.stringify(body),
       signal,
     }),
-  sohPreview: (deviceId: string) =>
-    request<{ success: boolean; payload: unknown; errorMessage: string | null }>(
-      `/api/v1/devices/${deviceId}/soh-preview`,
-    ),
+  sohPreview: (deviceId: string, signal?: AbortSignal) =>
+    request<{
+      deviceId: string;
+      success: boolean;
+      httpStatus: number | null;
+      errorCode: string | null;
+      errorMessage: string | null;
+      payload: unknown;
+    }>(`/api/v1/devices/${deviceId}/soh-preview`, { signal }),
   pollNow: (deviceId: string) =>
     request<{ accepted: boolean }>(`/api/v1/devices/${deviceId}/poll-now`, { method: "POST" }),
   pollRuns: (deviceId: string) =>
