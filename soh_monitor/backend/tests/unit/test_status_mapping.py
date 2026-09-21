@@ -64,6 +64,14 @@ def test_공백이_섞인_문자열도_정규화한다(mappings):
     assert mappings.resolve(CTR, "timing.status", "time   ok").severity is Severity.OK
 
 
+def test_timeOK는_time_ok로_읽는다(mappings):
+    """연속 대문자 OK 를 글자 단위로 쪼개면 time o k 가 되어 표를 못 찾는다."""
+    from app.metrics.status import status_lookup_keys
+
+    assert "time ok" in status_lookup_keys("http://nmx.ca/05/soh/timing/timestatus/timeOK")
+    assert mappings.resolve(CTR, "timing.status", "timeOK").mapped is True
+
+
 def test_모르는_문자열은_UNKNOWN이며_원문을_남긴다(mappings):
     result = mappings.resolve(CTR, "timing.status", "quantum drift")
     assert result.severity is Severity.UNKNOWN

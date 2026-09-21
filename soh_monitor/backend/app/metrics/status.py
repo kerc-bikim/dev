@@ -17,7 +17,7 @@ from app.domain.enums import Severity
 from app.metrics.catalog import CONTRACTS_DIR, CatalogError, load_catalog
 
 STATUS_MAPPING_PATH = CONTRACTS_DIR / "metrics" / "status-mappings.yaml"
-_CAMEL_SPLIT = re.compile(r"(?<!^)([A-Z])")
+_CAMEL_SPLIT = re.compile(r"([a-z0-9])([A-Z])")
 
 
 def status_lookup_keys(raw: str) -> tuple[str, ...]:
@@ -38,7 +38,7 @@ def status_lookup_keys(raw: str) -> tuple[str, ...]:
     add(text)
     tail = text.rstrip("/").rsplit("/", 1)[-1] if "://" in text else text
     add(tail)
-    add(_CAMEL_SPLIT.sub(r" \1", tail))
+    add(_CAMEL_SPLIT.sub(r"\1 \2", tail))
     return tuple(candidates)
 
 
