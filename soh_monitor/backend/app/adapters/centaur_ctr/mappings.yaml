@@ -1,6 +1,9 @@
 # Centaur CTR 원본 경로 → 표준 Metric.
 # 내장 mapper 가 기본 경로를 처리한다. 여기 행은 펌웨어가 다른 이름을 쓸 때
-# 코드 분기 없이 흡수하기 위한 별칭이다. 실응답으로 경로가 확정되면 행만 고친다.
+# 코드 분기 없이 흡수하기 위한 별칭이다.
+#
+# 실응답 4.9.2 (Centaur-6): 봉투는 `{ "<instrumentId>": { "<channel>": {value,time,units} } }`.
+# Mass Position 은 `digitizer/sensor/soh/voltage#_1..3` (µV). 내장 mapper 가 읽는다.
 adapter_key: nanometrics.centaur.ctr
 adapter_version: "1.0"
 rules:

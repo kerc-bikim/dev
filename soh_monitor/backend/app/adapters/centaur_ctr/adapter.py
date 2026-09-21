@@ -30,7 +30,7 @@ from app.net.ssrf import is_allowed_host
 
 from . import capabilities as capability_detector
 from .client import CentaurClient, build_base_url
-from .mapper import map_soh, unknown_channels
+from .mapper import map_soh, mass_position_source_names, unknown_channels
 from .parser import ParsedSoh, ParseError, parse_soh
 
 MANIFEST_PATH = Path(__file__).with_name("manifest.json")
@@ -176,9 +176,7 @@ class CentaurCtrAdapter(RecorderAdapter):
             if (
                 soh.has(f"digitizer/sensor/status#_{port}")
                 or soh.has(f"sensor/controlLines/state#_{port}")
-                or any(
-                    soh.has(f"digitizer/sensor/massPosition#_{port}_{axis}") for axis in (1, 2, 3)
-                )
+                or any(soh.has(name) for axis in (1, 2, 3) for name in mass_position_source_names(int(port), axis))
             ):
                 ports.append(name)
 

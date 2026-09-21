@@ -42,7 +42,8 @@ def soh_channels(device: VirtualDevice, moment: datetime) -> dict[str, Any]:
     """SOH 채널 이름 → 원값.
 
     채널 이름의 근거는 Centaur User Guide 17935R10 7.4 절 SOH channels 표다.
-    massPosition 채널 이름만 추정이며 M-1.3 에서 확정한다 (envelope.py 주석 참고).
+    massPosition 채널 이름은 실응답 4.9.2 기준 `digitizer/sensor/soh/voltage#_n` 이다.
+    구형 Fixture 의 `massPosition#_p_a` 도 Adapter 가 읽는다.
     """
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=timezone.utc)
@@ -78,11 +79,11 @@ def soh_channels(device: VirtualDevice, moment: datetime) -> dict[str, Any]:
         # Duty cycle 운용을 흉내내 주기적으로 위성 수가 줄어드는 구간을 만든다.
         # 이 구간만으로 장애를 만들지 않는 판정을 시험할 수 있다.
         channels["gps/numberOfSatellites"] = max(0, int(9 + _wave(seed, moment, 3600, 3)))
-        channels["instrument/earthLocation"] = {
-            "latitude": round(37.56 + (seed % 100) / 1000, 5),
-            "longitude": round(126.98 + (seed % 97) / 1000, 5),
-            "elevation": round(45.0 + (seed % 40), 1),
-        }
+        channels["gps/status"] = "http://nmx.ca/11/soh/gps/status/locked"
+        channels["instrument/earthLocation"] = (
+            f"{37.56 + (seed % 100) / 1000:.5f}N {126.98 + (seed % 97) / 1000:.5f}E "
+            f"{45.0 + (seed % 40):.1f}m"
+        )
 
     # ---------------------------------------------------------------- 저장소
     # 사용률이 올라가다 wrapping 되는 순환.
@@ -107,7 +108,7 @@ def soh_channels(device: VirtualDevice, moment: datetime) -> dict[str, Any]:
             # Mass Position 은 매우 느리게 드리프트한다. 갑자기 기울어도 한동안 정상으로
             # 보이는 실제 특성을 반영한다.
             drift = _wave(seed + port * 7 + axis, moment, 21600, 0.35)
-            channels[f"digitizer/sensor/massPosition#_{port}_{axis}"] = int(drift * 1_000_000)
+            channels[f"digitizer/sensor/soh/voltage#_{port * 3 + axis}"] = int(drift * 1_000_000)
 
     # ---------------------------------------------------------------- 외부 SOH
     for channel in range(1, device.effective_external_soh_channels + 1):
@@ -135,6 +136,7 @@ def _apply_payload_scenario(
         channels["timing/timeError"] = 0
         channels["timing/timeUncertainty"] = 850_000
         channels["gps/numberOfSatellites"] = 0
+        channels["gps/status"] = "http://nmx.ca/11/soh/gps/status/unlocked"
         channels["timing/lastLockTime"] = _iso(moment - timedelta(hours=6))
         channels["instrumentStatus"] = "warning"
 
@@ -148,8 +150,8 @@ def _apply_payload_scenario(
         channels[f"digitizer/sensor/status#_{port}"] = "error"
         channels["instrumentStatus"] = "error"
         if device.reports_mass_position:
-            channels[f"digitizer/sensor/massPosition#_{port}_1"] = 3_800_000
-            channels[f"digitizer/sensor/massPosition#_{port}_2"] = -4_100_000
+            channels[f"digitizer/sensor/soh/voltage#_{port * 3 + 1}"] = 3_800_000
+            channels[f"digitizer/sensor/soh/voltage#_{port * 3 + 2}"] = -4_100_000
 
     elif scenario is PayloadScenario.STORE_FULL:
         channels["controller/store/storePercentageUsed"] = 97.4

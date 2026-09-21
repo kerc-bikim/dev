@@ -70,7 +70,7 @@ def create_app(registry: DeviceRegistry | None = None) -> FastAPI:
     app = FastAPI(
         title="가상 Centaur CTR",
         description=(
-            "시험용 가상 기록계. 응답 형태는 실장비 확보 전까지 추정이며 envelope.py 에만 있다."
+            "시험용 가상 기록계. 4.9.2 실응답 봉투는 envelope.py 의 INSTRUMENT_MAP 이다."
         ),
         docs_url=None,
         redoc_url=None,

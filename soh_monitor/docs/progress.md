@@ -4,10 +4,10 @@
 
 | 마일스톤 | 상태 | 비고 |
 |----------|------|------|
-| M-1 장비·환경 조사 | 대기 | 양식만 준비됨 ([`inventory.md`](inventory.md)). 실장비 접근이 필요하다 |
+| M-1 장비·환경 조사 | 부분 | Centaur-6 4.9.2 실응답 2건·Mass Position 경로 확정. 3채널·SD 미장착·인증은 미확보 |
 | M0 저장소 골격·개발환경 | 완료 | Docker 빌드는 이 환경에 Docker 가 없어 미검증 |
 | M1 계약 확정 | 완료 | 카탈로그·상태 Mapping·Capability·Adapter/Edge Schema·DB 스키마 |
-| M2 Centaur CTR Adapter | 완료(실장비 미검증) | 가상 서버 + Adapter. 응답 형태는 실응답으로 확정해야 한다 |
+| M2 Centaur CTR Adapter | 완료(6채널 4.9.2 실응답 반영) | 봉투 `instrument_map`, Mass Position `soh/voltage#_n`. 3채널·다른 펌웨어는 미검증 |
 | M3 Direct Collector | 완료(InfluxDB 미검증) | 스케줄러·Lease·재시도·적재. 실제 InfluxDB 연결은 Docker 환경에서 확인 필요 |
 | M4 상태 판정 엔진 | 완료 | 임계값·Hysteresis·Incident 생명주기·유지보수 억제 |
 | M5 관리 API | 완료 | 인증·CRUD·연결 시험·CSV·감사. Edge 등록 API 는 M7 |
@@ -79,29 +79,29 @@ Docker 가 있는 환경에서 `make images` 와 `make dev` 로 확인해야 한
 |----|------|------|------|
 | M2.1 | 가상 Centaur CTR 서버 | 완료 | `mock/centaur_mock/`. 본문 시나리오 15종 + 통신 시나리오 12종, 제어 API |
 | M2.2 | HTTP Client 와 실패 분류 | 완료 | DNS·연결거부·연결/응답 Timeout·HTTP·인증·본문 오류를 서로 다른 코드로 |
-| M2.3 | SOH Parser | 완료 | 응답 형태 3종(channels 배열 / soh 객체 / 평평한 객체) 관용 처리 |
-| M2.4 | 표준 Metric Mapper | 완료 | 단위 인식 변환(µV·mV·m°C), SD 미장착 −1 → 값 없음, 축 W/V/U 매핑 |
-| M2.5 | 펌웨어별 Mapping | 완료 | YAML 표 + `adapter_metric_mappings` Seed. 별칭 경로는 펌웨어 범위로 흡수. 실경로는 M-1.2 |
+| M2.3 | SOH Parser | 완료 | 응답 형태 4종. 4.9.2 실응답은 `{ "<instrumentId>": {채널맵} }` |
+| M2.4 | 표준 Metric Mapper | 완료 | Mass Position `digitizer/sensor/soh/voltage#_1..3`(µV, 음수 허용). URI 단위·상태. `gps/status=unlocked` 는 GNSS 장애로 보지 않음 |
+| M2.5 | 펌웨어별 Mapping | 완료 | YAML 표 + `adapter_metric_mappings` Seed. 4.9.2 실경로는 내장 mapper |
 | M2.6 | Capability 자동 탐지 | 완료 | 3채널 Sensor B → UNSUPPORTED, 슬롯 없음/카드 없음 구분 |
 | M2.7 | Probe | 완료 | Instrument ID 로 채널 수·시리얼 추정. 모델명은 SOH API 에 없어 비워 둔다 |
 | M2.8 | 민감정보 제거 | 완료 | `redact()` 재귀 처리. 수집 결과에 비밀값 없음을 시험으로 확인 |
 | M2.9 | Manifest 등록 | 완료 | 파일 원본으로 검증해 Registry 에 등록. 화면 선택 목록에 노출 |
-| M2.10 | Fixture 회귀 시험 | 완료 | synthetic 10종. `real-` 파일이 들어오면 기준선 대조 시험이 켜진다 |
+| M2.10 | Fixture 회귀 시험 | 완료 | synthetic 10종 + `real-ctr6-normal.json`·`real-ctr6-daytime.json`. 기준선 대조는 운영 채널을 제외한다 |
 | M2.11 | 데이터 연속성 Adapter | 완료 | `adapters/data_availability/`. URI 없으면 UNSUPPORTED. HTTP/FDSN JSON |
 | M2.12 | SeedLink INFO STREAMS | 완료 | HELLO + SLINFO XML. `seedlink://host:port/NET_STA`. DATA 스트림은 열지 않음 |
 
-### 응답 형식이 아직 추측인 부분
+### 응답 형식 (펌웨어 4.9.2 Centaur-6 실응답으로 확정)
 
-매뉴얼 17935R10 7.4절은 URI·파라미터·SOH 채널 이름까지만 명시하고 **응답 본문 예시가 없다.**
-그래서 다음 두 가지가 추측이며, 각각 한 곳에 갇혀 있다.
+매뉴얼 17935R10 7.4절에는 응답 본문 예시가 없다. 아래는 `testdata/real-ctr6-*.json` 기준이다.
 
-| 항목 | 갇혀 있는 위치 | 확정 방법 |
-|------|----------------|-----------|
-| JSON 응답 봉투 형태 | `mock/centaur_mock/envelope.py` | M-1.2 실응답 |
-| Mass Position 채널 이름 | 같은 파일의 `UNITS` 주석 + `mapper.py` | M-1.3 실응답 |
+| 항목 | 확정 값 | 위치 |
+|------|---------|------|
+| JSON 응답 봉투 | `{ "<instrumentId>": { "<channel>": {value, time, units?} } }` | `parser.py` 형태 4, `envelope.py` `INSTRUMENT_MAP` |
+| Mass Position | `digitizer/sensor/soh/voltage#_1..3` (µV, Sensor A = W/V/U). Sensor B 전압은 이 스냅샷에 없음 | `mapper.mass_position_source_names` |
+| 상태·단위 | Nanometrics URI (`.../timeOK`, `.../units/microvolts`) | `status.status_lookup_keys`, `_unit_token` |
+| `gps/status=unlocked` | timeOK·fineLock·위성 8–9기와 함께 온다. GNSS 장애로 매핑하지 않는다 | `_ACK_UNMAPPED_CHANNELS` |
 
-파서가 세 형태를 모두 읽으므로 실제 형태가 그 중 하나면 수정이 필요 없고, 변형이면
-`envelope.py` 와 `parser.py` 만 고친다.
+구형 Fixture 의 `channels` 배열·`soh` 객체·평평한 객체·`massPosition#_p_a` 도 읽는다.
 
 ---
 

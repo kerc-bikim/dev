@@ -58,12 +58,12 @@
       "value": 8,
       "units": null
     },
+    "gps/status": {
+      "value": "http://nmx.ca/11/soh/gps/status/locked",
+      "units": null
+    },
     "instrument/earthLocation": {
-      "value": {
-        "latitude": 37.614,
-        "longitude": 127.007,
-        "elevation": 79.0
-      },
+      "value": "37.61400N 127.00700E 79.0m",
       "units": null
     },
     "controller/store/storePercentageUsed": {
@@ -90,15 +90,15 @@
       "value": "expected",
       "units": null
     },
-    "digitizer/sensor/massPosition#_0_1": {
+    "digitizer/sensor/soh/voltage#_1": {
       "value": 97646,
       "units": "microVolts"
     },
-    "digitizer/sensor/massPosition#_0_2": {
+    "digitizer/sensor/soh/voltage#_2": {
       "value": 95533,
       "units": "microVolts"
     },
-    "digitizer/sensor/massPosition#_0_3": {
+    "digitizer/sensor/soh/voltage#_3": {
       "value": 93415,
       "units": "microVolts"
     },

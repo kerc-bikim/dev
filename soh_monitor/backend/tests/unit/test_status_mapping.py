@@ -40,7 +40,12 @@ def mappings():
         ("storage.recording_status", "not enough space", Severity.CRITICAL),
         ("storage.sd_status", "not present", Severity.WARNING),
         ("storage.sd_status", "error", Severity.CRITICAL),
-        ("archive.continuous_status", "disabled", Severity.DISABLED),
+        ("device.overall_status", "http://nmx.ca/06/terms/instrumentStatus/ok", Severity.OK),
+        ("timing.status", "http://nmx.ca/05/soh/timing/timestatus/timeOK", Severity.OK),
+        ("timing.phase_lock", "http://nmx.ca/04/soh/timing/phaseLock/fineLock", Severity.OK),
+        ("sensor.status", "http://nmx.ca/12/sensor/status/ok", Severity.OK),
+        ("storage.recording_status", "http://nmx.ca/06/storeStatus/recording", Severity.OK),
+        ("archive.event_status", "http://nmx.ca/11/status/disabled", Severity.DISABLED),
         ("archive.continuous_status", "media full", Severity.CRITICAL),
     ],
 )

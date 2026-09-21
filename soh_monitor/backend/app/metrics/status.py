@@ -7,6 +7,7 @@ Mapping 을 보강한다.
 from __future__ import annotations
 
 import functools
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -16,6 +17,29 @@ from app.domain.enums import Severity
 from app.metrics.catalog import CONTRACTS_DIR, CatalogError, load_catalog
 
 STATUS_MAPPING_PATH = CONTRACTS_DIR / "metrics" / "status-mappings.yaml"
+_CAMEL_SPLIT = re.compile(r"(?<!^)([A-Z])")
+
+
+def status_lookup_keys(raw: str) -> tuple[str, ...]:
+    """URI·camelCase 실응답을 표의 짧은 문자열과 맞춘다.
+
+    `http://nmx.ca/05/soh/timing/timestatus/timeOK` → `time ok`
+    """
+    text = raw.strip()
+    if not text:
+        return ()
+    candidates: list[str] = []
+
+    def add(value: str) -> None:
+        normalized = " ".join(value.strip().lower().split())
+        if normalized and normalized not in candidates:
+            candidates.append(normalized)
+
+    add(text)
+    tail = text.rstrip("/").rsplit("/", 1)[-1] if "://" in text else text
+    add(tail)
+    add(_CAMEL_SPLIT.sub(r" \1", tail))
+    return tuple(candidates)
 
 
 @dataclass(frozen=True)
@@ -48,13 +72,10 @@ class StatusMappings:
             return StatusResolution(Severity.UNKNOWN, str(raw_value), mapped=False)
 
         text = str(raw_value)
-        normalized = " ".join(text.strip().lower().split())
-        if not normalized:
-            return StatusResolution(Severity.UNKNOWN, text, mapped=False)
-
         table = self.text_maps.get(adapter_key, {}).get(metric_key, {})
-        if normalized in table:
-            return StatusResolution(table[normalized], text, mapped=True)
+        for candidate in status_lookup_keys(text):
+            if candidate in table:
+                return StatusResolution(table[candidate], text, mapped=True)
         return StatusResolution(Severity.UNKNOWN, text, mapped=False)
 
     def known_metrics(self, adapter_key: str) -> tuple[str, ...]:

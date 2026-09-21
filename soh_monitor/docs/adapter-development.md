@@ -102,8 +102,9 @@ Timeout 은 실 HTTP 로 확인한다.
 드러난다. 그래서 응답 형식의 권위는 `testdata/real-*.json` 이다. 실장비 Fixture 가 하나라도
 들어오면 `test_실응답과_가상서버_기준선이_어긋나지_않는다` 가 켜져 채널 집합을 대조한다.
 
-Centaur CTR 의 경우 매뉴얼에 응답 본문 예시가 없어 형태 추측이 `mock/centaur_mock/envelope.py`
-한 파일에 갇혀 있다. 실응답을 확보하면 그 파일과 `parser.py` 만 고친다.
+Centaur CTR 펌웨어 4.9.2 실응답은 `{ "<instrumentId>": {채널맵} }` 이다. 권위 파일은
+`testdata/real-ctr6-*.json`. 가상 서버는 같은 형태를 `envelope.py` 의 `INSTRUMENT_MAP` 으로
+낸다. 다른 펌웨어 봉투가 나오면 `parser.py` 와 `envelope.py` 만 고친다.
 
 ## 데이터 연속성 검사
 

@@ -1,0 +1,572 @@
+{
+  "centaur-6__0000": {
+    "controller/ppc/memory/total": {
+      "value": "64880640",
+      "time": "2026-09-21T06:05:00.514000000Z",
+      "units": "http://nmx.ca/05/units/bytes"
+    },
+    "controller/apollo/version": {
+      "value": "4.9.2",
+      "time": "2026-09-21T06:05:00.514000000Z"
+    },
+    "systemSoftwareVersion": {
+      "value": "4.9.2",
+      "time": "2026-09-21T06:05:00.514000000Z"
+    },
+    "controller/ppc/memory/free": {
+      "value": "12461056",
+      "time": "2026-09-21T06:05:00.514000000Z",
+      "units": "http://nmx.ca/05/units/bytes"
+    },
+    "controller/numberPackets": {
+      "value": "789657",
+      "time": "2026-09-21T06:05:00.514000000Z"
+    },
+    "digitizer/sensor/soh/voltage#_3": {
+      "value": "-305799",
+      "time": "2026-09-21T06:06:00.000000000Z",
+      "units": "http://nmx.ca/05/units/microvolts"
+    },
+    "gps/status": {
+      "value": "http://nmx.ca/11/soh/gps/status/unlocked",
+      "time": "2026-09-21T06:06:00.000000000Z"
+    },
+    "timing/lastLockTime": {
+      "value": "2026-09-21 06:05:00.000000000",
+      "time": "2026-09-21T06:06:00.000000000Z"
+    },
+    "powerSupply/voltage": {
+      "value": "1.3436218709999999E1",
+      "time": "2026-09-21T06:06:00.000000000Z",
+      "units": "http://nmx.ca/05/units/volts"
+    },
+    "timing/phaseLock": {
+      "value": "http://nmx.ca/04/soh/timing/phaseLock/fineLock",
+      "time": "2026-09-21T06:06:00.000000000Z"
+    },
+    "system/current": {
+      "value": "1.68614454328704E-1",
+      "time": "2026-09-21T06:06:00.000000000Z",
+      "units": "http://nmx.ca/05/units/amps"
+    },
+    "timing/timeError": {
+      "value": "0",
+      "time": "2026-09-21T06:06:00.000000000Z",
+      "units": "http://nmx.ca/05/units/nanoseconds"
+    },
+    "digitizer/sensor/status#_0": {
+      "value": "http://nmx.ca/12/sensor/status/ok",
+      "time": "2026-09-21T06:06:00.000000000Z"
+    },
+    "instrument/earthLocation": {
+      "value": "37.97N 124.64E 38m",
+      "time": "2026-09-21T06:06:00.000000000Z"
+    },
+    "digitizer/sensor/soh/voltage#_2": {
+      "value": "167339",
+      "time": "2026-09-21T06:06:00.000000000Z",
+      "units": "http://nmx.ca/05/units/microvolts"
+    },
+    "timing/dacCount": {
+      "value": "7927",
+      "time": "2026-09-21T06:06:00.000000000Z"
+    },
+    "timing/timeQuality": {
+      "value": "100",
+      "time": "2026-09-21T06:06:00.000000000Z",
+      "units": "http://nmx.ca/06/units/percentage"
+    },
+    "sensor/controlLines/state#_0": {
+      "value": "http://nmx.ca/09/sensor/controlLines/state/expected",
+      "time": "2026-09-21T06:06:00.000000000Z"
+    },
+    "timing/timeUncertainty": {
+      "value": "100",
+      "time": "2026-09-21T06:06:00.000000000Z",
+      "units": "http://nmx.ca/05/units/nanoseconds"
+    },
+    "powersupervisor/state": {
+      "value": "http://nmx.ca/12/powersupervisor/state/on",
+      "time": "2026-09-21T06:05:00.002000000Z"
+    },
+    "digitizer/sensor/status#_1": {
+      "value": "http://nmx.ca/12/sensor/status/ok",
+      "time": "2026-09-21T06:06:00.000000000Z"
+    },
+    "sensor/controlLines/state#_1": {
+      "value": "http://nmx.ca/09/sensor/controlLines/state/expected",
+      "time": "2026-09-21T06:06:00.000000000Z"
+    },
+    "instrument/systemInfo/firmwareStatus": {
+      "value": "http://nmx.ca/07/firmwareStatus/ok",
+      "time": "2026-09-21T06:06:00.000000000Z"
+    },
+    "temperature": {
+      "value": "4.1593E1",
+      "time": "2026-09-21T06:06:00.000000000Z",
+      "units": "http://nmx.ca/05/units/celsiusDegrees"
+    },
+    "digitizer/sensor/soh/voltage#_1": {
+      "value": "288095",
+      "time": "2026-09-21T06:06:00.000000000Z",
+      "units": "http://nmx.ca/05/units/microvolts"
+    },
+    "gps/numberOfSatellites": {
+      "value": "8",
+      "time": "2026-09-21T06:06:00.000000000Z"
+    },
+    "timeStatus": {
+      "value": "http://nmx.ca/05/soh/timing/timestatus/timeOK",
+      "time": "2026-09-21T06:06:00.000000000Z"
+    },
+    "externalSoh/voltage#_2": {
+      "value": "465773",
+      "time": "2026-09-21T06:06:00.000000000Z",
+      "units": "http://nmx.ca/05/units/microvolts"
+    },
+    "externalSoh/voltage#_1": {
+      "value": "465002",
+      "time": "2026-09-21T06:06:00.000000000Z",
+      "units": "http://nmx.ca/05/units/microvolts"
+    },
+    "externalSoh/voltage#_3": {
+      "value": "464959",
+      "time": "2026-09-21T06:06:00.000000000Z",
+      "units": "http://nmx.ca/05/units/microvolts"
+    },
+    "media/freeSpace/removableSD": {
+      "value": "26934509568",
+      "time": "2026-09-21T06:05:00.002000000Z",
+      "units": "http://nmx.ca/05/units/bytes"
+    },
+    "controller/ethernet": {
+      "value": "http://nmx.ca/05/ethernetStatus/linkEstablished",
+      "time": "2026-09-21T06:05:00.002000000Z"
+    },
+    "dataArchive/status/events": {
+      "value": "http://nmx.ca/11/status/disabled",
+      "time": "2026-09-21T06:05:00.002000000Z"
+    },
+    "controller/system/memory/total": {
+      "value": "238340",
+      "time": "2026-09-21T06:05:00.002000000Z",
+      "units": "http://nmx.ca/05/units/kilobytes"
+    },
+    "instrumentStatus": {
+      "value": "http://nmx.ca/06/terms/instrumentStatus/ok",
+      "time": "2026-09-21T06:05:00.002000000Z"
+    },
+    "media/freeSpace/os": {
+      "value": "57802752",
+      "time": "2026-09-21T06:05:00.002000000Z",
+      "units": "http://nmx.ca/05/units/bytes"
+    },
+    "media/status/removableSD": {
+      "value": "http://nmx.ca/11/media/status/ok",
+      "time": "2026-09-21T06:05:00.002000000Z"
+    },
+    "config/commitState": {
+      "value": "http://nmx.ca/08/commitState/committed",
+      "time": "2026-09-21T06:05:00.002000000Z"
+    },
+    "media/freeSpace/internal": {
+      "value": "51839406080",
+      "time": "2026-09-21T06:05:00.002000000Z",
+      "units": "http://nmx.ca/05/units/bytes"
+    },
+    "media/status/internal": {
+      "value": "http://nmx.ca/11/media/status/ok",
+      "time": "2026-09-21T06:05:00.002000000Z"
+    },
+    "media/status/os": {
+      "value": "http://nmx.ca/11/media/status/ok",
+      "time": "2026-09-21T06:05:00.002000000Z"
+    },
+    "dataArchive/status": {
+      "value": "http://nmx.ca/10/dataArchive/status/ok",
+      "time": "2026-09-21T06:05:00.002000000Z"
+    },
+    "controller/system/memory/free": {
+      "value": "83384",
+      "time": "2026-09-21T06:05:00.002000000Z",
+      "units": "http://nmx.ca/05/units/kilobytes"
+    },
+    "controller/store/storePercentageUsed": {
+      "value": "1.693811E1",
+      "time": "2026-09-21T06:05:00.000000000Z",
+      "units": "http://nmx.ca/06/units/percentage"
+    },
+    "controller/store/storeRecordingStatus": {
+      "value": "http://nmx.ca/06/storeStatus/recording",
+      "time": "2026-09-21T06:05:00.000000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1018": {
+      "value": "2026-09-21 05:55:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/store": {
+      "value": "2026-09-21 06:05:00.000000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1508": {
+      "value": "2026-09-21 05:40:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/controller": {
+      "value": "2026-09-21 06:04:00.330000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1005": {
+      "value": "2026-09-21 05:55:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1011": {
+      "value": "2026-09-21 06:05:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1009": {
+      "value": "2026-09-21 05:42:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1510": {
+      "value": "2026-09-21 05:48:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/trigger/meta": {
+      "value": "2012-10-04 00:00:00.000000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1004": {
+      "value": "2026-09-21 05:55:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/timeSeries3": {
+      "value": "2026-09-21 06:04:54.250000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1015": {
+      "value": "2026-09-21 05:44:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/store/meta": {
+      "value": "2025-10-24 02:30:00.000000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1002": {
+      "value": "2026-09-21 05:52:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1008": {
+      "value": "2026-09-21 05:22:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1016": {
+      "value": "2026-09-21 05:44:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1022": {
+      "value": "2026-09-21 05:55:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/config": {
+      "value": "2026-09-09 15:21:56.681000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1019": {
+      "value": "2026-09-21 05:55:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/alert": {
+      "value": "2026-09-09 15:21:56.516000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/timeSeries1/meta": {
+      "value": "2020-10-27 00:00:00.000000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1509": {
+      "value": "2026-09-21 05:52:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/calibrationHistory": {
+      "value": "2026-01-13 13:54:33.000000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/continuousDataProducts/oneSecond/meta": {
+      "value": "2014-02-20 00:00:00.000000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/instrument/meta": {
+      "value": "2025-10-20 03:04:00.707000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/packetStreams": {
+      "value": "2026-09-21 06:04:00.008000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1017": {
+      "value": "2026-09-21 05:41:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/external": {
+      "value": "2026-09-21 06:06:00.000000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1020": {
+      "value": "2026-09-21 05:16:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/cd11": {
+      "value": "2026-09-21 06:04:20.000000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1001": {
+      "value": "2026-09-21 05:52:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1010": {
+      "value": "2026-09-21 05:18:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/environment": {
+      "value": "2026-09-21 06:06:00.000000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1003": {
+      "value": "2026-09-21 05:52:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1006": {
+      "value": "2026-09-21 05:53:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/timeSeries2": {
+      "value": "2026-09-21 06:04:57.900000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/alert/meta": {
+      "value": "2023-11-01 13:01:02.126000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/meta": {
+      "value": "2025-10-20 03:04:00.000000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1007": {
+      "value": "2026-09-21 05:53:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/external/meta": {
+      "value": "2025-10-20 03:04:00.000000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/timeSeries1": {
+      "value": "2026-09-21 06:04:53.425000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1014": {
+      "value": "2026-09-21 05:55:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/controller/meta": {
+      "value": "2023-11-01 13:02:07.051000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/packetStreams/meta": {
+      "value": "2026-01-27 12:22:00.247000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/instrument": {
+      "value": "2026-09-21 06:05:00.002000001",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/mostRecentPacketTime/centaur-6__0000/band/soh/timeseries/1021": {
+      "value": "2026-09-21 05:51:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1022": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/alert": {
+      "value": "2023-11-01 12:57:59.203000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1011": {
+      "value": "2023-11-07 13:30:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1009": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/meta": {
+      "value": "2023-11-01 13:01:22.002000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/external/meta": {
+      "value": "2023-11-01 13:01:22.091000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/timeSeries2": {
+      "value": "2023-11-01 12:57:17.670000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1006": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1008": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1020": {
+      "value": "2023-11-07 13:31:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/continuousDataProducts/oneSecond/meta": {
+      "value": "2014-02-20 00:00:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/store/meta": {
+      "value": "2023-11-01 13:00:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/cd11": {
+      "value": "2025-10-24 02:20:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1001": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1014": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/alert/meta": {
+      "value": "2023-11-01 13:01:02.126000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/environment": {
+      "value": "2023-11-01 13:01:21.868000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/packetStreams/meta": {
+      "value": "2023-11-01 13:02:00.111000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/config": {
+      "value": "2023-11-01 13:01:01.427000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/trigger/meta": {
+      "value": "2012-10-04 00:00:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1002": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1005": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1019": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/packetStreams": {
+      "value": "2023-11-01 13:02:00.056000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1508": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/timeSeries3": {
+      "value": "2023-11-01 12:57:17.670000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/controller": {
+      "value": "2023-11-01 13:02:06.722000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/timeSeries1/meta": {
+      "value": "2020-10-27 00:00:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1010": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/external": {
+      "value": "2023-11-01 13:01:21.943000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/timeSeries1": {
+      "value": "2023-11-01 12:57:17.670000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1015": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1510": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/store": {
+      "value": "2023-11-01 13:01:04.224000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1016": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1017": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/instrument": {
+      "value": "2023-11-01 13:02:00.374000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1004": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1003": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1509": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/calibrationHistory": {
+      "value": "2026-01-06 22:18:33.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1021": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/instrument/meta": {
+      "value": "2023-11-01 13:02:00.420000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/controller/meta": {
+      "value": "2023-11-01 13:02:06.836000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1018": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    },
+    "controller/packetStream/gapFilling/startTime/centaur-6__0000/band/soh/timeseries/1007": {
+      "value": "2023-11-07 13:29:00.000000000",
+      "time": "2026-09-21T06:05:00.134000000Z"
+    }
+  }
+}

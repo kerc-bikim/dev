@@ -87,12 +87,14 @@
       "timestamp": "2026-08-27T03:00:00.000Z"
     },
     {
+      "name": "gps/status",
+      "value": "http://nmx.ca/11/soh/gps/status/locked",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
       "name": "instrument/earthLocation",
-      "value": {
-        "latitude": 37.609,
-        "longitude": 127.054,
-        "elevation": 54.0
-      },
+      "value": "37.60900N 127.05400E 54.0m",
       "units": null,
       "timestamp": "2026-08-27T03:00:00.000Z"
     },

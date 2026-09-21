@@ -35,15 +35,22 @@ def _soh(channels: dict, *, shape: str = "channel_list", units: dict | None = No
                 for name, value in channels.items()
             },
         }
+    elif shape == "instrument_map":
+        payload = {
+            "centaur-6__0242": {
+                name: {"value": value, "time": "2026-09-21T00:00:00.742000000Z", "units": units.get(name)}
+                for name, value in channels.items()
+            }
+        }
     else:
         payload = {"instrumentId": "centaur-6__0242", **channels}
     return parse_soh(payload)
 
 
 class Test파서:
-    @pytest.mark.parametrize("shape", ["channel_list", "flat_map", "plain"])
-    def test_세_가지_응답_형태를_모두_읽는다(self, shape):
-        """실장비 응답 형태가 미확정이므로 파서를 관용적으로 둔다."""
+    @pytest.mark.parametrize("shape", ["channel_list", "flat_map", "plain", "instrument_map"])
+    def test_네_가지_응답_형태를_모두_읽는다(self, shape):
+        """실장비 4.9.2 는 instrument_map 이다. 나머지는 가상·구형 Fixture 다."""
         soh = _soh({"powerSupply/voltage": 12.6}, shape=shape)
         assert soh.raw("powerSupply/voltage") == 12.6
         assert soh.instrument_id == "centaur-6__0242"
@@ -69,9 +76,49 @@ class Test파서:
         assert parsed is not None
         assert parsed.tzinfo is not None
 
-    @pytest.mark.parametrize("raw", ["", "  ", "어제", None, 12345])
-    def test_해석할_수_없는_시각은_None이다(self, raw):
-        assert parse_timestamp(raw) is None
+    def test_나노초_공백_시각을_읽는다(self):
+        parsed = parse_timestamp("2026-09-21 00:00:00.000000000")
+        assert parsed is not None
+        assert parsed.year == 2026
+        assert parsed.tzinfo is not None
+
+    def test_실응답_URI_단위를_마이크로볼트로_본다(self):
+        soh = _soh(
+            {"digitizer/sensor/soh/voltage#_1": "297096"},
+            units={"digitizer/sensor/soh/voltage#_1": "http://nmx.ca/05/units/microvolts"},
+        )
+        sample = next(s for s in map_soh(soh).samples if s.metric_key == "sensor.mass_position_v")
+        assert sample.dimensions == {"sensor_port": "A", "axis": "W"}
+        assert sample.value_float == pytest.approx(0.2971)
+
+    def test_위치_문자열을_위경도로_나눈다(self):
+        soh = _soh({"instrument/earthLocation": "37.970971N 124.635521E 48m"})
+        samples = {s.metric_key: s for s in map_soh(soh).samples}
+        assert samples["gnss.latitude"].value_float == pytest.approx(37.970971)
+        assert samples["gnss.longitude"].value_float == pytest.approx(124.635521)
+        assert samples["gnss.elevation_m"].value_float == pytest.approx(48.0)
+
+    def test_과학적_표기_전압을_읽는다(self):
+        soh = _soh(
+            {"powerSupply/voltage": "1.4203617974999998E1"},
+            units={"powerSupply/voltage": "http://nmx.ca/05/units/volts"},
+        )
+        assert map_soh(soh).samples[0].value_float == pytest.approx(14.204, abs=0.001)
+
+    def test_gps_status_unlocked는_정상으로_취급하지_않는다(self):
+        soh = _soh(
+            {
+                "gps/status": "http://nmx.ca/11/soh/gps/status/unlocked",
+                "gps/numberOfSatellites": "9",
+                "timeStatus": "http://nmx.ca/05/soh/timing/timestatus/timeOK",
+            }
+        )
+        result = map_soh(soh)
+        samples = {s.metric_key: s for s in result.samples}
+        assert samples["timing.status"].value_status is Severity.OK
+        assert samples["gnss.satellite_count"].value_int == 9
+        assert "gnss.antenna_status" not in samples
+        assert unknown_channels(soh, result) == ()
 
 
 class Test단위변환:

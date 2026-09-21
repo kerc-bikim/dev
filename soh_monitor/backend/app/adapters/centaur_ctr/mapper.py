@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 from pathlib import Path
+import re
 
 from app.adapters.metric_mappings import apply_mapping_table, load_mapping_table
 from app.domain.enums import Severity, SupportState
@@ -32,11 +33,56 @@ ADAPTER_KEY = "nanometrics.centaur.ctr"
 PORT_NAMES = {0: "A", 1: "B"}
 
 # Mass Position 축 순서. 매뉴얼 8.2절: Nanometrics 지진계는 VM1=W, VM2=V, VM3=U 다.
-# SOH API 의 축 인덱스도 같은 순서를 따른다고 보고 매핑하며, M-1.3 에서 확인한다.
+# 실응답 4.9.2 는 포트 번호 없이 voltage#_1..3 만 준다. Sensor A 로 둔다.
 AXIS_NAMES = {1: "W", 2: "V", 3: "U"}
 
 # 마이크로 단위로 오는 채널. 매뉴얼 표기(microVolts)를 기준으로 한다.
 _MICRO = 1_000_000.0
+
+# 표준 Metric 이 없는 운영 채널. 조용히 버리지 않고 허용 목록으로만 제외한다.
+_ACK_UNMAPPED_PREFIXES = ("controller/packetStream/",)
+_ACK_UNMAPPED_CHANNELS = frozenset(
+    {
+        "controller/apollo/version",
+        "controller/ethernet",
+        "controller/numberPackets",
+        "controller/ppc/memory/free",
+        "controller/ppc/memory/total",
+        "controller/system/memory/free",
+        "controller/system/memory/total",
+        "gps/status",
+        "media/freeSpace/internal",
+        "media/freeSpace/os",
+        "media/status/internal",
+        "media/status/os",
+        "powersupervisor/state",
+        "timing/dacCount",
+    }
+)
+_LOCATION_RE = re.compile(
+    r"(?P<lat>[0-9.]+)\s*(?P<ns>[NSns])\s+(?P<lon>[0-9.]+)\s*(?P<ew>[EWew])\s+(?P<elev>-?[0-9.]+)\s*m",
+)
+
+
+def mass_position_source_names(port: int, axis: int) -> tuple[str, ...]:
+    """실장비 경로를 앞에, 구형 Fixture 경로를 뒤에 둔다."""
+    return (
+        f"digitizer/sensor/soh/voltage#_{port * 3 + axis}",
+        f"digitizer/sensor/massPosition#_{port}_{axis}",
+    )
+
+
+def first_present(soh: ParsedSoh, names: tuple[str, ...]) -> str | None:
+    for name in names:
+        if soh.has(name):
+            return name
+    return None
+
+
+def is_acknowledged_unmapped(name: str) -> bool:
+    if name in _ACK_UNMAPPED_CHANNELS:
+        return True
+    return any(name.startswith(prefix) for prefix in _ACK_UNMAPPED_PREFIXES)
 
 
 class MappingResult:
@@ -70,16 +116,25 @@ def _to_int(value: Any) -> int | None:
     return None if number is None else int(number)
 
 
+def _unit_token(units: str | None) -> str:
+    if not units:
+        return ""
+    text = units.strip()
+    if "://" in text:
+        text = text.rstrip("/").rsplit("/", 1)[-1]
+    return text.lower().replace("_", "")
+
+
 def _scale_for(units: str | None, default_divisor: float) -> float:
     """응답이 알려 준 단위를 우선해 나눗수를 정한다.
 
     같은 채널이 펌웨어에 따라 V 또는 mV 로 올 수 있다. 단위를 무시하고 상수로 나누면
-    1000배 틀린 값이 조용히 적재된다.
+    1000배 틀린 값이 조용히 적재된다. 실응답은 `http://nmx.ca/05/units/volts` 형태다.
     """
-    if not units:
+    normalized = _unit_token(units)
+    if not normalized:
         return default_divisor
-    normalized = units.strip().lower()
-    if normalized in {"microvolts", "uv", "µv", "micro_volts"}:
+    if normalized in {"microvolts", "uv", "µv"}:
         return _MICRO
     if normalized in {"millivolts", "mv"}:
         return 1000.0
@@ -91,7 +146,7 @@ def _scale_for(units: str | None, default_divisor: float) -> float:
         return 1.0
     if normalized in {"millidegreescelsius", "mdegc", "m°c"}:
         return 1000.0
-    if normalized in {"degreescelsius", "degc", "°c", "c"}:
+    if normalized in {"degreescelsius", "celsiusdegrees", "degc", "°c", "c"}:
         return 1.0
     return default_divisor
 
@@ -304,6 +359,28 @@ def map_soh(soh: ParsedSoh) -> MappingResult:
                 "instrument/earthLocation",
             )
         result.consumed.add("instrument/earthLocation")
+    elif isinstance(location, str):
+        parsed = _LOCATION_RE.search(location.replace(",", " "))
+        if parsed is None:
+            result.add(
+                MetricSample(
+                    metric_key="gnss.latitude",
+                    support_state=SupportState.UNKNOWN,
+                    raw_value=location,
+                ),
+                "instrument/earthLocation",
+            )
+        else:
+            lat = float(parsed.group("lat"))
+            lon = float(parsed.group("lon"))
+            elev = float(parsed.group("elev"))
+            if parsed.group("ns").upper() == "S":
+                lat = -lat
+            if parsed.group("ew").upper() == "W":
+                lon = -lon
+            result.add(MetricSample(metric_key="gnss.latitude", value_float=round(lat, 6)), "instrument/earthLocation")
+            result.add(MetricSample(metric_key="gnss.longitude", value_float=round(lon, 6)), "instrument/earthLocation")
+            result.add(MetricSample(metric_key="gnss.elevation_m", value_float=round(elev, 2)), "instrument/earthLocation")
 
     # ---------------------------------------------------------------- 센서
     for port, port_name in PORT_NAMES.items():
@@ -322,10 +399,13 @@ def map_soh(soh: ParsedSoh) -> MappingResult:
             dimensions={"sensor_port": port_name},
         )
         for axis_index, axis_name in AXIS_NAMES.items():
+            source = first_present(soh, mass_position_source_names(port, axis_index))
+            if source is None:
+                continue
             _float_sample(
                 result,
                 soh,
-                f"digitizer/sensor/massPosition#_{port}_{axis_index}",
+                source,
                 "sensor.mass_position_v",
                 divisor=_MICRO,
                 unit_aware=True,
@@ -385,8 +465,11 @@ def unknown_channels(soh: ParsedSoh, result: MappingResult) -> tuple[str, ...]:
     """표준 Metric 으로 옮기지 못한 채널 이름.
 
     새 펌웨어가 채널을 추가했다는 신호다. 조용히 버리면 그 사실을 알 수 없다.
+    패킷 스트림처럼 표준 감시 대상이 아닌 운영 채널은 허용 목록으로만 제외한다.
     """
-    return tuple(sorted(set(soh.channels) - result.consumed))
+    leftover = set(soh.channels) - result.consumed
+    leftover = {name for name in leftover if not is_acknowledged_unmapped(name)}
+    return tuple(sorted(leftover))
 
 
 def status_of(samples: list[MetricSample], metric_key: str) -> Severity | None:

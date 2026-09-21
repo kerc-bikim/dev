@@ -11,7 +11,7 @@ from __future__ import annotations
 from app.domain.enums import SupportState
 from app.domain.models import CapabilityReport, dimensioned_capability
 
-from .mapper import PORT_NAMES
+from .mapper import PORT_NAMES, first_present, mass_position_source_names
 from .parser import ParsedSoh
 
 # 채널이 있으면 그 기능이 활성이라고 본다.
@@ -64,7 +64,7 @@ def detect(soh: ParsedSoh, *, expected_channel_count: int | None = None) -> Capa
     for port, port_name in PORT_NAMES.items():
         has_status = soh.has(f"digitizer/sensor/status#_{port}")
         has_mass = any(
-            soh.has(f"digitizer/sensor/massPosition#_{port}_{axis}") for axis in (1, 2, 3)
+            first_present(soh, mass_position_source_names(port, axis)) is not None for axis in (1, 2, 3)
         )
         has_control = soh.has(f"sensor/controlLines/state#_{port}")
         port_exists = has_status or has_mass or has_control

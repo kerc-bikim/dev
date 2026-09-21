@@ -13,9 +13,14 @@ from pathlib import Path
 
 import pytest
 
-from app.adapters.centaur_ctr.mapper import map_soh, unknown_channels
+from app.adapters.centaur_ctr.mapper import (
+    is_acknowledged_unmapped,
+    map_soh,
+    unknown_channels,
+)
 from app.adapters.centaur_ctr.parser import parse_soh
 from app.adapters.centaur_ctr import capabilities as capability_detector
+from app.domain.enums import Severity, SupportState
 from app.metrics.catalog import validate_sample
 
 TESTDATA = (
@@ -68,8 +73,6 @@ def test_기능_탐지가_예외_없이_끝난다(path: Path):
 
 
 def test_3채널_Fixture는_SensorB를_미지원으로_판정한다():
-    from app.domain.enums import SupportState
-
     path = TESTDATA / "synthetic-ctr3-normal.json"
     soh = parse_soh(_load(path))
     report = capability_detector.detect(soh, expected_channel_count=3)
@@ -82,19 +85,37 @@ def test_모르는_상태_Fixture는_보강_대상을_남긴다():
     assert result.unmapped_values, "모르는 상태 문자열이 UNKNOWN 으로 떨어지며 원문을 남겨야 한다"
 
 
+def _health_channels(names: set[str]) -> set[str]:
+    """표준 Metric 감시 대상만 남긴다. 패킷 스트림 등 운영 채널은 대조에서 뺀다."""
+    return {name for name in names if not is_acknowledged_unmapped(name)}
+
+
+# 6채널 가상 장비는 Sensor B Mass Position(voltage#_4..6) 을 낸다.
+# 실응답 4.9.2 Centaur-6 는 status#_1 이 있어도 voltage#_4..6 이 없다.
+_MOCK_ONLY_ALLOWED = frozenset(
+    {
+        "digitizer/sensor/soh/voltage#_4",
+        "digitizer/sensor/soh/voltage#_5",
+        "digitizer/sensor/soh/voltage#_6",
+    }
+)
+
+
 @pytest.mark.skipif(not REAL, reason="실장비 Fixture 가 아직 없다 (조사 항목 M-1.2)")
 def test_실응답과_가상서버_기준선이_어긋나지_않는다():
     """가상 서버가 상상 속 형식으로 굳는 것을 막는 장치.
 
-    실장비 Fixture 가 들어오면 켜진다. 가상 서버 기준선에 없는 채널이 실응답에 있으면
-    가상 서버를 고쳐야 하고, 반대면 우리가 만들어 낸 채널이라는 뜻이다.
+    실장비 Fixture 가 들어오면 켜진다. 가상 서버 기준선에 없는 건강 채널이 실응답에
+    있으면 가상 서버를 고쳐야 하고, 반대면 우리가 만들어 낸 채널이라는 뜻이다.
     """
-    baseline = set(parse_soh(_load(TESTDATA / "synthetic-ctr6-normal.json")).channels)
+    baseline = _health_channels(
+        set(parse_soh(_load(TESTDATA / "synthetic-ctr6-normal.json")).channels)
+    )
 
     for path in REAL:
-        actual = set(parse_soh(_load(path)).channels)
+        actual = _health_channels(set(parse_soh(_load(path)).channels))
         missing_in_mock = actual - baseline
-        invented_by_mock = baseline - actual
+        invented_by_mock = baseline - actual - _MOCK_ONLY_ALLOWED
         assert not missing_in_mock, (
             f"{path.name}: 실장비에 있으나 가상 서버가 내지 않는 채널 {sorted(missing_in_mock)}"
         )
@@ -102,3 +123,34 @@ def test_실응답과_가상서버_기준선이_어긋나지_않는다():
             f"{path.name}: 가상 서버만 내는 채널 {sorted(invented_by_mock)}. "
             "우리가 만들어 낸 채널이라는 뜻이다"
         )
+
+
+def test_실응답_야간은_Mass_Position과_전원을_옮긴다():
+    path = TESTDATA / "real-ctr6-normal.json"
+    if not path.exists():
+        pytest.skip("실장비 Fixture 가 아직 없다")
+    soh = parse_soh(_load(path))
+    assert soh.instrument_id == "centaur-6__0000"
+    result = map_soh(soh)
+    samples = {(s.metric_key, tuple(sorted(s.dimensions.items()))): s for s in result.samples}
+    assert samples[("sensor.mass_position_v", (("axis", "W"), ("sensor_port", "A")))].value_float == pytest.approx(0.2971)
+    assert samples[("sensor.mass_position_v", (("axis", "V"), ("sensor_port", "A")))].value_float == pytest.approx(0.1617)
+    assert samples[("sensor.mass_position_v", (("axis", "U"), ("sensor_port", "A")))].value_float == pytest.approx(-0.3091)
+    assert samples[("power.input_voltage_v", ())].value_float == pytest.approx(14.204, abs=0.001)
+    assert samples[("device.temperature_c", ())].value_float == pytest.approx(34.34, abs=0.01)
+    assert samples[("timing.status", ())].value_status is Severity.OK
+    assert samples[("gnss.satellite_count", ())].value_int == 9
+    assert "gnss.antenna_status" not in {s.metric_key for s in result.samples}
+    assert unknown_channels(soh, result) == ()
+
+
+def test_실응답_Sensor_B는_상태만_있고_질량은_확인_불가():
+    """status#_1 은 ok 인데 voltage#_4..6 이 없다. 없는 기능으로 단정하지 않는다."""
+    path = TESTDATA / "real-ctr6-normal.json"
+    if not path.exists():
+        pytest.skip("실장비 Fixture 가 아직 없다")
+    soh = parse_soh(_load(path))
+    report = capability_detector.detect(soh, expected_channel_count=6)
+    assert report.state_of("sensor.status", "B") is SupportState.SUPPORTED_ENABLED
+    assert report.state_of("sensor.mass_position", "A") is SupportState.SUPPORTED_ENABLED
+    assert report.state_of("sensor.mass_position", "B") is SupportState.UNKNOWN
