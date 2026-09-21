@@ -24,7 +24,7 @@ from fastapi.responses import JSONResponse
 
 from .devices import DeviceRegistry, VirtualDevice, load_fleet
 from .envelope import UNITS, render
-from .scenarios import TransportScenario
+from .scenarios import PayloadScenario, TransportScenario
 from .values import soh_channels
 
 SESSION_COOKIE = "nmxsid"
@@ -70,7 +70,7 @@ def create_app(registry: DeviceRegistry | None = None) -> FastAPI:
     app = FastAPI(
         title="가상 Centaur CTR",
         description=(
-            "시험용 가상 기록계. 응답 형태는 실장비 확보 전까지 추정이며 envelope.py 에만 있다."
+            "시험용 가상 기록계. 4.9.2 실응답 봉투는 envelope.py 의 INSTRUMENT_MAP 이다."
         ),
         docs_url=None,
         redoc_url=None,
@@ -163,23 +163,39 @@ def create_app(registry: DeviceRegistry | None = None) -> FastAPI:
 
         moment = state.now()
         channel_count = 3 * len(device.sensor_ports)
-        return JSONResponse(
-            {
-                "instrumentId": device.instrument_id,
-                "bands": [
+        axes = ("Z", "N", "E")[: min(3, channel_count)]
+        bands = []
+        for axis in axes:
+            if device.payload_scenario is PayloadScenario.WAVEFORM_STOPPED:
+                ranges: list[dict] = []
+            elif device.payload_scenario is PayloadScenario.WAVEFORM_STALE:
+                end = moment - timedelta(minutes=30)
+                ranges = [
                     {
-                        "channel": f"HH{axis}",
-                        "ranges": [
-                            {
-                                "start": (moment - timedelta(hours=6)).isoformat(),
-                                "end": moment.isoformat(),
-                            }
-                        ],
+                        "start": (end - timedelta(hours=5)).isoformat(),
+                        "end": end.isoformat(),
                     }
-                    for axis in ("Z", "N", "E")[: min(3, channel_count)]
-                ],
-            }
-        )
+                ]
+            elif device.payload_scenario is PayloadScenario.WAVEFORM_GAP:
+                ranges = [
+                    {
+                        "start": (moment - timedelta(hours=6)).isoformat(),
+                        "end": (moment - timedelta(hours=3)).isoformat(),
+                    },
+                    {
+                        "start": (moment - timedelta(hours=2)).isoformat(),
+                        "end": moment.isoformat(),
+                    },
+                ]
+            else:
+                ranges = [
+                    {
+                        "start": (moment - timedelta(hours=6)).isoformat(),
+                        "end": moment.isoformat(),
+                    }
+                ]
+            bands.append({"channel": f"HH{axis}", "ranges": ranges})
+        return JSONResponse({"instrumentId": device.instrument_id, "bands": bands})
 
     # ------------------------------------------------------------ 인증 (7.6 절)
 

@@ -11,7 +11,6 @@
 """
 from __future__ import annotations
 
-import ipaddress
 import re
 import uuid
 from pathlib import Path
@@ -27,10 +26,11 @@ from app.adapters.contract import (
 )
 from app.domain.enums import PollErrorCode
 from app.domain.models import CapabilityReport, DeviceIdentity, PollResult, utcnow
+from app.net.ssrf import is_allowed_host
 
 from . import capabilities as capability_detector
 from .client import CentaurClient, build_base_url
-from .mapper import map_soh, unknown_channels
+from .mapper import map_soh, mass_position_source_names, unknown_channels
 from .parser import ParsedSoh, ParseError, parse_soh
 
 MANIFEST_PATH = Path(__file__).with_name("manifest.json")
@@ -176,9 +176,7 @@ class CentaurCtrAdapter(RecorderAdapter):
             if (
                 soh.has(f"digitizer/sensor/status#_{port}")
                 or soh.has(f"sensor/controlLines/state#_{port}")
-                or any(
-                    soh.has(f"digitizer/sensor/massPosition#_{port}_{axis}") for axis in (1, 2, 3)
-                )
+                or any(soh.has(name) for axis in (1, 2, 3) for name in mass_position_source_names(int(port), axis))
             ):
                 ports.append(name)
 
@@ -343,20 +341,6 @@ class CentaurCtrAdapter(RecorderAdapter):
         return payload
 
 
-def is_allowed_host(hostname: str, allowed_networks: list[str]) -> bool:
-    """연결 시험 SSRF 차단용 보조 판정.
-
-    사설망 또는 승인된 대역만 허용한다. 호스트명이 IP 가 아니면 여기서 판정하지 않고
-    호출 측에서 이름을 해석한 뒤 다시 확인한다.
-    """
-    try:
-        address = ipaddress.ip_address(hostname)
-    except ValueError:
-        return False
-    for network in allowed_networks:
-        try:
-            if address in ipaddress.ip_network(network, strict=False):
-                return True
-        except ValueError:
-            continue
-    return False
+# 연결 시험 SSRF 차단의 주소 판정. 구현은 공통 모듈에 있고, Adapter 시험이
+# 기존 경로에서 가져갈 수 있게 여기로 다시 노출한다.
+__all__ = ("CentaurCtrAdapter", "MANIFEST_PATH", "is_allowed_host")

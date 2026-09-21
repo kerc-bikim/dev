@@ -11,19 +11,19 @@
 
 | # | 관측소 코드 | 관측소명 | 지역 | 모델 | 시리얼 | 펌웨어 | 채널 | IP/호스트 | 수집 경로(DIRECT/EDGE) | 비고 |
 |---|-------------|----------|------|------|--------|--------|------|-----------|------------------------|------|
-| 1 | | | | | | | | | | |
+| 1 | (미기재) | | | Centaur Gen4 6ch | 0000 (익명) | 4.9.2 | 6 | | 미확인 | 2026-09-21 실응답 2건. Sensor A/B 상태 ok, Mass Position 은 A만 |
 | 2 | | | | | | | | | | |
 
 집계
 
 | 항목 | 값 |
 |------|-----|
-| 전체 기록계 수 | |
-| 3채널 모델 수 | |
-| 6채널 모델 수 | |
-| 펌웨어 버전 종류 | |
-| DIRECT 가능 관측소 수 | |
-| EDGE 필요 관측소 수 | |
+| 전체 기록계 수 | 1 (조사된 단위) |
+| 3채널 모델 수 | 0 |
+| 6채널 모델 수 | 1 |
+| 펌웨어 버전 종류 | 4.9.2 |
+| DIRECT 가능 관측소 수 | 미확인 |
+| EDGE 필요 관측소 수 | 미확인 |
 
 ---
 
@@ -41,10 +41,10 @@ curl -s "http://<기록계IP>/api/v1/instruments/soh?pretty=true" -o ctr4-6chann
 | 파일명 | 대상 | 확보 | 비고 |
 |--------|------|:----:|------|
 | `ctr-3channel-soh.json` | 3채널 CTR | ☐ | |
-| `ctr-6channel-soh.json` | 6채널 CTR | ☐ | |
-| `ctr-no-sdcard-soh.json` | SD카드 미장착 상태 | ☐ | |
-| `ctr-gps-unlocked-soh.json` | GNSS 미잠금 상태 | ☐ | |
-| `ctr-oldest-firmware-soh.json` | 가장 낮은 펌웨어 | ☐ | |
+| `ctr-6channel-soh.json` | 6채널 CTR | ☑ | testdata `real-ctr6-normal.json`(00:00Z), `real-ctr6-daytime.json`(06:05Z) |
+| `ctr-no-sdcard-soh.json` | SD카드 미장착 상태 | ☐ | 실응답은 SD 장착·ok |
+| `ctr-gps-unlocked-soh.json` | GNSS 미잠금 상태 | ☐ | 실응답 `gps/status=unlocked` 는 timeOK·위성 8–9기라 장애 Fixture 로 쓰지 않음 |
+| `ctr-oldest-firmware-soh.json` | 가장 낮은 펌웨어 | ☐ | 확보분은 4.9.2 뿐 |
 
 익명화 규칙
 
@@ -62,12 +62,12 @@ Mass Position 값의 키는 나오지 않는다. `VM1`~`VM6` 은 Steim/SeedLink 
 
 | 항목 | 조사 결과 |
 |------|-----------|
-| SOH API 에 축별 Mass Position 값이 있는가 | ☐ 있다 ☐ 없다 |
-| 있다면 키 형식 | |
-| 단위 | |
-| Sensor A 축 순서 (U/V/W 대응) | |
-| Sensor B 축 순서 | |
-| 없다면 대체 수집 경로 | ☐ SeedLink ☐ FDSN ☐ 기타: |
+| SOH API 에 축별 Mass Position 값이 있는가 | ☑ 있다 ☐ 없다 |
+| 있다면 키 형식 | `digitizer/sensor/soh/voltage#_1` · `#_2` · `#_3` (포트 번호 없음) |
+| 단위 | `http://nmx.ca/05/units/microvolts` (값 예: `297096`, `-309127`) |
+| Sensor A 축 순서 (U/V/W 대응) | 매뉴얼 8.2: `#_1`=W, `#_2`=V, `#_3`=U. 실측 야간 0.297 / 0.162 / −0.309 V |
+| Sensor B 축 순서 | `status#_1=ok` 인데 `voltage#_4..6` 없음. capability 는 UNKNOWN |
+| 없다면 대체 수집 경로 | ☐ SeedLink ☐ FDSN ☐ 기타: SOH API 로 Sensor A 확보 |
 
 결과에 따른 처리
 
@@ -157,9 +157,9 @@ Edge 가 필요한 지역별 서버 조건
 
 | 조건 | 충족 |
 |------|:----:|
-| M-1.1 전 장비 목록화 | ☐ |
-| M-1.2 실응답 4종 이상 확보 | ☐ |
-| M-1.3 Mass Position 경로 확정 | ☐ |
+| M-1.1 전 장비 목록화 | ☐ (1대만 확인) |
+| M-1.2 실응답 4종 이상 확보 | ☐ (6채널 정상 2건) |
+| M-1.3 Mass Position 경로 확정 | ☑ |
 | M-1.4 인증 방식 확정 | ☐ |
 | M-1.5 지역별 수집 경로 확정 | ☐ |
 | M-1.7 전원 프로파일 3종 이내로 정리 | ☐ |

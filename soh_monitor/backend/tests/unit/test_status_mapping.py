@@ -11,6 +11,7 @@ from app.domain.enums import Severity
 from app.metrics.status import load_status_mappings
 
 CTR = "nanometrics.centaur.ctr"
+MOCK = "acme.mock.recorder"
 
 
 @pytest.fixture(scope="module")
@@ -39,7 +40,12 @@ def mappings():
         ("storage.recording_status", "not enough space", Severity.CRITICAL),
         ("storage.sd_status", "not present", Severity.WARNING),
         ("storage.sd_status", "error", Severity.CRITICAL),
-        ("archive.continuous_status", "disabled", Severity.DISABLED),
+        ("device.overall_status", "http://nmx.ca/06/terms/instrumentStatus/ok", Severity.OK),
+        ("timing.status", "http://nmx.ca/05/soh/timing/timestatus/timeOK", Severity.OK),
+        ("timing.phase_lock", "http://nmx.ca/04/soh/timing/phaseLock/fineLock", Severity.OK),
+        ("sensor.status", "http://nmx.ca/12/sensor/status/ok", Severity.OK),
+        ("storage.recording_status", "http://nmx.ca/06/storeStatus/recording", Severity.OK),
+        ("archive.event_status", "http://nmx.ca/11/status/disabled", Severity.DISABLED),
         ("archive.continuous_status", "media full", Severity.CRITICAL),
     ],
 )
@@ -56,6 +62,14 @@ def test_대소문자와_공백은_무시한다(mappings, raw):
 
 def test_공백이_섞인_문자열도_정규화한다(mappings):
     assert mappings.resolve(CTR, "timing.status", "time   ok").severity is Severity.OK
+
+
+def test_timeOK는_time_ok로_읽는다(mappings):
+    """연속 대문자 OK 를 글자 단위로 쪼개면 time o k 가 되어 표를 못 찾는다."""
+    from app.metrics.status import status_lookup_keys
+
+    assert "time ok" in status_lookup_keys("http://nmx.ca/05/soh/timing/timestatus/timeOK")
+    assert mappings.resolve(CTR, "timing.status", "timeOK").mapped is True
 
 
 def test_모르는_문자열은_UNKNOWN이며_원문을_남긴다(mappings):
@@ -107,3 +121,30 @@ def test_참거짓_상태는_Adapter가_직접_변환해야_한다(mappings):
     result = mappings.resolve(CTR, "timing.status", True)
     assert result.severity is Severity.UNKNOWN
     assert result.mapped is False
+
+
+@pytest.mark.parametrize(
+    ("metric_key", "raw", "expected"),
+    [
+        ("device.overall_status", "GOOD", Severity.OK),
+        ("device.overall_status", "warn", Severity.WARNING),
+        ("device.overall_status", "BAD", Severity.CRITICAL),
+        ("timing.status", "LOCKED", Severity.OK),
+        ("timing.status", "drift", Severity.WARNING),
+        ("timing.status", "lost", Severity.CRITICAL),
+        ("storage.recording_status", "ACTIVE", Severity.OK),
+        ("storage.recording_status", "stopped", Severity.CRITICAL),
+    ],
+)
+def test_가상제조사_상태문자열_변환(mappings, metric_key, raw, expected):
+    """Centaur 와 다른 문자열도 Mapping 표만 바꾸면 표준 상태로 떨어진다."""
+    result = mappings.resolve(MOCK, metric_key, raw)
+    assert result.severity is expected
+    assert result.mapped is True
+
+
+def test_가상제조사_모르는_문자열도_UNKNOWN이다(mappings):
+    result = mappings.resolve(MOCK, "device.overall_status", "QUANTUM")
+    assert result.severity is Severity.UNKNOWN
+    assert result.mapped is False
+    assert result.raw_value == "QUANTUM"

@@ -29,6 +29,17 @@ curl -s "http://<기록계IP>/api/v1/instruments/soh?pretty=true" \
 
 확보 목표는 `docs/inventory.md` 의 M-1.2 표에 있다.
 
+현재 실응답
+
+| 파일 | 시각 (UTC) | 비고 |
+|------|------------|------|
+| `real-ctr6-normal.json` | 2026-09-21 00:00Z | Centaur-6 펌웨어 4.9.2. Instrument ID·위경도 익명화 |
+| `real-ctr6-daytime.json` | 2026-09-21 06:05Z | 같은 장비의 주간 스냅샷. 전원·온도만 달라진다 |
+
+두 파일 모두 `gps/status=unlocked` 이지만 `timeStatus=timeOK`, `phaseLock=fineLock`,
+위성 8–9기다. GNSS 장애 Fixture 가 아니다. 원본 JSON 의 중복 키 `powersupervisor/state` 는
+마지막 값만 남긴다.
+
 ## synthetic 파일 재생성
 
 ```bash

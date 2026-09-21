@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.base import Base
 from app.db.models import (
+    AdapterMetricMapping,
     CollectionMode,
     Device,
     DeviceEndpoint,
@@ -141,6 +142,16 @@ class TestSeed:
         assert rows == set(catalog.metrics)
         assert result["metric_definitions_inserted"] == len(catalog.metrics)
 
+    def test_Adapter_매핑표가_DB로_복제된다(self, session):
+        result = seed_all(session)
+        rows = list(session.scalars(select(AdapterMetricMapping)))
+        assert rows
+        assert result["adapter_mappings_inserted"] == len(rows)
+        assert any(row.source_path == "power/voltage" for row in rows)
+        seed_all(session)
+        again = list(session.scalars(select(AdapterMetricMapping)))
+        assert len(again) == len(rows)
+
     def test_두_번_실행해도_결과가_같다(self, session):
         seed_all(session)
         before = session.scalar(select(func.count()).select_from(MetricDefinitionRow))
@@ -175,6 +186,28 @@ class TestSeed:
         assert entries["storage.used_percent"].warning_condition == {"op": ">=", "value": 80}
         assert entries["storage.used_percent"].critical_condition == {"op": ">=", "value": 90}
         assert entries["connectivity.consecutive_failures"].critical_condition["value"] == 3
+        assert entries["acquisition.latest_sample_age_seconds"].critical_condition == {
+            "op": ">=",
+            "value": 600,
+        }
+        assert entries["acquisition.channel_active"].critical_condition == {"expect": True}
+
+    def test_예전_빈_경과규칙에_임계값을_채운다(self, session):
+        seed_all(session)
+        profile = session.scalar(select(MetricProfile).where(MetricProfile.is_default.is_(True)))
+        entry = session.scalar(
+            select(ProfileMetric).where(
+                ProfileMetric.profile_id == profile.id,
+                ProfileMetric.metric_key == "acquisition.latest_sample_age_seconds",
+            )
+        )
+        entry.warning_condition = {}
+        entry.critical_condition = {}
+        session.flush()
+        seed_all(session)
+        session.refresh(entry)
+        assert entry.warning_condition == {"op": ">=", "value": 180}
+        assert entry.critical_condition == {"op": ">=", "value": 600}
 
     def test_전압과_Mass_Position은_기본_임계값을_강요하지_않는다(self, session):
         """전원 구성과 센서 모델이 다르면 하나의 기준이 곧 오탐이 된다."""

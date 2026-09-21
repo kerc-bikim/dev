@@ -8,11 +8,12 @@ Centaur User Guide 17935R10 의 7.4 State of Health API 절은 URI·파라미터
 그 미확정 부분을 이 파일 하나에 가둔다. 실장비 응답을 확보하면 여기와 Adapter 의
 parser.py 만 고치면 되고, 시나리오·값 모델·제어면은 그대로 쓴다.
 
-위험을 더 줄이기 위해 두 가지 형태를 모두 낼 수 있게 했다. Adapter 는 두 형태를 모두
-읽어야 하며, 그래서 실제 형태가 어느 쪽이든(혹은 그 변형이든) 파서가 이미 관용적이다.
+위험을 더 줄이기 위해 여러 형태를 낼 수 있게 했다. Adapter 는 관용적으로 읽는다.
 
-  channel_list : {"channels": [{"name": ..., "value": ...}, ...]}
-  flat_map     : {"soh": {"<name>": {"value": ...}, ...}}
+  channel_list    : {"channels": [{"name": ..., "value": ...}, ...]}
+  flat_map        : {"soh": {"<name>": {"value": ...}, ...}}
+  instrument_map  : {"<instrumentId>": {"<name>": {"value": ..., "time": ..., "units": ...}}}
+                    firmware 4.9.2 Centaur-6 실응답.
 """
 from __future__ import annotations
 
@@ -24,6 +25,7 @@ from typing import Any
 class EnvelopeShape(str, Enum):
     CHANNEL_LIST = "channel_list"
     FLAT_MAP = "flat_map"
+    INSTRUMENT_MAP = "instrument_map"
 
 
 def _iso(moment: datetime) -> str:
@@ -46,6 +48,18 @@ def render(
     """
     units = units or {}
     timestamp = _iso(moment)
+
+    if shape is EnvelopeShape.INSTRUMENT_MAP:
+        return {
+            instrument_id: {
+                name: {
+                    "value": value,
+                    "time": timestamp,
+                    "units": units.get(name),
+                }
+                for name, value in channels.items()
+            }
+        }
 
     if shape is EnvelopeShape.FLAT_MAP:
         return {
@@ -72,12 +86,7 @@ def render(
     }
 
 
-# SOH 채널 이름과 원 단위. 근거: Centaur User Guide 17935R10 7.4 절 SOH channels 표.
-#
-# massPosition 채널 이름만은 매뉴얼에 없다. 7.4 절 표에는 포트 단위 상태
-# (digitizer/sensor/status#_0) 만 있고 축별 값의 키가 나오지 않는다. VM1~VM6 은
-# Steim/SeedLink 채널 코드(8.2 절)이므로 SOH API 의 키가 아니다.
-# 아래 이름은 externalSoh/voltage#_n 의 표기 관례를 따른 추정이며, M-1.3 에서 확정한다.
+# massPosition 추정 이름은 쓰지 않는다. 실응답 4.9.2 는 digitizer/sensor/soh/voltage#_n 이다.
 UNITS: dict[str, str] = {
     "powerSupply/voltage": "V",
     "system/current": "A",
@@ -90,10 +99,10 @@ UNITS: dict[str, str] = {
     "externalSoh/voltage#_3": "microVolts",
     "controller/store/storePercentageUsed": "percentage",
     "media/freeSpace/removableSD": "bytes",
-    "digitizer/sensor/massPosition#_0_1": "microVolts",
-    "digitizer/sensor/massPosition#_0_2": "microVolts",
-    "digitizer/sensor/massPosition#_0_3": "microVolts",
-    "digitizer/sensor/massPosition#_1_1": "microVolts",
-    "digitizer/sensor/massPosition#_1_2": "microVolts",
-    "digitizer/sensor/massPosition#_1_3": "microVolts",
+    "digitizer/sensor/soh/voltage#_1": "microVolts",
+    "digitizer/sensor/soh/voltage#_2": "microVolts",
+    "digitizer/sensor/soh/voltage#_3": "microVolts",
+    "digitizer/sensor/soh/voltage#_4": "microVolts",
+    "digitizer/sensor/soh/voltage#_5": "microVolts",
+    "digitizer/sensor/soh/voltage#_6": "microVolts",
 }

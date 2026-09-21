@@ -87,12 +87,14 @@
       "timestamp": "2026-08-27T03:00:00.000Z"
     },
     {
+      "name": "gps/status",
+      "value": "http://nmx.ca/11/soh/gps/status/locked",
+      "units": null,
+      "timestamp": "2026-08-27T03:00:00.000Z"
+    },
+    {
       "name": "instrument/earthLocation",
-      "value": {
-        "latitude": 37.647,
-        "longitude": 127.026,
-        "elevation": 72.0
-      },
+      "value": "37.64700N 127.02600E 72.0m",
       "units": null,
       "timestamp": "2026-08-27T03:00:00.000Z"
     },
@@ -145,19 +147,19 @@
       "timestamp": "2026-08-27T03:00:00.000Z"
     },
     {
-      "name": "digitizer/sensor/massPosition#_0_1",
+      "name": "digitizer/sensor/soh/voltage#_1",
       "value": -226469,
       "units": "microVolts",
       "timestamp": "2026-08-27T03:00:00.000Z"
     },
     {
-      "name": "digitizer/sensor/massPosition#_0_2",
+      "name": "digitizer/sensor/soh/voltage#_2",
       "value": -224788,
       "units": "microVolts",
       "timestamp": "2026-08-27T03:00:00.000Z"
     },
     {
-      "name": "digitizer/sensor/massPosition#_0_3",
+      "name": "digitizer/sensor/soh/voltage#_3",
       "value": -223098,
       "units": "microVolts",
       "timestamp": "2026-08-27T03:00:00.000Z"
@@ -175,19 +177,19 @@
       "timestamp": "2026-08-27T03:00:00.000Z"
     },
     {
-      "name": "digitizer/sensor/massPosition#_1_1",
+      "name": "digitizer/sensor/soh/voltage#_4",
       "value": -214517,
       "units": "microVolts",
       "timestamp": "2026-08-27T03:00:00.000Z"
     },
     {
-      "name": "digitizer/sensor/massPosition#_1_2",
+      "name": "digitizer/sensor/soh/voltage#_5",
       "value": -212775,
       "units": "microVolts",
       "timestamp": "2026-08-27T03:00:00.000Z"
     },
     {
-      "name": "digitizer/sensor/massPosition#_1_3",
+      "name": "digitizer/sensor/soh/voltage#_6",
       "value": -211025,
       "units": "microVolts",
       "timestamp": "2026-08-27T03:00:00.000Z"

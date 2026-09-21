@@ -94,6 +94,23 @@ adapters:
       open: WARNING
       closed: OK
 
+  # 확장성 검증용 가상 제조사. Centaur 와 다른 상태 문자열을 쓴다.
+  acme.mock.recorder:
+    device.overall_status:
+      good: OK
+      warn: WARNING
+      bad: CRITICAL
+
+    timing.status:
+      locked: OK
+      drift: WARNING
+      lost: CRITICAL
+
+    storage.recording_status:
+      active: OK
+      wrapping: OK
+      stopped: CRITICAL
+
 # 수치 코드로 오는 값의 해석. Steim/SeedLink 계열 SOH 채널이 정수로 올 때 쓴다.
 # 근거: Centaur User Guide 8.2 SOH channels in Steim compressed formats.
 numeric_codes:

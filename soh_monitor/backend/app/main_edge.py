@@ -1,10 +1,9 @@
 """edge 프로세스 실행점.
 
-지역망에서 기록계를 수집해 로컬 Spool 에 쌓고 중앙으로 올린다. Spool·업로드·설정
-동기화는 M7 에서 이 골격 위에 붙는다. 현재는 Tick 골격과 설정 점검만 동작한다.
+지역망에서 기록계를 수집해 로컬 Spool 에 쌓고 중앙으로 올린다. 중앙 Collector 와
+같은 Adapter 코드를 쓴다. 수집 결과 형식이 같아야 Grafana 대시보드를 공유할 수 있다.
 
-중앙과 같은 Adapter 코드를 쓴다는 점이 이 프로세스의 핵심이다. 수집 결과 형식이
-중앙 직접 수집과 완전히 같아야 Grafana 대시보드를 공유할 수 있다.
+중앙이 꺼져 있어도 수집은 멈추지 않는다. 전송만 미룬다.
 """
 from __future__ import annotations
 
@@ -12,11 +11,12 @@ import asyncio
 
 from app.adapters.registry import get_registry
 from app.config.settings import get_settings
+from app.edgeagent.runtime import EdgeRuntime
 from app.observability.logging import configure_logging, get_logger
 from app.runtime.service import PeriodicService, install_signal_handlers
 
 
-async def run_edge(max_ticks: int | None = None) -> PeriodicService:
+async def run_edge(max_ticks: int | None = None, runtime: EdgeRuntime | None = None) -> PeriodicService:
     settings = get_settings()
     logger = get_logger("app.edge", role="edge")
 
@@ -25,6 +25,7 @@ async def run_edge(max_ticks: int | None = None) -> PeriodicService:
         raise SystemExit(2)
 
     registry = get_registry()
+    agent = runtime or EdgeRuntime.from_settings(settings, registry)
     logger.info(
         "Edge 준비",
         extra={
@@ -36,8 +37,17 @@ async def run_edge(max_ticks: int | None = None) -> PeriodicService:
     )
 
     async def tick() -> None:
-        # M7: 설정 동기화 → 할당 장비 수집 → Spool 기록 → Batch 업로드 → Heartbeat
-        logger.debug("Edge Tick", extra={"assigned_devices": 0, "pending_batches": 0})
+        stats = await agent.tick()
+        logger.debug(
+            "Edge Tick",
+            extra={
+                "config_version": stats.config_version,
+                "collected": stats.collected,
+                "uploaded": stats.uploaded,
+                "central_down": stats.central_down,
+                "pending_batches": agent.spool.pending_count(),
+            },
+        )
 
     service = PeriodicService(
         "edge",
@@ -46,7 +56,10 @@ async def run_edge(max_ticks: int | None = None) -> PeriodicService:
         max_ticks=max_ticks,
     )
     install_signal_handlers(service)
-    await service.run()
+    try:
+        await service.run()
+    finally:
+        await agent.aclose()
     return service
 
 

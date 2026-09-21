@@ -173,8 +173,8 @@ class Test기능탐지:
 
 
 class Test본문시나리오:
-    @pytest.mark.parametrize("shape", [EnvelopeShape.CHANNEL_LIST, EnvelopeShape.FLAT_MAP])
-    async def test_두_응답_형태_모두_수집된다(self, shape):
+    @pytest.mark.parametrize("shape", [EnvelopeShape.CHANNEL_LIST, EnvelopeShape.FLAT_MAP, EnvelopeShape.INSTRUMENT_MAP])
+    async def test_응답_형태_모두_수집된다(self, shape):
         adapter, context = build(envelope_shape=shape)
         result = await adapter.collect(context)
         assert result.success is True

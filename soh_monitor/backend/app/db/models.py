@@ -82,6 +82,12 @@ class BatchStatus(str, enum.Enum):
     REJECTED = "REJECTED"
 
 
+class EdgeTaskStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+
+
 # --------------------------------------------------------------------- 제조사·Adapter
 
 
@@ -152,7 +158,12 @@ class AdapterMetricMapping(UuidPrimaryKey, Timestamped, Base):
     __tablename__ = "adapter_metric_mappings"
     __table_args__ = (
         UniqueConstraint(
-            "adapter_key", "adapter_version", "firmware_range", "canonical_metric_key", "dimension_value"
+            "adapter_key",
+            "adapter_version",
+            "firmware_range",
+            "source_path",
+            "canonical_metric_key",
+            "dimension_value",
         ),
         Index("ix_adapter_metric_mappings_lookup", "adapter_key", "adapter_version"),
     )
@@ -269,6 +280,9 @@ class Device(UuidPrimaryKey, Timestamped, Base):
     sensors: Mapped[list["Sensor"]] = relationship(
         back_populates="device", cascade="all, delete-orphan"
     )
+    external_channels: Mapped[list["ExternalSohChannel"]] = relationship(
+        back_populates="device", cascade="all, delete-orphan"
+    )
     manufacturer: Mapped["Manufacturer | None"] = relationship(lazy="joined")
     device_model: Mapped["DeviceModel | None"] = relationship(lazy="joined")
     collection_profile: Mapped["CollectionProfile | None"] = relationship(lazy="joined")
@@ -354,6 +368,8 @@ class ExternalSohChannel(UuidPrimaryKey, Timestamped, Base):
     critical_low: Mapped[float | None] = mapped_column(Float)
     critical_high: Mapped[float | None] = mapped_column(Float)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    device: Mapped["Device"] = relationship(back_populates="external_channels")
 
 
 class DeviceCapability(UuidPrimaryKey, Timestamped, Base):
@@ -495,6 +511,10 @@ class EdgeCollector(UuidPrimaryKey, Timestamped, Base):
     spool_limit_bytes: Mapped[int | None] = mapped_column(BigInteger)
     ip_address: Mapped[str | None] = mapped_column(String(64))
     registered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        doc="인증서·토큰 폐기 시각. 값이 있으면 Agent 요청은 즉시 403 이다.",
+    )
     notes: Mapped[str | None] = mapped_column(Text)
 
 
@@ -529,6 +549,25 @@ class EdgeAssignment(UuidPrimaryKey, Timestamped, Base):
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="primary")
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EdgeIngestSequence(UuidPrimaryKey, Timestamped, Base):
+    """Edge 가 올린 Poll 의 sequence 멱등 표.
+
+    batch_id 가 달라도 같은 sequence 는 한 번만 적재한다. 재전송·분할 업로드가
+    시계열을 두 번 쌓지 못하게 DB 가 막는다.
+    """
+
+    __tablename__ = "edge_ingest_sequences"
+    __table_args__ = (UniqueConstraint("edge_id", "sequence"),)
+
+    edge_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("edge_collectors.id", ondelete="CASCADE"), nullable=False
+    )
+    sequence: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    poll_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    batch_id: Mapped[str | None] = mapped_column(String(64))
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class EdgeIngestBatch(UuidPrimaryKey, Timestamped, Base):
@@ -582,6 +621,28 @@ class EdgeRuntimeState(Timestamped, Base):
     oldest_pending_age_seconds: Mapped[float | None] = mapped_column(Float)
     clock_offset_ms: Mapped[float | None] = mapped_column(Float)
     detail: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class EdgeTask(UuidPrimaryKey, Timestamped, Base):
+    """중앙이 Edge 에 맡긴 원격 작업. 연결 시험이 대표 예다."""
+
+    __tablename__ = "edge_tasks"
+    __table_args__ = (Index("ix_edge_tasks_edge_status", "edge_id", "status"),)
+
+    edge_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("edge_collectors.id", ondelete="CASCADE"), nullable=False
+    )
+    device_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("devices.id", ondelete="SET NULL")
+    )
+    task_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    status: Mapped[EdgeTaskStatus] = mapped_column(
+        _enum(EdgeTaskStatus, "edge_task_status"), nullable=False, default=EdgeTaskStatus.PENDING
+    )
+    result: Mapped[dict | None] = mapped_column(JSON)
+    requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 # --------------------------------------------------------------------- 수집·상태·장애
@@ -693,6 +754,16 @@ class Incident(UuidPrimaryKey, Timestamped, Base):
             unique=True,
             postgresql_where=text("status <> 'RESOLVED'"),
             sqlite_where=text("status <> 'RESOLVED'"),
+        ),
+        Index(
+            "uq_incidents_open_edge",
+            "edge_id",
+            "category",
+            "metric_key",
+            "dimension_value",
+            unique=True,
+            postgresql_where=text("status <> 'RESOLVED' AND device_id IS NULL AND edge_id IS NOT NULL"),
+            sqlite_where=text("status <> 'RESOLVED' AND device_id IS NULL AND edge_id IS NOT NULL"),
         ),
     )
 

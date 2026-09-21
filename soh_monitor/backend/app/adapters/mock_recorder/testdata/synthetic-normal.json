@@ -1,0 +1,17 @@
+{
+  "deviceId": "MR-1001",
+  "model": "MR-100",
+  "reportedAt": "2026-09-18T00:00:00Z",
+  "readings": {
+    "sys.health": "GOOD",
+    "psu.millivolts": 12600,
+    "psu.milliamp": 180,
+    "clk.state": "LOCKED",
+    "clk.quality": 0.98,
+    "sat.count": 9,
+    "disk.used_ratio": 0.42,
+    "disk.record": "ACTIVE",
+    "temp.celsius": 31.5,
+    "fw.rev": "2.4.0"
+  }
+}

@@ -77,9 +77,10 @@ def test_source가_collector인_Metric은_기록계_응답에_의존하지_않�
 def test_상태_Mapping은_카탈로그의_status_Metric만_다룬다():
     catalog = load_catalog()
     mappings = load_status_mappings()
-    for metric_key in mappings.known_metrics("nanometrics.centaur.ctr"):
-        assert metric_key in catalog.metrics
-        assert catalog.metrics[metric_key].value_type is ValueType.STATUS
+    for adapter_key in ("nanometrics.centaur.ctr", "acme.mock.recorder"):
+        for metric_key in mappings.known_metrics(adapter_key):
+            assert metric_key in catalog.metrics
+            assert catalog.metrics[metric_key].value_type is ValueType.STATUS
 
 
 def test_카탈로그의_statuses가_열거형과_다르면_기동에_실패한다():

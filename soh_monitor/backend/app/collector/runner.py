@@ -10,6 +10,7 @@ import uuid
 from dataclasses import dataclass
 
 from app.adapters.contract import DeviceContext, RecorderAdapter
+from app.adapters.data_availability import attach_availability
 from app.adapters.registry import AdapterRegistrationError, AdapterRegistry
 from app.auth.credentials import CredentialResolver
 from app.collector.retry import RetryPolicy
@@ -110,6 +111,14 @@ async def poll_device(
             },
         )
         await sleep(delay)
+
+    result = await attach_availability(
+        result,
+        context,
+        data_source_uri=device.data_source_uri,
+        poll_interval_minutes=device.poll_interval_minutes,
+        httpx_transport=getattr(adapter, "_transport", None),
+    )
 
     logger.info(
         "수집 완료" if result.success else "수집 실패",

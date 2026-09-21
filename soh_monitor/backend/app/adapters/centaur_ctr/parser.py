@@ -1,17 +1,20 @@
 """Centaur CTR SOH 응답 파싱.
 
 응답 본문 형태는 매뉴얼(17935R10 7.4절)에 예시가 없어 실장비로만 확정된다(조사 M-1.3/M-1.2).
-그래서 파서를 관용적으로 만든다. 아래 세 형태를 모두 읽는다.
+파서는 아래 네 형태를 모두 읽는다.
 
   1) {"channels": [{"name": ..., "value": ..., "units": ...}, ...]}
   2) {"soh": {"<name>": {"value": ..., "units": ...}, ...}}
   3) {"<name>": <value>, ...}                      (평평한 형태)
+  4) {"<instrumentId>": {"<name>": {"value": ..., "time": ..., "units": ...}, ...}}
+     firmware 4.9.2 Centaur-6 실응답.
 
 실제 형태가 이 중 하나면 그대로 동작하고, 변형이면 이 파일만 고친다.
 파서는 값을 해석하지 않는다. 이름과 원값을 꺼내는 일까지만 한다.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -20,6 +23,7 @@ from typing import Any
 _ENVELOPE_KEYS = frozenset(
     {"instrumentid", "timestamp", "channels", "soh", "time", "error", "padding"}
 )
+_FRACTION_TRIM = re.compile(r"\.(\d{6})\d+")
 
 
 class ParseError(Exception):
@@ -54,10 +58,16 @@ class ParsedSoh:
 
 
 def parse_timestamp(raw: Any) -> datetime | None:
-    """장비가 준 시각. 해석하지 못하면 None 이며, 그때는 수집 시각을 쓴다."""
+    """장비가 준 시각. 해석하지 못하면 None 이며, 그때는 수집 시각을 쓴다.
+
+    실응답은 나노초 소수와 공백 구분(`2026-09-21 00:00:00.000000000`)을 쓴다.
+    """
     if not isinstance(raw, str) or not raw.strip():
         return None
-    text = raw.strip().replace("Z", "+00:00")
+    text = raw.strip()
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    text = _FRACTION_TRIM.sub(r".\1", text)
     try:
         parsed = datetime.fromisoformat(text)
     except ValueError:
@@ -74,6 +84,31 @@ def _entry_to_channel(entry: Any) -> ChannelValue:
     return ChannelValue(value=entry, units=None)
 
 
+def _looks_like_channel_entry(entry: Any) -> bool:
+    return isinstance(entry, dict) and "value" in entry
+
+
+def _instrument_map(payload: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
+    """펌웨어 4.9.2 실응답: 최상위 키가 Instrument ID 이고 값이 채널 맵이다."""
+    if len(payload) != 1:
+        return None
+    key, inner = next(iter(payload.items()))
+    if not isinstance(key, str) or key.lower() in _ENVELOPE_KEYS:
+        return None
+    if not isinstance(inner, dict) or not inner:
+        return None
+    hits = sum(1 for entry in inner.values() if _looks_like_channel_entry(entry))
+    if hits < max(1, (len(inner) + 1) // 2):
+        return None
+    return key, inner
+
+
+def _ingest_map(channels: dict[str, ChannelValue], raw_map: dict[str, Any]) -> None:
+    for name, entry in raw_map.items():
+        if isinstance(name, str) and name:
+            channels[name] = _entry_to_channel(entry)
+
+
 def parse_soh(payload: Any) -> ParsedSoh:
     if not isinstance(payload, dict):
         raise ParseError("SOH 응답이 객체가 아니다")
@@ -82,6 +117,20 @@ def parse_soh(payload: Any) -> ParsedSoh:
     reported_at = parse_timestamp(payload.get("timestamp") or payload.get("time"))
 
     channels: dict[str, ChannelValue] = {}
+
+    wrapped = _instrument_map(payload)
+    if wrapped is not None:
+        instrument_id = instrument_id or wrapped[0]
+        _ingest_map(channels, wrapped[1])
+        if reported_at is None:
+            times = [
+                parse_timestamp(entry.get("time"))
+                for entry in wrapped[1].values()
+                if isinstance(entry, dict)
+            ]
+            present = [item for item in times if item is not None]
+            if present:
+                reported_at = max(present)
 
     raw_channels = payload.get("channels")
     if isinstance(raw_channels, list):
@@ -95,9 +144,7 @@ def parse_soh(payload: Any) -> ParsedSoh:
 
     raw_map = payload.get("soh")
     if isinstance(raw_map, dict):
-        for name, entry in raw_map.items():
-            if isinstance(name, str) and name:
-                channels[name] = _entry_to_channel(entry)
+        _ingest_map(channels, raw_map)
 
     if not channels:
         # 평평한 형태. 응답 자체의 속성은 제외한다.

@@ -1,0 +1,9 @@
+{
+  "deviceId": "MR-1001",
+  "model": "MR-200",
+  "reportedAt": "2026-09-18T00:00:00Z",
+  "readings": {
+    "sys.health": "WARN",
+    "fw.rev": "2.4.0"
+  }
+}

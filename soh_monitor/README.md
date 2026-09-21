@@ -2,7 +2,7 @@
 
 Nanometrics **Centaur CTR** 계열 기록계의 SOH를 설정한 분 주기로 수집해 InfluxDB에 적재하고, Grafana로 관측소를 통합 감시하는 시스템이다. Centaur Gen5와 타 제조사 기록계는 Adapter 추가만으로 편입한다.
 
-진행 상태: **M0(저장소 골격) · M1(계약 확정) · M2(Centaur CTR Adapter) · M3(중앙 직접 수집) · M4(상태 판정) 완료.** 가상 기록계 50~100대를 수집해 시계열로 적재하고, 장애를 열고 복구까지 인식한다. 관리 화면(M6)은 아직 없다. 작업별 상태는 [`docs/progress.md`](docs/progress.md) 에 있다.
+진행 상태: **M0–M11 완료.** 실장비 파일럿(M10.7·M10.10)과 Docker 라이브 검증은 조사표·실행 환경이 필요하다. 작업별 상태는 [`docs/progress.md`](docs/progress.md) 에 있다.
 
 ## 문서
 
@@ -13,6 +13,10 @@ Nanometrics **Centaur CTR** 계열 기록계의 SOH를 설정한 분 주기로 �
 | [`docs/progress.md`](docs/progress.md) | 마일스톤별 실제 진행 상태와 계약에서 못 박은 규칙 |
 | [`docs/inventory.md`](docs/inventory.md) | M-1 장비·환경 조사표 양식 |
 | [`docs/adapter-development.md`](docs/adapter-development.md) | 새 기록계 Adapter 를 붙이는 절차와 지켜야 할 규칙 |
+| [`docs/gen5-checklist.md`](docs/gen5-checklist.md) | Centaur Gen5 착수 전 조사 항목 |
+| [`docs/edge-deployment/README.md`](docs/edge-deployment/README.md) | 지역 Edge Collector 설치·등록·확인 절차 |
+| [`docs/grafana.md`](docs/grafana.md) | Grafana 대시보드·알림·Deep Link |
+| [`docs/operations/`](docs/operations/) | 설치·등록·백업·장애대응·보안·FAQ |
 
 ## 구조
 
@@ -106,6 +110,17 @@ cp deploy/examples/edge.env.example edge.env && make edge-up            # 지역
 중앙은 443 하나만 외부에 열고 PostgreSQL·InfluxDB 포트는 공개하지 않는다. Edge 는 중앙으로
 Outbound 연결만 사용하며 들어오는 포트를 열지 않는다.
 
+## 운영
+
+```bash
+make backup OUT=/var/backups/soh
+make restore ARCHIVE=/var/backups/soh/soh-backup-....tar.gz
+make secrets-check
+```
+
+절차는 [`docs/operations/install.md`](docs/operations/install.md) 와
+[`docs/operations/backup-restore.md`](docs/operations/backup-restore.md).
+
 ## 검증
 
 ```bash
@@ -114,7 +129,8 @@ make verify
 
 - `contracts-check` : 카탈로그와 생성된 백엔드 상수·프론트 타입이 일치하는지
 - `naming-check` : 공통 계층에 제조사 이름이 새어 들어왔는지
-- `test` : 백엔드 테스트
+- `secrets-check` : Git 에 비밀이 남았는지
+- `test` : 백엔드 테스트 (단위·통합·부하 축소·E2E API)
 - `typecheck` / `build-web` : 프론트 타입 검사와 빌드
 
 ## 계약을 고치는 순서
